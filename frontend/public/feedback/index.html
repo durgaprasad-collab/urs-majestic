@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Share Your Experience — URS Majestic</title>
+  <style>
+    /* ── Config: update BACKEND_URL below before deploying ── */
+
+    :root {
+      --green:  #0B3A2E;
+      --green2: #1a5c47;
+      --gold:   #C9A227;
+      --gold2:  #e8c43a;
+      --bg:     #FAFAF7;
+      --text:   #1A1A1A;
+      --muted:  #6B6B6B;
+      --border: #D0CCC4;
+      --r:      10px;
+      --err:    #c0392b;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    .fb-header {
+      background: var(--green);
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      padding: 1rem 1.25rem;
+    }
+    .fb-header img { height: 52px; width: auto; border-radius: 8px; }
+
+    /* ── Card ── */
+    .fb-card {
+      width: 100%;
+      max-width: 440px;
+      padding: 1.5rem 1.25rem 2rem;
+    }
+
+    .fb-title {
+      font-family: Georgia, serif;
+      font-size: 1.45rem;
+      color: var(--green);
+      font-weight: 700;
+      margin-bottom: .25rem;
+      text-align: center;
+    }
+    .fb-sub {
+      font-size: .85rem;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── Fields ── */
+    .fb-field { margin-bottom: 1.1rem; }
+    .fb-label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: .35rem;
+    }
+
+    .phone-wrap {
+      display: flex;
+      align-items: center;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r);
+      background: #fff;
+      overflow: hidden;
+      transition: border-color .15s;
+    }
+    .phone-wrap:focus-within { border-color: var(--green); }
+    .phone-prefix {
+      padding: 0 .65rem;
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: #F3F0E8;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      border-right: 1.5px solid var(--border);
+      white-space: nowrap;
+    }
+    .phone-wrap input {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: .75rem .75rem;
+      font-size: 1rem;
+      background: transparent;
+      -webkit-appearance: none;
+    }
+
+    .fb-input {
+      width: 100%;
+      padding: .75rem .85rem;
+      font-size: 1rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r);
+      background: #fff;
+      outline: none;
+      transition: border-color .15s;
+      -webkit-appearance: none;
+    }
+    .fb-input:focus { border-color: var(--green); }
+
+    textarea.fb-input {
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+
+    /* ── Stars ── */
+    .stars {
+      display: flex;
+      gap: .35rem;
+      margin-top: .1rem;
+    }
+    .star {
+      font-size: 2rem;
+      cursor: pointer;
+      color: #D0CCC4;
+      line-height: 1;
+      transition: color .1s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .star.lit  { color: var(--gold); }
+    .star:active { transform: scale(.88); }
+
+    /* ── Consent ── */
+    .consent-wrap {
+      display: flex;
+      align-items: flex-start;
+      gap: .6rem;
+      background: #F3F0E8;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r);
+      padding: .75rem .9rem;
+      cursor: pointer;
+    }
+    .consent-wrap input[type=checkbox] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--green);
+      flex-shrink: 0;
+      margin-top: .05rem;
+      cursor: pointer;
+    }
+    .consent-text {
+      font-size: .85rem;
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    /* ── Error messages ── */
+    .fb-error {
+      font-size: .8rem;
+      color: var(--err);
+      margin-top: .3rem;
+      display: none;
+    }
+    .fb-error.show { display: block; }
+
+    /* ── Submit button ── */
+    .fb-btn {
+      width: 100%;
+      padding: .95rem;
+      background: var(--green);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--r);
+      cursor: pointer;
+      margin-top: .5rem;
+      transition: background .15s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fb-btn:active { transform: scale(.98); }
+    .fb-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* ── Thank-you overlay ── */
+    .ty-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      gap: 1rem;
+    }
+    .ty-screen.show { display: flex; }
+    .fb-form.hidden  { display: none; }
+
+    .ty-emoji { font-size: 3.5rem; line-height: 1; }
+    .ty-title {
+      font-family: Georgia, serif;
+      font-size: 1.6rem;
+      color: var(--green);
+      font-weight: 700;
+    }
+    .ty-sub { font-size: .95rem; color: var(--muted); }
+    .ty-reset { font-size: .8rem; color: var(--muted); margin-top: .25rem; }
+
+    .google-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .8rem 1.4rem;
+      background: var(--gold);
+      color: var(--green);
+      font-weight: 700;
+      font-size: .95rem;
+      border-radius: var(--r);
+      text-decoration: none;
+      margin-top: .25rem;
+      transition: background .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .google-btn:active { background: var(--gold2); }
+    .google-btn.hidden { display: none; }
+
+    /* ── Footer ── */
+    .fb-footer {
+      margin-top: auto;
+      padding: 1.25rem;
+      font-size: .72rem;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header class="fb-header">
+  <a href="/"><img src="/logo.jpeg" alt="URS Majestic" /></a>
+</header>
+
+<div class="fb-card">
+  <!-- ── Form ── -->
+  <form class="fb-form" id="fbForm" novalidate>
+    <h1 class="fb-title">How was your visit?</h1>
+    <p class="fb-sub">Takes 30 seconds · helps us serve you better</p>
+
+    <!-- Phone -->
+    <div class="fb-field">
+      <label class="fb-label" for="phone">Mobile Number <span style="color:var(--err)">*</span></label>
+      <div class="phone-wrap">
+        <span class="phone-prefix">+91</span>
+        <input
+          type="tel"
+          id="phone"
+          name="phone"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          placeholder="9876543210"
+          maxlength="10"
+          autocomplete="tel-national"
+        />
+      </div>
+      <p class="fb-error" id="phoneErr">Please enter a valid 10-digit mobile number.</p>
+    </div>
+
+    <!-- Name -->
+    <div class="fb-field">
+      <label class="fb-label" for="name">Your Name <span style="color:var(--err)">*</span></label>
+      <input
+        type="text"
+        id="name"
+        name="name"
+        class="fb-input"
+        placeholder="Ravi Kumar"
+        autocomplete="name"
+        maxlength="200"
+      />
+      <p class="fb-error" id="nameErr">Please enter your name.</p>
+    </div>
+
+    <!-- Star rating -->
+    <div class="fb-field">
+      <label class="fb-label">Rating <span style="color:var(--muted);font-weight:400;text-transform:none">(optional)</span></label>
+      <div class="stars" id="stars" role="group" aria-label="Star rating">
+        <span class="star" data-v="1" role="radio" aria-label="1 star" tabindex="0">★</span>
+        <span class="star" data-v="2" role="radio" aria-label="2 stars" tabindex="0">★</span>
+        <span class="star" data-v="3" role="radio" aria-label="3 stars" tabindex="0">★</span>
+        <span class="star" data-v="4" role="radio" aria-label="4 stars" tabindex="0">★</span>
+        <span class="star" data-v="5" role="radio" aria-label="5 stars" tabindex="0">★</span>
+      </div>
+    </div>
+
+    <!-- Review -->
+    <div class="fb-field">
+      <label class="fb-label" for="review">Tell us more <span style="color:var(--muted);font-weight:400;text-transform:none">(optional)</span></label>
+      <textarea
+        id="review"
+        name="review"
+        class="fb-input"
+        placeholder="What did you enjoy? Any suggestions?"
+        maxlength="500"
+        rows="3"
+      ></textarea>
+      <p class="fb-error" id="reviewErr">Review must be under 500 characters.</p>
+    </div>
+
+    <!-- Consent -->
+    <div class="fb-field">
+      <label class="consent-wrap" for="consent">
+        <input type="checkbox" id="consent" name="consent" />
+        <span class="consent-text">I agree that URS Majestic may send me offers and updates on WhatsApp.</span>
+      </label>
+      <p class="fb-error" id="consentErr">Please tick the checkbox to continue.</p>
+    </div>
+
+    <p class="fb-error" id="globalErr" style="font-size:.85rem;text-align:center"></p>
+
+    <button type="submit" class="fb-btn" id="submitBtn">Submit Feedback</button>
+  </form>
+
+  <!-- ── Thank-you ── -->
+  <div class="ty-screen" id="tyScreen">
+    <div class="ty-emoji">🌿</div>
+    <p class="ty-title">Thanks! See you again 🌿</p>
+    <p class="ty-sub">Your feedback means a lot to us.</p>
+
+    <a
+      id="googleBtn"
+      class="google-btn hidden"
+      target="_blank"
+      rel="noopener noreferrer"
+      href="#"
+    >🙏 Mind sharing this on Google?</a>
+
+    <p class="ty-reset" id="tyReset">Resetting in 3 s…</p>
+  </div>
+</div>
+
+<footer class="fb-footer">URS Majestic · 100% Pure Veg · Hyderabad</footer>
+
+<script>
+  /* ── Config ─────────────────────────────────────────────────── */
+  // Replace with your Render backend URL before deploying
+  const BACKEND_URL = 'https://urs-majestic-admin.onrender.com/';
+  // Paste your Google Business Profile review link here
+  const GOOGLE_REVIEW_URL = 'https://g.page/r/CcbW-_TIJosIEAI/review';
+
+  /* ── State ──────────────────────────────────────────────────── */
+  let rating = 0;
+
+  /* ── Stars ──────────────────────────────────────────────────── */
+  const stars = document.querySelectorAll('.star');
+  stars.forEach(s => {
+    s.addEventListener('click', () => setRating(+s.dataset.v));
+    s.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setRating(+s.dataset.v); }
+    });
+  });
+
+  function setRating(v) {
+    rating = (rating === v) ? 0 : v;   // tap same star → deselect
+    stars.forEach(s => s.classList.toggle('lit', +s.dataset.v <= rating));
+  }
+
+  /* ── Validation helpers ─────────────────────────────────────── */
+  function showErr(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+  function clearErr(id) { document.getElementById(id).classList.remove('show'); }
+
+  function validatePhone(raw) {
+    let p = raw.replace(/[\s\-\.]/g, '');
+    if (p.startsWith('+91')) p = p.slice(3);
+    else if (p.startsWith('91') && p.length === 12) p = p.slice(2);
+    if (!/^[6-9]\d{9}$/.test(p)) return null;
+    if (/^(\d)\1{9}$/.test(p)) return null;
+    return p;
+  }
+
+  /* ── Submit ─────────────────────────────────────────────────── */
+  document.getElementById('fbForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    ['phoneErr','nameErr','reviewErr','consentErr','globalErr'].forEach(clearErr);
+
+    const phone  = validatePhone(document.getElementById('phone').value.trim());
+    const name   = document.getElementById('name').value.trim();
+    const review = document.getElementById('review').value.trim();
+    const consent= document.getElementById('consent').checked;
+
+    let valid = true;
+    if (!phone)   { showErr('phoneErr', 'Please enter a valid 10-digit mobile number.'); valid = false; }
+    if (!name)    { showErr('nameErr',  'Please enter your name.'); valid = false; }
+    if (review.length > 500) { showErr('reviewErr', 'Review must be under 500 characters.'); valid = false; }
+    if (!consent) { showErr('consentErr', 'Please tick the checkbox to continue.'); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+
+    try {
+      const res = await fetch(`${BACKEND_URL.replace(/\/$/, '')}/api/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          phone,
+          rating: rating || null,
+          review: review || null,
+          consent: true,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        showErr('globalErr', data.error || 'Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Submit Feedback';
+        return;
+      }
+    } catch {
+      showErr('globalErr', 'Network error. Please check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Submit Feedback';
+      return;
+    }
+
+    /* ── Show thank-you ── */
+    document.getElementById('fbForm').classList.add('hidden');
+    const ty = document.getElementById('tyScreen');
+    ty.classList.add('show');
+
+    if (rating >= 4) {
+      const gb = document.getElementById('googleBtn');
+      gb.href = GOOGLE_REVIEW_URL;
+      gb.classList.remove('hidden');
+    }
+
+    /* ── Reset after 3 s ── */
+    let countdown = 3;
+    const resetEl = document.getElementById('tyReset');
+    const tick = setInterval(() => {
+      countdown--;
+      resetEl.textContent = countdown > 0 ? `Resetting in ${countdown} s…` : 'Resetting…';
+      if (countdown <= 0) {
+        clearInterval(tick);
+        resetForm();
+      }
+    }, 1000);
+  });
+
+  function resetForm() {
+    rating = 0;
+    stars.forEach(s => s.classList.remove('lit'));
+    document.getElementById('fbForm').reset();
+    document.getElementById('fbForm').classList.remove('hidden');
+    ['phoneErr','nameErr','reviewErr','consentErr','globalErr'].forEach(clearErr);
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit Feedback';
+    const ty = document.getElementById('tyScreen');
+    ty.classList.remove('show');
+    document.getElementById('googleBtn').classList.add('hidden');
+    document.getElementById('tyReset').textContent = 'Resetting in 3 s…';
+  }
+</script>
+</body>
+</html>

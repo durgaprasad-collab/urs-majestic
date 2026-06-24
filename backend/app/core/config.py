@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     LOGIN_MAX_ATTEMPTS: int = 5
     LOGIN_WINDOW_SECONDS: int = 900  # 15 minutes
 
+    # Public site origin (for feedback CORS)
+    SITE_ORIGIN: str = "https://ursmajestic.com"
+
+    # Feedback rate-limit: max submissions per IP per minute
+    FEEDBACK_RATE_LIMIT: int = 5
+    FEEDBACK_WINDOW_SECONDS: int = 60
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import menu, orders, customers, menu_engineering
+from app.api.routes import menu, orders, customers, menu_engineering, feedback
 from app.core.config import settings
 from app.core.middleware import (
     HTTPSRedirectMiddleware,
@@ -28,11 +28,12 @@ app.add_middleware(ProductionErrorMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(HTTPSRedirectMiddleware)
 
-# CORS: locked to admin origin; no wildcard
-if settings.ADMIN_ORIGIN:
+# CORS: admin origin + public site origin (for /api/feedback)
+_cors_origins = [o for o in [settings.ADMIN_ORIGIN, settings.SITE_ORIGIN] if o]
+if _cors_origins:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.ADMIN_ORIGIN],
+        allow_origins=_cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
@@ -60,6 +61,7 @@ app.include_router(menu.router)
 app.include_router(orders.router)
 app.include_router(customers.router)
 app.include_router(menu_engineering.router)
+app.include_router(feedback.router)
 
 
 @app.get("/health", tags=["system"])

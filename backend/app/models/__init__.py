@@ -5,6 +5,7 @@ from app.models.order import Order, OrderItem, OrderStatus
 from app.models.item_sale import ItemSale
 from app.models.ingredient import Ingredient, IngredientDishMap
 from app.models.purchase import Purchase
+from app.models.customer_feedback import CustomerFeedback
 
 __all__ = [
     "User",
@@ -18,4 +19,5 @@ __all__ = [
     "Ingredient",
     "IngredientDishMap",
     "Purchase",
+    "CustomerFeedback",
 ]
