@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Upload POS Report — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1 class="card-title">Upload POS report</h1>
+  <p class="card-sub">
+    Export the <strong>Item Report Day Wise</strong> from your POS as an
+    <strong>.xlsx</strong> file and upload it here.
+    The analysis will update immediately.
+  </p>
+
+  {% if error %}
+  <p class="alert-error">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/upload" enctype="multipart/form-data">
+    <label for="file" class="form-label">Select .xlsx file</label>
+    <input
+      id="file"
+      name="file"
+      type="file"
+      accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      class="form-input-file"
+      required
+    />
+    <button type="submit" class="btn-primary">Upload &amp; Analyse</button>
+  </form>
+  <p class="hint">Takes about 5–10 seconds to process.</p>
+</div>
+
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Derived cost engine</h2>
+  <p class="card-sub">
+    After adding purchases and ingredient mappings, run the engine to
+    replace the flat 35% estimate with real cost data per dish.
+  </p>
+  <form method="post" action="/run-cost-engine">
+    <button type="submit" class="btn-secondary">Run cost engine</button>
+  </form>
+</div>
+{% endblock %}

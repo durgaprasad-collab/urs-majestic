@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Manage Users — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Users</h1>
+</div>
+
+{% if message %}
+<p class="alert-error">{{ message }}</p>
+{% endif %}
+
+<div class="users-table-wrap">
+  <table class="users-table">
+    <thead>
+      <tr><th>Name</th><th>Username</th><th>Admin</th><th>Active</th><th>Reset password</th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.name }}</td>
+        <td>{{ u.username }}</td>
+        <td>{{ '✓' if u.is_admin else '' }}</td>
+        <td>{{ '✓' if u.is_active else '✗' }}</td>
+        <td>
+          <form method="post" action="/users/{{ u.id }}/reset-password" class="inline-form">
+            <input name="new_password" type="password" placeholder="new password"
+                   class="form-input form-input-sm" required minlength="6" />
+            <button type="submit" class="btn-secondary btn-sm">Set</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Add user</h2>
+  <form method="post" action="/users/new">
+    <div class="form-row">
+      <div class="form-col">
+        <label class="form-label">Full name</label>
+        <input name="name" type="text" class="form-input" required />
+      </div>
+      <div class="form-col">
+        <label class="form-label">Username</label>
+        <input name="username" type="text" class="form-input" required autocomplete="off" />
+      </div>
+    </div>
+    <label class="form-label">Password</label>
+    <input name="password" type="password" class="form-input" required minlength="6" />
+    <label class="form-label checkbox-label" style="margin-top:.5rem">
+      <input name="is_admin" type="checkbox" value="1" /> Admin access
+    </label>
+    <button type="submit" class="btn-primary" style="margin-top:.75rem">Create user</button>
+  </form>
+</div>
+{% endblock %}

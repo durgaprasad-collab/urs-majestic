@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Ingredient Mapping — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Ingredient → Dish Mapping</h1>
+</div>
+<p class="card-sub" style="padding:0 1rem .5rem">
+  Tap an ingredient to choose which dishes use it and with what intensity.
+  This data drives the derived food-cost engine.
+</p>
+
+<div class="map-list">
+  {% for ing in ingredients %}
+  <a href="/ingredients/mapping/{{ ing.id }}" class="map-list-row">
+    <div class="map-list-name">
+      <span class="ingredient-name">{{ ing.name }}</span>
+      <span class="ingredient-cat">{{ ing.category or '' }}</span>
+    </div>
+    <div class="map-list-count">
+      {% set cnt = map_counts.get(ing.id, 0) %}
+      {% if cnt > 0 %}
+      <span class="mapped-badge">{{ cnt }} dish{{ 'es' if cnt != 1 else '' }}</span>
+      {% else %}
+      <span class="unmapped-badge">unmapped</span>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Add ingredient</h2>
+
+  {% if add_error %}
+  <p class="alert-error">{{ add_error }}</p>
+  {% endif %}
+
+  <form method="post" action="/ingredients/new">
+    <div class="form-row">
+      <div class="form-col">
+        <label class="form-label">Name</label>
+        <input name="name" type="text" class="form-input" required placeholder="e.g. Cream" />
+      </div>
+      <div class="form-col">
+        <label class="form-label">Default unit</label>
+        <select name="unit" class="form-input" required>
+          <option value="kg">kg</option>
+          <option value="g">g</option>
+          <option value="l">L</option>
+          <option value="ml">mL</option>
+          <option value="pcs">pcs</option>
+        </select>
+      </div>
+    </div>
+    <label class="form-label">Category (optional)</label>
+    <input name="category" type="text" class="form-input" placeholder="e.g. Dairy" />
+    <button type="submit" class="btn-primary">Add ingredient</button>
+  </form>
+</div>
+{% endblock %}

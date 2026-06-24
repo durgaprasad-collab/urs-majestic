@@ -1,0 +1,67 @@
+import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+
+from app.api.routes import menu, orders, customers, menu_engineering
+from app.core.config import settings
+from app.core.middleware import (
+    HTTPSRedirectMiddleware,
+    SecurityHeadersMiddleware,
+    ProductionErrorMiddleware,
+)
+from app.web import routes as web_routes
+from app.web import auth_routes, purchase_routes, mapping_routes, engine_routes
+
+app = FastAPI(
+    title="URS Majestic",
+    description="Restaurant ordering and analytics platform",
+    version="0.1.0",
+    # Hide /docs and /redoc in production — admin tool only
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+)
+
+# ── Middleware stack (outermost first) ─────────────────────────────────────────
+app.add_middleware(ProductionErrorMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(HTTPSRedirectMiddleware)
+
+# CORS: locked to admin origin; no wildcard
+if settings.ADMIN_ORIGIN:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.ADMIN_ORIGIN],
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
+
+# Session: Secure+HttpOnly+SameSite=lax in production; http-compatible in dev
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY,
+    https_only=settings.is_production,
+    same_site="lax",
+)
+
+# ── Static files ───────────────────────────────────────────────────────────────
+_STATIC = os.path.join(os.path.dirname(__file__), "web", "static")
+app.mount("/static", StaticFiles(directory=_STATIC), name="static")
+
+# ── Routers ────────────────────────────────────────────────────────────────────
+app.include_router(auth_routes.router)
+app.include_router(web_routes.router)
+app.include_router(purchase_routes.router)
+app.include_router(mapping_routes.router)
+app.include_router(engine_routes.router)
+app.include_router(menu.router)
+app.include_router(orders.router)
+app.include_router(customers.router)
+app.include_router(menu_engineering.router)
+
+
+@app.get("/health", tags=["system"])
+def health():
+    return {"status": "ok"}

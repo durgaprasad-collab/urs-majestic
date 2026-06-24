@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Sign in — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1 class="card-title">Owner sign in</h1>
+  <p class="card-sub">Enter your PIN to continue.</p>
+
+  {% if error %}
+  <p class="alert-error">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/pin">
+    <label for="pin" class="form-label">PIN</label>
+    <input
+      id="pin"
+      name="pin"
+      type="password"
+      inputmode="numeric"
+      autocomplete="current-password"
+      class="form-input"
+      placeholder="Enter PIN"
+      autofocus
+      required
+    />
+    <button type="submit" class="btn-primary">Sign in</button>
+  </form>
+</div>
+{% endblock %}

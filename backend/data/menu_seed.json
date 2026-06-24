@@ -1,0 +1,153 @@
+{
+  "_meta": {
+    "restaurant": "URS Majestic",
+    "source": "Official printed menu (IMG_1936)",
+    "prices": "Exclusive of taxes (per menu footer)",
+    "food_cost_pct_default": 0.35,
+    "note": "Canonical source of truth for menu_items. POS sales names map onto these via pos_name_map."
+  },
+  "items": [
+    {"name": "Tomato Soup", "category": "Soups", "price": 79, "is_food": true},
+    {"name": "Mushroom Soup", "category": "Soups", "price": 79, "is_food": true},
+    {"name": "Hot & Sour Soup", "category": "Soups", "price": 79, "is_food": true},
+    {"name": "Manchow Soup", "category": "Soups", "price": 79, "is_food": true},
+    {"name": "Sweet Corn Soup", "category": "Soups", "price": 79, "is_food": true},
+
+    {"name": "Gobi 65", "category": "Starters-65", "price": 99, "is_food": true},
+    {"name": "Mushroom 65", "category": "Starters-65", "price": 99, "is_food": true},
+    {"name": "Baby Corn 65", "category": "Starters-65", "price": 99, "is_food": true},
+    {"name": "Paneer 65", "category": "Starters-65", "price": 129, "is_food": true},
+
+    {"name": "Veg Manchurian", "category": "Starters-Manchurian", "price": 129, "is_food": true},
+    {"name": "Gobi Manchurian (Starter)", "category": "Starters-Manchurian", "price": 129, "is_food": true},
+    {"name": "Mushroom Manchurian (Starter)", "category": "Starters-Manchurian", "price": 129, "is_food": true},
+    {"name": "Baby Corn Manchurian (Starter)", "category": "Starters-Manchurian", "price": 129, "is_food": true},
+    {"name": "Mushroom Pepper Fry", "category": "Starters-Manchurian", "price": 139, "is_food": true},
+    {"name": "Paneer Manchurian (Starter)", "category": "Starters-Manchurian", "price": 139, "is_food": true},
+
+    {"name": "Chilli Mushroom", "category": "Starters-Chilli", "price": 119, "is_food": true},
+    {"name": "Chilli Baby Corn", "category": "Starters-Chilli", "price": 119, "is_food": true},
+    {"name": "Crispy Veg", "category": "Starters-Chilli", "price": 129, "is_food": true},
+    {"name": "Chilli Gobi", "category": "Starters-Chilli", "price": 129, "is_food": true},
+    {"name": "Chilli Paneer", "category": "Starters-Chilli", "price": 149, "is_food": true},
+
+    {"name": "Phulka (2 Nos)", "category": "Breads", "price": 29, "is_food": true},
+    {"name": "Stuffed Paratha (Aloo/Gobi) (1 No)", "category": "Breads", "price": 59, "is_food": true},
+    {"name": "Paneer Paratha (1 No)", "category": "Breads", "price": 79, "is_food": true},
+    {"name": "Chappati (2) With Channa", "category": "Breads", "price": 79, "is_food": true},
+    {"name": "Channa Batura", "category": "Breads", "price": 99, "is_food": true},
+    {"name": "Chilli Parotta", "category": "Breads", "price": 149, "is_food": true},
+
+    {"name": "Mushroom Tikka", "category": "Tikka", "price": 149, "is_food": true},
+    {"name": "Paneer Tikka (5 Pcs)", "category": "Tikka", "price": 179, "is_food": true},
+
+    {"name": "Roti (2 Nos)", "category": "Tandoori Breads", "price": 49, "is_food": true},
+    {"name": "Butter Roti (2 Nos)", "category": "Tandoori Breads", "price": 59, "is_food": true},
+    {"name": "Naan (1 No)", "category": "Tandoori Breads", "price": 49, "is_food": true},
+    {"name": "Butter Naan (1 No)", "category": "Tandoori Breads", "price": 59, "is_food": true},
+    {"name": "Garlic Naan (1 No)", "category": "Tandoori Breads", "price": 69, "is_food": true},
+    {"name": "Masala Kulcha (1 No)", "category": "Tandoori Breads", "price": 99, "is_food": true},
+
+    {"name": "Veg Fried Rice", "category": "Fried Rice / Noodles", "price": 129, "is_food": true},
+    {"name": "Gobi Fried Rice", "category": "Fried Rice / Noodles", "price": 149, "is_food": true},
+    {"name": "Mushroom Fried Rice", "category": "Fried Rice / Noodles", "price": 149, "is_food": true},
+    {"name": "Paneer Fried Rice", "category": "Fried Rice / Noodles", "price": 159, "is_food": true},
+    {"name": "Chilli Garlic Fried Rice", "category": "Fried Rice / Noodles", "price": 149, "is_food": true},
+    {"name": "Mixed Fried Rice", "category": "Fried Rice / Noodles", "price": 179, "is_food": true},
+    {"name": "Veg Noodles", "category": "Fried Rice / Noodles", "price": 129, "is_food": true},
+    {"name": "Gobi Noodles", "category": "Fried Rice / Noodles", "price": 149, "is_food": true},
+    {"name": "Mushroom Noodles", "category": "Fried Rice / Noodles", "price": 149, "is_food": true},
+    {"name": "Paneer Noodles", "category": "Fried Rice / Noodles", "price": 159, "is_food": true},
+
+    {"name": "Jeera Rice", "category": "Rice / Briyanis", "price": 109, "is_food": true},
+    {"name": "Veg Briyani / Pulav", "category": "Rice / Briyanis", "price": 149, "is_food": true},
+    {"name": "Mushroom Briyani / Pulav", "category": "Rice / Briyanis", "price": 169, "is_food": true},
+    {"name": "Paneer Briyani / Pulav", "category": "Rice / Briyanis", "price": 169, "is_food": true},
+
+    {"name": "Dal Tadka / Fry", "category": "Gravy-Veg/Dal", "price": 99, "is_food": true},
+    {"name": "Channa Masala", "category": "Gravy-Veg/Dal", "price": 129, "is_food": true},
+    {"name": "Kadai Veg", "category": "Gravy-Veg/Dal", "price": 149, "is_food": true},
+    {"name": "Mixed Veg", "category": "Gravy-Veg/Dal", "price": 149, "is_food": true},
+
+    {"name": "Baby Corn Masala", "category": "Gravy-Baby Corn", "price": 129, "is_food": true},
+    {"name": "Baby Corn Manchurian (Gravy)", "category": "Gravy-Baby Corn", "price": 149, "is_food": true},
+
+    {"name": "Gobi Masala", "category": "Gravy-Gobi", "price": 129, "is_food": true},
+    {"name": "Aloo Gobi Masala", "category": "Gravy-Gobi", "price": 129, "is_food": true},
+    {"name": "Gobi Manchurian (Gravy)", "category": "Gravy-Gobi", "price": 149, "is_food": true},
+
+    {"name": "Mushroom Masala", "category": "Gravy-Mushroom", "price": 129, "is_food": true},
+    {"name": "Mushroom Manchurian (Gravy)", "category": "Gravy-Mushroom", "price": 149, "is_food": true},
+    {"name": "Kadai Mushroom", "category": "Gravy-Mushroom", "price": 149, "is_food": true},
+
+    {"name": "Paneer Manchurian (Gravy)", "category": "Gravy-Paneer", "price": 149, "is_food": true},
+    {"name": "Paneer Butter Masala", "category": "Gravy-Paneer", "price": 179, "is_food": true},
+    {"name": "Matar Paneer", "category": "Gravy-Paneer", "price": 179, "is_food": true},
+    {"name": "Hyderabadi Paneer", "category": "Gravy-Paneer", "price": 179, "is_food": true},
+    {"name": "Kadai Paneer", "category": "Gravy-Paneer", "price": 179, "is_food": true},
+    {"name": "Paneer Tikka Masala", "category": "Gravy-Paneer", "price": 199, "is_food": true},
+
+    {"name": "Combo 01 - Mini North Indian Meal", "category": "Combos", "price": 149, "is_food": true},
+    {"name": "Combo 02 - Paneer Power Combo", "category": "Combos", "price": 149, "is_food": true},
+    {"name": "Combo 03 - Veg Kofta Combo", "category": "Combos", "price": 149, "is_food": true},
+    {"name": "Combo 04 - Soup & Starter Combo", "category": "Combos", "price": 149, "is_food": true},
+    {"name": "Combo 05 - Chinese Mega Box", "category": "Combos", "price": 249, "is_food": true},
+    {"name": "Combo 06a - Briyani Express (Veg)", "category": "Combos", "price": 199, "is_food": true},
+    {"name": "Combo 06b - Briyani Express (Mushroom)", "category": "Combos", "price": 229, "is_food": true},
+    {"name": "Combo 06c - Briyani Express (Paneer)", "category": "Combos", "price": 249, "is_food": true},
+
+    {"name": "Water Bottle", "category": "Non-Food", "price": 20, "is_food": false},
+    {"name": "Goli Soda", "category": "Non-Food", "price": 50, "is_food": false},
+    {"name": "Parcel", "category": "Non-Food", "price": 10, "is_food": false}
+  ],
+  "pos_name_map": {
+    "Butter Naan Butter Masala Paneer 65 (5 Pcs)": "Combo 02 - Paneer Power Combo",
+    "Roti, Dal Tadka Jeera Rice, Paneer Subzi S Al Ad": "Combo 01 - Mini North Indian Meal",
+    "Veg Kofta 4 Pcs (2 Roti)": "Combo 03 - Veg Kofta Combo",
+    "Mushroom Briyani, Raita, Mushroom 65 (5 Pcs)": "Combo 06b - Briyani Express (Mushroom)",
+    "Veg Briyani, Raita , Gobi 65 (5 P Cs)": "Combo 06a - Briyani Express (Veg)",
+    "Mushroom Chilli": "Chilli Mushroom",
+    "Mushroom Biriyani": "Mushroom Briyani / Pulav",
+    "Mush. Briyani": "Mushroom Briyani / Pulav",
+    "Veg Briyani": "Veg Briyani / Pulav",
+    "Veg Pulav": "Veg Briyani / Pulav",
+    "Paneer Briyani": "Paneer Briyani / Pulav",
+    "Paneer Pulav": "Paneer Briyani / Pulav",
+    "Chappati With Channa": "Chappati (2) With Channa",
+    "Paneer Paratha": "Paneer Paratha (1 No)",
+    "Gobi Fried Rice (Regular)": "Gobi Fried Rice",
+    "Mushroom Fried Rice (Regular)": "Mushroom Fried Rice",
+    "Veg Fried Rice (Regular)": "Veg Fried Rice",
+    "Mixed (veg,gobi,mushroom & Paneer) Fried Rice (Regular)": "Mixed Fried Rice",
+    "Chilli Garlic Fried Rice (price)": "Chilli Garlic Fried Rice",
+    "Gobi Manchurian": "Gobi Manchurian (Starter)",
+    "Mushroom Manchurian": "Mushroom Manchurian (Starter)",
+    "Baby Corn Manchurian": "Baby Corn Manchurian (Starter)",
+    "Paneer Manchurian": "Paneer Manchurian (Starter)",
+
+    "Dal Fry": "Dal Tadka / Fry",
+    "Dal Tadka": "Dal Tadka / Fry",
+
+    "Paneer Briyani, Raita, Paneer 65 (5 Pcs)": "Combo 06c - Briyani Express (Paneer)",
+    "Veg Manchow Soup Mushroom 65 (5 Pcs)": "Combo 04 - Soup & Starter Combo",
+
+    "Paneer Paratha (1 No )": "Paneer Paratha (1 No)",
+    "Stuffed Paratha (1 No) (Aloo)": "Stuffed Paratha (Aloo/Gobi) (1 No)",
+    "Stuffed Paratha (1 No) (Gobi)": "Stuffed Paratha (Aloo/Gobi) (1 No)",
+
+    "Paneer Fried Rice (Regular)": "Paneer Fried Rice",
+    "Veg Fried Rice (With Schezwan)": "Veg Fried Rice",
+    "Gobi Fried Rice (With Schezwan)": "Gobi Fried Rice",
+    "Mushroom Fried Rice (With Schezwan)": "Mushroom Fried Rice",
+    "Paneer Fried Rice (With Schezwan)": "Paneer Fried Rice",
+    "Mixed (veg,gobi,mushroom & Paneer) Fried Rice (With Schezwan)": "Mixed Fried Rice",
+
+    "Veg Noodles (Regular)": "Veg Noodles",
+    "Veg Noodles (With Schezwan)": "Veg Noodles",
+    "Gobi Noodles (Regular)": "Gobi Noodles",
+    "Gobi Noodles (With Schezwan)": "Gobi Noodles",
+    "Mushroom Noodles (With Schezwan)": "Mushroom Noodles",
+    "Paneer Noodles (Regular)": "Paneer Noodles",
+    "Mixed (veg,gobi,mushroom & Paneer) Noodles (With Schezwan)": "Mixed Fried Rice"
+  }
+}

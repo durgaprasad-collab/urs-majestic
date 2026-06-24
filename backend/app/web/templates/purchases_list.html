@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Purchases — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Purchases</h1>
+  <a href="/purchases/new" class="btn-primary btn-sm">+ New entry</a>
+</div>
+
+{% if purchases %}
+<div class="purchase-list">
+  {% for p in purchases %}
+  <div class="purchase-row">
+    <div class="purchase-main">
+      <span class="purchase-name">{{ p.ingredient.name }}</span>
+      <span class="purchase-qty">{{ p.qty }} {{ p.unit }} — ₹{{ "{:,.0f}".format(p.total_price) }}</span>
+    </div>
+    <div class="purchase-meta">
+      <span class="purchase-date">{{ p.purchase_date.strftime('%d %b %Y') }}</span>
+      <span class="usage-badge {% if p.usage_type == 'menu' %}usage-menu{% else %}usage-personal{% endif %}">
+        {{ 'Menu' if p.usage_type == 'menu' else 'Personal/Other' }}
+      </span>
+      <span class="purchase-by">by {{ p.entered_by.name }}</span>
+    </div>
+    {% if p.notes %}
+    <p class="purchase-notes">{{ p.notes }}</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <p>No purchases logged yet. <a href="/purchases/new">Add the first entry.</a></p>
+</div>
+{% endif %}
+{% endblock %}

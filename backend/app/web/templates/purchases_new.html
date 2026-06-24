@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}New Purchase — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1 class="card-title">Log a purchase</h1>
+
+  {% if error %}
+  <p class="alert-error">{{ error }}</p>
+  {% endif %}
+
+  {# Purchase form — closed BEFORE the quick-add form to avoid nested forms #}
+  <form method="post" action="/purchases/new" id="purchase-form">
+    <label for="ingredient_id" class="form-label">Ingredient</label>
+    <select id="ingredient_id" name="ingredient_id" class="form-input" required>
+      <option value="">— select —</option>
+      {% for ing in ingredients %}
+      <option value="{{ ing.id }}" data-unit="{{ ing.unit }}"
+        {% if new_ingredient_id and ing.id == new_ingredient_id %}selected{% endif %}>
+        {{ ing.name }} ({{ ing.unit }})
+      </option>
+      {% endfor %}
+    </select>
+
+    <div class="form-row">
+      <div class="form-col">
+        <label for="qty" class="form-label">Quantity</label>
+        <input id="qty" name="qty" type="number" step="0.001" min="0.001"
+               class="form-input" placeholder="e.g. 2.5" required />
+      </div>
+      <div class="form-col">
+        <label for="unit" class="form-label">Unit</label>
+        <select id="unit" name="unit" class="form-input" required>
+          <option value="kg">kg</option>
+          <option value="g">g</option>
+          <option value="l">L</option>
+          <option value="ml">mL</option>
+          <option value="pcs">pcs</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="total_price" class="form-label">Total price paid (₹)</label>
+    <input id="total_price" name="total_price" type="number" step="0.01" min="0"
+           class="form-input" placeholder="e.g. 480" required />
+
+    <label for="purchase_date" class="form-label">Purchase date</label>
+    <input id="purchase_date" name="purchase_date" type="date"
+           class="form-input" value="{{ today }}" required />
+
+    <label for="usage_type" class="form-label">Usage</label>
+    <select id="usage_type" name="usage_type" class="form-input" required>
+      <option value="menu">Menu (used in dishes)</option>
+      <option value="others_personal">Personal / Other</option>
+    </select>
+
+    <label for="notes" class="form-label">Notes (optional)</label>
+    <input id="notes" name="notes" type="text" class="form-input"
+           placeholder="e.g. Nilgiris, bulk discount" />
+
+    <button type="submit" class="btn-primary">Save purchase</button>
+  </form>
+
+  {# Quick-add sits inside the card div but after </form> — no nesting #}
+  <details class="quick-add-wrap" {% if add_open %}open{% endif %}>
+    <summary class="quick-add-toggle">+ Add missing ingredient</summary>
+    <div class="quick-add-body">
+      {% if add_error %}
+      <p class="alert-error" style="margin-bottom:.5rem">{{ add_error }}</p>
+      {% endif %}
+      <form method="post" action="/ingredients/quick-add" class="quick-add-form">
+        <input name="name" type="text" class="form-input" placeholder="Name" required />
+        <select name="unit" class="form-input">
+          <option value="kg">kg</option>
+          <option value="g">g</option>
+          <option value="l">L</option>
+          <option value="ml">mL</option>
+          <option value="pcs">pcs</option>
+        </select>
+        <input name="category" type="text" class="form-input" placeholder="Category (optional)" />
+        <button type="submit" class="btn-secondary">Add &amp; select</button>
+      </form>
+    </div>
+  </details>
+</div>
+
+<script>
+  document.getElementById('ingredient_id').addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    const unit = opt.dataset.unit;
+    if (unit) {
+      const sel = document.getElementById('unit');
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === unit) { sel.selectedIndex = i; break; }
+      }
+    }
+  });
+</script>
+{% endblock %}

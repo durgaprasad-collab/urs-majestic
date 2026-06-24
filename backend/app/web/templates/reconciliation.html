@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Reconciliation — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Purchase Reconciliation</h1>
+</div>
+
+<div class="recon-grid">
+  <div class="recon-card recon-menu">
+    <span class="recon-label">Menu purchases</span>
+    <span class="recon-value">₹{{ "{:,.0f}".format(total_menu_cost) }}</span>
+    <span class="recon-sub">used in dish cost engine</span>
+  </div>
+  <div class="recon-card recon-personal">
+    <span class="recon-label">Personal / Other</span>
+    <span class="recon-value">₹{{ "{:,.0f}".format(total_personal_cost) }}</span>
+    <span class="recon-sub">excluded from dish cost</span>
+  </div>
+  <div class="recon-card recon-total">
+    <span class="recon-label">Total recorded</span>
+    <span class="recon-value">₹{{ "{:,.0f}".format(grand_total) }}</span>
+    <span class="recon-sub">all purchase entries</span>
+  </div>
+</div>
+
+{% if unmapped_names %}
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Unmapped menu ingredients</h2>
+  <p class="card-sub">
+    These ingredients have menu purchases logged but are not yet mapped to any dish.
+    Their cost (₹{{ "{:,.0f}".format(unmapped_cost) }}) is excluded from the engine.
+    <a href="/ingredients/mapping">Map them →</a>
+  </p>
+  <ul class="unmapped-list">
+    {% for name in unmapped_names %}
+    <li>{{ name }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% else %}
+<div class="card" style="margin-top:1rem">
+  <p class="card-sub">All menu ingredients are mapped to at least one dish.</p>
+</div>
+{% endif %}
+
+<div class="card recon-disclaimer" style="margin-top:1rem">
+  <p>
+    <strong>Note:</strong> True waste and leakage detection needs 2+ months of stable,
+    consistent purchase data before patterns are statistically meaningful.
+    This view is not yet available.
+  </p>
+</div>
+{% endblock %}

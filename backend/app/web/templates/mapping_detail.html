@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Map {{ ingredient.name }} — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/ingredients/mapping" class="back-link">← All ingredients</a>
+  <h1 class="page-title">{{ ingredient.name }}</h1>
+  <p class="page-sub">{{ ingredient.category or '' }}</p>
+</div>
+
+{% if saved %}
+<p class="alert-success">Mapping saved.</p>
+{% endif %}
+
+<form method="post" action="/ingredients/mapping/{{ ingredient.id }}">
+
+  {# ── Apply-to-all bar ─────────────────────────────────────────── #}
+  <div class="apply-all-bar">
+    <label class="apply-all-label">
+      <input type="checkbox" name="apply_all" value="1" id="apply_all_chk" />
+      Apply to <strong>all</strong> menu items
+    </label>
+    <select name="apply_all_intensity" class="intensity-select">
+      <option value="light">Light</option>
+      <option value="medium" selected>Medium</option>
+      <option value="heavy">Heavy</option>
+    </select>
+    <span class="apply-all-hint">overrides individual selections below</span>
+  </div>
+
+  {# ── Per-category sections ─────────────────────────────────────── #}
+  {% for category, items in dishes | groupby('category') %}
+  {% set cat_id = loop.index %}
+  {% set any_mapped = items | selectattr('is_mapped') | list | length > 0 %}
+  <details class="cat-section" {% if any_mapped %}open{% endif %}>
+    <summary class="cat-summary">
+      <span class="cat-name">{{ category }}</span>
+      <span class="cat-count">{{ items | list | length }} items</span>
+      <label class="cat-select-all" onclick="event.stopPropagation()">
+        <input type="checkbox" class="cat-chk" data-cat="{{ cat_id }}"
+               {% if items | selectattr('is_mapped') | list | length == items | list | length %}checked{% endif %}
+               onchange="toggleCat({{ cat_id }}, this.checked)" />
+        all
+      </label>
+      <select class="intensity-select cat-intensity" data-cat="{{ cat_id }}"
+              onchange="setCatIntensity({{ cat_id }}, this.value)" onclick="event.stopPropagation()">
+        <option value="light">Light</option>
+        <option value="medium" selected>Medium</option>
+        <option value="heavy">Heavy</option>
+      </select>
+    </summary>
+
+    <div class="map-dish-list">
+      {% for dish in items %}
+      <div class="map-dish-row">
+        <input type="hidden" name="dish_{{ dish.id }}_present" value="1" />
+        <label class="map-dish-check">
+          <input type="checkbox" name="dish_{{ dish.id }}_use" value="1"
+                 class="dish-chk cat-{{ cat_id }}"
+                 {% if dish.is_mapped %}checked{% endif %} />
+          <span class="map-dish-name">{{ dish.name }}</span>
+          {% if dish.revenue > 0 %}
+          <span class="map-dish-rev">₹{{ "{:,.0f}".format(dish.revenue) }}</span>
+          {% endif %}
+        </label>
+        <select name="dish_{{ dish.id }}_intensity" class="intensity-select dish-intensity-{{ cat_id }}">
+          <option value="light"  {% if dish.intensity == 'light'  %}selected{% endif %}>Light</option>
+          <option value="medium" {% if dish.intensity == 'medium' or not dish.intensity %}selected{% endif %}>Medium</option>
+          <option value="heavy"  {% if dish.intensity == 'heavy'  %}selected{% endif %}>Heavy</option>
+        </select>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+
+  <div style="padding:1rem 0">
+    <button type="submit" class="btn-primary">Save mapping</button>
+  </div>
+</form>
+
+<script>
+function toggleCat(catId, checked) {
+  document.querySelectorAll('.cat-' + catId).forEach(cb => cb.checked = checked);
+}
+function setCatIntensity(catId, val) {
+  document.querySelectorAll('.dish-intensity-' + catId).forEach(sel => sel.value = val);
+}
+</script>
+{% endblock %}

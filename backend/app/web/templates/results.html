@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Menu Analysis — URS Majestic{% endblock %}
+
+{% block content %}
+
+<div class="results-header">
+  <h1 class="results-title">Menu Analysis</h1>
+  <p class="results-meta">
+    {{ date_from }} – {{ date_to }}&nbsp;&nbsp;·&nbsp;&nbsp;
+    {{ item_count }} items&nbsp;&nbsp;·&nbsp;&nbsp;
+    Total ₹{{ "{:,.0f}".format(total_rev) }}
+  </p>
+  <a href="/upload" class="link-upload">Upload new file</a>
+</div>
+
+{% if engine_ran %}
+<p class="alert-success">Cost engine ran — derived costs updated.</p>
+{% endif %}
+
+{% macro cost_badge(r) %}
+  {% if r.cost_basis == 'Derived' %}
+    {% if r.cost_confidence == 'reliable' %}
+    <span class="cost-badge cost-derived-reliable">Derived ✓</span>
+    {% else %}
+    <span class="cost-badge cost-derived-building">Derived ~</span>
+    {% endif %}
+  {% else %}
+  <span class="cost-badge cost-estimated">Est.</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro item_table(items) %}
+<div class="item-list">
+  {% for r in items %}
+  <div class="item-row">
+    <div class="item-info">
+      <span class="item-name">{{ r.item }}</span>
+      <span class="item-cat">{{ r.category }}</span>
+    </div>
+    <div class="item-stats">
+      <span class="stat"><strong>{{ "{:,.0f}".format(r.units) }}</strong> sold</span>
+      <span class="stat">₹{{ "{:.0f}".format(r.avg_price) }}</span>
+      <span class="stat-margin">{{ "{:.0f}".format((1 - r.food_cost_pct) * 100) }}% margin</span>
+      {{ cost_badge(r) }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% if stars %}
+<section class="result-section section-star">
+  <span class="section-badge badge-star">Push These</span>
+  <h2 class="section-title">⭐ Stars</h2>
+  <p class="section-desc">
+    High volume, high margin — your money-makers.
+    Feature them on WhatsApp, put them at the top of the menu,
+    and train staff to suggest them first.
+  </p>
+  {{ item_table(stars) }}
+</section>
+{% endif %}
+
+{% if workhorses %}
+<section class="result-section section-workhorse">
+  <span class="section-badge badge-workhorse">Bundle These</span>
+  <h2 class="section-title">🐴 Workhorses</h2>
+  <p class="section-desc">
+    Customers love them, but the margin is thin.
+    Bundle with a high-margin side (naan, dessert, soup),
+    or try a small price increase.
+  </p>
+  {{ item_table(workhorses) }}
+</section>
+{% endif %}
+
+{% if puzzles %}
+<section class="result-section section-puzzle">
+  <span class="section-badge badge-puzzle">Promote These</span>
+  <h2 class="section-title">🧩 Puzzles</h2>
+  <p class="section-desc">
+    Good margin but not many orders.
+    Post about them on Instagram or run a combo deal —
+    once customers try them, they tend to reorder.
+  </p>
+  {{ item_table(puzzles) }}
+</section>
+{% endif %}
+
+{% if dogs %}
+<section class="result-section section-dog">
+  <span class="section-badge badge-dog">Review These</span>
+  <h2 class="section-title">🐾 Low Performers</h2>
+  <p class="section-desc">
+    Low orders and low margin.
+    Ask: are these slow to make? Do they use unique ingredients?
+    If yes, consider removing them to keep operations simple.
+  </p>
+  {{ item_table(dogs) }}
+</section>
+{% endif %}
+
+{% if not stars and not workhorses and not puzzles and not dogs %}
+<div class="card">
+  <p>No data found. <a href="/upload">Upload a POS file</a> to get started.</p>
+</div>
+{% endif %}
+
+{% endblock %}
