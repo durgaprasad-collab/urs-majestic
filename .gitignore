@@ -40,3 +40,7 @@ alembic/versions/__pycache__/
 
 # Claude Code local settings
 .claude/
+
+# Frontend
+node_modules/
+frontend/dist/
