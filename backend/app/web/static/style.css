@@ -471,14 +471,16 @@ a { color: var(--green); }
   border-collapse: collapse;
   font-size: .85rem;
   background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 .recon-table th, .recon-table td {
   padding: .55rem .75rem;
   text-align: left;
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
 }
 .recon-table th { background: #f0ece4; font-weight: 700; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
-.recon-table tr:last-child td { border-bottom: none; }
 .recon-table .col-num { text-align: right; }
 
 /* ── Users table ───────────────────────────────────────────────────────────── */
