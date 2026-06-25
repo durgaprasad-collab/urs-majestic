@@ -388,6 +388,9 @@ a { color: var(--green); }
 .purchase-date { font-size: .8rem; color: var(--muted); }
 .purchase-by   { font-size: .78rem; color: var(--muted); font-style: italic; }
 .purchase-notes { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+.purchase-actions { margin-top: .35rem; }
+.btn-link-sm { font-size: .78rem; color: var(--green); font-weight: 600; text-decoration: none; padding: .1rem 0; border-bottom: 1px solid transparent; }
+.btn-link-sm:hover { border-bottom-color: var(--green); }
 .usage-badge { font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 20px; }
 .usage-menu     { background: #eaf4fb; color: #1a5276; }
 .usage-personal { background: #f5eef8; color: #6c3483; }
@@ -461,6 +464,22 @@ a { color: var(--green); }
 .recon-sub    { font-size: .72rem; color: var(--muted); }
 .recon-disclaimer { border-left: 4px solid var(--gold); background: #fef9e7; font-size: .88rem; color: #7a6010; }
 .unmapped-list { list-style: disc; padding-left: 1.25rem; font-size: .9rem; color: var(--muted); }
+
+/* ── Reconciliation ingredient table ───────────────────────────────────────── */
+.recon-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+  background: var(--white);
+}
+.recon-table th, .recon-table td {
+  padding: .55rem .75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.recon-table th { background: #f0ece4; font-weight: 700; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+.recon-table tr:last-child td { border-bottom: none; }
+.recon-table .col-num { text-align: right; }
 
 /* ── Users table ───────────────────────────────────────────────────────────── */
 .users-table-wrap { overflow-x: auto; }

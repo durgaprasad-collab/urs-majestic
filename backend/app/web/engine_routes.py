@@ -1,4 +1,5 @@
 """Cost engine trigger and reconciliation page."""
+from collections import defaultdict
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func
@@ -66,6 +67,45 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
             unmapped_cost += float(row.total)
             unmapped_names.append(ing_map.get(row.ingredient_id, f"ID {row.ingredient_id}"))
 
+    # Per-ingredient purchase summary (restocking interval + avg qty)
+    all_purchases = (
+        db.query(Purchase)
+        .order_by(Purchase.ingredient_id, Purchase.purchase_date)
+        .all()
+    )
+    ing_groups: dict[int, list] = defaultdict(list)
+    for p in all_purchases:
+        ing_groups[p.ingredient_id].append(p)
+
+    ings_by_id = {
+        i.id: i
+        for i in db.query(Ingredient).filter(Ingredient.id.in_(set(ing_groups.keys()))).all()
+    } if ing_groups else {}
+
+    ingredient_summary: list[dict] = []
+    for ing_id, purchases in ing_groups.items():
+        ing = ings_by_id.get(ing_id)
+        if not ing:
+            continue
+        dates = sorted(p.purchase_date for p in purchases)
+        avg_qty = sum(float(p.qty) for p in purchases) / len(purchases)
+        total_spent = sum(float(p.total_price) for p in purchases)
+        if len(dates) >= 2:
+            gaps = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
+            avg_days: float | None = sum(gaps) / len(gaps)
+        else:
+            avg_days = None
+        ingredient_summary.append({
+            "name": ing.name,
+            "count": len(purchases),
+            "avg_qty": avg_qty,
+            "unit": purchases[-1].unit,
+            "avg_days": avg_days,
+            "total_spent": total_spent,
+            "last_date": max(dates),
+        })
+    ingredient_summary.sort(key=lambda x: x["name"])
+
     return _tmpl(request, "reconciliation.html", {
         "user": user,
         "total_menu_cost": total_menu_cost,
@@ -73,4 +113,5 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         "grand_total": grand_total,
         "unmapped_cost": unmapped_cost,
         "unmapped_names": sorted(unmapped_names),
+        "ingredient_summary": ingredient_summary,
     })

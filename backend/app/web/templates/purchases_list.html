@@ -25,6 +25,9 @@
     {% if p.notes %}
     <p class="purchase-notes">{{ p.notes }}</p>
     {% endif %}
+    <div class="purchase-actions">
+      <a href="/purchases/{{ p.id }}/edit" class="btn-link-sm">Edit</a>
+    </div>
   </div>
   {% endfor %}
 </div>

@@ -44,6 +44,45 @@
 </div>
 {% endif %}
 
+{% if ingredient_summary %}
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Ingredient purchase summary</h2>
+  <p class="card-sub" style="margin-bottom:.75rem">Average quantity and restocking interval per ingredient across all purchases.</p>
+  <div style="overflow-x:auto">
+    <table class="recon-table">
+      <thead>
+        <tr>
+          <th>Ingredient</th>
+          <th class="col-num">Purchases</th>
+          <th class="col-num">Avg qty</th>
+          <th class="col-num">Avg restock (days)</th>
+          <th class="col-num">Total spent</th>
+          <th class="col-num">Last purchase</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in ingredient_summary %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td class="col-num">{{ row.count }}</td>
+          <td class="col-num">{{ "%.2f"|format(row.avg_qty) }} {{ row.unit }}</td>
+          <td class="col-num">
+            {% if row.avg_days is not none %}
+              {{ "%.0f"|format(row.avg_days) }} d
+            {% else %}
+              <span style="color:#888">—</span>
+            {% endif %}
+          </td>
+          <td class="col-num">₹{{ "{:,.0f}".format(row.total_spent) }}</td>
+          <td class="col-num">{{ row.last_date.strftime('%d %b %Y') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <div class="card recon-disclaimer" style="margin-top:1rem">
   <p>
     <strong>Note:</strong> True waste and leakage detection needs 2+ months of stable,

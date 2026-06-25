@@ -113,12 +113,17 @@ def results(request: Request, db: Session = Depends(get_db)):
     date_to = _fmt_date(max(dates)) if dates else "—"
     engine_ran = request.query_params.get("engine") == "1"
 
+    def _top10(cls: str) -> list:
+        bucket = [r for r in rows if r["classification"] == cls]
+        bucket.sort(key=lambda r: r["revenue"], reverse=True)
+        return bucket[:10]
+
     return _tmpl(request, "results.html", {
         "user": user,
-        "stars": [r for r in rows if r["classification"] == "Star"],
-        "workhorses": [r for r in rows if r["classification"] == "Workhorse"],
-        "puzzles": [r for r in rows if r["classification"] == "Puzzle"],
-        "dogs": [r for r in rows if r["classification"] == "Dog"],
+        "stars": _top10("Star"),
+        "workhorses": _top10("Workhorse"),
+        "puzzles": _top10("Puzzle"),
+        "dogs": _top10("Dog"),
         "total_rev": total_rev,
         "date_from": date_from,
         "date_to": date_to,

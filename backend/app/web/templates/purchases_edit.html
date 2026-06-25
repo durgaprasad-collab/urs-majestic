@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Edit Purchase — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1 class="card-title">Edit purchase</h1>
+
+  {% if error %}
+  <p class="alert-error">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/purchases/{{ purchase.id }}/edit">
+    <label for="ingredient_id" class="form-label">Ingredient</label>
+    <select id="ingredient_id" name="ingredient_id" class="form-input" required>
+      <option value="">— select —</option>
+      {% for ing in ingredients %}
+      <option value="{{ ing.id }}" data-unit="{{ ing.unit }}"
+        {% if ing.id == purchase.ingredient_id %}selected{% endif %}>
+        {{ ing.name }} ({{ ing.unit }})
+      </option>
+      {% endfor %}
+    </select>
+
+    <div class="form-row">
+      <div class="form-col">
+        <label for="qty" class="form-label">Quantity</label>
+        <input id="qty" name="qty" type="number" step="0.001" min="0.001"
+               class="form-input" value="{{ purchase.qty }}" required />
+      </div>
+      <div class="form-col">
+        <label for="unit" class="form-label">Unit</label>
+        <select id="unit" name="unit" class="form-input" required>
+          {% for u in ["kg", "g", "l", "ml", "pcs"] %}
+          <option value="{{ u }}" {% if u == purchase.unit %}selected{% endif %}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <label for="total_price" class="form-label">Total price paid (₹)</label>
+    <input id="total_price" name="total_price" type="number" step="0.01" min="0"
+           class="form-input" value="{{ purchase.total_price }}" required />
+
+    <label for="purchase_date" class="form-label">Purchase date</label>
+    <input id="purchase_date" name="purchase_date" type="date"
+           class="form-input" value="{{ purchase.purchase_date.isoformat() }}" required />
+
+    <label for="usage_type" class="form-label">Usage</label>
+    <select id="usage_type" name="usage_type" class="form-input" required>
+      <option value="menu" {% if purchase.usage_type == "menu" %}selected{% endif %}>Menu (used in dishes)</option>
+      <option value="others_personal" {% if purchase.usage_type == "others_personal" %}selected{% endif %}>Personal / Other</option>
+    </select>
+
+    <label for="notes" class="form-label">Notes (optional)</label>
+    <input id="notes" name="notes" type="text" class="form-input"
+           value="{{ purchase.notes or '' }}" placeholder="e.g. Nilgiris, bulk discount" />
+
+    <div style="display:flex;gap:.75rem;margin-top:.5rem">
+      <button type="submit" class="btn-primary">Save changes</button>
+      <a href="/purchases" class="btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.getElementById('ingredient_id').addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    const unit = opt.dataset.unit;
+    if (unit) {
+      const sel = document.getElementById('unit');
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === unit) { sel.selectedIndex = i; break; }
+      }
+    }
+  });
+</script>
+{% endblock %}
