@@ -16,6 +16,20 @@ export default function Hero() {
         200 Feet Road, Pallavaram, Chennai
       </p>
       <div className="hero-cta">
+        <div className="hero-contact-row">
+          <a href="tel:+919150102001" className="btn btn-call" aria-label="Call us">
+            📞 Call Us
+          </a>
+          <a
+            href="https://wa.me/919150102001"
+            className="btn btn-whatsapp"
+            aria-label="Chat on WhatsApp"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            💬 WhatsApp
+          </a>
+        </div>
         <a
           href="https://www.swiggy.com/city/chennai/urs-majestic-pallavaram-rest1389673"
           className="btn btn-swiggy"

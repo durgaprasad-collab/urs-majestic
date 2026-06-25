@@ -212,6 +212,7 @@ ul { list-style: none; }
   object-fit: contain;
   flex-shrink: 0;
 }
+.hero-contact-row { display: flex; gap: .75rem; }
 .btn-directions { background: var(--gold); color: var(--green); font-weight: 700; }
 .btn-call     { background: var(--green); color: white; flex: 1; }
 .btn-whatsapp { background: #25D366; color: white; flex: 1; }
