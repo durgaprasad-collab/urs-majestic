@@ -469,22 +469,41 @@ a { color: var(--green); }
 .unmapped-list { list-style: disc; padding-left: 1.25rem; font-size: .9rem; color: var(--muted); }
 
 /* ── Reconciliation ingredient table ───────────────────────────────────────── */
+.recon-table-wrap {
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  overflow-x: auto;
+}
 .recon-table {
   width: 100%;
   border-collapse: collapse;
   font-size: .85rem;
   background: var(--white);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
+  min-width: 580px;
 }
-.recon-table th, .recon-table td {
-  padding: .55rem .75rem;
-  text-align: left;
-  border: 1px solid var(--border);
+.recon-table thead th {
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: .65rem .85rem;
+  border-right: 1px solid rgba(255,255,255,.15);
+  white-space: nowrap;
 }
-.recon-table th { background: #f0ece4; font-weight: 700; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
-.recon-table .col-num { text-align: right; }
+.recon-table thead th:last-child { border-right: none; }
+.recon-table tbody td {
+  padding: .55rem .85rem;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.recon-table tbody td:last-child { border-right: none; }
+.recon-table tbody tr:last-child td { border-bottom: none; }
+.recon-table tbody tr:nth-child(even) td { background: #f8f5ef; }
+.recon-table tbody tr:hover td { background: #f0ece4; }
+.recon-table .col-num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ── Users table ───────────────────────────────────────────────────────────── */
 .users-table-wrap { overflow-x: auto; }
