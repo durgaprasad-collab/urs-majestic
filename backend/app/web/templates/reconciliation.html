@@ -54,6 +54,7 @@
         <tr>
           <th>Ingredient</th>
           <th class="col-num">Purchases</th>
+          <th class="col-num">Total qty</th>
           <th class="col-num">Avg qty</th>
           <th class="col-num">Avg restock (days)</th>
           <th class="col-num">Total spent</th>
@@ -65,6 +66,7 @@
         <tr>
           <td>{{ row.name }}</td>
           <td class="col-num">{{ row.count }}</td>
+          <td class="col-num">{{ "%.2f"|format(row.total_qty) }} {{ row.unit }}</td>
           <td class="col-num">{{ "%.2f"|format(row.avg_qty) }} {{ row.unit }}</td>
           <td class="col-num">
             {% if row.avg_days is not none %}

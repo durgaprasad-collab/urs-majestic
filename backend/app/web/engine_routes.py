@@ -88,7 +88,8 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         if not ing:
             continue
         dates = sorted(p.purchase_date for p in purchases)
-        avg_qty = sum(float(p.qty) for p in purchases) / len(purchases)
+        total_qty = sum(float(p.qty) for p in purchases)
+        avg_qty = total_qty / len(purchases)
         total_spent = sum(float(p.total_price) for p in purchases)
         if len(dates) >= 2:
             gaps = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
@@ -98,6 +99,7 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         ingredient_summary.append({
             "name": ing.name,
             "count": len(purchases),
+            "total_qty": total_qty,
             "avg_qty": avg_qty,
             "unit": purchases[-1].unit,
             "avg_days": avg_days,
