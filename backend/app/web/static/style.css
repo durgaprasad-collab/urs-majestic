@@ -375,6 +375,9 @@ a { color: var(--green); }
 
 /* ── Purchases list ────────────────────────────────────────────────────────── */
 .purchase-list { display: flex; flex-direction: column; gap: .5rem; }
+.filter-bar { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; }
+.filter-select { width: auto; max-width: 280px; padding: .45rem .75rem; font-size: .9rem; min-height: unset; }
+
 .purchase-row {
   background: var(--white);
   border-radius: 8px;

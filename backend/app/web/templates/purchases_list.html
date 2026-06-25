@@ -7,6 +7,18 @@
   <a href="/purchases/new" class="btn-primary btn-sm">+ New entry</a>
 </div>
 
+<form method="get" action="/purchases" class="filter-bar">
+  <select name="ingredient_id" class="form-input filter-select" onchange="this.form.submit()">
+    <option value="">All ingredients</option>
+    {% for ing in ingredients %}
+    <option value="{{ ing.id }}" {% if ing.id == filter_id %}selected{% endif %}>{{ ing.name }}</option>
+    {% endfor %}
+  </select>
+  {% if filter_id %}
+  <a href="/purchases" class="btn-link-sm" style="white-space:nowrap">✕ Clear</a>
+  {% endif %}
+</form>
+
 {% if purchases %}
 <div class="purchase-list">
   {% for p in purchases %}

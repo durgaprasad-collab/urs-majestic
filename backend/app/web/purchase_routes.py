@@ -16,13 +16,19 @@ def purchases_list(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         return redir
-    purchases = (
-        db.query(Purchase)
-        .order_by(Purchase.purchase_date.desc(), Purchase.created_at.desc())
-        .limit(200)
-        .all()
-    )
-    return _tmpl(request, "purchases_list.html", {"user": user, "purchases": purchases})
+    raw_id = request.query_params.get("ingredient_id", "")
+    filter_id = int(raw_id) if raw_id.isdigit() else None
+    q = db.query(Purchase).order_by(Purchase.purchase_date.desc(), Purchase.created_at.desc())
+    if filter_id:
+        q = q.filter(Purchase.ingredient_id == filter_id)
+    purchases = q.limit(200).all()
+    ingredients = db.query(Ingredient).order_by(Ingredient.name).all()
+    return _tmpl(request, "purchases_list.html", {
+        "user": user,
+        "purchases": purchases,
+        "ingredients": ingredients,
+        "filter_id": filter_id,
+    })
 
 
 @router.get("/purchases/new", response_class=HTMLResponse)
