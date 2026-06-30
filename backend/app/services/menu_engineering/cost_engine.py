@@ -1,124 +1,184 @@
 """Derives per-dish food cost from purchase records + ingredient-dish intensity mapping.
 
-Intensity weights: light=1, medium=2, heavy=3.
-Cost is allocated from the most-recent 90-day window of *menu* purchases.
+Corrected cost-derivation model — fixes three root causes found in diagnosis:
+  1. OVERHEAD SEPARATION
+     Ingredients with cost_role='overhead' (e.g. cooking gas) are NOT charged
+     per dish — a flat OVERHEAD_PER_DISH is added instead. cost_role='per_order'
+     (e.g. packaging) is excluded entirely (it belongs on the order total, not
+     each dish).
+  2. REAL PORTIONS
+     intensity (light/medium/heavy) maps to the ingredient's own
+     portion_light_g / portion_medium_g / portion_heavy_g — real grams/ml —
+     instead of a fraction of a whole purchase unit.
+  3. UNIT-ENTRY GUARD
+     Any derived per-gram/ml cost above IMPLAUSIBLE_PER_G is treated as a
+     1000x unit-entry error (e.g. a litre bought but logged as ml), corrected
+     and reported as an anomaly so the source purchase row can be fixed.
+
 confidence levels:
-  none     — no purchase data or no mappings at all
-  building — 1-89 days of data or fewer than 5 menu purchases
-  reliable — 90+ days with 5+ menu purchases
+  none     — dish has no ingredient-dish mapping at all
+  building — mapping exists but a mapped recipe ingredient is missing a
+             price (no menu purchases yet) or a portion size
+  reliable — every mapped recipe ingredient has both a price and a portion
 """
 import decimal
-from datetime import date, timedelta
+from dataclasses import dataclass, field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.menu_item import MenuItem
 from app.models.purchase import Purchase
 from app.models.ingredient import Ingredient, IngredientDishMap
 
-_INTENSITY_WEIGHT = {"light": 1, "medium": 2, "heavy": 3}
-_RELIABLE_DAYS = 90
-_RELIABLE_MIN_PURCHASES = 5
+# Flat overhead added to every dish (gas + small misc), in rupees.
+# Derive from data: (monthly gas+misc spend) / (dishes sold that month).
+OVERHEAD_PER_DISH = decimal.Decimal("3.0")
+
+# Any food ingredient costing more than this per gram/ml is almost certainly
+# a unit-entry error (e.g. litres entered as ml). The most expensive real
+# input here (paneer/cashew) is well under ₹1/g.
+IMPLAUSIBLE_PER_G = decimal.Decimal("3.0")
+
+_INTENSITY_COL = {
+    "light": "portion_light_g",
+    "medium": "portion_medium_g",
+    "heavy": "portion_heavy_g",
+}
 
 
-def run_cost_engine(db: Session) -> dict:
-    """Compute derived_food_cost_pct and derived_cost_per_unit for all active menu items."""
+@dataclass
+class UnitAnomaly:
+    ingredient_id: int
+    name: str
+    raw_cost_per_unit: float
+    corrected_cost_per_g: float
 
-    menu_purchases = (
-        db.query(Purchase)
-        .filter(Purchase.usage_type == "menu")
-        .order_by(Purchase.purchase_date)
+
+def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], list[UnitAnomaly]]:
+    """{ingredient_id: cost_per_gram_or_ml} for recipe ingredients with menu
+    purchases, plus any unit-entry anomalies detected and auto-corrected.
+
+    Normalization: cost in the ingredient's declared unit, converted to a
+    per-gram (solids) / per-ml (liquids) basis.
+        kg, l  -> divide by 1000
+        g, ml  -> as-is
+        pcs    -> skipped (not portionable by grams)
+    """
+    rows = (
+        db.query(
+            Ingredient.id,
+            Ingredient.name,
+            Ingredient.unit,
+            (func.sum(Purchase.total_price) / func.nullif(func.sum(Purchase.qty), 0)).label("cost_per_unit"),
+        )
+        .join(Purchase, Purchase.ingredient_id == Ingredient.id)
+        .filter(Ingredient.cost_role == "recipe", Purchase.usage_type == "menu")
+        .group_by(Ingredient.id, Ingredient.name, Ingredient.unit)
         .all()
     )
 
-    if not menu_purchases:
-        # No data — reset all items to confidence=none
-        db.query(MenuItem).filter(MenuItem.is_active.is_(True)).update(
-            {"derived_food_cost_pct": None, "derived_cost_per_unit": None, "cost_confidence": "none"},
-            synchronize_session="fetch",
-        )
-        db.commit()
-        return {"confidence": "none", "total_menu_cost": 0, "items_updated": 0}
+    cost: dict[int, decimal.Decimal] = {}
+    anomalies: list[UnitAnomaly] = []
 
-    # Determine data window
-    oldest = min(p.purchase_date for p in menu_purchases)
-    newest = max(p.purchase_date for p in menu_purchases)
-    days_span = (newest - oldest).days + 1
-    purchase_count = len(menu_purchases)
-
-    if days_span >= _RELIABLE_DAYS and purchase_count >= _RELIABLE_MIN_PURCHASES:
-        confidence = "reliable"
-    else:
-        confidence = "building"
-
-    # Restrict to most-recent 90-day window for cost allocation
-    window_start = newest - timedelta(days=_RELIABLE_DAYS - 1)
-    window_purchases = [p for p in menu_purchases if p.purchase_date >= window_start]
-
-    # Total cost per ingredient in window
-    ingredient_costs: dict[int, decimal.Decimal] = {}
-    for p in window_purchases:
-        ingredient_costs.setdefault(p.ingredient_id, decimal.Decimal("0"))
-        ingredient_costs[p.ingredient_id] += p.total_price
-
-    # Load all ingredient-dish mappings
-    all_maps = db.query(IngredientDishMap).all()
-    if not all_maps:
-        db.query(MenuItem).filter(MenuItem.is_active.is_(True)).update(
-            {"derived_food_cost_pct": None, "derived_cost_per_unit": None, "cost_confidence": "none"},
-            synchronize_session="fetch",
-        )
-        db.commit()
-        return {"confidence": "none", "total_menu_cost": float(sum(ingredient_costs.values())), "items_updated": 0}
-
-    # Sum total intensity-weighted shares per ingredient
-    # ingredient → {dish_id: weight}
-    from collections import defaultdict
-    ingredient_dish_weights: dict[int, dict[int, int]] = defaultdict(dict)
-    dish_ingredient_weights: dict[int, dict[int, int]] = defaultdict(dict)
-
-    for m in all_maps:
-        w = _INTENSITY_WEIGHT.get(m.intensity, 2)
-        ingredient_dish_weights[m.ingredient_id][m.menu_item_id] = w
-        dish_ingredient_weights[m.menu_item_id][m.ingredient_id] = w
-
-    # Allocate ingredient cost to each dish
-    dish_allocated_cost: dict[int, decimal.Decimal] = defaultdict(lambda: decimal.Decimal("0"))
-
-    for ing_id, cost in ingredient_costs.items():
-        dish_weights = ingredient_dish_weights.get(ing_id, {})
-        if not dish_weights:
+    for ing_id, name, unit, cpu in rows:
+        if cpu is None:
             continue
-        total_weight = sum(dish_weights.values())
-        for dish_id, w in dish_weights.items():
-            dish_allocated_cost[dish_id] += cost * decimal.Decimal(w) / decimal.Decimal(total_weight)
+        cpu = decimal.Decimal(str(cpu))
+        if unit in ("kg", "l"):
+            per_g = cpu / 1000
+        elif unit in ("g", "ml"):
+            per_g = cpu
+        else:  # pcs and anything else: not portionable by grams here
+            continue
 
-    # Write back to menu_items
-    items = db.query(MenuItem).filter(MenuItem.is_active.is_(True)).all()
+        # Unit-entry guard: implausible per-gram cost => 1000x error.
+        if per_g > IMPLAUSIBLE_PER_G:
+            corrected = per_g / 1000
+            anomalies.append(UnitAnomaly(ing_id, name, float(cpu), float(corrected)))
+            per_g = corrected
+
+        cost[ing_id] = per_g
+
+    return cost, anomalies
+
+
+def _dish_recipe_costs(db: Session, ing_cost: dict[int, decimal.Decimal]) -> dict[int, tuple[decimal.Decimal, bool]]:
+    """{menu_item_id: (recipe_cost_with_overhead, complete)} where `complete`
+    is True only if every mapped recipe ingredient had both a price and a
+    portion size (drives cost_confidence)."""
+    maps = (
+        db.query(IngredientDishMap, Ingredient)
+        .join(Ingredient, Ingredient.id == IngredientDishMap.ingredient_id)
+        .all()
+    )
+
+    acc: dict[int, list] = {}  # menu_item_id -> [cost, complete]
+    for m, ing in maps:
+        entry = acc.setdefault(m.menu_item_id, [decimal.Decimal("0"), True])
+        if ing.cost_role != "recipe":
+            continue  # overhead / per_order never priced per dish
+        grams = getattr(ing, _INTENSITY_COL.get(m.intensity, "portion_medium_g"))
+        per_g = ing_cost.get(ing.id)
+        if grams is None or per_g is None:
+            entry[1] = False  # incomplete data for this dish
+            continue
+        entry[0] += decimal.Decimal(str(grams)) * per_g
+
+    return {mid: (v[0] + OVERHEAD_PER_DISH, v[1]) for mid, v in acc.items()}
+
+
+def run_cost_engine(db: Session) -> dict:
+    """Recompute derived_cost_per_unit, derived_food_cost_pct and
+    cost_confidence for every active food menu item. Idempotent."""
+    ing_cost, anomalies = _ingredient_cost_per_g(db)
+    dish_cost = _dish_recipe_costs(db, ing_cost)
+
+    items = (
+        db.query(MenuItem)
+        .filter(MenuItem.is_active.is_(True), MenuItem.is_food.is_(True))
+        .all()
+    )
+
     updated = 0
+    reliable = 0
+    building = 0
+    none_count = 0
+
     for item in items:
-        allocated = dish_allocated_cost.get(item.id)
-        if allocated is None or allocated == 0:
-            # No mapping or no purchases for its ingredients
+        result = dish_cost.get(item.id)
+        if result is None:
             item.derived_food_cost_pct = None
             item.derived_cost_per_unit = None
             item.cost_confidence = "none"
+            none_count += 1
+            continue
+
+        cost, complete = result
+        price = item.price
+        if price and price > 0:
+            item.derived_food_cost_pct = (cost / price).quantize(decimal.Decimal("0.0001"))
+            item.derived_cost_per_unit = cost.quantize(decimal.Decimal("0.01"))
         else:
-            price = float(item.price)
-            if price > 0:
-                derived_pct = float(allocated) / price
-                item.derived_food_cost_pct = decimal.Decimal(str(round(derived_pct, 4)))
-                item.derived_cost_per_unit = decimal.Decimal(str(round(float(allocated), 2)))
-            else:
-                item.derived_food_cost_pct = None
-                item.derived_cost_per_unit = None
-            item.cost_confidence = confidence
-            updated += 1
+            item.derived_food_cost_pct = None
+            item.derived_cost_per_unit = None
+        item.cost_confidence = "reliable" if complete else "building"
+        if complete:
+            reliable += 1
+        else:
+            building += 1
+        updated += 1
 
     db.commit()
 
+    if anomalies:
+        print("WARNING: unit-entry errors auto-corrected in cost engine (fix the source purchase rows):")
+        for a in anomalies:
+            print(f"  - {a.name}: Rs.{a.raw_cost_per_unit:.2f}/unit looked 1000x too high -> "
+                  f"using Rs.{a.corrected_cost_per_g:.4f}/g. Likely litres/kg entered as ml/g.")
+
     return {
-        "confidence": confidence,
-        "days_span": days_span,
-        "purchase_count": purchase_count,
-        "total_menu_cost": float(sum(ingredient_costs.values())),
         "items_updated": updated,
+        "reliable": reliable,
+        "building": building,
+        "none": none_count,
+        "anomalies": [a.__dict__ for a in anomalies],
     }

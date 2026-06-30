@@ -1,4 +1,5 @@
-from sqlalchemy import String, Boolean, Enum as SAEnum, ForeignKey, UniqueConstraint
+import decimal
+from sqlalchemy import String, Boolean, Numeric, Enum as SAEnum, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -14,6 +15,18 @@ class Ingredient(Base):
     )
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    # Cost-engine role: recipe items are priced per dish; overhead (e.g. gas) adds
+    # a flat per-dish charge instead; per_order (e.g. packaging) is never priced per dish.
+    cost_role: Mapped[str] = mapped_column(
+        SAEnum("recipe", "overhead", "per_order", name="cost_role_type", create_type=False),
+        nullable=False,
+        default="recipe",
+        server_default="recipe",
+    )
+    # Real per-portion size in grams (solids) or ml (liquids) for each intensity level.
+    portion_light_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    portion_medium_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    portion_heavy_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     dish_maps: Mapped[list["IngredientDishMap"]] = relationship(
         "IngredientDishMap", back_populates="ingredient", cascade="all, delete-orphan"
