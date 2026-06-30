@@ -506,6 +506,13 @@ a { color: var(--green); }
 .recon-table .col-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .recon-table tr.recon-group-start td { border-top: 2px solid var(--green); }
 
+.recon-table-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+.recon-table-scroll thead th { position: sticky; top: 0; z-index: 1; }
+
 /* ── Users table ───────────────────────────────────────────────────────────── */
 .users-table-wrap { overflow-x: auto; }
 .users-table {
