@@ -504,6 +504,7 @@ a { color: var(--green); }
 .recon-table tbody tr:nth-child(even) td { background: #f8f5ef; }
 .recon-table tbody tr:hover td { background: #f0ece4; }
 .recon-table .col-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.recon-table tr.recon-group-start td { border-top: 2px solid var(--green); }
 
 /* ── Users table ───────────────────────────────────────────────────────────── */
 .users-table-wrap { overflow-x: auto; }

@@ -7,8 +7,16 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.purchase import Purchase
 from app.models.ingredient import Ingredient, IngredientDishMap
+from app.models.menu_item import MenuItem
+from app.models.item_sale import ItemSale
 from app.services.menu_engineering.cost_engine import run_cost_engine
 from app.web.deps import _tmpl, require_user
+
+_INTENSITY_PORTION_COL = {
+    "light": "portion_light_g",
+    "medium": "portion_medium_g",
+    "heavy": "portion_heavy_g",
+}
 
 router = APIRouter(tags=["engine"])
 
@@ -108,6 +116,47 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         })
     ingredient_summary.sort(key=lambda x: x["name"])
 
+    # Ingredient usage % per dish — share of each ingredient's actual
+    # consumption (portion size x units sold) going to each mapped dish.
+    sales_agg = (
+        db.query(ItemSale.item_name, func.sum(ItemSale.qty).label("units"))
+        .group_by(ItemSale.item_name)
+        .all()
+    )
+    units_sold_by_name = {row.item_name: float(row.units) for row in sales_agg}
+
+    maps = (
+        db.query(IngredientDishMap, Ingredient, MenuItem)
+        .join(Ingredient, Ingredient.id == IngredientDishMap.ingredient_id)
+        .join(MenuItem, MenuItem.id == IngredientDishMap.menu_item_id)
+        .filter(Ingredient.cost_role == "recipe")
+        .all()
+    )
+
+    usage_groups: dict[str, list[dict]] = defaultdict(list)
+    for m, ing, item in maps:
+        portion = getattr(ing, _INTENSITY_PORTION_COL.get(m.intensity, "portion_medium_g"))
+        units_sold = units_sold_by_name.get(item.name, 0.0)
+        grams_used = float(portion) * units_sold if portion is not None else None
+        usage_groups[ing.name].append({
+            "dish": item.name,
+            "intensity": m.intensity,
+            "units_sold": units_sold,
+            "grams_used": grams_used,
+        })
+
+    ingredient_usage: list[dict] = []
+    for ing_name, rows in usage_groups.items():
+        total_grams = sum(r["grams_used"] for r in rows if r["grams_used"] is not None)
+        for r in rows:
+            if r["grams_used"] is not None and total_grams > 0:
+                r["pct"] = r["grams_used"] / total_grams * 100
+            else:
+                r["pct"] = None
+        rows.sort(key=lambda r: (r["pct"] is None, -(r["pct"] or 0)))
+        ingredient_usage.append({"name": ing_name, "rows": rows})
+    ingredient_usage.sort(key=lambda x: x["name"])
+
     return _tmpl(request, "reconciliation.html", {
         "user": user,
         "total_menu_cost": total_menu_cost,
@@ -116,4 +165,5 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         "unmapped_cost": unmapped_cost,
         "unmapped_names": sorted(unmapped_names),
         "ingredient_summary": ingredient_summary,
+        "ingredient_usage": ingredient_usage,
     })
