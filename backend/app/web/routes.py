@@ -1,6 +1,7 @@
 import os
 import json
 import tempfile
+import decimal
 from fastapi import APIRouter, Request, Form, UploadFile, File, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -12,6 +13,10 @@ from scripts.import_pos import (
 )
 from app.services.menu_engineering.analysis import get_analysis
 from app.services.kpi import get_yesterday_sales, get_channel_upload_status
+from app.services.uploads.petpooja_order_listing import (
+    parse_order_listing_xlsx, aggregate_by_day, check_aggregator_alarm,
+    find_unpaired_diffs, upsert_order_counts, cross_check_amounts, ALARM_MESSAGE,
+)
 from app.models.item_sale import ItemSale
 from app.models.upload_log import UploadLog
 from app.web.deps import _tmpl, require_user
@@ -148,6 +153,107 @@ async def upload_post(
         params.append(f"parse_errors={len(parse_errors)}&parse_error_lines={lines}")
     redirect_url = "/results" + ("?" + "&".join(params) if params else "")
     return RedirectResponse(redirect_url, status_code=303)
+
+
+@router.post("/upload/petpooja-orders")
+async def upload_petpooja_orders(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Petpooja 'Order Listing' export — recovers per-day COUNTER order
+    counts (and AOV, via v_ceo_brief_summary) for daily_channel_sales.
+    Never touches net_sales — that's owned by the item-report upload."""
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+
+    if not (file.filename or "").lower().endswith(".xlsx"):
+        return _tmpl(
+            request, "upload.html",
+            {"user": user, "error": "Please upload the .xlsx Order Listing export from Petpooja Reports."},
+            status_code=400,
+        )
+
+    from app.core.config import settings as _cfg
+    _max_bytes = _cfg.UPLOAD_MAX_MB * 1024 * 1024
+    data = await file.read(_max_bytes + 1)
+    if len(data) > _max_bytes:
+        return _tmpl(
+            request, "upload.html",
+            {"user": user, "error": f"File too large — maximum {_cfg.UPLOAD_MAX_MB} MB."},
+            status_code=413,
+        )
+    if data[:4] != b"\x50\x4b\x03\x04":
+        return _tmpl(
+            request, "upload.html",
+            {"user": user, "error": "File does not appear to be a valid .xlsx file."},
+            status_code=400,
+        )
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
+    try:
+        tmp.write(data)
+        tmp.close()
+
+        today = date.today()
+        rows, parse_errors = parse_order_listing_xlsx(tmp.name)
+        alarm = check_aggregator_alarm(rows)
+        skipped_today = sum(1 for r in rows if r.status != "Cancelled" and r.business_date >= today)
+
+        daily = aggregate_by_day(rows, today)
+        dates_updated, dates_skipped_no_row = upsert_order_counts(db, daily)
+        diffs = cross_check_amounts(db, daily)
+        warnings = find_unpaired_diffs(diffs)
+
+        rows_inserted = sum(agg["count"] for agg in daily.values())
+        amount_inserted = sum((agg["amount"] for agg in daily.values()), decimal.Decimal("0"))
+        dates = list(daily.keys())
+        log = UploadLog(
+            channel="petpooja",
+            source_file=file.filename,
+            period_start=min(dates) if dates else None,
+            period_end=max(dates) if dates else None,
+            file_declared_total=None,
+            file_declared_rows=None,
+            rows_parsed=len(rows),
+            rows_inserted=rows_inserted,
+            rows_skipped_today=skipped_today,
+            rows_failed=len(parse_errors),
+            amount_inserted=amount_inserted,
+            succeeded=True,
+        )
+        db.add(log)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        db.add(UploadLog(
+            channel="petpooja",
+            source_file=file.filename or "unknown",
+            rows_parsed=0,
+            rows_inserted=0,
+            succeeded=False,
+            error_detail=str(exc),
+        ))
+        db.commit()
+        return _tmpl(
+            request, "upload.html",
+            {"user": user, "error": f"Could not process file: {exc}"},
+            status_code=422,
+        )
+    finally:
+        os.unlink(tmp.name)
+
+    return _tmpl(request, "upload_order_listing_result.html", {
+        "user": user,
+        "dates_updated": dates_updated,
+        "dates_skipped_no_row": sorted(dates_skipped_no_row),
+        "skipped_today": skipped_today,
+        "warnings": warnings,
+        "alarm": alarm,
+        "alarm_message": ALARM_MESSAGE,
+        "parse_errors": parse_errors,
+    })
 
 
 @router.get("/results", response_class=HTMLResponse)

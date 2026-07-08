@@ -30,6 +30,20 @@
 </div>
 
 <div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Upload Petpooja Order Listing</h2>
+  <p class="card-sub">
+    Export <strong>Order Listing</strong> (Reports → Order Report) as an
+    <strong>.xlsx</strong> file. Recovers counter order counts/AOV — upload the
+    item report above first, this only updates order counts on top of it.
+  </p>
+  <form method="post" action="/upload/petpooja-orders" enctype="multipart/form-data">
+    <label for="order-listing-file" class="form-label">Select .xlsx file</label>
+    <input id="order-listing-file" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="form-input-file" required />
+    <button type="submit" class="btn-primary">Upload Order Listing</button>
+  </form>
+</div>
+
+<div class="card" style="margin-top:1rem">
   <h2 class="card-title" style="font-size:1rem">Upload Zomato order history</h2>
   <p class="card-sub">
     Export <strong>Order history</strong> as a <strong>.csv</strong> from the Zomato

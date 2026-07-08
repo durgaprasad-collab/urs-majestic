@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Order Listing Upload — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1 class="card-title">Order Listing upload complete</h1>
+  <p class="card-sub">
+    {{ dates_updated }} business date(s) had their order count updated.
+    {% if skipped_today %}{{ skipped_today }} row(s) dated today were excluded (incomplete export).{% endif %}
+  </p>
+  <a href="/upload" class="link-upload">Back to Upload</a>
+</div>
+
+{% if alarm %}
+<p class="alert-error">⚠ {{ alarm_message }}</p>
+{% endif %}
+
+{% if dates_skipped_no_row %}
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Dates with no matching item-report row</h2>
+  <p class="card-sub">These order-listing dates were skipped — upload the item report for them first.</p>
+  <ul class="unmapped-list">
+    {% for d in dates_skipped_no_row %}
+    <li>{{ d.strftime('%d %b %Y') }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if warnings %}
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Unexplained cross-check mismatches</h2>
+  <p class="card-sub">Order Listing total vs item-report net_sales, same day — doesn't cancel out with an adjacent day.</p>
+  <ul class="unmapped-list">
+    {% for d, diff in warnings %}
+    <li>{{ d.strftime('%d %b %Y') }}: {{ "%+.2f"|format(diff) }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if parse_errors %}
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Rows that could not be parsed</h2>
+  <ul class="unmapped-list">
+    {% for e in parse_errors %}
+    <li>Line {{ e.line }}: {{ e.message }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if not warnings and not alarm and not dates_skipped_no_row and not parse_errors %}
+<div class="card" style="margin-top:1rem">
+  <p class="card-sub">Everything reconciled cleanly.</p>
+</div>
+{% endif %}
+{% endblock %}
