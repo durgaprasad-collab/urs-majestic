@@ -10,6 +10,7 @@ from app.models.combo import ComboComponent
 from app.models.daily_channel_sales import DailyChannelSales
 from app.models.upload_log import UploadLog
 from app.models.recon_exception import ReconException
+from app.models.business import FixedExpense, BusinessSetting
 
 __all__ = [
     "User",
@@ -28,4 +29,6 @@ __all__ = [
     "DailyChannelSales",
     "UploadLog",
     "ReconException",
+    "FixedExpense",
+    "BusinessSetting",
 ]

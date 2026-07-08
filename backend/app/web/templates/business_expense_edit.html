@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Edit Expense — URS Majestic{% endblock %}
+
+{% block content %}
+<a href="/business-settings" class="back-link">← Back to Business Settings</a>
+<div class="card">
+  <h1 class="card-title">Edit expense</h1>
+  {% if error %}<p class="alert-error">{{ error }}</p>{% endif %}
+
+  <form method="post" action="/business-settings/expenses/{{ exp.id }}">
+    <div class="form-row">
+      <div class="form-col">
+        <label for="name" class="form-label">Expense name</label>
+        <input id="name" name="name" type="text" class="form-input" value="{{ exp.name }}" required />
+      </div>
+      <div class="form-col">
+        <label for="category" class="form-label">Category</label>
+        <select id="category" name="category" class="form-input" required>
+          {% for c in categories %}<option value="{{ c }}" {% if c == exp.category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+          {% if exp.category not in categories %}<option value="{{ exp.category }}" selected>{{ exp.category }}</option>{% endif %}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label for="amount" class="form-label">Amount (₹)</label>
+        <input id="amount" name="amount" type="number" step="0.01" min="0" class="form-input" value="{{ "{:.2f}".format(exp.amount) }}" required />
+      </div>
+      <div class="form-col">
+        <label for="frequency" class="form-label">Frequency</label>
+        <select id="frequency" name="frequency" class="form-input" required>
+          {% for key, label in frequency_labels.items() %}<option value="{{ key }}" {% if key == exp.frequency %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label for="effective_from" class="form-label">Effective from</label>
+        <input id="effective_from" name="effective_from" type="date" class="form-input" value="{{ exp.effective_from.isoformat() }}" />
+      </div>
+      <div class="form-col">
+        <label for="effective_to" class="form-label">Effective to (optional)</label>
+        <input id="effective_to" name="effective_to" type="date" class="form-input" value="{{ exp.effective_to.isoformat() if exp.effective_to else '' }}" />
+      </div>
+    </div>
+    <label for="notes" class="form-label">Notes (optional)</label>
+    <input id="notes" name="notes" type="text" class="form-input" value="{{ exp.notes or '' }}" />
+    <button type="submit" class="btn-primary" style="margin-top:.7rem">Save changes</button>
+  </form>
+</div>
+{% endblock %}

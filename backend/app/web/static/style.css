@@ -805,3 +805,24 @@ a { color: var(--green); }
 .v3-gm-body { display: flex; flex-direction: column; gap: .12rem; }
 .v3-gm-action { font-weight: 700; font-size: .85rem; color: var(--text); }
 .v3-gm-meta { font-size: .72rem; color: #7a6010; }
+
+/* ── Daily Brief: Business Targets card ────────────────────────────────────── */
+.v3-tgt-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; }
+@media (max-width: 620px) { .v3-tgt-grid { grid-template-columns: repeat(2, 1fr); } }
+.v3-tgt-card { display: flex; flex-direction: column; gap: .15rem; padding: .6rem .7rem; border-radius: 8px;
+  background: #faf8f4; border: 1px solid var(--border); border-top: 3px solid var(--green); }
+.v3-tgt-big { font-size: 1.25rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.v3-tgt-be  { border-top-color: #8a8f98; }
+.v3-tgt-op  { border-top-color: var(--gold); }
+.v3-tgt-st  { border-top-color: var(--green2); }
+.v3-tgt-proj.v3-tgt-ok   { border-top-color: #1e6a44; background: #eef7f1; }
+.v3-tgt-proj.v3-tgt-warn { border-top-color: var(--red); background: #fdecec; }
+.v3-tgt-assumptions { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin-top: .7rem; font-size: .8rem; color: var(--muted); }
+.v3-tgt-assumptions b { color: var(--text); font-weight: 700; }
+.v3-tgt-rec { color: #7a6010; }
+.v3-explain { margin-top: .6rem; border-top: 1px dashed var(--border); padding-top: .5rem; }
+.v3-explain > summary { cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--green); }
+.v3-explain-body { margin-top: .5rem; display: flex; flex-direction: column; gap: .5rem; }
+.v3-explain-item { display: flex; flex-direction: column; gap: .1rem; padding-left: .6rem; border-left: 2px solid var(--border); }
+.v3-explain-title { font-weight: 700; font-size: .82rem; color: var(--text); }
+.v3-explain-formula { font-size: .8rem; color: var(--green); font-family: ui-monospace, monospace; }

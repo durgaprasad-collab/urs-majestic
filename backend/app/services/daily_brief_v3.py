@@ -15,7 +15,6 @@ Design notes for the future modules named in the spec:
   * AI Morning Brief -> consume kpi_governance.registry() + this context dict.
 Nothing here needs restructuring for those to plug in.
 """
-import calendar
 import datetime
 import decimal
 from sqlalchemy import text
@@ -26,6 +25,7 @@ from app.services.ceo_brief import get_summary, get_menu, get_actions
 from app.services.kpi import get_channel_upload_status
 from app.services.recon import get_data_trust
 from app.services.kpi_governance import registry as kpi_registry
+from app.services import target_engine
 
 D = decimal.Decimal
 
@@ -84,35 +84,6 @@ def _failed_rows_by_channel(db: Session) -> dict[str, int]:
 _FOOD_COST = D(str(settings.ASSUMED_FOOD_COST_PCT or 0))
 
 
-def _target(through: datetime.date, mtd: decimal.Decimal) -> dict:
-    """Monthly target vs month-to-date, pace and projection. Pure."""
-    target = D(str(settings.MONTHLY_SALES_TARGET or 0))
-    days_in_month = calendar.monthrange(through.year, through.month)[1]
-    days_elapsed = through.day
-    out: dict = {
-        "target_set": target > 0,
-        "target": target,
-        "mtd": mtd,
-        "days_elapsed": days_elapsed,
-        "days_in_month": days_in_month,
-        "pace_marker_pct": round(100.0 * days_elapsed / days_in_month, 1),
-        "month_label": through.strftime("%B %Y"),
-    }
-    if target > 0:
-        expected = target * D(days_elapsed) / D(days_in_month)
-        projection = (mtd / D(days_elapsed) * D(days_in_month)) if days_elapsed else D(0)
-        out.update({
-            "pct_of_target": float(mtd / target * 100),
-            "expected_to_date": expected,
-            "pace_delta": mtd - expected,
-            "pace_pct": float((mtd - expected) / expected * 100) if expected else 0.0,
-            "projection": projection,
-            "projection_pct_of_target": float(projection / target * 100),
-            "on_track": mtd >= expected,
-        })
-    return out
-
-
 def _contribution(through, day_sales, mtd_sales, pct_vs_prior_day) -> dict:
     """Estimated contribution (flat food-cost assumption). Pure."""
     fc_pct = float(_FOOD_COST * 100)
@@ -131,8 +102,11 @@ def _contribution(through, day_sales, mtd_sales, pct_vs_prior_day) -> dict:
 
 
 # ── 1. Executive Summary ─────────────────────────────────────────────────────
-def _executive_summary(summary: dict, target: dict | None, last_refresh, data_status: str) -> dict:
-    exto = target.get("expected_to_date") if target and target.get("target_set") else None
+def _executive_summary(summary: dict, bt: dict, last_refresh, data_status: str) -> dict:
+    """Yesterday performance + a one-glance read on whether the month is on
+    track for the operating (profit) target. Detail lives in the Business
+    Targets card; this is the headline."""
+    op = bt["vs"].get("operating") if bt.get("computable") else None
     return {
         "reporting_date": summary["data_through"],
         "last_refresh": last_refresh,
@@ -140,12 +114,12 @@ def _executive_summary(summary: dict, target: dict | None, last_refresh, data_st
         "net_sales": summary["latest_day_sales"],
         "pct_vs_prior_day": summary["pct_vs_prior_day"],
         "pct_vs_same_weekday": summary["pct_vs_same_weekday"],
-        "target_set": bool(target and target.get("target_set")),
-        "monthly_target": target["target"] if target else D(0),
-        "mtd_sales": target["mtd"] if target else D(0),
-        "target_pct": target.get("pct_of_target") if target else None,
-        "expected_mtd": exto,
-        "variance": target.get("pace_delta") if target and target.get("target_set") else None,
+        "configured": bt.get("configured") and bt.get("computable"),
+        "mtd_sales": bt["mtd"],
+        "projected": bt["projected_month_end"],
+        "operating_target": bt.get("operating"),
+        "on_track": bool(op and op["on_track"]),
+        "confidence": bt["confidence"],
     }
 
 
@@ -269,7 +243,7 @@ def _operations(channel_status: list[dict], failed: dict, data_trust: dict | Non
 
 
 # ── 4. Attention Required (max 5, Critical > High > Medium) ───────────────────
-def _attention(summary, target, data_trust, rows, channel_status, failed, zero_count) -> list[dict]:
+def _attention(summary, bt, data_trust, rows, channel_status, failed, zero_count) -> list[dict]:
     items: list[dict] = []
     rep = summary["data_through"]
 
@@ -296,10 +270,19 @@ def _attention(summary, target, data_trust, rows, channel_status, failed, zero_c
         add(HIGH, "🟠", f"{tot} row(s) failed to import",
             "Some sales are missing from the totals. Re-check the source file.",
             "/data-reconciliation", "Review")
-    if target and target.get("target_set") and target.get("pace_pct", 0) <= -10:
-        add(HIGH, "🟠", f"Behind monthly pace by {abs(target['pace_pct']):.0f}%",
-            f"₹{target['mtd']:,.0f} vs ₹{target['expected_to_date']:,.0f} expected. "
-            f"Projected ₹{target['projection']:,.0f}.")
+    # Projection vs the computed targets — only mid-month onward, where a
+    # straight-line projection is meaningful (avoids early-month noise).
+    if bt.get("computable") and bt["days_elapsed"] >= 7:
+        proj = bt["projected_month_end"]
+        if bt["break_even"] and proj < bt["break_even"]:
+            add(CRITICAL, "🔴", f"Projected ₹{proj:,.0f} below break-even ₹{bt['break_even']:,.0f}",
+                f"At the current daily pace, sales won't cover fixed expenses this month.",
+                "/business-settings", "Review")
+        elif bt["operating"] and proj < bt["operating"]:
+            gap = bt["operating"] - proj
+            add(HIGH, "🟠", f"Behind operating target by ₹{gap:,.0f}",
+                f"Projected ₹{proj:,.0f} vs ₹{bt['operating']:,.0f} needed for the profit goal.",
+                "/business-settings", "Review")
     policy = settings.DELIVERY_DISCOUNT_POLICY_PCT
     for chan in ("zomato", "swiggy"):
         r = rows.get(chan)
@@ -333,9 +316,15 @@ def _attention(summary, target, data_trust, rows, channel_status, failed, zero_c
 
 
 # ── 5. Wins of the Day (1-2 positives) ───────────────────────────────────────
-def _wins(summary, target, trend, top) -> list[dict]:
+def _wins(summary, bt, trend, top) -> list[dict]:
     cands: list[dict] = []
     rep = summary["data_through"]
+
+    # On track for the profit target
+    op = bt["vs"].get("operating") if bt.get("computable") else None
+    if op and op["on_track"]:
+        cands.append({"icon": "🎯", "title": "On track for the profit target",
+                      "detail": f"Projected ₹{bt['projected_month_end']:,.0f} clears the ₹{bt['operating']:,.0f} operating target."})
 
     # Best day this week
     if trend and trend.get("high") and trend["high"]["date"] == rep and (trend["high"]["net"] or 0) > 0:
@@ -413,14 +402,17 @@ def _compute_brief(db: Session, last_refresh) -> dict:
 
     rep = summary["data_through"]
 
-    # One sales read feeds target, trend AND contribution (no duplicate queries).
+    # One sales read feeds targets, trend AND contribution (no duplicate queries).
     series = _sales_series(db, rep)
     month_start = rep.replace(day=1)
     mtd = sum((v for d, v in series.items() if d >= month_start), D(0))
-    target = _target(rep, mtd)                                             # pure
     trend = _trend(series, rep)                                            # pure
     contrib = _contribution(rep, summary["latest_day_sales"] or D(0),      # pure
                             mtd, summary["pct_vs_prior_day"])
+    # Business Target Engine — break-even / operating / stretch from the
+    # canonical Business Settings (fixed expenses, profit, margin, growth).
+    bt = target_engine.compute(db, mtd=mtd, reporting_date=rep,
+                               days_elapsed=rep.day, calculated_at=last_refresh)
 
     # Remaining independent reads (one round-trip each).
     data_trust = get_data_trust(db)
@@ -447,16 +439,16 @@ def _compute_brief(db: Session, last_refresh) -> dict:
         "menu_as_of": menu_rows[0]["as_of"] if menu_rows else None,
         "channel_status": channel_status,
         "failed_rows_by_channel": failed,
-        "target": target,
+        "bt": bt,
         "trend": trend,
         # v3 sections
-        "exec": _executive_summary(summary, target, last_refresh, data_status),
+        "exec": _executive_summary(summary, bt, last_refresh, data_status),
         "reporting_date": rep,
         "last_refresh": last_refresh,
         "data_status": data_status,
         "contrib": contrib,
-        "attention": _attention(summary, target, data_trust, rows, channel_status, failed, len(zero)),
-        "wins": _wins(summary, target, trend, top),
+        "attention": _attention(summary, bt, data_trust, rows, channel_status, failed, len(zero)),
+        "wins": _wins(summary, bt, trend, top),
         "channels": _channel_performance(summary, rows),
         "customer": customer,
         "operations": _operations(channel_status, failed, data_trust),

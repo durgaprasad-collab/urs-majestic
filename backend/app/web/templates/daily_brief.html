@@ -38,17 +38,17 @@
     </div>
 
     <div class="v3-exec-target">
-      {% if exec.target_set %}
+      {% if exec.configured %}
       <div class="v3-tgt-cells">
-        <div><span class="recon-label">Monthly target</span><span class="v3-tgt-v">₹{{ "{:,.0f}".format(exec.monthly_target) }}</span></div>
-        <div><span class="recon-label">MTD sales</span><span class="v3-tgt-v">₹{{ "{:,.0f}".format(exec.mtd_sales) }}</span><span class="recon-sub">{{ "%.0f"|format(exec.target_pct) }}% of target</span></div>
-        <div><span class="recon-label">Expected by today</span><span class="v3-tgt-v">₹{{ "{:,.0f}".format(exec.expected_mtd) }}</span></div>
-        <div><span class="recon-label">Variance</span><span class="v3-tgt-v {{ 'kpi-up' if exec.variance >= 0 else 'kpi-down' }}">{{ '+' if exec.variance >= 0 else '−' }}₹{{ "{:,.0f}".format(exec.variance|abs) }}</span></div>
+        <div><span class="recon-label">MTD sales</span><span class="v3-tgt-v">₹{{ "{:,.0f}".format(exec.mtd_sales) }}</span></div>
+        <div><span class="recon-label">Projected month-end</span><span class="v3-tgt-v">₹{{ "{:,.0f}".format(exec.projected) }}</span></div>
+        <div><span class="recon-label">Operating target</span><span class="v3-tgt-v">₹{{ "{:,.0f}".format(exec.operating_target) }}</span></div>
+        <div><span class="recon-label">On track?</span><span class="v3-tgt-v {{ 'kpi-up' if exec.on_track else 'kpi-down' }}">{{ '✓ Yes' if exec.on_track else '✗ Behind' }}</span><span class="recon-sub">{{ exec.confidence }} confidence</span></div>
       </div>
       {% else %}
       <div class="v3-tgt-empty">
-        <span class="recon-label">Monthly target</span>
-        <p class="recon-sub">No monthly target configured. Set <code>MONTHLY_SALES_TARGET</code> to track achievement and pace.</p>
+        <span class="recon-label">Business Targets</span>
+        <p class="recon-sub">Add your fixed expenses in <a href="/business-settings">Business Settings</a> to compute break-even, operating and stretch targets.</p>
       </div>
       {% endif %}
     </div>
@@ -99,6 +99,67 @@
     <p class="recon-sub">No standout wins today — keep the momentum going.</p>
     {% endif %}
   </div>
+</div>
+
+{# ═══ BUSINESS TARGETS (engine-computed, never arbitrary) ═══════════════════ #}
+<div class="card v3-targets">
+  <div class="v2-head">
+    <span class="v2-emoji">🎯</span>
+    <h2 class="card-title">Business Targets</h2>
+    <a class="btn-link-sm" href="/business-settings" style="margin-left:auto">Business Settings →</a>
+  </div>
+  {% if bt.computable %}
+  <div class="v3-tgt-grid">
+    <div class="v3-tgt-card v3-tgt-be">
+      <span class="recon-label">Break-even</span>
+      <span class="v3-tgt-big">₹{{ "{:,.0f}".format(bt.break_even) }}</span>
+      <span class="recon-sub">covers fixed expenses</span>
+    </div>
+    <div class="v3-tgt-card v3-tgt-op">
+      <span class="recon-label">Operating</span>
+      <span class="v3-tgt-big">₹{{ "{:,.0f}".format(bt.operating) }}</span>
+      <span class="recon-sub">+ ₹{{ "{:,.0f}".format(bt.desired_profit) }} profit</span>
+    </div>
+    <div class="v3-tgt-card v3-tgt-st">
+      <span class="recon-label">Stretch</span>
+      <span class="v3-tgt-big">₹{{ "{:,.0f}".format(bt.stretch) }}</span>
+      <span class="recon-sub">+ {{ "%g"|format(bt.growth_pct) }}% growth</span>
+    </div>
+    <div class="v3-tgt-card v3-tgt-proj {{ 'v3-tgt-ok' if exec.on_track else 'v3-tgt-warn' }}">
+      <span class="recon-label">Projected month-end</span>
+      <span class="v3-tgt-big">₹{{ "{:,.0f}".format(bt.projected_month_end) }}</span>
+      <span class="recon-sub">{{ bt.confidence }} confidence · {{ bt.days_elapsed }}/{{ bt.days_in_month }} days</span>
+    </div>
+  </div>
+
+  <div class="v3-tgt-assumptions">
+    <span>Fixed expenses <b>₹{{ "{:,.0f}".format(bt.fixed_expenses) }}</b></span>
+    <span>Desired profit <b>₹{{ "{:,.0f}".format(bt.desired_profit) }}</b></span>
+    <span>Contribution margin <b>{{ "%g"|format(bt.margin_pct) }}%</b></span>
+    <span>Growth <b>{{ "%g"|format(bt.growth_pct) }}%</b></span>
+    {% if bt.recommended_growth_pct is not none %}
+    <span class="v3-tgt-rec">💡 Suggested growth <b>{{ "%g"|format(bt.recommended_growth_pct) }}%</b> <span class="recon-sub">(needs your approval)</span></span>
+    {% endif %}
+  </div>
+
+  <details class="v3-explain">
+    <summary>How was this calculated?</summary>
+    <div class="v3-explain-body">
+      {% for key, label in [('break_even','Break-even'), ('operating','Operating'), ('stretch','Stretch'), ('projection','Projection')] %}
+      {% set e = bt.explain[key] %}
+      <div class="v3-explain-item">
+        <span class="v3-explain-title">{{ label }}</span>
+        <span class="v3-explain-formula">{{ e.formula }}</span>
+        <span class="recon-sub">Inputs: {% for k, v in e.inputs.items() %}{{ k }} = {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</span>
+        <span class="recon-sub">Source: {{ e.data_source }} · Confidence: {{ e.confidence }} · Owner: {{ e.owner }}</span>
+      </div>
+      {% endfor %}
+      <p class="recon-sub">Calculated {{ bt.calculated_at.strftime('%d %b %H:%M') if bt.calculated_at else '—' }} from Business Settings — the one source of truth for the whole OS.</p>
+    </div>
+  </details>
+  {% else %}
+  <p class="recon-sub">Set your fixed expenses and a contribution margin in <a href="/business-settings">Business Settings</a> to compute break-even, operating and stretch targets.</p>
+  {% endif %}
 </div>
 
 {# ═══ 3. ESTIMATED CONTRIBUTION  +  6. SEVEN-DAY TREND ══════════════════════ #}
