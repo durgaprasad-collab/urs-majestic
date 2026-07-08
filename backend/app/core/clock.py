@@ -25,3 +25,19 @@ def business_now() -> datetime:
 def business_today() -> date:
     """Today's calendar date in the restaurant's timezone."""
     return business_now().date()
+
+
+def as_business_time(dt: datetime) -> datetime:
+    """Tag a naive wall-clock datetime (as parsed from a channel export, which
+    is already in the restaurant's local time) with the business timezone, so it
+    stores as a correct, unambiguous instant regardless of the DB session tz."""
+    return dt.replace(tzinfo=business_tz()) if dt.tzinfo is None else dt
+
+
+def business_date_of(dt: datetime) -> date:
+    """The restaurant-local calendar date of an instant. Aware datetimes are
+    converted to the business timezone first; naive ones are assumed already
+    local. This is THE definition of an order's business day."""
+    if dt.tzinfo is None:
+        return dt.date()
+    return dt.astimezone(business_tz()).date()

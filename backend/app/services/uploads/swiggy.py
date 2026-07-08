@@ -10,6 +10,7 @@ import io
 import re
 from datetime import date, datetime
 
+from app.core.clock import business_today, as_business_time
 from app.services.uploads.channel_orders import ParsedOrder, ParsedItem, ParseError
 from app.services.uploads.item_matching import MenuIndex
 
@@ -69,7 +70,7 @@ def parse_swiggy_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrd
 
             status_raw = fixed[col["Order-status"]].strip()
             status = "delivered" if status_raw.lower() == "delivered" else "cancelled"
-            placed_at = datetime.strptime(fixed[col["Order-relay-time(ordered time)"]].strip(), "%Y-%m-%d %H:%M:%S")
+            placed_at = as_business_time(datetime.strptime(fixed[col["Order-relay-time(ordered time)"]].strip(), "%Y-%m-%d %H:%M:%S"))
 
             sgst = decimal.Decimal(fixed[col["Item-SGST"]] or "0")
             cgst = decimal.Decimal(fixed[col["Item-CGST"]] or "0")
@@ -115,6 +116,6 @@ def parse_swiggy_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrd
 
     if duration_range is None:
         dates = [o.placed_at.date() for o in orders]
-        duration_range = (min(dates), max(dates)) if dates else (date.today(), date.today())
+        duration_range = (min(dates), max(dates)) if dates else (business_today(), business_today())
 
     return orders, errors, unmapped, duration_range, total_rows_seen

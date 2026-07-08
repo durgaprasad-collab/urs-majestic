@@ -5,6 +5,7 @@ import io
 import re
 from datetime import date, datetime
 
+from app.core.clock import business_today, as_business_time
 from app.services.uploads.channel_orders import ParsedOrder, ParsedItem, ParseError
 from app.services.uploads.item_matching import MenuIndex
 
@@ -42,7 +43,7 @@ def parse_zomato_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrd
             continue
         total_rows_seen += 1
         try:
-            placed_at = datetime.strptime(row["Order Placed At"].strip(), "%I:%M %p, %B %d %Y")
+            placed_at = as_business_time(datetime.strptime(row["Order Placed At"].strip(), "%I:%M %p, %B %d %Y"))
             status = "delivered" if row["Order Status"].strip() == "Delivered" else "cancelled"
             subtotal = decimal.Decimal(row["Bill subtotal"] or "0")
             promo = decimal.Decimal(row["Restaurant discount (Promo)"] or "0")
@@ -94,6 +95,6 @@ def date_range_from_filename(filename: str, orders: list[ParsedOrder]) -> tuple[
         return start, end
     dates = [o.placed_at.date() for o in orders]
     if not dates:
-        today = date.today()
+        today = business_today()
         return today, today
     return min(dates), max(dates)

@@ -7,6 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from app.core.clock import business_date_of
 from app.models.order import Order, OrderItem, OrderStatus
 from app.models.daily_channel_sales import DailyChannelSales
 from app.models.upload_log import UploadLog
@@ -79,22 +80,32 @@ def upsert_daily_channel_sales(
     date_range: tuple[date, date],
     source_file: str,
 ) -> int:
-    """Aggregate delivered orders per business_date (from placed_at), upsert
-    into daily_channel_sales, and write an explicit zero row for every date
-    in `date_range` with no delivered orders. Returns dates touched."""
+    """Aggregate delivered orders per business_date (from placed_at) and upsert
+    into daily_channel_sales, writing an explicit zero row for in-between days
+    with no delivered orders. Returns dates touched.
+
+    The zero-fill is CLAMPED to the span of actual delivered orders (intersected
+    with date_range) — it never writes leading/trailing empty days. A declared
+    range that runs past the last real order (e.g. a Swiggy 'Duration' or Zomato
+    filename ending today) would otherwise create a phantom ₹0 day that advances
+    the whole dashboard's "latest day" onto a date with no sales."""
+    delivered_dates = [business_date_of(o.placed_at) for o in orders if o.status == "delivered"]
     totals: dict[date, dict] = {}
-    d = date_range[0]
-    while d <= date_range[1]:
-        totals[d] = {
-            "net": decimal.Decimal("0"), "orders": 0, "gross": decimal.Decimal("0"),
-            "restaurant_discount": decimal.Decimal("0"), "platform_discount": decimal.Decimal("0"),
-        }
-        d += timedelta(days=1)
+    if delivered_dates:
+        lo = max(date_range[0], min(delivered_dates))
+        hi = min(date_range[1], max(delivered_dates))
+        d = lo
+        while d <= hi:
+            totals[d] = {
+                "net": decimal.Decimal("0"), "orders": 0, "gross": decimal.Decimal("0"),
+                "restaurant_discount": decimal.Decimal("0"), "platform_discount": decimal.Decimal("0"),
+            }
+            d += timedelta(days=1)
 
     for order in orders:
         if order.status != "delivered":
             continue
-        bd = order.placed_at.date()
+        bd = business_date_of(order.placed_at)
         bucket = totals.setdefault(bd, {
             "net": decimal.Decimal("0"), "orders": 0, "gross": decimal.Decimal("0"),
             "restaurant_discount": decimal.Decimal("0"), "platform_discount": decimal.Decimal("0"),
