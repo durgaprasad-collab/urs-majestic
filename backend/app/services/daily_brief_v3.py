@@ -257,12 +257,18 @@ def _attention(summary, bt, data_trust, rows, channel_status, failed, zero_count
         add(CRITICAL, "🔴", f"Reconciliation failed — {n} unexplained mismatch(es)",
             "Numbers below may be wrong until this is reconciled.",
             "/data-reconciliation", "Reconcile")
-    missing = [c["channel"] for c in channel_status
-               if c["latest_date"] is None or c["latest_date"] < rep]
-    for chan in missing:
-        add(CRITICAL, "🔴", f"{chan.title()} upload missing",
-            f"No {chan.title()} data for {rep:%d %b} — today's totals are incomplete.",
-            "/upload", "Upload")
+    # Upload freshness: a channel that's never been uploaded is critical; one
+    # that's genuinely stale (>=2 days behind the freshest data) is worth a
+    # nudge. A 1-day lag is normal — delivery exports routinely trail a day —
+    # so it's shown as "pending" on the channel card, not raised as an alert.
+    for c in channel_status:
+        if c["latest_date"] is None:
+            add(CRITICAL, "🔴", f"{c['channel'].title()} never uploaded",
+                "No data for this channel yet.", "/upload", "Upload")
+        elif (c.get("days_behind_freshest") or 0) >= 2:
+            add(HIGH, "🟠", f"{c['channel'].title()} {c['days_behind_freshest']} days behind",
+                f"Latest {c['channel'].title()} data is {c['latest_date']:%d %b} — upload the newest export.",
+                "/upload", "Upload")
 
     # High — margin / channel exceptions worth acting on today
     if failed:
