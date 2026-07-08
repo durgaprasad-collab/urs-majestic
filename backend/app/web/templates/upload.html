@@ -2,32 +2,6 @@
 {% block title %}Upload POS Report — URS Majestic{% endblock %}
 
 {% block content %}
-
-{% if kpi %}
-<div class="card kpi-card">
-  <span class="kpi-label">Net sales — {{ kpi_data_through }}</span>
-  <div class="kpi-big">₹{{ "{:,.0f}".format(kpi.latest_day_sales) }}</div>
-  <div class="kpi-deltas">
-    <span class="kpi-delta{% if kpi.pct_vs_prior_day is not none %}{{ ' kpi-up' if kpi.pct_vs_prior_day >= 0 else ' kpi-down' }}{% endif %}">
-      {% if kpi.pct_vs_prior_day is not none %}{{ "%+.1f"|format(kpi.pct_vs_prior_day) }}%{% else %}—{% endif %} vs prior day
-    </span>
-    <span class="kpi-delta{% if kpi.pct_vs_same_weekday is not none %}{{ ' kpi-up' if kpi.pct_vs_same_weekday >= 0 else ' kpi-down' }}{% endif %}">
-      {% if kpi.pct_vs_same_weekday is not none %}{{ "%+.1f"|format(kpi.pct_vs_same_weekday) }}%{% else %}—{% endif %} vs same weekday last week
-    </span>
-  </div>
-  {% if channel_status %}
-  <div class="kpi-staleness">
-    {% for c in channel_status %}
-    <span class="kpi-chip{% if c.is_stale %} kpi-chip-stale{% endif %}">
-      {{ c.channel }}: {{ c.latest_date.strftime('%d %b') if c.latest_date else "no data" }}
-      {%- if c.is_stale %} — ⚠ {{ c.days_behind_freshest }}d behind{% endif %}
-    </span>
-    {% endfor %}
-  </div>
-  {% endif %}
-</div>
-{% endif %}
-
 <div class="card">
   <h1 class="card-title">Upload POS report</h1>
   <p class="card-sub">

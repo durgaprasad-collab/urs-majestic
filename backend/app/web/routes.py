@@ -33,8 +33,8 @@ def index(request: Request):
     return RedirectResponse("/upload", status_code=302)
 
 
-@router.get("/upload", response_class=HTMLResponse)
-def upload_get(request: Request, db: Session = Depends(get_db)):
+@router.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         return redir
@@ -43,13 +43,20 @@ def upload_get(request: Request, db: Session = Depends(get_db)):
     kpi_data_through = _fmt_date(kpi["data_through"]) if kpi else None
     channel_status = get_channel_upload_status(db)
 
-    return _tmpl(request, "upload.html", {
+    return _tmpl(request, "dashboard.html", {
         "user": user,
-        "error": None,
         "kpi": kpi,
         "kpi_data_through": kpi_data_through,
         "channel_status": channel_status,
     })
+
+
+@router.get("/upload", response_class=HTMLResponse)
+def upload_get(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    return _tmpl(request, "upload.html", {"user": user, "error": None})
 
 
 @router.post("/upload")

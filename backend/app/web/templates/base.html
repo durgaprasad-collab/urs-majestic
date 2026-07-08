@@ -18,6 +18,7 @@
 
   {% if request.session.get("user_id") %}
   <nav class="app-nav">
+    <a href="/dashboard" class="nav-link {% if request.url.path == '/dashboard' %}active{% endif %}">Dashboard</a>
     <a href="/upload" class="nav-link {% if request.url.path == '/upload' %}active{% endif %}">Upload</a>
     <a href="/results" class="nav-link {% if request.url.path == '/results' %}active{% endif %}">Analysis</a>
     <a href="/purchases" class="nav-link {% if request.url.path.startswith('/purchases') %}active{% endif %}">Purchases</a>
