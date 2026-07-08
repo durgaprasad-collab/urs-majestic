@@ -6,6 +6,12 @@ from app.core.database import get_db
 from app.web.deps import _tmpl, require_user
 from app.services.ceo_brief import get_summary, get_menu, get_actions
 from app.services.kpi import get_channel_upload_status
+from app.services.daily_brief_v2 import (
+    get_target_vs_achievement,
+    get_estimated_contribution,
+    get_seven_day_trend,
+    get_attention_items,
+)
 from app.models.upload_log import UploadLog
 
 router = APIRouter(tags=["web"])
@@ -50,4 +56,9 @@ def daily_brief(request: Request, db: Session = Depends(get_db)):
         "actions": get_actions(db),
         "channel_status": get_channel_upload_status(db),
         "failed_rows_by_channel": _latest_failed_rows_by_channel(db),
+        # ── Daily Brief v2 ──────────────────────────────────────────────
+        "target": get_target_vs_achievement(db),
+        "contrib": get_estimated_contribution(db),
+        "trend": get_seven_day_trend(db),
+        "attention": get_attention_items(db),
     })

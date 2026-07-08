@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     FEEDBACK_RATE_LIMIT: int = 5
     FEEDBACK_WINDOW_SECONDS: int = 60
 
+    # Daily Brief v2 ──────────────────────────────────────────────────────────
+    # Monthly net-sales target (₹). 0 = unset → the brief shows MTD achievement
+    # without a target line. Set per outlet via env, no redeploy of code needed.
+    MONTHLY_SALES_TARGET: float = 0.0
+    # Assumed blended food-cost fraction for the *estimated* contribution figure,
+    # until per-item costs feed the calc. 0.35 = current menu-wide average.
+    ASSUMED_FOOD_COST_PCT: float = 0.35
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

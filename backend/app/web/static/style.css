@@ -687,3 +687,62 @@ a { color: var(--green); }
 .brief-menu-row:last-child { border-bottom: none; }
 
 .brief-actions-list { padding-left: 1.1rem; display: flex; flex-direction: column; gap: .5rem; font-weight: 600; }
+
+/* ── Daily Brief v2: Attention · Target · Contribution · Trend ─────────────── */
+.v2 { display: flex; flex-direction: column; gap: .6rem; margin-bottom: .6rem; }
+.v2-row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+@media (max-width: 700px) { .v2-row { grid-template-columns: 1fr; } }
+.v2-head { display: flex; align-items: center; gap: .45rem; margin-bottom: .6rem; }
+.v2-head .card-title { margin: 0; font-size: .95rem; }
+.v2-emoji { font-size: 1.05rem; line-height: 1; }
+.v2-period { margin-left: auto; font-size: .72rem; color: var(--muted); font-weight: 600; }
+.v2 .kpi-up   { color: #1e6a44; font-weight: 600; }
+.v2 .kpi-down { color: var(--red); font-weight: 600; }
+
+/* Attention Required */
+.v2-attention { border-left: 4px solid var(--red); }
+.v2-attention.v2-attention-clear { border-left-color: #1e6a44; }
+.v2-count { margin-left: auto; background: var(--red); color: #fff; font-size: .72rem; font-weight: 700;
+  min-width: 1.35rem; height: 1.35rem; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; padding: 0 .35rem; }
+.v2-attn-list { list-style: none; display: flex; flex-direction: column; gap: .4rem; }
+.v2-attn { display: flex; align-items: flex-start; gap: .55rem; padding: .5rem .6rem; border-radius: 8px; background: #faf8f4; border: 1px solid var(--border); }
+.v2-attn.v2-sev1 { background: #fdecec; border-color: #f3c0c0; }
+.v2-attn.v2-sev2 { background: #fff6e9; border-color: #f0d9ad; }
+.v2-attn.v2-sev3 { background: #eef4fb; border-color: #cdddef; }
+.v2-attn-ic { font-size: .8rem; line-height: 1.3; }
+.v2-attn-body { display: flex; flex-direction: column; gap: .1rem; flex: 1; min-width: 0; }
+.v2-attn-title { font-weight: 700; font-size: .86rem; color: var(--text); }
+.v2-attn-detail { font-size: .76rem; color: var(--muted); }
+.v2-attn-cta { white-space: nowrap; align-self: center; }
+.v2-clear { font-size: .9rem; color: #1e6a44; font-weight: 600; }
+
+/* Target vs Achievement */
+.v2-target-top { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.v2-target-top .kpi-big { line-height: 1; }
+.v2-target-of { font-size: .82rem; color: var(--muted); font-weight: 600; }
+.v2-bar { position: relative; height: 12px; background: #ece8e0; border-radius: 999px; margin: .7rem 0 .55rem; overflow: hidden; }
+.v2-bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; transition: width .3s; }
+.v2-fill-ok { background: linear-gradient(90deg, var(--green2), var(--green)); }
+.v2-fill-behind { background: linear-gradient(90deg, #e6a23c, #d98324); }
+.v2-bar-pace { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text); opacity: .55; }
+.v2-bar-pace::after { content: ""; position: absolute; top: -3px; left: -2px; border: 3px solid transparent; border-top-color: var(--text); opacity: .7; }
+.v2-target-meta { display: flex; flex-direction: column; gap: .15rem; font-size: .78rem; }
+.v2-note { margin-top: .5rem; }
+.v2-note code { background: #efece5; padding: .05rem .3rem; border-radius: 4px; font-size: .74rem; }
+
+/* Estimated Contribution */
+.v2-badge { margin-left: auto; font-size: .62rem; font-weight: 800; letter-spacing: .06em; color: #7a6010;
+  background: #fef4d6; border: 1px solid #e6d08a; padding: .1rem .35rem; border-radius: 5px; }
+.v2-two { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.v2-two-cell { display: flex; flex-direction: column; gap: .12rem; }
+.v2-two-cell .kpi-big { line-height: 1.05; }
+
+/* 7-Day Trend sparkline */
+.v2-spark { display: grid; grid-template-columns: repeat(7, 1fr); gap: .4rem; align-items: end; }
+.v2-spark-col { display: flex; flex-direction: column; align-items: center; gap: .25rem; }
+.v2-spark-track { width: 100%; height: 84px; display: flex; align-items: flex-end; }
+.v2-spark-bar { width: 100%; min-height: 3px; border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--green2), var(--green)); }
+.v2-spark-bar.v2-spark-empty { background: #ded9d0; }
+.v2-spark-val { font-size: .68rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.v2-spark-lbl { font-size: .68rem; color: var(--muted); text-transform: uppercase; }

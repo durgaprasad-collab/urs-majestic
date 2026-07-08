@@ -14,6 +14,120 @@
 <p class="alert-warning">⚠ NEEDS ATTENTION — {{ summary.unexplained_mismatches }} unexplained mismatch(es)</p>
 {% endif %}
 
+{# ── Daily Brief v2: Attention · Target · Contribution · Trend ─────────────── #}
+<div class="v2">
+
+  {# ⚠️ Attention Required — the decision driver, first #}
+  <div class="card v2-attention {{ 'v2-attention-clear' if not attention else '' }}">
+    <div class="v2-head">
+      <span class="v2-emoji">⚠️</span>
+      <h2 class="card-title">Attention Required</h2>
+      {% if attention %}<span class="v2-count">{{ attention|length }}</span>{% endif %}
+    </div>
+    {% if attention %}
+    <ul class="v2-attn-list">
+      {% for a in attention %}
+      <li class="v2-attn v2-sev{{ a.sev }}">
+        <span class="v2-attn-ic">{{ a.icon }}</span>
+        <div class="v2-attn-body">
+          <span class="v2-attn-title">{{ a.title }}</span>
+          {% if a.detail %}<span class="v2-attn-detail">{{ a.detail }}</span>{% endif %}
+        </div>
+        {% if a.link %}<a class="btn-link-sm v2-attn-cta" href="{{ a.link }}">{{ a.link_label or 'View' }} →</a>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="v2-clear">✓ All clear — nothing needs your attention today.</p>
+    {% endif %}
+  </div>
+
+  <div class="v2-row">
+
+    {# 🎯 Sales Target vs Achievement #}
+    {% if target %}
+    <div class="card v2-target">
+      <div class="v2-head">
+        <span class="v2-emoji">🎯</span>
+        <h2 class="card-title">Target vs Achievement</h2>
+        <span class="v2-period">{{ target.month_label }}</span>
+      </div>
+      <div class="v2-target-top">
+        <span class="kpi-big">₹{{ "{:,.0f}".format(target.mtd) }}</span>
+        {% if target.target_set %}
+        <span class="v2-target-of">of ₹{{ "{:,.0f}".format(target.target) }} · {{ "%.0f"|format(target.pct_of_target) }}%</span>
+        {% else %}
+        <span class="v2-target-of">month-to-date · no target set</span>
+        {% endif %}
+      </div>
+      {% if target.target_set %}
+      <div class="v2-bar" title="Pace marker = where you should be by day {{ target.days_elapsed }}">
+        <div class="v2-bar-fill {{ 'v2-fill-ok' if target.on_track else 'v2-fill-behind' }}"
+             style="width: {{ [target.pct_of_target, 100]|min }}%"></div>
+        <div class="v2-bar-pace" style="left: {{ [target.pace_marker_pct, 100]|min }}%"></div>
+      </div>
+      <div class="v2-target-meta">
+        <span class="{{ 'kpi-up' if target.on_track else 'kpi-down' }}">
+          {{ '▲ ahead of pace' if target.on_track else '▼ behind pace' }} by ₹{{ "{:,.0f}".format(target.pace_delta|abs) }}
+        </span>
+        <span class="recon-sub">Projected ₹{{ "{:,.0f}".format(target.projection) }} ({{ "%.0f"|format(target.projection_pct_of_target) }}% of target)</span>
+      </div>
+      {% else %}
+      <p class="recon-sub v2-note">Set <code>MONTHLY_SALES_TARGET</code> to track pace and projection against a goal.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# 💰 Estimated Contribution #}
+    {% if contrib %}
+    <div class="card v2-contrib">
+      <div class="v2-head">
+        <span class="v2-emoji">💰</span>
+        <h2 class="card-title">Estimated Contribution</h2>
+        <span class="v2-badge" title="Estimate — assumes flat food cost until per-item costs are wired in">EST</span>
+      </div>
+      <div class="v2-two">
+        <div class="v2-two-cell">
+          <span class="recon-label">Yesterday</span>
+          <span class="kpi-big">₹{{ "{:,.0f}".format(contrib.day_contribution) }}</span>
+          <span class="recon-sub">{{ "%.0f"|format(contrib.contribution_pct) }}% of ₹{{ "{:,.0f}".format(contrib.day_sales) }}</span>
+        </div>
+        <div class="v2-two-cell">
+          <span class="recon-label">Month-to-date</span>
+          <span class="kpi-big">₹{{ "{:,.0f}".format(contrib.mtd_contribution) }}</span>
+          <span class="recon-sub">of ₹{{ "{:,.0f}".format(contrib.mtd_sales) }} sales</span>
+        </div>
+      </div>
+      <p class="recon-sub v2-note">Assumes ~{{ "%.0f"|format(contrib.food_cost_pct) }}% food cost across all sales. Becomes true contribution once per-item costs feed in.</p>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {# 📈 Last 7-Day Trend #}
+  {% if trend and trend.days %}
+  <div class="card v2-trend">
+    <div class="v2-head">
+      <span class="v2-emoji">📈</span>
+      <h2 class="card-title">Last 7-Day Trend</h2>
+      <span class="v2-period">peak ₹{{ "{:,.0f}".format(trend.peak) }}</span>
+    </div>
+    <div class="v2-spark">
+      {% for r in trend.days %}
+      <div class="v2-spark-col" title="{{ r.date.strftime('%a %d %b') }}: ₹{{ '{:,.0f}'.format(r.net) }}">
+        <div class="v2-spark-track">
+          <div class="v2-spark-bar {{ 'v2-spark-empty' if not r.has_data else '' }}" style="height: {{ r.pct }}%"></div>
+        </div>
+        <span class="v2-spark-val">{{ '{:,.0f}'.format(r.net/1000) }}k</span>
+        <span class="v2-spark-lbl">{{ r.date.strftime('%a')[:2] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
 <div class="brief-grid">
   <div class="brief-col-main">
 
