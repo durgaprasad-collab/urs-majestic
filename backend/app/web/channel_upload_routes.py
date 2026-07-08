@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.config import settings as _cfg
 from app.web.deps import _tmpl, require_user
+from app.models.upload_log import UploadLog
 from app.services.uploads.item_matching import MenuIndex
 from app.services.uploads.zomato import parse_zomato_csv, date_range_from_filename
 from app.services.uploads.swiggy import parse_swiggy_csv
-from app.services.uploads.channel_orders import upsert_order, upsert_daily_channel_sales
+from app.services.uploads.channel_orders import upsert_order, upsert_daily_channel_sales, write_upload_log
 
 router = APIRouter(tags=["web"])
 
@@ -61,14 +62,24 @@ async def upload_zomato(
 
     try:
         menu_index = MenuIndex(db)
-        orders, parse_errors, unmapped = parse_zomato_csv(data, menu_index)
+        orders, parse_errors, unmapped, total_rows_seen = parse_zomato_csv(data, menu_index)
         date_range = date_range_from_filename(file.filename, orders)
         for order in orders:
             upsert_order(db, "zomato", order)
         days = upsert_daily_channel_sales(db, "zomato", orders, date_range, file.filename)
+        write_upload_log(
+            db, channel="zomato", source_file=file.filename, orders=orders,
+            parse_errors=parse_errors, total_rows_seen=total_rows_seen,
+            date_range=date_range, succeeded=True,
+        )
         db.commit()
     except Exception as exc:
         db.rollback()
+        db.add(UploadLog(
+            channel="zomato", source_file=file.filename or "unknown",
+            rows_parsed=0, rows_inserted=0, succeeded=False, error_detail=str(exc),
+        ))
+        db.commit()
         return _tmpl(
             request, "upload.html",
             {"user": user, "error": f"Could not process file: {exc}"},
@@ -105,13 +116,23 @@ async def upload_swiggy(
 
     try:
         menu_index = MenuIndex(db)
-        orders, parse_errors, unmapped, date_range = parse_swiggy_csv(data, menu_index)
+        orders, parse_errors, unmapped, date_range, total_rows_seen = parse_swiggy_csv(data, menu_index)
         for order in orders:
             upsert_order(db, "swiggy", order)
         days = upsert_daily_channel_sales(db, "swiggy", orders, date_range, file.filename)
+        write_upload_log(
+            db, channel="swiggy", source_file=file.filename, orders=orders,
+            parse_errors=parse_errors, total_rows_seen=total_rows_seen,
+            date_range=date_range, succeeded=True,
+        )
         db.commit()
     except Exception as exc:
         db.rollback()
+        db.add(UploadLog(
+            channel="swiggy", source_file=file.filename or "unknown",
+            rows_parsed=0, rows_inserted=0, succeeded=False, error_detail=str(exc),
+        ))
+        db.commit()
         return _tmpl(
             request, "upload.html",
             {"user": user, "error": f"Could not process file: {exc}"},

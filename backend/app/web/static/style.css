@@ -640,3 +640,34 @@ a { color: var(--green); }
 }
 .kpi-chip-stale { background: #fef9e7; color: #9a7d0a; font-weight: 600; }
 .apply-all-hint { font-size: .75rem; color: var(--muted); width: 100%; }
+
+/* ── Data reconciliation ──────────────────────────────────────────────────── */
+.alert-warning {
+  background: #fef9e7;
+  color: #9a7d0a;
+  border: 1px solid #f0d76a;
+  border-radius: var(--r);
+  padding: .75rem 1rem;
+  font-weight: 600;
+  margin-bottom: .5rem;
+}
+.status-badge {
+  font-size: .75rem;
+  font-weight: 700;
+  padding: .2rem .55rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.status-ok        { background: #eafaf1; color: #1e6a44; }
+.status-explained { background: #fef9e7; color: #9a7d0a; }
+.status-mismatch  { background: #fdf0ef; color: var(--red); }
+.explain-details summary { list-style: none; cursor: pointer; }
+.explain-details summary::-webkit-details-marker { display: none; }
+.explain-form {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  margin-top: .4rem;
+  min-width: 220px;
+}
+.explain-form textarea.form-input { resize: vertical; }

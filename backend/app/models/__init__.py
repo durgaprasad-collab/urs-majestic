@@ -8,6 +8,8 @@ from app.models.purchase import Purchase
 from app.models.customer_feedback import CustomerFeedback
 from app.models.combo import ComboComponent
 from app.models.daily_channel_sales import DailyChannelSales
+from app.models.upload_log import UploadLog
+from app.models.recon_exception import ReconException
 
 __all__ = [
     "User",
@@ -24,4 +26,6 @@ __all__ = [
     "CustomerFeedback",
     "ComboComponent",
     "DailyChannelSales",
+    "UploadLog",
+    "ReconException",
 ]

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Data Reconciliation — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Data Reconciliation</h1>
+  <p class="page-sub">Cross-checks each channel's declared sales against what was actually ingested.</p>
+</div>
+
+{% if trust %}
+  {% if trust.indicator == 'DATA TRUSTED' %}
+  <p class="alert-success">✓ DATA TRUSTED — every upload reconciles.</p>
+  {% else %}
+  <p class="alert-warning">
+    ⚠ NEEDS ATTENTION — {{ trust.unexplained_mismatches }} unexplained mismatch(es),
+    oldest {{ trust.oldest_mismatch_date.strftime('%d %b %Y') if trust.oldest_mismatch_date else '—' }}.
+  </p>
+  {% endif %}
+{% endif %}
+
+<div class="recon-grid" style="margin-top:1rem">
+  {% for c in channels %}
+  <div class="recon-card {{ 'recon-total' if c.indicator == 'TRUSTED' else 'recon-personal' }}">
+    <span class="recon-label">{{ c.channel }}</span>
+    <span class="recon-value" style="font-size:1rem">
+      {{ '✓ TRUSTED' if c.indicator == 'TRUSTED' else '⚠ NEEDS ATTENTION' }}
+    </span>
+    <span class="recon-sub">
+      Latest data: {{ c.latest_data_date.strftime('%d %b %Y') if c.latest_data_date else '—' }}<br>
+      Last upload: {{ c.last_upload_at.strftime('%d %b %Y %H:%M') if c.last_upload_at else '—' }}<br>
+      {{ c.unexplained_mismatches }} unexplained · {{ c.explained_mismatches }} explained
+    </span>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">
+    Daily detail {% if not show_all %}(mismatches &amp; explained only){% endif %}
+  </h2>
+  <p class="card-sub">
+    {% if show_all %}
+    <a href="/data-reconciliation">Show mismatches only</a>
+    {% else %}
+    <a href="/data-reconciliation?all=1">Show all days</a>
+    {% endif %}
+  </p>
+
+  {% if daily %}
+  <div class="recon-table-wrap">
+    <table class="recon-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Channel</th>
+          <th class="col-num">Channel sales</th>
+          <th class="col-num">Crosscheck sales</th>
+          <th class="col-num">Diff</th>
+          <th class="col-num">Orders</th>
+          <th>Status</th>
+          <th>Explanation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in daily %}
+        <tr>
+          <td>{{ row.business_date.strftime('%d %b %Y') }}</td>
+          <td>{{ row.channel }}</td>
+          <td class="col-num">₹{{ "{:,.2f}".format(row.channel_sales) }}</td>
+          <td class="col-num">₹{{ "{:,.2f}".format(row.crosscheck_sales) }}</td>
+          <td class="col-num">₹{{ "{:,.2f}".format(row.sales_diff) }}</td>
+          <td class="col-num">
+            {% if row.channel_orders is not none or row.crosscheck_orders is not none %}
+              {{ row.channel_orders if row.channel_orders is not none else "—" }} / {{ row.crosscheck_orders if row.crosscheck_orders is not none else "—" }}
+              {% if row.orders_mismatch %}<span style="color:var(--red)"> ⚠</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <span class="status-badge status-{{ row.status|lower }}">{{ row.status }}</span>
+          </td>
+          <td>
+            {% if row.explanation %}
+            {{ row.explanation }}
+            {% elif row.status == 'MISMATCH' %}
+            <details class="explain-details">
+              <summary class="btn-link-sm">Explain</summary>
+              <form method="post" action="/data-reconciliation/explain" class="explain-form">
+                <input type="hidden" name="business_date" value="{{ row.business_date.isoformat() }}" />
+                <input type="hidden" name="channel" value="{{ row.channel }}" />
+                <input type="hidden" name="expected" value="{{ row.channel_sales }}" />
+                <input type="hidden" name="actual" value="{{ row.crosscheck_sales }}" />
+                <textarea name="explanation" class="form-input" placeholder="Why does this not reconcile?" required rows="2"></textarea>
+                <input type="text" name="acknowledged_by" class="form-input" placeholder="Your name" required />
+                <button type="submit" class="btn-sm btn-secondary">Save explanation</button>
+              </form>
+            </details>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="card-sub">Nothing to show — every day reconciles.</p>
+  {% endif %}
+</div>
+{% endblock %}

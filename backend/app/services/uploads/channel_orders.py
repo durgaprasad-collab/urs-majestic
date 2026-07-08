@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.order import Order, OrderItem, OrderStatus
 from app.models.daily_channel_sales import DailyChannelSales
+from app.models.upload_log import UploadLog
 
 
 @dataclass
@@ -130,3 +131,38 @@ def upsert_daily_channel_sales(
         db.execute(stmt)
 
     return len(totals)
+
+
+def write_upload_log(
+    db: Session,
+    *,
+    channel: str,
+    source_file: str,
+    orders: list[ParsedOrder],
+    parse_errors: list[ParseError],
+    total_rows_seen: int,
+    date_range: tuple[date, date] | None,
+    succeeded: bool,
+    error_detail: str | None = None,
+) -> UploadLog:
+    """Every upload writes exactly one upload_log row. file_declared_total is
+    always NULL for these channels (no self-reported checksum in the file);
+    file_declared_rows is the row count actually present in the file."""
+    log = UploadLog(
+        channel=channel,
+        source_file=source_file,
+        period_start=date_range[0] if date_range else None,
+        period_end=date_range[1] if date_range else None,
+        file_declared_total=None,
+        file_declared_rows=total_rows_seen,
+        rows_parsed=total_rows_seen,
+        rows_inserted=len(orders),
+        rows_skipped_today=0,
+        rows_failed=max(total_rows_seen - len(orders), 0),
+        amount_inserted=sum((o.net for o in orders), decimal.Decimal("0")),
+        succeeded=succeeded,
+        error_detail=error_detail,
+    )
+    db.add(log)
+    db.flush()
+    return log

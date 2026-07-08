@@ -18,8 +18,12 @@ REQUIRED_COLUMNS = [
 ]
 
 
-def parse_zomato_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrder], list[ParseError], set[str]]:
-    """Returns (orders, parse_errors, unmapped_item_names)."""
+def parse_zomato_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrder], list[ParseError], set[str], int]:
+    """Returns (orders, parse_errors, unmapped_item_names, total_rows_seen).
+    total_rows_seen counts every non-blank order row attempted, so
+    total_rows_seen - len(orders) is the count of rows that failed outright
+    (for upload_log.rows_failed) — distinct from per-item parse_errors on
+    orders that otherwise succeeded."""
     text = data.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))
 
@@ -30,11 +34,13 @@ def parse_zomato_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrd
     orders: list[ParsedOrder] = []
     errors: list[ParseError] = []
     unmapped: set[str] = set()
+    total_rows_seen = 0
 
     for line_no, row in enumerate(reader, start=2):  # header is line 1
         ext_id = (row.get("Order ID") or "").strip()
         if not ext_id:
             continue
+        total_rows_seen += 1
         try:
             placed_at = datetime.strptime(row["Order Placed At"].strip(), "%I:%M %p, %B %d %Y")
             status = "delivered" if row["Order Status"].strip() == "Delivered" else "cancelled"
@@ -74,7 +80,7 @@ def parse_zomato_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrd
         except Exception as exc:
             errors.append(ParseError(line_no, f"Order {ext_id or '?'}: {exc}"))
 
-    return orders, errors, unmapped
+    return orders, errors, unmapped, total_rows_seen
 
 
 def date_range_from_filename(filename: str, orders: list[ParsedOrder]) -> tuple[date, date]:

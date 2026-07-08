@@ -44,6 +44,7 @@ from app.core.database import SessionLocal
 from app.models.menu_item import MenuItem, PosAlias
 from app.models.item_sale import ItemSale
 from app.models.daily_channel_sales import DailyChannelSales
+from app.models.upload_log import UploadLog
 
 SEED_JSON = os.path.join(os.path.dirname(__file__), "..", "data", "menu_seed.json")
 DEFAULT_XLSX = os.path.join(os.path.dirname(__file__), "..", "data", "pos_export.xlsx")
@@ -105,10 +106,23 @@ def seed_menu_items(db, seed: dict) -> dict[str, MenuItem]:
     return existing
 
 
+class ParseError:
+    def __init__(self, line: int, message: str):
+        self.line = line
+        self.message = message
+
+    def __repr__(self):
+        return f"ParseError(line={self.line}, message={self.message!r})"
+
+
 # ── Step 2: Parse xlsx ────────────────────────────────────────────────────────
 
-def parse_xlsx(path: str) -> list[dict]:
-    """Parse POS xlsx. Returns list of {raw_name, sale_date, qty, revenue}."""
+def parse_xlsx(path: str) -> tuple[list[dict], list[ParseError], Decimal | None, int | None]:
+    """Parse POS xlsx. Returns (rows, parse_errors, file_declared_total,
+    file_declared_rows) where rows are {raw_name, sale_date, qty, revenue}
+    and the declared total/rows come from the file's own 'Total' summary row
+    (the file's self-reported checksum — used for upload_log auditing, never
+    for the actual insert)."""
     try:
         import openpyxl
     except ImportError:
@@ -128,20 +142,34 @@ def parse_xlsx(path: str) -> list[dict]:
     if header_row is None:
         raise ValueError("Could not find header row with 'Item' in column A")
 
-    rows = []
-    for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+    rows: list[dict] = []
+    errors: list[ParseError] = []
+    declared_total: Decimal | None = None
+    declared_rows: int | None = None
+
+    for line_no, row in enumerate(ws.iter_rows(min_row=header_row + 1, values_only=True), start=header_row + 1):
         raw_name = row[0]
         if raw_name is None:
             continue
         raw_name = str(raw_name).strip()
-        if not raw_name or raw_name.lower() in ("total", "grand total", ""):
+        if not raw_name:
             continue
 
-        date_val = row[1]
-        qty_val = row[2]
-        revenue_val = row[3]
+        date_val, qty_val, revenue_val = row[1], row[2], row[3]
+
+        if raw_name.lower() in ("total", "grand total"):
+            # The file's own self-reported checksum row — not a data row.
+            try:
+                if qty_val is not None:
+                    declared_rows = int(qty_val)
+                if revenue_val is not None:
+                    declared_total = Decimal(str(revenue_val))
+            except Exception as exc:
+                errors.append(ParseError(line_no, f"Could not read declared total row: {exc}"))
+            continue
 
         if date_val is None or qty_val is None or revenue_val is None:
+            errors.append(ParseError(line_no, f"Row for {raw_name!r} missing date/qty/total"))
             continue
 
         # Normalize date
@@ -158,13 +186,14 @@ def parse_xlsx(path: str) -> list[dict]:
                     try:
                         sale_date = dt.strptime(str(date_val).strip(), "%Y-%m-%d").date()
                     except ValueError:
-                        print(f"  [WARN] Could not parse date: {date_val!r} for item {raw_name!r}")
+                        errors.append(ParseError(line_no, f"Could not parse date {date_val!r} for item {raw_name!r}"))
                         continue
 
         try:
             qty = Decimal(str(qty_val))
             revenue = Decimal(str(revenue_val))
-        except Exception:
+        except Exception as exc:
+            errors.append(ParseError(line_no, f"Non-numeric qty/total for {raw_name!r}: {exc}"))
             continue
 
         rows.append({
@@ -174,7 +203,7 @@ def parse_xlsx(path: str) -> list[dict]:
             "revenue": revenue,
         })
 
-    return rows
+    return rows, errors, declared_total, declared_rows
 
 
 # ── Step 2b: Drop same-day rows ────────────────────────────────────────────────
@@ -206,22 +235,27 @@ def build_resolver(seed: dict, menu_map: dict[str, MenuItem]) -> dict[str, str]:
 def load_sales(db, rows: list[dict], resolver: dict[str, str]) -> tuple[list, list]:
     """Replace item_sales for the date range covered by `rows` (not the whole
     table) so a corrected re-export heals just its own dates without wiping
-    history outside that range."""
-    matched = []
+    history outside that range.
+
+    Every row is inserted — never silently dropped. A row with no
+    pos_aliases/menu_items match still gets a row, with item_name falling
+    back to raw_name, so revenue always reconciles against
+    daily_channel_sales (see v_recon_daily). `unmatched` is still reported
+    separately so unmapped names stay visible."""
+    to_insert = []
     unmatched = []
 
     for row in rows:
         canonical = resolver.get(row["raw_name"])
         if canonical is None:
             unmatched.append(row["raw_name"])
-        else:
-            matched.append(ItemSale(
-                raw_name=row["raw_name"],
-                item_name=canonical,
-                sale_date=row["sale_date"],
-                qty=row["qty"],
-                revenue=row["revenue"],
-            ))
+        to_insert.append(ItemSale(
+            raw_name=row["raw_name"],
+            item_name=canonical or row["raw_name"],
+            sale_date=row["sale_date"],
+            qty=row["qty"],
+            revenue=row["revenue"],
+        ))
 
     if rows:
         min_date = min(r["sale_date"] for r in rows)
@@ -230,10 +264,10 @@ def load_sales(db, rows: list[dict], resolver: dict[str, str]) -> tuple[list, li
             ItemSale.sale_date >= min_date, ItemSale.sale_date <= max_date
         ).delete(synchronize_session=False)
 
-    db.bulk_save_objects(matched)
+    db.bulk_save_objects(to_insert)
     db.flush()
 
-    return matched, unmatched
+    return to_insert, unmatched
 
 
 # ── Step 5: Upsert daily_channel_sales ──────────────────────────────────────────
@@ -271,6 +305,43 @@ def upsert_daily_channel_sales(db, rows: list[dict], source_file: str) -> int:
     return len(totals)
 
 
+# ── Step 6: Log the upload ──────────────────────────────────────────────────────
+
+def write_upload_log(
+    db,
+    *,
+    source_file: str,
+    rows: list[dict],
+    parse_errors: list[ParseError],
+    excluded_today: int,
+    declared_total: Decimal | None,
+    declared_rows: int | None,
+    succeeded: bool,
+    error_detail: str | None = None,
+) -> UploadLog:
+    """Every upload writes exactly one upload_log row, success or failure —
+    silent row-dropping is forbidden, so this is the audit trail proving it."""
+    dates = [r["sale_date"] for r in rows]
+    log = UploadLog(
+        channel="petpooja",
+        source_file=source_file,
+        period_start=min(dates) if dates else None,
+        period_end=max(dates) if dates else None,
+        file_declared_total=declared_total,
+        file_declared_rows=declared_rows,
+        rows_parsed=len(rows) + excluded_today + len(parse_errors),
+        rows_inserted=len(rows),
+        rows_skipped_today=excluded_today,
+        rows_failed=len(parse_errors),
+        amount_inserted=sum((r["revenue"] for r in rows), Decimal("0")) if rows else Decimal("0"),
+        succeeded=succeeded,
+        error_detail=error_detail,
+    )
+    db.add(log)
+    db.flush()
+    return log
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main(xlsx_path: str):
@@ -283,11 +354,15 @@ def main(xlsx_path: str):
         menu_map = seed_menu_items(db, seed)
 
         print("\n-- Step 2: Parse POS xlsx -------------------------------------------")
-        raw_rows = parse_xlsx(xlsx_path)
+        raw_rows, parse_errors, declared_total, declared_rows = parse_xlsx(xlsx_path)
         raw_rows, excluded_today = exclude_today(raw_rows, date.today())
         print(f"  {len(raw_rows)} data rows read from {os.path.basename(xlsx_path)}")
         if excluded_today:
             print(f"  {excluded_today} row(s) dated today excluded (incomplete same-day export)")
+        if parse_errors:
+            print(f"  {len(parse_errors)} row(s) failed to parse:")
+            for e in parse_errors:
+                print(f"    line {e.line}: {e.message}")
 
         print("\n-- Step 3: Resolve and insert item_sales ----------------------------")
         resolver = build_resolver(seed, menu_map)
@@ -296,6 +371,18 @@ def main(xlsx_path: str):
         print("\n-- Step 4: Upsert daily_channel_sales --------------------------------")
         days = upsert_daily_channel_sales(db, raw_rows, os.path.basename(xlsx_path))
         print(f"  {days} business date(s) upserted (channel=petpooja)")
+
+        print("\n-- Step 5: Log upload -------------------------------------------------")
+        write_upload_log(
+            db,
+            source_file=os.path.basename(xlsx_path),
+            rows=raw_rows,
+            parse_errors=parse_errors,
+            excluded_today=excluded_today,
+            declared_total=declared_total,
+            declared_rows=declared_rows,
+            succeeded=True,
+        )
 
         db.commit()
 

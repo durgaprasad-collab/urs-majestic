@@ -21,6 +21,10 @@
 <p class="alert-success">{{ today_excluded }} row(s) dated today were excluded (same-day exports are incomplete).</p>
 {% endif %}
 
+{% if parse_errors_count %}
+<p class="alert-error">{{ parse_errors_count }} row(s) could not be parsed (line(s) {{ parse_error_lines }}) — see the upload log for details.</p>
+{% endif %}
+
 {% macro cost_badge(r) %}
   {% if r.cost_basis == 'Derived' %}
     {% if r.cost_confidence == 'reliable' %}

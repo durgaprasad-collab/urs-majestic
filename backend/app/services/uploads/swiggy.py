@@ -22,8 +22,10 @@ REQUIRED_COLUMNS = [
 ]
 
 
-def parse_swiggy_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrder], list[ParseError], set[str], tuple[date, date]]:
-    """Returns (orders, parse_errors, unmapped_item_names, date_range)."""
+def parse_swiggy_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrder], list[ParseError], set[str], tuple[date, date], int]:
+    """Returns (orders, parse_errors, unmapped_item_names, date_range,
+    total_rows_seen). total_rows_seen - len(orders) is the count of rows
+    that failed outright (upload_log.rows_failed)."""
     text = data.decode("utf-8-sig")
     all_rows = list(csv.reader(io.StringIO(text)))
 
@@ -54,10 +56,12 @@ def parse_swiggy_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrd
     orders: list[ParsedOrder] = []
     errors: list[ParseError] = []
     unmapped: set[str] = set()
+    total_rows_seen = 0
 
     for line_no, row in enumerate(all_rows[header_idx + 1:], start=header_idx + 2):
         if not row or not row[0].strip():
             continue
+        total_rows_seen += 1
         ext_id = row[col["Order ID"]].strip()
         try:
             fixed = row[:n_fixed]
@@ -113,4 +117,4 @@ def parse_swiggy_csv(data: bytes, menu_index: MenuIndex) -> tuple[list[ParsedOrd
         dates = [o.placed_at.date() for o in orders]
         duration_range = (min(dates), max(dates)) if dates else (date.today(), date.today())
 
-    return orders, errors, unmapped, duration_range
+    return orders, errors, unmapped, duration_range, total_rows_seen

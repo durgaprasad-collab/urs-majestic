@@ -8,11 +8,12 @@ from app.core.database import get_db
 from datetime import date
 from scripts.import_pos import (
     seed_menu_items, parse_xlsx, build_resolver, load_sales,
-    exclude_today, upsert_daily_channel_sales,
+    exclude_today, upsert_daily_channel_sales, write_upload_log,
 )
 from app.services.menu_engineering.analysis import get_analysis
 from app.services.kpi import get_yesterday_sales, get_channel_upload_status
 from app.models.item_sale import ItemSale
+from app.models.upload_log import UploadLog
 from app.web.deps import _tmpl, require_user
 
 _SEED = os.path.normpath(
@@ -104,14 +105,33 @@ async def upload_post(
             seed = json.load(f)
 
         menu_map = seed_menu_items(db, seed)
-        raw_rows = parse_xlsx(tmp.name)
+        raw_rows, parse_errors, declared_total, declared_rows = parse_xlsx(tmp.name)
         raw_rows, excluded_today = exclude_today(raw_rows, date.today())
         resolver = build_resolver(seed, menu_map)
         load_sales(db, raw_rows, resolver)
         upsert_daily_channel_sales(db, raw_rows, file.filename)
+        write_upload_log(
+            db,
+            source_file=file.filename,
+            rows=raw_rows,
+            parse_errors=parse_errors,
+            excluded_today=excluded_today,
+            declared_total=declared_total,
+            declared_rows=declared_rows,
+            succeeded=True,
+        )
         db.commit()
     except Exception as exc:
         db.rollback()
+        db.add(UploadLog(
+            channel="petpooja",
+            source_file=file.filename or "unknown",
+            rows_parsed=0,
+            rows_inserted=0,
+            succeeded=False,
+            error_detail=str(exc),
+        ))
+        db.commit()
         return _tmpl(
             request, "upload.html",
             {"user": user, "error": f"Could not process file: {exc}"},
@@ -120,9 +140,13 @@ async def upload_post(
     finally:
         os.unlink(tmp.name)
 
-    redirect_url = "/results"
+    params = []
     if excluded_today:
-        redirect_url += f"?today_excluded={excluded_today}"
+        params.append(f"today_excluded={excluded_today}")
+    if parse_errors:
+        lines = ",".join(str(e.line) for e in parse_errors[:20])
+        params.append(f"parse_errors={len(parse_errors)}&parse_error_lines={lines}")
+    redirect_url = "/results" + ("?" + "&".join(params) if params else "")
     return RedirectResponse(redirect_url, status_code=303)
 
 
@@ -141,6 +165,8 @@ def results(request: Request, db: Session = Depends(get_db)):
     date_to = _fmt_date(max(dates)) if dates else "—"
     engine_ran = request.query_params.get("engine") == "1"
     today_excluded = request.query_params.get("today_excluded")
+    parse_errors_count = request.query_params.get("parse_errors")
+    parse_error_lines = request.query_params.get("parse_error_lines")
 
     def _top10(cls: str) -> list:
         bucket = [r for r in rows if r["classification"] == cls]
@@ -159,4 +185,6 @@ def results(request: Request, db: Session = Depends(get_db)):
         "item_count": len(rows),
         "engine_ran": engine_ran,
         "today_excluded": today_excluded,
+        "parse_errors_count": parse_errors_count,
+        "parse_error_lines": parse_error_lines,
     })
