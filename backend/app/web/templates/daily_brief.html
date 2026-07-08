@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Daily Brief — URS Majestic{% endblock %}
+
+{% block content %}
+{% if summary %}
+<div class="brief">
+  <div class="brief-header {{ 'brief-header-bad' if not trusted else '' }}">
+    <span class="brief-status">
+      {{ '✓ DATA TRUSTED' if trusted else '⚠ NEEDS ATTENTION — ' ~ summary.unexplained_mismatches ~ ' unexplained mismatch(es)' }}
+    </span>
+    <span class="brief-asof">as of {{ summary.data_through.strftime('%d %b %Y') }}</span>
+  </div>
+
+  <div class="brief-grid">
+    <div class="brief-col-main">
+
+      <div class="brief-exec {{ 'brief-dimmed' if not trusted else '' }}">
+        <div class="brief-exec-big">
+          <span class="kpi-label">Net sales — {{ summary.data_through.strftime('%d %b %Y') }}</span>
+          <div class="kpi-big">₹{{ "{:,.0f}".format(summary.latest_day_sales) }}</div>
+          <div class="kpi-deltas">
+            <span class="kpi-delta{% if summary.pct_vs_prior_day is not none %}{{ ' kpi-up' if summary.pct_vs_prior_day >= 0 else ' kpi-down' }}{% endif %}">
+              {% if summary.pct_vs_prior_day is not none %}{{ "%+.1f"|format(summary.pct_vs_prior_day) }}%{% else %}—{% endif %} prior day
+            </span>
+            <span class="kpi-delta{% if summary.pct_vs_same_weekday is not none %}{{ ' kpi-up' if summary.pct_vs_same_weekday >= 0 else ' kpi-down' }}{% endif %}">
+              {% if summary.pct_vs_same_weekday is not none %}{{ "%+.1f"|format(summary.pct_vs_same_weekday) }}%{% else %}—{% endif %} same weekday
+            </span>
+          </div>
+        </div>
+        <div class="brief-split">
+          <div class="brief-split-item"><span class="recon-label">Counter</span><span class="recon-value">₹{{ "{:,.0f}".format(summary.counter_sales or 0) }}</span></div>
+          <div class="brief-split-item"><span class="recon-label">Zomato</span><span class="recon-value">₹{{ "{:,.0f}".format(summary.zomato_sales or 0) }}</span></div>
+          <div class="brief-split-item"><span class="recon-label">Swiggy</span><span class="recon-value">₹{{ "{:,.0f}".format(summary.swiggy_sales or 0) }}</span></div>
+          <div class="brief-split-item"><span class="recon-label">Delivery orders</span><span class="recon-value">{{ summary.delivery_orders or 0 }}</span></div>
+          <div class="brief-split-item"><span class="recon-label">Delivery AOV</span><span class="recon-value">₹{{ "{:,.0f}".format(summary.delivery_aov) if summary.delivery_aov is not none else "—" }}</span></div>
+          <div class="brief-split-item"><span class="recon-label">Counter AOV</span><span class="recon-value brief-na">n/a — needs POS bill-count report</span></div>
+        </div>
+      </div>
+
+      <div class="brief-menu">
+        <h2 class="card-title" style="font-size:.9rem">Menu — as of {{ menu_as_of.strftime('%d %b') if menu_as_of else "—" }}</h2>
+        <div class="brief-menu-cols">
+          <div class="brief-menu-col">
+            <span class="brief-menu-heading">Top</span>
+            {% for r in top %}<div class="brief-menu-row"><span>{{ r.item }}</span><span class="col-num">₹{{ "{:,.0f}".format(r.revenue) }}</span></div>{% endfor %}
+          </div>
+          <div class="brief-menu-col">
+            <span class="brief-menu-heading">Bottom</span>
+            {% for r in bottom %}<div class="brief-menu-row"><span>{{ r.item }}</span><span class="col-num">₹{{ "{:,.0f}".format(r.revenue) }}</span></div>{% endfor %}
+          </div>
+          <div class="brief-menu-col">
+            <span class="brief-menu-heading">Zero sales (14d) — {{ zero|length }}</span>
+            {% for r in zero[:5] %}<div class="brief-menu-row"><span>{{ r.item }}</span></div>{% endfor %}
+            {% if zero|length > 5 %}<div class="brief-menu-row"><span class="recon-sub">+ {{ zero|length - 5 }} more</span></div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <p class="brief-customer">Ratings: latest known snapshot from weekly Zomato file — no live review feed yet.</p>
+
+      <div class="brief-ops">
+        {% for c in channel_status %}
+        <span class="kpi-chip{% if c.is_stale %} kpi-chip-stale{% endif %}">
+          {{ c.channel }}: {{ c.latest_date.strftime('%d %b') if c.latest_date else "no data" }}
+          {%- if c.is_stale %} — ⚠ {{ c.days_behind_freshest }}d behind{% endif %}
+          {%- if failed_rows_by_channel.get(c.channel) %} — ⚠ {{ failed_rows_by_channel[c.channel] }} row(s) failed last upload{% endif %}
+        </span>
+        {% endfor %}
+      </div>
+
+    </div>
+
+    <div class="brief-col-actions">
+      <h2 class="brief-actions-title">GM Actions</h2>
+      {% if actions %}
+      <ol class="brief-actions-list">
+        {% for a in actions %}
+        <li>{{ a.action }}</li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <p class="card-sub">Nothing needs attention.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card"><p>No sales data yet.</p></div>
+{% endif %}
+{% endblock %}
