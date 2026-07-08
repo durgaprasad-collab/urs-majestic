@@ -377,10 +377,16 @@
     var root = document.getElementById('brief-print-root');
     if (!root) return;
     root.style.setProperty('--print-zoom', '1');
-    // A4 portrait printable area at 96dpi with ~6mm margins.
-    var availH = 1075, availW = 745;
-    var z = Math.min(1, availH / root.scrollHeight, availW / root.scrollWidth) * 0.97;
-    root.style.setProperty('--print-zoom', Math.max(0.3, z).toFixed(3));
+    // Measure at the REAL A4 printable width (~198mm @96dpi) so the two-column
+    // rows lay out as they will on paper — measuring the phone's narrow width
+    // over-shrinks. Force the width briefly, read the packed height, restore.
+    var prevW = root.style.width;
+    root.style.width = '748px';
+    var h = root.scrollHeight;
+    root.style.width = prevW;
+    var availH = 1058; // A4 printable height @96dpi with ~5mm margins
+    var z = Math.min(1, availH / h) * 0.97;
+    root.style.setProperty('--print-zoom', Math.max(0.4, z).toFixed(3));
   }
   function exportBriefPdf() { fitBriefToPage(); window.print(); }
   window.addEventListener('beforeprint', fitBriefToPage);

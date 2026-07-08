@@ -832,22 +832,37 @@ a { color: var(--green); }
 .print-btn { cursor: pointer; }
 
 @media print {
-  @page { size: A4 portrait; margin: 6mm; }
-  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A4 portrait; margin: 5mm; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 12px; }
   html, body { background: #fff !important; }
   /* Hide app chrome + interactive-only bits */
   .app-header, .app-nav, .print-hide, .btn-link-sm, .v2-attn-cta { display: none !important; }
   details.v3-explain { display: none !important; }   /* concise printout */
   .app-main { padding: 0 !important; margin: 0 !important; max-width: none !important; width: 100% !important; }
   a { color: inherit !important; text-decoration: none !important; }
-  /* Scale the whole brief to one page (JS tunes --print-zoom; 0.6 = fallback) */
-  .print-root { zoom: var(--print-zoom, 0.6); }
-  /* Compact spacing for print */
-  .card { padding: .45rem .55rem !important; margin: 0 0 .4rem !important; box-shadow: none !important;
-    border: 1px solid #cfcabf !important; border-radius: 6px; }
-  .v2, .v2-row, .v3-row2 { gap: .4rem !important; margin-bottom: .4rem !important; }
-  .page-header { margin-bottom: .3rem !important; }
-  /* Keep components whole across the (single) page */
-  .card, .v2-attn, .v3-win, .v3-tgt-card, .v3-chan, .recon-card, .v2-spark { break-inside: avoid; }
-  .brief-grid { break-inside: avoid; }
+
+  /* Scale the whole brief to one page. JS measures at true A4 width and sets
+     --print-zoom; 0.72 is a sensible fallback if the script doesn't run. */
+  .print-root { zoom: var(--print-zoom, 0.72); }
+
+  /* Force the 2-column packing at A4 width (screen breakpoints would otherwise
+     collapse these to a single tall column at ~748px). */
+  .v3-exec-grid { grid-template-columns: 1fr 1.4fr !important; }
+  .v2-row, .v3-row2 { grid-template-columns: 1fr 1fr !important; gap: .35rem !important; margin-bottom: .35rem !important; }
+  .brief-grid { grid-template-columns: 2fr 1fr !important; gap: .35rem !important; }
+  .v2 { gap: .35rem !important; margin-bottom: .35rem !important; }
+
+  /* Compact spacing + type for print */
+  .card { padding: .4rem .5rem !important; margin: 0 0 .35rem !important; box-shadow: none !important;
+    border: 1px solid #cfcabf !important; border-radius: 5px; }
+  .card-title, .v2-head .card-title { font-size: .82rem !important; }
+  .kpi-big, .v3-tgt-big, .v3-tgt-v { font-size: 1rem !important; line-height: 1.1 !important; }
+  .v2-head { margin-bottom: .35rem !important; }
+  .page-header { margin-bottom: .25rem !important; }
+  .brief-col-main { gap: .35rem !important; }
+  .recon-sub, .v2-attn-detail, .v3-gm-meta { font-size: .66rem !important; }
+  .v2-spark-track { height: 46px !important; }
+
+  /* Keep each component whole (no mid-card page breaks) */
+  .card, .v2-attn, .v3-win, .v3-tgt-card, .v3-chan, .recon-card, .v2-spark-col, .v3-gm { break-inside: avoid; }
 }
