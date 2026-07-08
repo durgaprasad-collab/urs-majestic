@@ -746,3 +746,62 @@ a { color: var(--green); }
 .v2-spark-bar.v2-spark-empty { background: #ded9d0; }
 .v2-spark-val { font-size: .68rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 .v2-spark-lbl { font-size: .68rem; color: var(--muted); text-transform: uppercase; }
+
+/* ── Daily Brief v3: Exec Summary · Wins · Channels · Customer · Ops · Priority ── */
+.v3-exec { margin-bottom: .6rem; }
+.v3-exec-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; }
+.v3-status { font-size: .72rem; font-weight: 800; letter-spacing: .04em; padding: .28rem .55rem; border-radius: 999px; white-space: nowrap; }
+.v3-status-ok      { background: #e6f4ec; color: #1e6a44; border: 1px solid #b6dcc6; }
+.v3-status-warn    { background: #fdecec; color: var(--red); border: 1px solid #f3c0c0; }
+.v3-status-pending { background: #fff6e9; color: #a5701a; border: 1px solid #f0d9ad; }
+.v3-exec-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; margin-top: .7rem; align-items: center; }
+@media (max-width: 640px) { .v3-exec-grid { grid-template-columns: 1fr; gap: .7rem; } }
+.v3-exec-target { border-left: 1px solid var(--border); padding-left: 1rem; }
+@media (max-width: 640px) { .v3-exec-target { border-left: none; padding-left: 0; border-top: 1px solid var(--border); padding-top: .7rem; } }
+.v3-tgt-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; }
+@media (max-width: 500px) { .v3-tgt-cells { grid-template-columns: repeat(2, 1fr); } }
+.v3-tgt-cells > div { display: flex; flex-direction: column; gap: .12rem; }
+.v3-tgt-v { font-size: 1.05rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.v3-tgt-empty { display: flex; flex-direction: column; gap: .2rem; }
+
+/* Row: two cards side by side (attention + wins) */
+.v3-row2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: .6rem; margin-bottom: .6rem; }
+@media (max-width: 700px) { .v3-row2 { grid-template-columns: 1fr; } }
+
+/* Priority chips (shared: Attention + GM Actions) */
+.v3-pri { font-size: .6rem; font-weight: 800; letter-spacing: .05em; padding: .12rem .4rem; border-radius: 4px; white-space: nowrap; align-self: flex-start; }
+.v3-pri-1 { background: #fdecec; color: var(--red); border: 1px solid #f3c0c0; }
+.v3-pri-2 { background: #fff6e9; color: #a5701a; border: 1px solid #f0d9ad; }
+.v3-pri-3 { background: #eef4fb; color: #2c5b8f; border: 1px solid #cdddef; }
+
+/* Wins */
+.v3-wins { border-left: 4px solid #1e6a44; }
+.v3-wins-list { list-style: none; display: flex; flex-direction: column; gap: .4rem; }
+.v3-win { display: flex; align-items: flex-start; gap: .55rem; padding: .5rem .6rem; border-radius: 8px; background: #eef7f1; border: 1px solid #cfe6d9; }
+.v3-win-ic { font-size: .9rem; line-height: 1.2; }
+
+/* Channel Performance */
+.v3-chan-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; }
+@media (max-width: 560px) { .v3-chan-grid { grid-template-columns: repeat(2, 1fr); } }
+.v3-chan { display: flex; flex-direction: column; gap: .2rem; padding: .55rem .6rem; border-radius: 8px; background: #faf8f4; border: 1px solid var(--border); border-top: 3px solid var(--green); }
+.v3-chan-zero, .v3-chan-pending, .v3-chan-not_connected { border-top-color: #c7c1b6; }
+.v3-chan-note { font-size: .82rem; font-weight: 600; color: var(--muted); }
+.v3-chan-pending .v3-chan-note { color: #a5701a; }
+
+/* Customer */
+.v3-rating-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+.v3-rating { display: flex; flex-direction: column; gap: .15rem; }
+.v3-rating-v { font-size: 1.2rem; font-weight: 700; color: var(--gold); }
+.v3-rating-na { font-size: .78rem; font-weight: 600; color: var(--muted); }
+.v3-cust-meta, .v3-ops-meta { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin-top: .6rem; font-size: .8rem; color: var(--text); }
+.v3-cust-meta b, .v3-ops-meta b { font-weight: 700; }
+
+/* Trend footer */
+.v3-trend-foot { display: flex; flex-wrap: wrap; gap: .3rem .9rem; margin-top: .55rem; font-size: .74rem; color: var(--muted); font-weight: 600; }
+
+/* GM Actions (enriched) */
+.v3-gm-list { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+.v3-gm { display: flex; gap: .5rem; align-items: flex-start; }
+.v3-gm-body { display: flex; flex-direction: column; gap: .12rem; }
+.v3-gm-action { font-weight: 700; font-size: .85rem; color: var(--text); }
+.v3-gm-meta { font-size: .72rem; color: #7a6010; }

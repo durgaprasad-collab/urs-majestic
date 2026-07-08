@@ -35,6 +35,19 @@ class Settings(BaseSettings):
     # until per-item costs feed the calc. 0.35 = current menu-wide average.
     ASSUMED_FOOD_COST_PCT: float = 0.35
 
+    # Daily Brief v3 ──────────────────────────────────────────────────────────
+    # Manual / gracefully-degrading inputs. All 0 = "not connected"/"not tracked"
+    # until a live feed replaces them. None of these invent data — an unset value
+    # renders as a clearly-labelled placeholder, never a misleading zero.
+    GOOGLE_RATING: float = 0.0          # 0 = not connected
+    ZOMATO_RATING: float = 0.0          # 0 = not connected
+    SWIGGY_RATING: float = 0.0          # 0 = not connected
+    REVIEWS_AWAITING_RESPONSE: int = -1  # -1 = not tracked
+    AVG_PREP_TIME_MIN: float = 0.0      # 0 = not tracked (manual input for now)
+    # Attention-rule thresholds
+    RATING_ALERT_THRESHOLD: float = 4.0        # flag any live rating below this
+    DELIVERY_DISCOUNT_POLICY_PCT: float = 25.0  # funded discount % of gross that's "over policy"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

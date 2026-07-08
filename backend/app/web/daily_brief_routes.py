@@ -1,36 +1,18 @@
-"""CEO Daily Brief: a single-screen executive snapshot at /daily-brief."""
+"""CEO Daily Brief: a single-screen executive snapshot at /daily-brief.
+
+The whole page context is assembled by daily_brief_v3.build_brief() in one pass
+(reusing the v2 metrics + existing ceo_brief/kpi/recon analytics). This route
+just gates on auth and renders.
+"""
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.web.deps import _tmpl, require_user
-from app.services.ceo_brief import get_summary, get_menu, get_actions
-from app.services.kpi import get_channel_upload_status
-from app.services.daily_brief_v2 import (
-    get_target_vs_achievement,
-    get_estimated_contribution,
-    get_seven_day_trend,
-    get_attention_items,
-)
-from app.models.upload_log import UploadLog
+from app.services.daily_brief_v3 import build_brief
 
 router = APIRouter(tags=["web"])
-
-
-def _latest_failed_rows_by_channel(db: Session) -> dict[str, int]:
-    """{channel: rows_failed} for each channel's most recent upload_log row,
-    included only when that latest upload had rows_failed > 0."""
-    out: dict[str, int] = {}
-    for channel in ("petpooja", "zomato", "swiggy"):
-        latest = (
-            db.query(UploadLog)
-            .filter(UploadLog.channel == channel)
-            .order_by(UploadLog.uploaded_at.desc())
-            .first()
-        )
-        if latest and (latest.rows_failed or 0) > 0:
-            out[channel] = latest.rows_failed
-    return out
 
 
 @router.get("/daily-brief", response_class=HTMLResponse)
@@ -39,26 +21,7 @@ def daily_brief(request: Request, db: Session = Depends(get_db)):
     if redir:
         return redir
 
-    summary = get_summary(db)
-    menu_rows = get_menu(db)
-    top = sorted((r for r in menu_rows if r["bucket"] == "top"), key=lambda r: r["revenue"], reverse=True)
-    bottom = sorted((r for r in menu_rows if r["bucket"] == "bottom"), key=lambda r: r["revenue"])
-    zero = sorted((r for r in menu_rows if r["bucket"] == "zero"), key=lambda r: r["item"])
-
-    return _tmpl(request, "daily_brief.html", {
-        "user": user,
-        "summary": summary,
-        "trusted": bool(summary) and summary["data_status"] == "DATA TRUSTED",
-        "top": top,
-        "bottom": bottom,
-        "zero": zero,
-        "menu_as_of": menu_rows[0]["as_of"] if menu_rows else None,
-        "actions": get_actions(db),
-        "channel_status": get_channel_upload_status(db),
-        "failed_rows_by_channel": _latest_failed_rows_by_channel(db),
-        # ── Daily Brief v2 ──────────────────────────────────────────────
-        "target": get_target_vs_achievement(db),
-        "contrib": get_estimated_contribution(db),
-        "trend": get_seven_day_trend(db),
-        "attention": get_attention_items(db),
-    })
+    # build_brief may return a shared cached dict — merge user into a fresh dict
+    # rather than mutating it.
+    ctx = build_brief(db)
+    return _tmpl(request, "daily_brief.html", {**ctx, "user": user})

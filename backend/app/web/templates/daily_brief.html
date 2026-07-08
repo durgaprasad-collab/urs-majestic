@@ -2,22 +2,61 @@
 {% block title %}Daily Brief — URS Majestic{% endblock %}
 
 {% block content %}
-{% if summary %}
-<div class="page-header">
-  <h1 class="page-title">Daily Brief</h1>
-  <p class="page-sub">as of {{ summary.data_through.strftime('%d %b %Y') }}</p>
+{% if has_data %}
+
+{# ═══ 1. EXECUTIVE SUMMARY ═══════════════════════════════════════════════════ #}
+<div class="card v3-exec">
+  <div class="v3-exec-top">
+    <div>
+      <h1 class="page-title" style="margin:0">Daily Brief</h1>
+      <p class="page-sub" style="margin:.1rem 0 0">
+        Reporting {{ exec.reporting_date.strftime('%a %d %b %Y') }}
+        {%- if exec.last_refresh %} · refreshed {{ exec.last_refresh.strftime('%d %b %H:%M') }}{% endif %}
+      </p>
+    </div>
+    <span class="v3-status
+      {%- if exec.data_status == 'DATA TRUSTED' %} v3-status-ok
+      {%- elif exec.data_status == 'DATA PENDING' %} v3-status-pending
+      {%- else %} v3-status-warn{% endif %}">
+      {%- if exec.data_status == 'DATA TRUSTED' %}✓ {% elif exec.data_status == 'DATA PENDING' %}⏳ {% else %}⚠ {% endif -%}
+      {{ exec.data_status }}
+    </span>
+  </div>
+
+  <div class="v3-exec-grid">
+    <div class="v3-exec-sales">
+      <span class="kpi-label">Yesterday net sales</span>
+      <div class="kpi-big">₹{{ "{:,.0f}".format(exec.net_sales) }}</div>
+      <div class="kpi-deltas">
+        <span class="kpi-delta{% if exec.pct_vs_prior_day is not none %}{{ ' kpi-up' if exec.pct_vs_prior_day >= 0 else ' kpi-down' }}{% endif %}">
+          {% if exec.pct_vs_prior_day is not none %}{{ "%+.1f"|format(exec.pct_vs_prior_day) }}%{% else %}—{% endif %} prior day
+        </span>
+        <span class="kpi-delta{% if exec.pct_vs_same_weekday is not none %}{{ ' kpi-up' if exec.pct_vs_same_weekday >= 0 else ' kpi-down' }}{% endif %}">
+          {% if exec.pct_vs_same_weekday is not none %}{{ "%+.1f"|format(exec.pct_vs_same_weekday) }}%{% else %}—{% endif %} same weekday
+        </span>
+      </div>
+    </div>
+
+    <div class="v3-exec-target">
+      {% if exec.target_set %}
+      <div class="v3-tgt-cells">
+        <div><span class="recon-label">Monthly target</span><span class="v3-tgt-v">₹{{ "{:,.0f}".format(exec.monthly_target) }}</span></div>
+        <div><span class="recon-label">MTD sales</span><span class="v3-tgt-v">₹{{ "{:,.0f}".format(exec.mtd_sales) }}</span><span class="recon-sub">{{ "%.0f"|format(exec.target_pct) }}% of target</span></div>
+        <div><span class="recon-label">Expected by today</span><span class="v3-tgt-v">₹{{ "{:,.0f}".format(exec.expected_mtd) }}</span></div>
+        <div><span class="recon-label">Variance</span><span class="v3-tgt-v {{ 'kpi-up' if exec.variance >= 0 else 'kpi-down' }}">{{ '+' if exec.variance >= 0 else '−' }}₹{{ "{:,.0f}".format(exec.variance|abs) }}</span></div>
+      </div>
+      {% else %}
+      <div class="v3-tgt-empty">
+        <span class="recon-label">Monthly target</span>
+        <p class="recon-sub">No monthly target configured. Set <code>MONTHLY_SALES_TARGET</code> to track achievement and pace.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
 
-{% if trusted %}
-<p class="alert-success">✓ DATA TRUSTED</p>
-{% else %}
-<p class="alert-warning">⚠ NEEDS ATTENTION — {{ summary.unexplained_mismatches }} unexplained mismatch(es)</p>
-{% endif %}
-
-{# ── Daily Brief v2: Attention · Target · Contribution · Trend ─────────────── #}
-<div class="v2">
-
-  {# ⚠️ Attention Required — the decision driver, first #}
+{# ═══ 2 (Q2). ATTENTION REQUIRED  +  5. WINS ════════════════════════════════ #}
+<div class="v3-row2">
   <div class="card v2-attention {{ 'v2-attention-clear' if not attention else '' }}">
     <div class="v2-head">
       <span class="v2-emoji">⚠️</span>
@@ -28,7 +67,7 @@
     <ul class="v2-attn-list">
       {% for a in attention %}
       <li class="v2-attn v2-sev{{ a.sev }}">
-        <span class="v2-attn-ic">{{ a.icon }}</span>
+        <span class="v3-pri v3-pri-{{ a.sev }}">{{ a.pri_label }}</span>
         <div class="v2-attn-body">
           <span class="v2-attn-title">{{ a.title }}</span>
           {% if a.detail %}<span class="v2-attn-detail">{{ a.detail }}</span>{% endif %}
@@ -42,75 +81,60 @@
     {% endif %}
   </div>
 
-  <div class="v2-row">
-
-    {# 🎯 Sales Target vs Achievement #}
-    {% if target %}
-    <div class="card v2-target">
-      <div class="v2-head">
-        <span class="v2-emoji">🎯</span>
-        <h2 class="card-title">Target vs Achievement</h2>
-        <span class="v2-period">{{ target.month_label }}</span>
-      </div>
-      <div class="v2-target-top">
-        <span class="kpi-big">₹{{ "{:,.0f}".format(target.mtd) }}</span>
-        {% if target.target_set %}
-        <span class="v2-target-of">of ₹{{ "{:,.0f}".format(target.target) }} · {{ "%.0f"|format(target.pct_of_target) }}%</span>
-        {% else %}
-        <span class="v2-target-of">month-to-date · no target set</span>
-        {% endif %}
-      </div>
-      {% if target.target_set %}
-      <div class="v2-bar" title="Pace marker = where you should be by day {{ target.days_elapsed }}">
-        <div class="v2-bar-fill {{ 'v2-fill-ok' if target.on_track else 'v2-fill-behind' }}"
-             style="width: {{ [target.pct_of_target, 100]|min }}%"></div>
-        <div class="v2-bar-pace" style="left: {{ [target.pace_marker_pct, 100]|min }}%"></div>
-      </div>
-      <div class="v2-target-meta">
-        <span class="{{ 'kpi-up' if target.on_track else 'kpi-down' }}">
-          {{ '▲ ahead of pace' if target.on_track else '▼ behind pace' }} by ₹{{ "{:,.0f}".format(target.pace_delta|abs) }}
-        </span>
-        <span class="recon-sub">Projected ₹{{ "{:,.0f}".format(target.projection) }} ({{ "%.0f"|format(target.projection_pct_of_target) }}% of target)</span>
-      </div>
-      {% else %}
-      <p class="recon-sub v2-note">Set <code>MONTHLY_SALES_TARGET</code> to track pace and projection against a goal.</p>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    {# 💰 Estimated Contribution #}
-    {% if contrib %}
-    <div class="card v2-contrib">
-      <div class="v2-head">
-        <span class="v2-emoji">💰</span>
-        <h2 class="card-title">Estimated Contribution</h2>
-        <span class="v2-badge" title="Estimate — assumes flat food cost until per-item costs are wired in">EST</span>
-      </div>
-      <div class="v2-two">
-        <div class="v2-two-cell">
-          <span class="recon-label">Yesterday</span>
-          <span class="kpi-big">₹{{ "{:,.0f}".format(contrib.day_contribution) }}</span>
-          <span class="recon-sub">{{ "%.0f"|format(contrib.contribution_pct) }}% of ₹{{ "{:,.0f}".format(contrib.day_sales) }}</span>
+  <div class="card v3-wins">
+    <div class="v2-head"><span class="v2-emoji">🎉</span><h2 class="card-title">Wins of the Day</h2></div>
+    {% if wins %}
+    <ul class="v3-wins-list">
+      {% for w in wins %}
+      <li class="v3-win">
+        <span class="v3-win-ic">{{ w.icon }}</span>
+        <div class="v2-attn-body">
+          <span class="v2-attn-title">{{ w.title }}</span>
+          {% if w.detail %}<span class="v2-attn-detail">{{ w.detail }}</span>{% endif %}
         </div>
-        <div class="v2-two-cell">
-          <span class="recon-label">Month-to-date</span>
-          <span class="kpi-big">₹{{ "{:,.0f}".format(contrib.mtd_contribution) }}</span>
-          <span class="recon-sub">of ₹{{ "{:,.0f}".format(contrib.mtd_sales) }} sales</span>
-        </div>
-      </div>
-      <p class="recon-sub v2-note">Assumes ~{{ "%.0f"|format(contrib.food_cost_pct) }}% food cost across all sales. Becomes true contribution once per-item costs feed in.</p>
-    </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="recon-sub">No standout wins today — keep the momentum going.</p>
     {% endif %}
-
   </div>
+</div>
 
-  {# 📈 Last 7-Day Trend #}
+{# ═══ 3. ESTIMATED CONTRIBUTION  +  6. SEVEN-DAY TREND ══════════════════════ #}
+<div class="v2-row">
+  {% if contrib %}
+  <div class="card v2-contrib">
+    <div class="v2-head">
+      <span class="v2-emoji">💰</span>
+      <h2 class="card-title">Estimated Contribution</h2>
+      <span class="v2-badge" title="Estimate — flat food cost until recipe costing is available">EST</span>
+    </div>
+    <div class="v2-two">
+      <div class="v2-two-cell">
+        <span class="recon-label">Yesterday</span>
+        <span class="kpi-big">₹{{ "{:,.0f}".format(contrib.day_contribution) }}</span>
+        <span class="recon-sub">
+          {{ "%.0f"|format(contrib.contribution_pct) }}% margin
+          {%- if contrib.trend_pct is not none %} · <span class="{{ 'kpi-up' if contrib.trend_dir == 'up' else 'kpi-down' }}">{{ "%+.0f"|format(contrib.trend_pct) }}%</span> vs prior{% endif %}
+        </span>
+      </div>
+      <div class="v2-two-cell">
+        <span class="recon-label">Month-to-date</span>
+        <span class="kpi-big">₹{{ "{:,.0f}".format(contrib.mtd_contribution) }}</span>
+        <span class="recon-sub">of ₹{{ "{:,.0f}".format(contrib.mtd_sales) }} sales</span>
+      </div>
+    </div>
+    <p class="recon-sub v2-note">Estimated at ~{{ "%.0f"|format(contrib.food_cost_pct) }}% food cost. Becomes actual contribution once recipe costing is available.</p>
+  </div>
+  {% endif %}
+
   {% if trend and trend.days %}
   <div class="card v2-trend">
     <div class="v2-head">
       <span class="v2-emoji">📈</span>
       <h2 class="card-title">Last 7-Day Trend</h2>
-      <span class="v2-period">peak ₹{{ "{:,.0f}".format(trend.peak) }}</span>
+      <span class="v2-period">avg ₹{{ "{:,.0f}".format(trend.avg) }}</span>
     </div>
     <div class="v2-spark">
       {% for r in trend.days %}
@@ -123,11 +147,77 @@
       </div>
       {% endfor %}
     </div>
+    <div class="v3-trend-foot">
+      {% if trend.high %}<span>▲ High {{ trend.high.date.strftime('%a') }} ₹{{ "{:,.0f}".format(trend.high.net) }}</span>{% endif %}
+      {% if trend.low %}<span>▼ Low {{ trend.low.date.strftime('%a') }} ₹{{ "{:,.0f}".format(trend.low.net) }}</span>{% endif %}
+      {% if trend.streak_len and trend.streak_dir %}
+      <span class="{{ 'kpi-up' if trend.streak_dir == 'up' else 'kpi-down' }}">
+        {{ trend.streak_len }} {{ 'growth' if trend.streak_dir == 'up' else 'declining' }} day{{ 's' if trend.streak_len != 1 else '' }}
+      </span>
+      {% endif %}
+    </div>
   </div>
   {% endif %}
-
 </div>
 
+{# ═══ 7. CHANNEL PERFORMANCE (Counter · Zomato · Swiggy · Website) ══════════ #}
+<div class="card v3-channels">
+  <div class="v2-head"><span class="v2-emoji">🛒</span><h2 class="card-title">Channel Performance</h2><span class="v2-period">{{ exec.reporting_date.strftime('%d %b') }}</span></div>
+  <div class="v3-chan-grid">
+    {% for c in channels %}
+    <div class="v3-chan v3-chan-{{ c.status }}">
+      <span class="recon-label">{{ c.label }}</span>
+      {% if c.value is not none %}
+      <span class="recon-value">₹{{ "{:,.0f}".format(c.value) }}</span>
+      {% else %}
+      <span class="v3-chan-note">{{ c.note }}</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ═══ 8. CUSTOMER  +  9. OPERATIONS ═════════════════════════════════════════ #}
+<div class="v2-row">
+  <div class="card v3-customer">
+    <div class="v2-head"><span class="v2-emoji">⭐</span><h2 class="card-title">Customer</h2></div>
+    <div class="v3-rating-row">
+      {% for label, val in [('Google', customer.google), ('Zomato', customer.zomato), ('Swiggy', customer.swiggy)] %}
+      <div class="v3-rating">
+        <span class="recon-label">{{ label }}</span>
+        {% if val is not none %}<span class="v3-rating-v">{{ "%.1f"|format(val) }}★</span>
+        {% else %}<span class="v3-rating-na">Not connected</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="v3-cust-meta">
+      <span>Reviews: <b>{{ customer.review_count }}</b>{% if customer.counter_avg is not none %} · counter avg {{ customer.counter_avg }}★{% endif %}</span>
+      <span>New (7d): <b>{{ customer.new_reviews }}</b></span>
+      <span>Awaiting reply: <b>{% if customer.awaiting_response is not none %}{{ customer.awaiting_response }}{% else %}—{% endif %}</b></span>
+    </div>
+    {% if not customer.any_rating_connected %}<p class="recon-sub v2-note">Platform ratings are manual until review feeds connect — gracefully hidden when unset.</p>{% endif %}
+  </div>
+
+  <div class="card v3-ops">
+    <div class="v2-head"><span class="v2-emoji">⚙️</span><h2 class="card-title">Operations</h2></div>
+    <div class="kpi-staleness">
+      {% for u in operations.uploads %}
+      <span class="kpi-chip{% if u.is_stale %} kpi-chip-stale{% endif %}">
+        {{ u.channel }}: {{ u.latest_date.strftime('%d %b') if u.latest_date else "no data" }}
+        {%- if u.is_stale %} — ⚠ {{ u.days_behind }}d behind{% endif %}
+        {%- if operations.import_errors.get(u.channel) %} — ⚠ {{ operations.import_errors[u.channel] }} failed{% endif %}
+      </span>
+      {% endfor %}
+    </div>
+    <div class="v3-ops-meta">
+      <span>Reconciliation: <b class="{{ 'kpi-up' if operations.recon_status == 'DATA TRUSTED' else 'kpi-down' }}">{{ operations.recon_status }}</b></span>
+      <span>Import errors: <b>{{ operations.import_error_total }}</b></span>
+      <span>Avg prep time: <b>{% if operations.avg_prep_time is not none %}{{ "%.0f"|format(operations.avg_prep_time) }} min{% else %}Not tracked{% endif %}</b></span>
+    </div>
+  </div>
+</div>
+
+{# ═══ EXISTING LAYOUT (retained): Yesterday Sales · Channel Split · Menu · Upload Status · GM Actions ═══ #}
 <div class="brief-grid">
   <div class="brief-col-main">
 
@@ -174,9 +264,7 @@
       </div>
     </div>
 
-    <p class="card-sub" style="margin:.6rem 0 0">Ratings: latest known snapshot from weekly Zomato file — no live review feed yet.</p>
-
-    <div class="kpi-staleness" style="margin-top:.4rem">
+    <div class="kpi-staleness" style="margin-top:.6rem">
       {% for c in channel_status %}
       <span class="kpi-chip{% if c.is_stale %} kpi-chip-stale{% endif %}">
         {{ c.channel }}: {{ c.latest_date.strftime('%d %b') if c.latest_date else "no data" }}
@@ -188,20 +276,35 @@
 
   </div>
 
+  {# ═══ 10. GM ACTIONS (retained, enriched: priority · owner · deadline) ═══ #}
   <div class="card recon-disclaimer">
     <h2 class="card-title" style="font-size:.95rem">GM Actions</h2>
-    {% if actions %}
-    <ol class="brief-actions-list">
-      {% for a in actions %}
-      <li>{{ a.action }}</li>
+    {% if gm_actions %}
+    <ul class="v3-gm-list">
+      {% for a in gm_actions %}
+      <li class="v3-gm">
+        <span class="v3-pri v3-pri-{{ 1 if a.priority == 'HIGH' else (2 if a.priority == 'MEDIUM' else 3) }}">{{ a.priority }}</span>
+        <div class="v3-gm-body">
+          <span class="v3-gm-action">{{ a.action }}</span>
+          <span class="v3-gm-meta">Owner: {{ a.owner }} · Target: {{ a.deadline_label }}</span>
+        </div>
+      </li>
       {% endfor %}
-    </ol>
+    </ul>
     {% else %}
     <p class="card-sub">Nothing needs attention.</p>
     {% endif %}
   </div>
 </div>
+
+{# ── 11. KPI Governance — hidden metadata for future AI explainability (not user-visible) ── #}
+<script type="application/json" id="kpi-governance">{{ kpi_meta|tojson }}</script>
+
 {% else %}
-<div class="card"><p>No sales data yet.</p></div>
+<div class="page-header"><h1 class="page-title">Daily Brief</h1></div>
+<div class="card">
+  <p class="alert-warning">⏳ DATA PENDING — no sales data has been uploaded yet.</p>
+  <p class="card-sub">Upload a POS or channel file to populate the brief. KPIs will never show stale or misleading values without a reporting date.</p>
+</div>
 {% endif %}
 {% endblock %}
