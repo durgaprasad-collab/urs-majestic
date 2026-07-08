@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request, Form, UploadFile, File, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.clock import business_today
 from datetime import date
 from scripts.import_pos import (
     seed_menu_items, parse_xlsx, build_resolver, load_sales,
@@ -111,7 +112,7 @@ async def upload_post(
 
         menu_map = seed_menu_items(db, seed)
         raw_rows, parse_errors, declared_total, declared_rows = parse_xlsx(tmp.name)
-        raw_rows, excluded_today = exclude_today(raw_rows, date.today())
+        raw_rows, excluded_today = exclude_today(raw_rows, business_today())
         resolver = build_resolver(seed, menu_map)
         load_sales(db, raw_rows, resolver)
         upsert_daily_channel_sales(db, raw_rows, file.filename)
@@ -196,7 +197,7 @@ async def upload_petpooja_orders(
         tmp.write(data)
         tmp.close()
 
-        today = date.today()
+        today = business_today()
         rows, parse_errors = parse_order_listing_xlsx(tmp.name)
         alarm = check_aggregator_alarm(rows)
         skipped_today = sum(1 for r in rows if r.status != "Cancelled" and r.business_date >= today)

@@ -11,6 +11,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.clock import business_today
 from app.models.business import (
     FixedExpense,
     BusinessSetting,
@@ -52,7 +53,7 @@ def monthly_equivalent(amount: decimal.Decimal, frequency: str) -> decimal.Decim
 # ── expenses ─────────────────────────────────────────────────────────────────
 def get_active_expenses(db: Session, as_of: date | None = None) -> list[FixedExpense]:
     """Expenses that are active and within their effective window on `as_of`."""
-    as_of = as_of or date.today()
+    as_of = as_of or business_today()
     stmt = (
         select(FixedExpense)
         .where(
@@ -100,7 +101,7 @@ def create_expense(db: Session, *, name, category, amount, frequency, effective_
         amount=D(str(amount)),
         frequency=frequency,
         active=active,
-        effective_from=effective_from or date.today(),
+        effective_from=effective_from or business_today(),
         effective_to=effective_to,
         notes=(notes or None),
     )
@@ -138,7 +139,7 @@ def set_expense_active(db: Session, expense_id: int, active: bool) -> FixedExpen
 def get_setting(db: Session, key: str, as_of: date | None = None) -> decimal.Decimal:
     """Current value of a setting = latest effective row on/before `as_of`.
     Falls back to the built-in default if never configured."""
-    as_of = as_of or date.today()
+    as_of = as_of or business_today()
     stmt = (
         select(BusinessSetting.value)
         .where(BusinessSetting.setting_key == key, BusinessSetting.effective_from <= as_of)
@@ -154,7 +155,7 @@ def set_setting(db: Session, key: str, value, *, effective_from=None, note=None,
     row = BusinessSetting(
         setting_key=key,
         value=D(str(value)),
-        effective_from=effective_from or date.today(),
+        effective_from=effective_from or business_today(),
         note=note,
         created_by=created_by,
     )
@@ -166,7 +167,7 @@ def set_setting(db: Session, key: str, value, *, effective_from=None, note=None,
 
 def get_financials(db: Session, as_of: date | None = None) -> dict:
     """The three tunable assumptions, current values — in one query."""
-    as_of = as_of or date.today()
+    as_of = as_of or business_today()
     keys = [SETTING_DESIRED_PROFIT, SETTING_CONTRIBUTION_MARGIN_PCT, SETTING_GROWTH_PCT]
     stmt = (
         select(BusinessSetting.setting_key, BusinessSetting.value)

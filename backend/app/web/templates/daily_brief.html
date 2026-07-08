@@ -4,6 +4,13 @@
 {% block content %}
 {% if has_data %}
 
+<div class="print-bar print-hide">
+  <button type="button" class="btn-secondary print-btn" onclick="exportBriefPdf()">🖨 Save as PDF</button>
+  <span class="recon-sub">One-page printout of the whole brief.</span>
+</div>
+
+<div class="print-root" id="brief-print-root">
+
 {# ═══ 1. EXECUTIVE SUMMARY ═══════════════════════════════════════════════════ #}
 <div class="card v3-exec">
   <div class="v3-exec-top">
@@ -360,6 +367,28 @@
 
 {# ── 11. KPI Governance — hidden metadata for future AI explainability (not user-visible) ── #}
 <script type="application/json" id="kpi-governance">{{ kpi_meta|tojson }}</script>
+</div>{# /.print-root #}
+
+<script>
+  // Fit the whole brief onto one A4 page for print / Save-as-PDF. `zoom` reflows
+  // (unlike transform), so the smaller layout genuinely fits one page. The rule
+  // only applies in @media print, so there's no on-screen change.
+  function fitBriefToPage() {
+    var root = document.getElementById('brief-print-root');
+    if (!root) return;
+    root.style.setProperty('--print-zoom', '1');
+    // A4 portrait printable area at 96dpi with ~6mm margins.
+    var availH = 1075, availW = 745;
+    var z = Math.min(1, availH / root.scrollHeight, availW / root.scrollWidth) * 0.97;
+    root.style.setProperty('--print-zoom', Math.max(0.3, z).toFixed(3));
+  }
+  function exportBriefPdf() { fitBriefToPage(); window.print(); }
+  window.addEventListener('beforeprint', fitBriefToPage);
+  window.addEventListener('afterprint', function () {
+    var root = document.getElementById('brief-print-root');
+    if (root) root.style.setProperty('--print-zoom', '1');
+  });
+</script>
 
 {% else %}
 <div class="page-header"><h1 class="page-title">Daily Brief</h1></div>

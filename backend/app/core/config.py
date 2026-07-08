@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     # "production" enables HTTPS redirect, Secure cookie, HSTS, hidden errors
     ENVIRONMENT: str = "development"
 
+    # The restaurant's operating timezone. "Today" for same-day-export guards and
+    # effective-date defaults is computed here, NOT in the server's clock (Render
+    # runs UTC), so a completed IST business day is never mistaken for "today".
+    BUSINESS_TIMEZONE: str = "Asia/Kolkata"
+
     # Locked CORS origin for the admin subdomain; empty = CORS disabled entirely
     ADMIN_ORIGIN: str = "https://admin.ursmajestic.com"
 
