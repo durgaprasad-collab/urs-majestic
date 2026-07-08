@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import menu, orders, customers, menu_engineering, feedback
+from app.api.routes import menu, orders, customers, menu_engineering, feedback, kpi
 from app.core.config import settings
 from app.core.middleware import (
     HTTPSRedirectMiddleware,
@@ -12,7 +12,7 @@ from app.core.middleware import (
     ProductionErrorMiddleware,
 )
 from app.web import routes as web_routes
-from app.web import auth_routes, purchase_routes, mapping_routes, engine_routes
+from app.web import auth_routes, purchase_routes, mapping_routes, engine_routes, channel_upload_routes
 
 app = FastAPI(
     title="URS Majestic",
@@ -57,11 +57,13 @@ app.include_router(web_routes.router)
 app.include_router(purchase_routes.router)
 app.include_router(mapping_routes.router)
 app.include_router(engine_routes.router)
+app.include_router(channel_upload_routes.router)
 app.include_router(menu.router)
 app.include_router(orders.router)
 app.include_router(customers.router)
 app.include_router(menu_engineering.router)
 app.include_router(feedback.router)
+app.include_router(kpi.router)
 
 
 @app.get("/health", tags=["system"])

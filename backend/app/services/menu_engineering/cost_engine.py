@@ -20,6 +20,18 @@ confidence levels:
   building — mapping exists but a mapped recipe ingredient is missing a
              price (no menu purchases yet) or a portion size
   reliable — every mapped recipe ingredient has both a price and a portion
+
+COMBOS
+  Menu items with rows in combo_components are costed in a second pass, from
+  their components' already-derived per-unit costs, instead of from their own
+  ingredient_dish_map rows (those are legacy/duplicate for combo items — only
+  cost_role='per_order' rows, e.g. packaging, are left alone since they were
+  never part of per-dish cost anyway):
+      derived_cost = SUM(portion_factor * component's derived_cost_per_unit)
+                    + SUM(fixed_cost where component_menu_item_id IS NULL)
+  A combo's cost_confidence is 'building' (never 'reliable') if any of its
+  component rows is a guess, or if a referenced component is itself missing
+  cost data or not 'reliable'.
 """
 import decimal
 from dataclasses import dataclass, field
@@ -28,6 +40,7 @@ from sqlalchemy.orm import Session
 from app.models.menu_item import MenuItem
 from app.models.purchase import Purchase
 from app.models.ingredient import Ingredient, IngredientDishMap
+from app.models.combo import ComboComponent
 
 # Flat overhead added to every dish (gas + small misc), in rupees.
 # Derive from data: (monthly gas+misc spend) / (dishes sold that month).
@@ -101,10 +114,19 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
     return cost, anomalies
 
 
-def _dish_recipe_costs(db: Session, ing_cost: dict[int, decimal.Decimal]) -> dict[int, tuple[decimal.Decimal, bool]]:
+def _dish_recipe_costs(
+    db: Session,
+    ing_cost: dict[int, decimal.Decimal],
+    skip_menu_item_ids: frozenset[int] = frozenset(),
+) -> dict[int, tuple[decimal.Decimal, bool]]:
     """{menu_item_id: (recipe_cost_with_overhead, complete)} where `complete`
     is True only if every mapped recipe ingredient had both a price and a
-    portion size (drives cost_confidence)."""
+    portion size (drives cost_confidence).
+
+    `skip_menu_item_ids` (combo items) are left out entirely — their own
+    ingredient_dish_map rows are legacy/duplicate; they're costed separately
+    from combo_components in a second pass, see _combo_costs.
+    """
     maps = (
         db.query(IngredientDishMap, Ingredient)
         .join(Ingredient, Ingredient.id == IngredientDishMap.ingredient_id)
@@ -113,6 +135,8 @@ def _dish_recipe_costs(db: Session, ing_cost: dict[int, decimal.Decimal]) -> dic
 
     acc: dict[int, list] = {}  # menu_item_id -> [cost, complete]
     for m, ing in maps:
+        if m.menu_item_id in skip_menu_item_ids:
+            continue
         entry = acc.setdefault(m.menu_item_id, [decimal.Decimal("0"), True])
         if ing.cost_role != "recipe":
             continue  # overhead / per_order never priced per dish
@@ -126,11 +150,52 @@ def _dish_recipe_costs(db: Session, ing_cost: dict[int, decimal.Decimal]) -> dic
     return {mid: (v[0] + OVERHEAD_PER_DISH, v[1]) for mid, v in acc.items()}
 
 
+def _combo_costs(
+    db: Session, component_cost: dict[int, tuple[decimal.Decimal, bool]]
+) -> dict[int, tuple[decimal.Decimal, bool]]:
+    """{combo_menu_item_id: (derived_cost, complete)} built from
+    combo_components, using already-derived component dish costs
+    (`component_cost`, the non-combo pass of _dish_recipe_costs).
+
+    complete is False ("building") if any component row is a guess, or if a
+    referenced component has no cost data / isn't itself 'reliable'.
+    """
+    rows = db.query(ComboComponent).all()
+
+    acc: dict[int, list] = {}  # combo_menu_item_id -> [cost, complete]
+    for c in rows:
+        entry = acc.setdefault(c.combo_menu_item_id, [decimal.Decimal("0"), True])
+        if c.is_guess:
+            entry[1] = False
+
+        if c.component_menu_item_id is not None:
+            component = component_cost.get(c.component_menu_item_id)
+            if component is None:
+                entry[1] = False
+                continue
+            comp_cost, comp_complete = component
+            if not comp_complete:
+                entry[1] = False
+            entry[0] += c.portion_factor * comp_cost
+
+        if c.fixed_cost is not None:
+            entry[0] += c.fixed_cost
+
+    return {mid: (v[0], v[1]) for mid, v in acc.items()}
+
+
 def run_cost_engine(db: Session) -> dict:
     """Recompute derived_cost_per_unit, derived_food_cost_pct and
     cost_confidence for every active food menu item. Idempotent."""
     ing_cost, anomalies = _ingredient_cost_per_g(db)
-    dish_cost = _dish_recipe_costs(db, ing_cost)
+
+    combo_ids = frozenset(
+        row[0] for row in db.query(ComboComponent.combo_menu_item_id).distinct().all()
+    )
+
+    # Pass 1: component (non-combo) dishes. Pass 2: combos, from pass-1 costs.
+    dish_cost = _dish_recipe_costs(db, ing_cost, skip_menu_item_ids=combo_ids)
+    dish_cost.update(_combo_costs(db, dish_cost))
 
     items = (
         db.query(MenuItem)

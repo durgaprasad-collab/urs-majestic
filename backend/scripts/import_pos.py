@@ -3,10 +3,13 @@ POS sales importer for URS Majestic.
 
 Steps:
   1. Upserts menu_items from backend/data/menu_seed.json (canonical source of truth).
-  2. Parses backend/data/pos_export.xlsx (Item | Date | Qty | Total columns).
+  2. Parses backend/data/pos_export.xlsx (Item | Date | Qty | Total columns);
+     drops any rows dated today (same-day exports are incomplete).
   3. Resolves each POS name to a canonical menu item via pos_name_map then exact match.
-  4. Inserts resolved rows into item_sales (truncates first — fully reloadable).
-  5. Prints a summary.
+  4. Replaces item_sales for the date range covered by the file (not the
+     whole table — a corrected re-export heals only its own dates).
+  5. Upserts one daily_channel_sales row per date (channel='petpooja').
+  6. Prints a summary.
 
 Usage (from backend/ with venv active):
     python -m scripts.import_pos
@@ -32,9 +35,15 @@ if os.path.exists(_env_path):
                 _k, _, _v = _line.partition("=")
                 os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
+from collections import defaultdict
+
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
 from app.core.database import SessionLocal
 from app.models.menu_item import MenuItem, PosAlias
 from app.models.item_sale import ItemSale
+from app.models.daily_channel_sales import DailyChannelSales
 
 SEED_JSON = os.path.join(os.path.dirname(__file__), "..", "data", "menu_seed.json")
 DEFAULT_XLSX = os.path.join(os.path.dirname(__file__), "..", "data", "pos_export.xlsx")
@@ -168,6 +177,15 @@ def parse_xlsx(path: str) -> list[dict]:
     return rows
 
 
+# ── Step 2b: Drop same-day rows ────────────────────────────────────────────────
+
+def exclude_today(rows: list[dict], today) -> tuple[list[dict], int]:
+    """Same-day exports are incomplete by definition — drop rows dated today.
+    Returns (kept_rows, excluded_count)."""
+    kept = [r for r in rows if r["sale_date"] != today]
+    return kept, len(rows) - len(kept)
+
+
 # ── Step 3: Resolve names ─────────────────────────────────────────────────────
 
 def build_resolver(seed: dict, menu_map: dict[str, MenuItem]) -> dict[str, str]:
@@ -186,6 +204,9 @@ def build_resolver(seed: dict, menu_map: dict[str, MenuItem]) -> dict[str, str]:
 # ── Step 4: Insert item_sales ─────────────────────────────────────────────────
 
 def load_sales(db, rows: list[dict], resolver: dict[str, str]) -> tuple[list, list]:
+    """Replace item_sales for the date range covered by `rows` (not the whole
+    table) so a corrected re-export heals just its own dates without wiping
+    history outside that range."""
     matched = []
     unmatched = []
 
@@ -202,12 +223,52 @@ def load_sales(db, rows: list[dict], resolver: dict[str, str]) -> tuple[list, li
                 revenue=row["revenue"],
             ))
 
-    # Truncate and reload for idempotency
-    db.query(ItemSale).delete()
+    if rows:
+        min_date = min(r["sale_date"] for r in rows)
+        max_date = max(r["sale_date"] for r in rows)
+        db.query(ItemSale).filter(
+            ItemSale.sale_date >= min_date, ItemSale.sale_date <= max_date
+        ).delete(synchronize_session=False)
+
     db.bulk_save_objects(matched)
     db.flush()
 
     return matched, unmatched
+
+
+# ── Step 5: Upsert daily_channel_sales ──────────────────────────────────────────
+
+def upsert_daily_channel_sales(db, rows: list[dict], source_file: str) -> int:
+    """Aggregate parsed rows (all of them — resolved or not; totals are
+    pre-tax with no discounts in Petpooja) into one net_sales figure per
+    business_date, upserted as channel='petpooja'. Returns dates touched."""
+    totals: dict = defaultdict(Decimal)
+    for row in rows:
+        totals[row["sale_date"]] += row["revenue"]
+
+    for sale_date, net_sales in totals.items():
+        stmt = pg_insert(DailyChannelSales).values(
+            business_date=sale_date,
+            channel="petpooja",
+            net_sales=net_sales,
+            orders=None,
+            gross_order_value=None,
+            restaurant_discount=Decimal("0"),
+            platform_discount=Decimal("0"),
+            source_file=source_file,
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["business_date", "channel"],
+            set_={
+                "net_sales": stmt.excluded.net_sales,
+                "source_file": stmt.excluded.source_file,
+                "uploaded_at": func.now(),
+            },
+        )
+        db.execute(stmt)
+
+    db.flush()
+    return len(totals)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -223,11 +284,19 @@ def main(xlsx_path: str):
 
         print("\n-- Step 2: Parse POS xlsx -------------------------------------------")
         raw_rows = parse_xlsx(xlsx_path)
+        raw_rows, excluded_today = exclude_today(raw_rows, date.today())
         print(f"  {len(raw_rows)} data rows read from {os.path.basename(xlsx_path)}")
+        if excluded_today:
+            print(f"  {excluded_today} row(s) dated today excluded (incomplete same-day export)")
 
         print("\n-- Step 3: Resolve and insert item_sales ----------------------------")
         resolver = build_resolver(seed, menu_map)
         matched, unmatched = load_sales(db, raw_rows, resolver)
+
+        print("\n-- Step 4: Upsert daily_channel_sales --------------------------------")
+        days = upsert_daily_channel_sales(db, raw_rows, os.path.basename(xlsx_path))
+        print(f"  {days} business date(s) upserted (channel=petpooja)")
+
         db.commit()
 
         # ── Summary ───────────────────────────────────────────────────────────

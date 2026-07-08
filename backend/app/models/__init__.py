@@ -6,6 +6,8 @@ from app.models.item_sale import ItemSale
 from app.models.ingredient import Ingredient, IngredientDishMap
 from app.models.purchase import Purchase
 from app.models.customer_feedback import CustomerFeedback
+from app.models.combo import ComboComponent
+from app.models.daily_channel_sales import DailyChannelSales
 
 __all__ = [
     "User",
@@ -20,4 +22,6 @@ __all__ = [
     "IngredientDishMap",
     "Purchase",
     "CustomerFeedback",
+    "ComboComponent",
+    "DailyChannelSales",
 ]

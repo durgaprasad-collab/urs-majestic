@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ channel }} Upload — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1 class="card-title">{{ channel }} upload complete</h1>
+  <p class="card-sub">
+    {{ orders_count }} order(s) processed — {{ delivered_count }} delivered,
+    {{ cancelled_count }} cancelled/rejected. {{ days_upserted }} day(s) of
+    daily sales upserted.
+  </p>
+  <a href="/upload" class="link-upload">Back to Upload</a>
+</div>
+
+{% if parse_errors %}
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Rows that could not be parsed</h2>
+  <p class="card-sub">These rows were reported but did not stop the rest of the upload from processing.</p>
+  <ul class="unmapped-list">
+    {% for e in parse_errors %}
+    <li>Line {{ e.line }}: {{ e.message }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if unmapped %}
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Unmapped items ({{ unmapped|length }})</h2>
+  <p class="card-sub">
+    These item names didn't match any menu item and were saved with no menu_item_id.
+    <a href="/ingredients/mapping">Review mappings →</a>
+  </p>
+  <ul class="unmapped-list">
+    {% for name in unmapped %}
+    <li>{{ name }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% else %}
+<div class="card" style="margin-top:1rem">
+  <p class="card-sub">Every item in this file matched a menu item.</p>
+</div>
+{% endif %}
+{% endblock %}

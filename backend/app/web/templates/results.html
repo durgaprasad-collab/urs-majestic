@@ -17,6 +17,10 @@
 <p class="alert-success">Cost engine ran — derived costs updated.</p>
 {% endif %}
 
+{% if today_excluded %}
+<p class="alert-success">{{ today_excluded }} row(s) dated today were excluded (same-day exports are incomplete).</p>
+{% endif %}
+
 {% macro cost_badge(r) %}
   {% if r.cost_basis == 'Derived' %}
     {% if r.cost_confidence == 'reliable' %}

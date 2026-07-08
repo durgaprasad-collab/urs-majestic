@@ -610,4 +610,33 @@ a { color: var(--green); }
   cursor: pointer;
   flex: 1;
 }
+
+/* ── KPI dashboard card ───────────────────────────────────────────────────── */
+.kpi-card { border-top: 4px solid var(--gold); }
+.kpi-label {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.kpi-big {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+.kpi-deltas { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin-top: .25rem; }
+.kpi-delta { font-size: .85rem; color: var(--muted); font-weight: 600; }
+.kpi-delta.kpi-up   { color: #1e6a44; }
+.kpi-delta.kpi-down { color: var(--red); }
+.kpi-staleness { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.kpi-chip {
+  font-size: .75rem;
+  color: var(--muted);
+  background: #f2f3f4;
+  padding: .2rem .6rem;
+  border-radius: 20px;
+}
+.kpi-chip-stale { background: #fef9e7; color: #9a7d0a; font-weight: 600; }
 .apply-all-hint { font-size: .75rem; color: var(--muted); width: 100%; }

@@ -5,8 +5,13 @@ from fastapi import APIRouter, Request, Form, UploadFile, File, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from scripts.import_pos import seed_menu_items, parse_xlsx, build_resolver, load_sales
+from datetime import date
+from scripts.import_pos import (
+    seed_menu_items, parse_xlsx, build_resolver, load_sales,
+    exclude_today, upsert_daily_channel_sales,
+)
 from app.services.menu_engineering.analysis import get_analysis
+from app.services.kpi import get_yesterday_sales, get_channel_upload_status
 from app.models.item_sale import ItemSale
 from app.web.deps import _tmpl, require_user
 
@@ -33,7 +38,18 @@ def upload_get(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         return redir
-    return _tmpl(request, "upload.html", {"user": user, "error": None})
+
+    kpi = get_yesterday_sales(db)
+    kpi_data_through = _fmt_date(kpi["data_through"]) if kpi else None
+    channel_status = get_channel_upload_status(db)
+
+    return _tmpl(request, "upload.html", {
+        "user": user,
+        "error": None,
+        "kpi": kpi,
+        "kpi_data_through": kpi_data_through,
+        "channel_status": channel_status,
+    })
 
 
 @router.post("/upload")
@@ -82,8 +98,10 @@ async def upload_post(
 
         menu_map = seed_menu_items(db, seed)
         raw_rows = parse_xlsx(tmp.name)
+        raw_rows, excluded_today = exclude_today(raw_rows, date.today())
         resolver = build_resolver(seed, menu_map)
         load_sales(db, raw_rows, resolver)
+        upsert_daily_channel_sales(db, raw_rows, file.filename)
         db.commit()
     except Exception as exc:
         db.rollback()
@@ -95,7 +113,10 @@ async def upload_post(
     finally:
         os.unlink(tmp.name)
 
-    return RedirectResponse("/results", status_code=303)
+    redirect_url = "/results"
+    if excluded_today:
+        redirect_url += f"?today_excluded={excluded_today}"
+    return RedirectResponse(redirect_url, status_code=303)
 
 
 @router.get("/results", response_class=HTMLResponse)
@@ -112,6 +133,7 @@ def results(request: Request, db: Session = Depends(get_db)):
     date_from = _fmt_date(min(dates)) if dates else "—"
     date_to = _fmt_date(max(dates)) if dates else "—"
     engine_ran = request.query_params.get("engine") == "1"
+    today_excluded = request.query_params.get("today_excluded")
 
     def _top10(cls: str) -> list:
         bucket = [r for r in rows if r["classification"] == cls]
@@ -129,4 +151,5 @@ def results(request: Request, db: Session = Depends(get_db)):
         "date_to": date_to,
         "item_count": len(rows),
         "engine_ran": engine_ran,
+        "today_excluded": today_excluded,
     })
