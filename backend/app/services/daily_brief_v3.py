@@ -21,6 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.clock import business_today
 from app.services.ceo_brief import get_summary, get_menu, get_actions
 from app.services.kpi import get_channel_upload_status
 from app.services.recon import get_data_trust
@@ -381,22 +382,25 @@ def _gm_actions(db: Session, rep: datetime.date) -> list[dict]:
 
 
 # ── orchestrator ─────────────────────────────────────────────────────────────
-# Freshness-keyed cache. The brief only changes when a new file is uploaded, so
-# a single cheap max(uploaded_at) probe tells us whether the cached context is
-# still valid. Repeat loads (refresh / navigation) then cost one round-trip
-# instead of ~10 — the page stays well under the load budget between uploads,
-# and invalidates the instant new data lands. Cached dict is never mutated by
-# callers (the route merges user/request into a fresh dict), so sharing is safe.
+# Freshness-keyed cache. The brief changes on two triggers: (1) new data lands
+# (a fresh upload bumps max(uploaded_at)), and (2) the IST business day rolls
+# over (the reporting day — "yesterday" — advances at midnight even with no new
+# upload). The cache key must therefore include BOTH; keying on uploaded_at
+# alone would keep serving a stale reporting day across midnight until the next
+# upload happened to occur. Repeat loads (refresh / navigation) then cost one
+# round-trip instead of ~10. Cached dict is never mutated by callers (the route
+# merges user/request into a fresh dict), so sharing is safe.
 _CACHE: dict = {"key": None, "ctx": None}
 
 
 def build_brief(db: Session, *, use_cache: bool = True) -> dict:
-    last_refresh = _last_refresh(db)  # doubles as the cache freshness key
-    if use_cache and _CACHE["ctx"] is not None and _CACHE["key"] == last_refresh:
+    last_refresh = _last_refresh(db)
+    key = (last_refresh, business_today())  # invalidate on new data OR day rollover
+    if use_cache and _CACHE["ctx"] is not None and _CACHE["key"] == key:
         return _CACHE["ctx"]
 
     ctx = _compute_brief(db, last_refresh)
-    _CACHE["key"], _CACHE["ctx"] = last_refresh, ctx
+    _CACHE["key"], _CACHE["ctx"] = key, ctx
     return ctx
 
 
