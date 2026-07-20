@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0B3A2E" />
   <title>{% block title %}URS Majestic — Owner Portal{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=12" />
+  <link rel="stylesheet" href="/static/style.css?v=13" />
 </head>
 <body>
   <header class="app-header">
@@ -22,6 +22,7 @@
     <a href="/upload" class="nav-link {% if request.url.path == '/upload' %}active{% endif %}">Upload</a>
     <a href="/results" class="nav-link {% if request.url.path == '/results' %}active{% endif %}">Analysis</a>
     <a href="/prep-sheet" class="nav-link {% if request.url.path == '/prep-sheet' %}active{% endif %}">Prep Sheet</a>
+    <a href="/order-forecast" class="nav-link {% if request.url.path == '/order-forecast' %}active{% endif %}">Order Forecast</a>
     <a href="/purchases" class="nav-link {% if request.url.path.startswith('/purchases') %}active{% endif %}">Purchases</a>
     <a href="/ingredients/mapping" class="nav-link {% if request.url.path.startswith('/ingredients') %}active{% endif %}">Mapping</a>
     <a href="/reconciliation" class="nav-link {% if request.url.path == '/reconciliation' %}active{% endif %}">Reconcile</a>

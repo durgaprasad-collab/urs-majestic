@@ -892,3 +892,34 @@ a { color: var(--green); }
   .prep-meta { font-size: 10px !important; }
   .prep-table tbody tr { break-inside: avoid; }
 }
+
+/* ── Order Forecast ────────────────────────────────────────────────────────── */
+.ord-table td { font-size: .92rem; vertical-align: middle; }
+.ord-date { white-space: nowrap; font-weight: 600; color: var(--green); }
+.ord-qty { font-weight: 700; font-size: 1.02rem; color: var(--green); white-space: nowrap; }
+.ord-unit { font-weight: 400; font-size: .78rem; color: #6b6b6b; }
+.ord-dim { color: #6b6b6b; font-size: .82rem; white-space: nowrap; }
+.ord-status { white-space: nowrap; }
+.ord-tag { font-size: .62rem; text-transform: uppercase; letter-spacing: .04em;
+  color: #8a8a8a; border: 1px solid #d6d1c7; border-radius: 3px; padding: 0 .25rem; margin-left: .35rem; }
+.ord-nohist { font-size: .86rem; color: #555; line-height: 1.8; }
+
+.ord-pill { display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .03em; border-radius: 999px; padding: .12rem .5rem; white-space: nowrap; }
+.ord-overdue { background: #fbe3de; color: #9a3412; }
+.ord-due { background: #fdecc8; color: #92600a; }
+.ord-soon { background: #e3efe9; color: #1a5c47; }
+.ord-ok { background: #eef0ee; color: #6b6b6b; }
+
+.ord-tick { width: 3.2rem; text-align: center; }
+.ord-box { display: inline-block; width: 1rem; height: 1rem; border: 1.5px solid #b9b2a5; border-radius: 2px; }
+
+@media print {
+  /* The order sheet is also a printout: bold the item, date, qty and status. */
+  .ord-table td { font-size: 13px !important; padding: .3rem .4rem !important; }
+  .ord-qty { font-size: 15px !important; }
+  .ord-table thead th { font-size: 11px !important; }
+  .ord-pill { border: 1px solid #999; }
+  .ord-box { width: 14px; height: 14px; border-color: #333; }
+  .ord-table tbody tr { break-inside: avoid; }
+}

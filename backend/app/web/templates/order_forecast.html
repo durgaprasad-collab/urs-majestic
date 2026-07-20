@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Order Forecast — URS Majestic{% endblock %}
+
+{% macro row(r) %}
+<tr>
+  <td>
+    {{ r.name }}
+    {% if not r.is_active %}<span class="ord-tag">inactive</span>{% endif %}
+  </td>
+  <td class="ord-date">
+    {% if r.next_order_date %}{{ r.next_order_date.strftime('%a %d %b') }}{% else %}—{% endif %}
+  </td>
+  <td class="col-num ord-qty">{{ "%g"|format(r.suggested_order_qty) }} <span class="ord-unit">{{ r.unit }}</span></td>
+  <td class="ord-status">
+    {% if r.status == 'overdue' %}
+      <span class="ord-pill ord-overdue">Overdue {{ -r.days_until_due }}d</span>
+    {% elif r.status == 'due' %}
+      <span class="ord-pill ord-due">{% if r.days_until_due < 0 %}Due{% else %}Order today{% endif %}</span>
+    {% elif r.status == 'soon' %}
+      <span class="ord-pill ord-soon">In {{ r.days_until_due }}d</span>
+    {% elif r.status == 'ok' %}
+      <span class="ord-pill ord-ok">In {{ r.days_until_due }}d</span>
+    {% endif %}
+  </td>
+  <td class="col-num print-hide ord-dim">every {{ "%g"|format(r.avg_interval_days) }}d</td>
+  <td class="col-num print-hide ord-dim">{{ r.last_purchase.strftime('%d %b') }}</td>
+  <td class="col-num print-hide ord-dim">
+    {% if r.days_cover_left is not none %}{{ "%g"|format(r.days_cover_left) }}d left{% else %}—{% endif %}
+  </td>
+  <td class="col-num print-hide ord-dim">
+    {% if r.est_order_cost is not none %}₹{{ "%.0f"|format(r.est_order_cost) }}{% else %}—{% endif %}
+  </td>
+  <td class="ord-tick"><span class="ord-box"></span></td>
+</tr>
+{% endmacro %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Order Forecast</h1>
+  <button type="button" class="btn-primary btn-sm print-btn print-hide" onclick="window.print()">Print</button>
+</div>
+
+<form method="get" action="/order-forecast" class="filter-bar print-hide">
+  <select name="show" class="form-input filter-select" onchange="this.form.submit()">
+    <option value="action" {% if not show_all %}selected{% endif %}>Needs ordering</option>
+    <option value="all" {% if show_all %}selected{% endif %}>All ingredients</option>
+  </select>
+  <label style="font-size:.82rem; display:flex; align-items:center; gap:.35rem; white-space:nowrap">
+    <input type="checkbox" name="inactive" value="1" {% if include_inactive %}checked{% endif %}
+           onchange="this.form.submit()"> Include inactive
+  </label>
+</form>
+
+<div class="prep-head">
+  <h2 class="prep-title">
+    To order{% if action %} — {{ action|length }} item{{ 's' if action|length != 1 }}{% endif %}
+  </h2>
+  <span class="prep-meta">
+    {% if generated_on %}As of {{ generated_on.strftime('%d %b %Y') }} (IST) · {% endif %}
+    {% if est_action_cost %}est. ₹{{ "%.0f"|format(est_action_cost) }} · {% endif %}
+    forecast from purchase cadence
+  </span>
+</div>
+
+{% if action %}
+<div class="card">
+  <div class="recon-table-wrap">
+    <table class="recon-table ord-table">
+      <thead>
+        <tr>
+          <th>Ingredient</th>
+          <th>Order by</th>
+          <th class="col-num">Qty</th>
+          <th>Status</th>
+          <th class="col-num print-hide">Cadence</th>
+          <th class="col-num print-hide">Last order</th>
+          <th class="col-num print-hide">Cover</th>
+          <th class="col-num print-hide">Est. ₹</th>
+          <th class="ord-tick">Done</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in action %}{{ row(r) }}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <p>Nothing due to order right now. Everything with a known cadence has cover for more than 3 days.</p>
+</div>
+{% endif %}
+
+{% if show_all and upcoming %}
+<div class="prep-head" style="margin-top:1.4rem">
+  <h2 class="prep-title">Not due yet</h2>
+  <span class="prep-meta">{{ upcoming|length }} ingredient{{ 's' if upcoming|length != 1 }} with cover</span>
+</div>
+<div class="card">
+  <div class="recon-table-wrap">
+    <table class="recon-table ord-table">
+      <thead>
+        <tr>
+          <th>Ingredient</th><th>Order by</th><th class="col-num">Qty</th><th>Status</th>
+          <th class="col-num print-hide">Cadence</th><th class="col-num print-hide">Last order</th>
+          <th class="col-num print-hide">Cover</th><th class="col-num print-hide">Est. ₹</th>
+          <th class="ord-tick">Done</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in upcoming %}{{ row(r) }}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if no_history %}
+<div class="prep-head print-hide" style="margin-top:1.4rem">
+  <h2 class="prep-title">Not enough history</h2>
+  <span class="prep-meta">bought on fewer than two days — no cadence yet</span>
+</div>
+<div class="card print-hide">
+  <p class="ord-nohist">
+    {% for r in no_history %}<span>{{ r.name }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+  </p>
+</div>
+{% endif %}
+
+<div class="card recon-disclaimer print-hide" style="margin-top:1rem">
+  <p>
+    <strong>Order by</strong> = the last purchase date plus this ingredient's own average gap
+    between orders. <strong>Qty</strong> = its average purchase size, in the unit it is usually
+    bought in. <strong>Cover</strong> = roughly how many days the last purchase lasts at the
+    implied usage rate.
+  </p>
+  <p style="margin-top:.4rem">
+    <strong>This is a cadence estimate, not a fitted forecast.</strong> It rests on about a month
+    of purchases and assumes buying habits reflect real usage. Treat it as a prompt to check
+    stock, not an instruction — and correct any wrong quantity by simply ordering what you know
+    is right; the average will follow.
+  </p>
+</div>
+{% endblock %}
