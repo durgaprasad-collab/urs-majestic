@@ -882,6 +882,15 @@ a { color: var(--green); }
 .prep-tick { width: 3.2rem; text-align: center; }
 .prep-box { display: inline-block; width: 1rem; height: 1rem; border: 1.5px solid #b9b2a5; border-radius: 2px; }
 
+/* 3-day layout: one column per upcoming day, today highlighted. */
+.prep-day-th, .prep-day { white-space: nowrap; }
+.prep-total, .prep-total-th { font-weight: 700; color: var(--green); border-left: 1px solid #ece8df; }
+.prep-nodata { color: #bbb; }
+.prep-today { background: #f2f7f4; }
+th.prep-today { border-bottom: 2px solid var(--green); }
+.prep-today-tag { display: block; font-size: .56rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--green); font-weight: 700; }
+
 @media print {
   /* The prep sheet is the printout. Bigger type, no zoom shrink, wide tick box. */
   .prep-table td { font-size: 13px !important; padding: .3rem .4rem !important; }
@@ -891,6 +900,8 @@ a { color: var(--green); }
   .recon-table-wrap { overflow: visible !important; max-height: none !important; }
   .prep-meta { font-size: 10px !important; }
   .prep-table tbody tr { break-inside: avoid; }
+  /* Keep the today tint on paper — it's how the kitchen finds the current column. */
+  .prep-today { background: #eef4f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 /* ── Order Forecast ────────────────────────────────────────────────────────── */

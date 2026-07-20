@@ -8,11 +8,6 @@
 </div>
 
 <form method="get" action="/prep-sheet" class="filter-bar print-hide">
-  <select name="dow" class="form-input filter-select" onchange="this.form.submit()">
-    {% for i, name in dow_names %}
-    <option value="{{ i }}" {% if i == dow %}selected{% endif %}>{{ name }}</option>
-    {% endfor %}
-  </select>
   <select name="band" class="form-input filter-select" onchange="this.form.submit()">
     <option value="kitchen" {% if band_key == 'kitchen' %}selected{% endif %}>Core + occasional</option>
     <option value="core" {% if band_key == 'core' %}selected{% endif %}>Core only</option>
@@ -25,56 +20,62 @@
 </form>
 
 <div class="prep-head">
-  <h2 class="prep-title">
-    {{ dow_name }}{% if is_tomorrow %} — tomorrow{% endif %}
-  </h2>
+  <h2 class="prep-title">Next {{ horizon }} days</h2>
   <span class="prep-meta">
-    Printed {{ generated_on.strftime('%d %b %Y') }} ·
+    {{ day_cols[0].date.strftime('%a %d %b') }} – {{ day_cols[-1].date.strftime('%a %d %b %Y') }} ·
     based on {{ meta.open_days }} trading days
     ({{ meta.first_day.strftime('%d %b') }} – {{ meta.last_day.strftime('%d %b %Y') }})
   </span>
 </div>
 
-{% if rows %}
+{% if items %}
 <div class="card">
   <div class="recon-table-wrap">
     <table class="recon-table prep-table">
       <thead>
         <tr>
           <th>Item</th>
-          <th class="col-num">Prep</th>
-          <th class="col-num">Busy day</th>
-          <th class="col-num print-hide">Avg {{ dow_name[:3] }}</th>
-          <th class="col-num print-hide">Avg 7d</th>
-          <th class="col-num print-hide">Sold d/7</th>
+          {% for c in day_cols %}
+          <th class="col-num prep-day-th {% if c.is_today %}prep-today{% endif %}">
+            {{ c.short }} {{ c.date.strftime('%d') }}
+            {% if c.is_today %}<span class="prep-today-tag">today</span>{% endif %}
+          </th>
+          {% endfor %}
+          <th class="col-num prep-total-th">3-day</th>
           <th class="col-num print-hide">Trend</th>
           <th class="prep-tick">Done</th>
         </tr>
       </thead>
       <tbody>
-        {% for r in rows %}
+        {% for r in items %}
         <tr>
           <td>
             {{ r.item }}
             {% if r.demand_band == 'tail' %}<span class="prep-band-tag">rare</span>{% endif %}
           </td>
-          <td class="col-num prep-qty">{{ "%.0f"|format(r.prep_qty_suggested) }}</td>
-          <td class="col-num prep-upper">{{ "%.0f"|format(r.prep_qty_upper) }}</td>
-          <td class="col-num print-hide">{{ "%.2f"|format(r.avg_same_dow) }}</td>
-          <td class="col-num print-hide">{{ "%.2f"|format(r.avg_7d) }}</td>
-          <td class="col-num print-hide">{{ r.days_sold_7d }}</td>
+          {% for cell in r.cells %}
+          <td class="col-num prep-day {% if day_cols[loop.index0].is_today %}prep-today{% endif %}">
+            {% if cell %}
+              <span class="prep-qty">{{ "%.0f"|format(cell.qty) }}</span>
+              {% if cell.upper > cell.qty %}<span class="prep-upper"> / {{ "%.0f"|format(cell.upper) }}</span>{% endif %}
+            {% else %}
+              <span class="prep-nodata">—</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td class="col-num prep-total">{{ "%.0f"|format(r.total) }}</td>
           <td class="col-num print-hide">
-            {% if r.trend_pct_vs_prior_7d is none %}
+            {% if r.trend is none %}
               <span style="color:#888">—</span>
             {% elif r.demand_band != 'core' %}
               {# Percentage swings on sub-1/day items are noise. Shown greyed so
                  nobody acts on a +600% that is 0.14/day becoming 1.0/day. #}
               <span style="color:#aaa" title="Too low-volume to be meaningful">
-                {{ "%+.0f"|format(r.trend_pct_vs_prior_7d) }}%
+                {{ "%+.0f"|format(r.trend) }}%
               </span>
             {% else %}
-              <span class="{% if r.trend_pct_vs_prior_7d > 0 %}prep-up{% else %}prep-down{% endif %}">
-                {{ "%+.0f"|format(r.trend_pct_vs_prior_7d) }}%
+              <span class="{% if r.trend > 0 %}prep-up{% else %}prep-down{% endif %}">
+                {{ "%+.0f"|format(r.trend) }}%
               </span>
             {% endif %}
           </td>
@@ -88,20 +89,21 @@
 
 <div class="card recon-disclaimer" style="margin-top:1rem">
   <p>
-    <strong>Prep</strong> = the higher of the {{ dow_name }} average and the 7-day average, rounded up.
-    <strong>Busy day</strong> = the highest quantity actually sold on a single day in the last 4 weeks —
-    the number to keep stock for, not to cook to.
+    Each column is one day's prep = the higher of that weekday's average and the 7-day
+    average, rounded up. A second number after a slash (e.g. <strong>3 / 6</strong>) is the
+    <strong>busy-day</strong> figure — the highest quantity actually sold on a single such day
+    in the last 4 weeks, the number to keep stock for, not to cook to. <strong>3-day</strong>
+    totals the three columns, for shopping short-shelf-life items ahead.
   </p>
   <p style="margin-top:.4rem">
-    <strong>This is not a forecast.</strong> Each weekday figure rests on about
-    {% if rows %}{{ rows[0].dow_samples }}{% else %}4{% endif %} observations, and the
-    window covers a period in which Zomato pricing and offers changed. Treat these as a
+    <strong>This is not a forecast.</strong> Each weekday figure rests on about four
+    observations, over a period in which Zomato pricing and offers changed. Treat these as a
     starting point and override them with what the kitchen knows.
   </p>
 </div>
 {% else %}
 <div class="card">
-  <p>No items match this filter. Try “Everything (incl. tail)” or a different day.</p>
+  <p>No items match this filter. Try “Everything (incl. tail)”.</p>
 </div>
 {% endif %}
 {% endblock %}
