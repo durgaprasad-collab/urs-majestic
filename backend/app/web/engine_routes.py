@@ -36,12 +36,32 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     if redir:
         return redir
 
-    # Total cost by usage type
-    agg = (
-        db.query(Purchase.usage_type, func.sum(Purchase.total_price).label("total"))
-        .group_by(Purchase.usage_type)
+    # Optional ingredient filter. Scopes the cost cards, the purchase summary and
+    # the usage-by-dish table to a single ingredient. Unmapped-ingredient warnings
+    # are deliberately NOT scoped — that panel is a global data-hygiene alert and
+    # hiding it behind a filter would let unmapped cost go unnoticed.
+    raw_ing = request.query_params.get("ingredient_id", "")
+    filter_id = int(raw_ing) if raw_ing.isdigit() else None
+    filter_ing = db.get(Ingredient, filter_id) if filter_id else None
+    if filter_ing is None:
+        filter_id = None
+
+    # All ingredients that have at least one purchase — the only ones that can
+    # produce rows below, so the dropdown never offers a choice that yields nothing.
+    purchased_ids = {r[0] for r in db.query(Purchase.ingredient_id).distinct().all()}
+    filter_options = (
+        db.query(Ingredient)
+        .filter(Ingredient.id.in_(purchased_ids))
+        .order_by(Ingredient.name)
         .all()
+        if purchased_ids else []
     )
+
+    # Total cost by usage type
+    agg_q = db.query(Purchase.usage_type, func.sum(Purchase.total_price).label("total"))
+    if filter_id:
+        agg_q = agg_q.filter(Purchase.ingredient_id == filter_id)
+    agg = agg_q.group_by(Purchase.usage_type).all()
     totals = {row.usage_type: float(row.total) for row in agg}
     total_menu_cost = totals.get("menu", 0.0)
     total_personal_cost = totals.get("others_personal", 0.0)
@@ -76,11 +96,10 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
             unmapped_names.append(ing_map.get(row.ingredient_id, f"ID {row.ingredient_id}"))
 
     # Per-ingredient purchase summary (restocking interval + avg qty)
-    all_purchases = (
-        db.query(Purchase)
-        .order_by(Purchase.ingredient_id, Purchase.purchase_date)
-        .all()
-    )
+    purch_q = db.query(Purchase).order_by(Purchase.ingredient_id, Purchase.purchase_date)
+    if filter_id:
+        purch_q = purch_q.filter(Purchase.ingredient_id == filter_id)
+    all_purchases = purch_q.all()
     ing_groups: dict[int, list] = defaultdict(list)
     for p in all_purchases:
         ing_groups[p.ingredient_id].append(p)
@@ -125,13 +144,15 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     )
     units_sold_by_name = {row.item_name: float(row.units) for row in sales_agg}
 
-    maps = (
+    maps_q = (
         db.query(IngredientDishMap, Ingredient, MenuItem)
         .join(Ingredient, Ingredient.id == IngredientDishMap.ingredient_id)
         .join(MenuItem, MenuItem.id == IngredientDishMap.menu_item_id)
         .filter(Ingredient.cost_role == "recipe")
-        .all()
     )
+    if filter_id:
+        maps_q = maps_q.filter(IngredientDishMap.ingredient_id == filter_id)
+    maps = maps_q.all()
 
     usage_groups: dict[str, list[dict]] = defaultdict(list)
     for m, ing, item in maps:
@@ -157,6 +178,20 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         ingredient_usage.append({"name": ing_name, "rows": rows})
     ingredient_usage.sort(key=lambda x: x["name"])
 
+    # When a filter is on but the ingredient has no recipe mapping, the usage
+    # table would silently vanish. Say why instead.
+    usage_empty_reason = None
+    if filter_ing and not ingredient_usage:
+        if filter_ing.cost_role != "recipe":
+            usage_empty_reason = (
+                f"{filter_ing.name} is not a recipe-role ingredient "
+                f"(cost_role = {filter_ing.cost_role}), so it has no per-dish usage split."
+            )
+        else:
+            usage_empty_reason = (
+                f"{filter_ing.name} is not mapped to any dish yet."
+            )
+
     return _tmpl(request, "reconciliation.html", {
         "user": user,
         "total_menu_cost": total_menu_cost,
@@ -166,4 +201,8 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         "unmapped_names": sorted(unmapped_names),
         "ingredient_summary": ingredient_summary,
         "ingredient_usage": ingredient_usage,
+        "filter_options": filter_options,
+        "filter_id": filter_id,
+        "filter_ing": filter_ing,
+        "usage_empty_reason": usage_empty_reason,
     })

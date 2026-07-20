@@ -7,7 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.core.clock import business_date_of
+from app.core.clock import business_date_of, business_today
 from app.models.order import Order, OrderItem, OrderStatus
 from app.models.daily_channel_sales import DailyChannelSales
 from app.models.upload_log import UploadLog
@@ -71,6 +71,20 @@ def upsert_order(db: Session, channel: str, order: ParsedOrder) -> int:
             raw_name=item.raw_name,
         ))
     return order_id
+
+
+def exclude_today_orders(
+    orders: list["ParsedOrder"], today: date | None = None
+) -> tuple[list["ParsedOrder"], int]:
+    """Same-day channel exports are incomplete by definition — drop any order
+    whose IST business date is today, so a partial current day never lands in
+    `orders` or `daily_channel_sales`. Mirrors scripts.import_pos.exclude_today,
+    which the POS/Petpooja path already applies; the channel path previously did
+    not, letting a single post-midnight delivery order advance the dashboard's
+    latest day onto an incomplete date. Returns (kept_orders, skipped_count)."""
+    today = today or business_today()
+    kept = [o for o in orders if business_date_of(o.placed_at) != today]
+    return kept, len(orders) - len(kept)
 
 
 def upsert_daily_channel_sales(
@@ -154,6 +168,7 @@ def write_upload_log(
     total_rows_seen: int,
     date_range: tuple[date, date] | None,
     succeeded: bool,
+    rows_skipped_today: int = 0,
     error_detail: str | None = None,
 ) -> UploadLog:
     """Every upload writes exactly one upload_log row. file_declared_total is
@@ -168,8 +183,8 @@ def write_upload_log(
         file_declared_rows=total_rows_seen,
         rows_parsed=total_rows_seen,
         rows_inserted=len(orders),
-        rows_skipped_today=0,
-        rows_failed=max(total_rows_seen - len(orders), 0),
+        rows_skipped_today=rows_skipped_today,
+        rows_failed=max(total_rows_seen - len(orders) - rows_skipped_today, 0),
         amount_inserted=sum((o.net for o in orders), decimal.Decimal("0")),
         succeeded=succeeded,
         error_detail=error_detail,

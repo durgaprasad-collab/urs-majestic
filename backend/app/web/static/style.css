@@ -866,3 +866,29 @@ a { color: var(--green); }
   /* Keep each component whole (no mid-card page breaks) */
   .card, .v2-attn, .v3-win, .v3-tgt-card, .v3-chan, .recon-card, .v2-spark-col, .v3-gm { break-inside: avoid; }
 }
+
+/* ── Prep Sheet ────────────────────────────────────────────────────────────── */
+.prep-head { display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.prep-title { font-size: 1.15rem; color: var(--green); margin: 0; }
+.prep-meta { font-size: .74rem; color: #6b6b6b; }
+
+.prep-table td { font-size: .92rem; }
+.prep-table .prep-qty { font-weight: 700; font-size: 1.05rem; color: var(--green); }
+.prep-table .prep-upper { color: #6b6b6b; }
+.prep-band-tag { font-size: .62rem; text-transform: uppercase; letter-spacing: .04em;
+  color: #8a8a8a; border: 1px solid #d6d1c7; border-radius: 3px; padding: 0 .25rem; margin-left: .35rem; }
+.prep-up { color: #1a5c47; font-weight: 600; }
+.prep-down { color: #9a3412; font-weight: 600; }
+.prep-tick { width: 3.2rem; text-align: center; }
+.prep-box { display: inline-block; width: 1rem; height: 1rem; border: 1.5px solid #b9b2a5; border-radius: 2px; }
+
+@media print {
+  /* The prep sheet is the printout. Bigger type, no zoom shrink, wide tick box. */
+  .prep-table td { font-size: 13px !important; padding: .3rem .4rem !important; }
+  .prep-table .prep-qty { font-size: 16px !important; }
+  .prep-table thead th { font-size: 11px !important; }
+  .prep-box { width: 14px; height: 14px; border-color: #333; }
+  .recon-table-wrap { overflow: visible !important; max-height: none !important; }
+  .prep-meta { font-size: 10px !important; }
+  .prep-table tbody tr { break-inside: avoid; }
+}

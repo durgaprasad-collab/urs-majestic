@@ -6,6 +6,25 @@
   <h1 class="page-title">Purchase Reconciliation</h1>
 </div>
 
+<form method="get" action="/reconciliation" class="filter-bar">
+  <select name="ingredient_id" class="form-input filter-select" onchange="this.form.submit()">
+    <option value="">All ingredients</option>
+    {% for ing in filter_options %}
+    <option value="{{ ing.id }}" {% if ing.id == filter_id %}selected{% endif %}>{{ ing.name }}</option>
+    {% endfor %}
+  </select>
+  {% if filter_id %}
+  <a href="/reconciliation" class="btn-link-sm" style="white-space:nowrap">✕ Clear</a>
+  {% endif %}
+</form>
+
+{% if filter_ing %}
+<p class="card-sub" style="margin:-.4rem 0 .8rem">
+  Showing <strong>{{ filter_ing.name }}</strong> only. Spend cards, purchase summary and
+  usage-by-dish are scoped to this ingredient; the unmapped-ingredient warning below stays global.
+</p>
+{% endif %}
+
 <div class="recon-grid">
   <div class="recon-card recon-menu">
     <span class="recon-label">Menu purchases</span>
@@ -20,7 +39,7 @@
   <div class="recon-card recon-total">
     <span class="recon-label">Total recorded</span>
     <span class="recon-value">₹{{ "{:,.0f}".format(grand_total) }}</span>
-    <span class="recon-sub">all purchase entries</span>
+    <span class="recon-sub">{% if filter_ing %}{{ filter_ing.name }} only{% else %}all purchase entries{% endif %}</span>
   </div>
 </div>
 
@@ -124,6 +143,11 @@
       </tbody>
     </table>
   </div>
+</div>
+{% elif usage_empty_reason %}
+<div class="card" style="margin-top:1rem">
+  <h2 class="card-title" style="font-size:1rem">Ingredient usage by dish</h2>
+  <p class="card-sub">{{ usage_empty_reason }}</p>
 </div>
 {% endif %}
 
