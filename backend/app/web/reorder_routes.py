@@ -57,10 +57,15 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
 
     rows = db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()
 
-    action, upcoming, no_history = [], [], []
+    action, upcoming, no_history, recently_bought = [], [], [], []
     for r in rows:
         if r["status"] == "insufficient_history":
             no_history.append(r)
+        elif r["recently_purchased"]:
+            # Bought in the last few days — freshly stocked, so skip it from the
+            # order list even if the cadence says it's due. Shown separately so
+            # it's visible, not silently dropped.
+            recently_bought.append(r)
         elif r["status"] in _ACTION:
             action.append(r)
         else:  # ok
@@ -75,6 +80,7 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         "action": action,
         "upcoming": upcoming,
         "no_history": no_history,
+        "recently_bought": recently_bought,
         "est_action_cost": est_action_cost,
         "include_inactive": include_inactive,
         "show_all": show_all,

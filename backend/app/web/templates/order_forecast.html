@@ -115,6 +115,19 @@
 </div>
 {% endif %}
 
+{% if recently_bought %}
+<div class="prep-head print-hide" style="margin-top:1.4rem">
+  <h2 class="prep-title">Recently bought — skipped</h2>
+  <span class="prep-meta">purchased in the last 3 days, so not due to reorder yet</span>
+</div>
+<div class="card print-hide">
+  <p class="ord-nohist">
+    {% for r in recently_bought %}<span>{{ r.name }}{% if r.days_since_purchase is not none %}
+      <span class="ord-dim">({{ r.days_since_purchase }}d ago)</span>{% endif %}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+  </p>
+</div>
+{% endif %}
+
 {% if no_history %}
 <div class="prep-head print-hide" style="margin-top:1.4rem">
   <h2 class="prep-title">Not enough history</h2>
