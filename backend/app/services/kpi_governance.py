@@ -69,16 +69,17 @@ KPI_REGISTRY: dict[str, dict[str, str]] = {
         "owner": "Owner",
     },
     "estimated_contribution": {
-        "definition": "Net sales minus estimated food cost. ESTIMATE — a flat food-cost "
-        "assumption until per-item recipe costing is available.",
-        "formula": "net_sales * (1 - ASSUMED_FOOD_COST_PCT)",
-        "source": "daily_channel_sales x settings.ASSUMED_FOOD_COST_PCT",
+        "definition": "Net sales minus estimated food cost. ESTIMATE — food cost is a "
+        "sales-weighted blend of the engine's derived per-item costs (provisional until "
+        "weigh-in confirmed); falls back to a flat assumption only if nothing is costed.",
+        "formula": "net_sales * (1 - sales_weighted_derived_food_cost_pct)",
+        "source": "daily_channel_sales x (item_sales-weighted menu_items.derived_food_cost_pct)",
         "refresh": "Daily",
         "owner": "Owner",
     },
     "contribution_pct": {
         "definition": "Estimated contribution as a share of net sales.",
-        "formula": "100 * (1 - ASSUMED_FOOD_COST_PCT)",
+        "formula": "100 * (1 - sales_weighted_derived_food_cost_pct)",
         "source": "Derived",
         "refresh": "Daily",
         "owner": "Owner",

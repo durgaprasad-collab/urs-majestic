@@ -10,8 +10,11 @@ fetched data — no builder issues its own N+1 query.
 
 Design notes for the future modules named in the spec:
   * Website orders   -> add 'website' to _CHANNELS and feed daily_channel_sales.
-  * Recipe costing   -> replace _FOOD_COST usage in _contribution().
-  * Actual margin    -> set contribution['estimated'] = False downstream.
+  * Recipe costing   -> DONE: _derived_food_cost() blends per-item derived costs
+                        (sales-weighted) into _contribution(); flat _FOOD_COST is
+                        now only a fallback when nothing is costed.
+  * Actual margin    -> once the blend is fully 'reliable' (weigh-in confirmed),
+                        flip contribution['estimated'] = False downstream.
   * AI Morning Brief -> consume kpi_governance.registry() + this context dict.
 Nothing here needs restructuring for those to plug in.
 """
@@ -81,22 +84,67 @@ def _failed_rows_by_channel(db: Session) -> dict[str, int]:
     return {r["channel"]: r["rows_failed"] for r in rows if (r["rows_failed"] or 0) > 0}
 
 
+def _derived_food_cost(db: Session) -> dict | None:
+    """Sales-weighted food-cost % from the engine's per-item derived costs.
+
+    Each food item's derived_food_cost_pct is weighted by its actual item_sales
+    revenue, so the blended figure reflects the real menu mix instead of a flat
+    assumption. Coverage is measured against ALL item-sales revenue (the LEFT
+    JOIN keeps unmatched / not-yet-costed sales in the denominator) so the number
+    is honest about how much of the mix it actually explains.
+
+    Returns None when nothing is costed yet -> caller falls back to the flat
+    ASSUMED_FOOD_COST_PCT. The blend is built from POS item_sales while the brief's
+    sales totals are channel net sales, so the contribution stays an estimate.
+    """
+    row = db.execute(
+        text(
+            "SELECT "
+            "  sum(s.revenue * m.derived_food_cost_pct) "
+            "    FILTER (WHERE m.derived_food_cost_pct IS NOT NULL) AS wsum, "
+            "  sum(s.revenue) FILTER (WHERE m.derived_food_cost_pct IS NOT NULL) AS covered_rev, "
+            "  sum(s.revenue) AS total_rev, "
+            "  bool_and(m.cost_confidence = 'reliable') "
+            "    FILTER (WHERE m.derived_food_cost_pct IS NOT NULL) AS all_reliable "
+            "FROM item_sales s "
+            "LEFT JOIN menu_items m ON m.name = s.item_name AND m.is_food"
+        )
+    ).mappings().first()
+    if not row or not row["covered_rev"]:
+        return None
+    covered = D(str(row["covered_rev"]))
+    total = D(str(row["total_rev"] or 0))
+    return {
+        "weighted_fc": D(str(row["wsum"])) / covered,
+        "coverage": float(covered / total) if total else 0.0,
+        "all_reliable": bool(row["all_reliable"]),
+    }
+
+
 # ── pure metrics derived from the sales series (no queries) ───────────────────
-_FOOD_COST = D(str(settings.ASSUMED_FOOD_COST_PCT or 0))
+_FOOD_COST = D(str(settings.ASSUMED_FOOD_COST_PCT or 0))  # flat fallback only
 
 
-def _contribution(through, day_sales, mtd_sales, pct_vs_prior_day) -> dict:
-    """Estimated contribution (flat food-cost assumption). Pure."""
-    fc_pct = float(_FOOD_COST * 100)
+def _contribution(through, day_sales, mtd_sales, pct_vs_prior_day,
+                  food_cost, *, basis, coverage) -> dict:
+    """Estimated contribution. `food_cost` is the fraction to subtract — a
+    sales-weighted blend of the engine's derived per-item costs when any exist
+    (basis='derived'), else the flat ASSUMED_FOOD_COST_PCT (basis='assumed').
+    Still an estimate: derived costs are not yet weigh-in confirmed, and a POS-mix
+    blend is applied to channel sales. `coverage` is the share of item sales the
+    blend is based on (None when assumed). Pure."""
+    fc_pct = float(food_cost * 100)
     return {
         "as_of": through,
         "estimated": True,
+        "basis": basis,
+        "coverage_pct": round(coverage * 100) if coverage is not None else None,
         "food_cost_pct": fc_pct,
         "contribution_pct": 100.0 - fc_pct,
         "day_sales": day_sales,
-        "day_contribution": day_sales * (1 - _FOOD_COST),
+        "day_contribution": day_sales * (1 - food_cost),
         "mtd_sales": mtd_sales,
-        "mtd_contribution": mtd_sales * (1 - _FOOD_COST),
+        "mtd_contribution": mtd_sales * (1 - food_cost),
         "trend_pct": pct_vs_prior_day,
         "trend_dir": "flat" if pct_vs_prior_day is None else ("up" if pct_vs_prior_day >= 0 else "down"),
     }
@@ -417,8 +465,15 @@ def _compute_brief(db: Session, last_refresh) -> dict:
     month_start = rep.replace(day=1)
     mtd = sum((v for d, v in series.items() if d >= month_start), D(0))
     trend = _trend(series, rep)                                            # pure
+    # Sales-weighted actual (derived) food cost, with a flat-assumption fallback.
+    dfc = _derived_food_cost(db)
+    if dfc is not None:
+        food_cost, basis, coverage = dfc["weighted_fc"], "derived", dfc["coverage"]
+    else:
+        food_cost, basis, coverage = _FOOD_COST, "assumed", None
     contrib = _contribution(rep, summary["latest_day_sales"] or D(0),      # pure
-                            mtd, summary["pct_vs_prior_day"])
+                            mtd, summary["pct_vs_prior_day"],
+                            food_cost, basis=basis, coverage=coverage)
     # Business Target Engine — break-even / operating / stretch from the
     # canonical Business Settings (fixed expenses, profit, margin, growth).
     bt = target_engine.compute(db, mtd=mtd, reporting_date=rep,

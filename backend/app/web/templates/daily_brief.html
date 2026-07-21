@@ -176,7 +176,7 @@
     <div class="v2-head">
       <span class="v2-emoji">💰</span>
       <h2 class="card-title">Estimated Contribution</h2>
-      <span class="v2-badge" title="Estimate — flat food cost until recipe costing is available">EST</span>
+      <span class="v2-badge" title="Estimate — {% if contrib.basis == 'derived' %}sales-weighted from engine-derived recipe costs, provisional until per-item weigh-ins are confirmed{% else %}flat food-cost assumption until recipe costing is available{% endif %}">EST</span>
     </div>
     <div class="v2-two">
       <div class="v2-two-cell">
@@ -193,7 +193,15 @@
         <span class="recon-sub">of ₹{{ "{:,.0f}".format(contrib.mtd_sales) }} sales</span>
       </div>
     </div>
-    <p class="recon-sub v2-note">Estimated at ~{{ "%.0f"|format(contrib.food_cost_pct) }}% food cost. Becomes actual contribution once recipe costing is available.</p>
+    <p class="recon-sub v2-note">
+      {%- if contrib.basis == 'derived' %}
+      Estimated using derived recipe costs — sales-weighted ~{{ "%.0f"|format(contrib.food_cost_pct) }}% food cost
+      across {{ contrib.coverage_pct }}% of menu sales. Provisional until per-item weigh-ins are confirmed.
+      {%- else %}
+      Estimated at ~{{ "%.0f"|format(contrib.food_cost_pct) }}% food cost (flat assumption).
+      Becomes actual contribution once recipe costing is available.
+      {%- endif %}
+    </p>
   </div>
   {% endif %}
 
