@@ -80,12 +80,17 @@ def print_report(rows: list[dict], min_units: float):
         print(hdr)
         print(SEP)
         for r in items:
+            # Engine-derived cost only (never the 0.350 placeholder); a trailing
+            # '~' marks anything not yet 'reliable' as provisional.
+            cost_str = f"{r['derived_food_cost_pct']*100:.1f}%" + (
+                "" if r["cost_confidence"] == "reliable" else "~"
+            )
             print(
                 f"  {r['item']:<40} "
                 f"{r['category']:<22} "
                 f"{r['units']:>6.0f}  "
                 f"{fmt_inr(r['avg_price'])}  "
-                f"{r['food_cost_pct']*100:>5.1f}%  "
+                f"{cost_str:>6}  "
                 f"{fmt_inr(r['contribution_per_unit'])}  "
                 f"{fmt_inr(r['total_contribution'])}"
             )

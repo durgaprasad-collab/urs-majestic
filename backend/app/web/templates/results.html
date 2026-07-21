@@ -26,14 +26,14 @@
 {% endif %}
 
 {% macro cost_badge(r) %}
-  {% if r.cost_basis == 'Derived' %}
-    {% if r.cost_confidence == 'reliable' %}
-    <span class="cost-badge cost-derived-reliable">Derived ✓</span>
-    {% else %}
-    <span class="cost-badge cost-derived-building">Derived ~</span>
-    {% endif %}
+  {# Confidence gates how firmly cost/margin is presented. Only 'reliable'
+     (weigh-in confirmed) is a firm figure; 'building' is engine-derived from
+     partial recipe costing and shown as provisional. The static 0.350
+     placeholder is never used, so there is no "Estimated" case. #}
+  {% if r.cost_confidence == 'reliable' %}
+  <span class="cost-badge cost-derived-reliable">Derived ✓</span>
   {% else %}
-  <span class="cost-badge cost-estimated">Est.</span>
+  <span class="cost-badge cost-derived-building" title="Provisional — engine-derived from partial recipe costing, not yet weigh-in confirmed">Provisional ~</span>
   {% endif %}
 {% endmacro %}
 
@@ -48,7 +48,14 @@
     <div class="item-stats">
       <span class="stat"><strong>{{ "{:,.0f}".format(r.units) }}</strong> sold</span>
       <span class="stat">₹{{ "{:.0f}".format(r.avg_price) }}</span>
-      <span class="stat-margin">{{ "{:.0f}".format((1 - r.food_cost_pct) * 100) }}% margin</span>
+      {% if r.cost_confidence == 'reliable' %}
+      <span class="stat-margin">{{ "{:.0f}".format(r.margin_pct * 100) }}% margin</span>
+      {% else %}
+      {# Provisional: greyed, tilde-prefixed, labelled and tooltipped so the
+         number is never mistaken for a firm figure. #}
+      <span class="stat-margin stat-provisional"
+            title="Provisional — derived from partial recipe costing, not yet weigh-in confirmed. Not a firm figure.">~{{ "{:.0f}".format(r.margin_pct * 100) }}% margin (prov.)</span>
+      {% endif %}
       {{ cost_badge(r) }}
     </div>
   </div>

@@ -63,16 +63,17 @@ def get_analysis(db: Session) -> list[dict[str, Any]]:
         units = s["units"]
         revenue = s["revenue"]
 
-        # Use derived cost when the engine has run; fall back to the per-item DB estimate.
+        # Cost and margin come ONLY from the engine-derived value. The static
+        # food_cost_pct column is a hardcoded 0.350 placeholder and must never
+        # surface as a displayed number. An item the engine has not costed yet
+        # (no derived value) is left out of the analysis rather than shown at a
+        # fake 35% — the BCG classification is contribution-ranked, so a
+        # fabricated cost would also distort every other item's quadrant.
         confidence = getattr(item, "cost_confidence", "none") or "none"
         derived = getattr(item, "derived_food_cost_pct", None)
-        if confidence != "none" and derived is not None:
-            fcp = Decimal(str(derived))
-            cost_basis = "Derived"
-        else:
-            fcp = item.food_cost_pct  # read from DB — never hardcoded here
-            cost_basis = "Estimated"
-            confidence = "none"
+        if derived is None:
+            continue
+        fcp = Decimal(str(derived))
 
         avg_price = revenue / units if units else Decimal("0")
         margin_pct = Decimal("1") - fcp
@@ -85,11 +86,11 @@ def get_analysis(db: Session) -> list[dict[str, Any]]:
             "units": float(units),
             "revenue": float(revenue),
             "avg_price": float(avg_price.quantize(Decimal("0.01"))),
-            "food_cost_pct": float(fcp),
+            # Engine-derived cost only; gated for display by cost_confidence.
+            "derived_food_cost_pct": float(fcp),
+            "margin_pct": float(margin_pct),
             "contribution_per_unit": float(contribution_per_unit.quantize(Decimal("0.01"))),
             "total_contribution": float(total_contribution.quantize(Decimal("0.01"))),
-            "margin_pct": float(margin_pct),
-            "cost_basis": cost_basis,
             "cost_confidence": confidence,
         })
 

@@ -266,6 +266,10 @@ a { color: var(--green); }
 .stat        { color: var(--muted); }
 .stat strong { color: var(--text); font-weight: 600; }
 .stat-margin { color: var(--green); font-weight: 600; }
+/* Provisional margin: greyed, italic, dotted underline hints at the tooltip so a
+   non-reliable (building) cost is never read as a firm figure. */
+.stat-provisional { color: #9a9a9a; font-weight: 500; font-style: italic;
+  text-decoration: underline dotted #c7c7c7; text-underline-offset: 2px; cursor: help; }
 
 /* ── Nav bar ───────────────────────────────────────────────────────────────── */
 .app-nav {
