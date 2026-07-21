@@ -53,6 +53,21 @@ class Settings(BaseSettings):
     RATING_ALERT_THRESHOLD: float = 4.0        # flag any live rating below this
     DELIVERY_DISCOUNT_POLICY_PCT: float = 25.0  # funded discount % of gross that's "over policy"
 
+    # WhatsApp Daily Brief ──────────────────────────────────────────────────────
+    # Meta WhatsApp Cloud API. With TOKEN/PHONE_ID empty the daily job runs in
+    # dry-run only (prints, never sends), so nothing breaks before setup is done.
+    WHATSAPP_TOKEN: str = ""            # permanent access token (sent as Bearer)
+    WHATSAPP_PHONE_ID: str = ""         # WhatsApp phone number ID (Cloud API)
+    WHATSAPP_API_VERSION: str = "v21.0"
+    WHATSAPP_TEMPLATE_NAME: str = "daily_brief"   # must be approved in Meta first
+    WHATSAPP_TEMPLATE_LANG: str = "en"
+    # Comma-separated recipients in E.164 without '+' (91 = India). Owner + kitchen.
+    WHATSAPP_RECIPIENTS: str = "919150102001,919884194662,919985335358"
+    # List sizes for the two single-line summaries (template params can't hold
+    # newlines, so lists are separator-delimited and capped).
+    WHATSAPP_PREP_LIMIT: int = 10
+    WHATSAPP_ORDER_LIMIT: int = 15
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
