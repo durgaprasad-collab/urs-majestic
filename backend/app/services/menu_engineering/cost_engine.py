@@ -3,9 +3,15 @@
 Corrected cost-derivation model — fixes three root causes found in diagnosis:
   1. OVERHEAD SEPARATION
      Ingredients with cost_role='overhead' (e.g. cooking gas) are NOT charged
-     per dish — a flat OVERHEAD_PER_DISH is added instead. cost_role='per_order'
-     (e.g. packaging) is excluded entirely (it belongs on the order total, not
-     each dish).
+     per dish — a flat OVERHEAD_PER_DISH is added instead, because gas is a fixed
+     cost that doesn't scale with the exact number of dishes.
+     cost_role='per_order' (e.g. packaging) IS a variable per-order cost, so its
+     total menu spend is amortized across dishes sold (PER_ORDER_PER_DISH) and
+     added to every dish. Gas stays flat; packaging follows real volume.
+     Ingredients in category='Spices' are handled the same amortized way
+     (SPICE_PER_DISH): used in nearly every dish but too small/variable to
+     portion-map, so their spend is spread over dishes and they're skipped from
+     per-portion costing (no double count).
   2. REAL PORTIONS
      intensity (light/medium/heavy) maps to the ingredient's own
      portion_light_g / portion_medium_g / portion_heavy_g — real grams/ml —
@@ -40,16 +46,23 @@ from sqlalchemy.orm import Session
 from app.models.menu_item import MenuItem
 from app.models.purchase import Purchase
 from app.models.ingredient import Ingredient, IngredientDishMap
+from app.models.item_sale import ItemSale
 from app.models.combo import ComboComponent
 
-# Flat overhead added to every dish (gas + small misc), in rupees.
-# Derive from data: (monthly gas+misc spend) / (dishes sold that month).
+# Flat overhead added to every dish for FIXED costs (gas + small misc), in rupees.
+# Gas is deliberately flat, not amortized per dish — the kitchen burns roughly the
+# same gas regardless of the exact dish count, so it's a fixed cost, not variable.
 OVERHEAD_PER_DISH = decimal.Decimal("3.0")
 
 # Any food ingredient costing more than this per gram/ml is almost certainly
 # a unit-entry error (e.g. litres entered as ml). The most expensive real
 # input here (paneer/cashew) is well under ₹1/g.
 IMPLAUSIBLE_PER_G = decimal.Decimal("3.0")
+
+# Ingredients in this category are amortized across dishes (see _spice_per_dish)
+# rather than portion-mapped per recipe. Set an ingredient's category to this to
+# add it to the spice pool.
+_SPICE_CATEGORY = "Spices"
 
 _INTENSITY_COL = {
     "light": "portion_light_g",
@@ -114,14 +127,64 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
     return cost, anomalies
 
 
+def _per_order_per_dish(db: Session) -> decimal.Decimal:
+    """Variable per-order overhead (packaging) amortized across dishes sold.
+
+    Packaging (cost_role='per_order') is a real cost of every order but isn't
+    portioned into a recipe. Spread its total menu spend over the number of
+    dishes sold so each dish carries its average share:
+        sum(per_order menu spend) / sum(units sold)
+    Returns 0 when there are no sales yet (so a fresh DB never divides by zero).
+    Note: this averages across ALL dishes (dine-in included); it's an estimate,
+    not a per-delivery-order figure.
+    """
+    spend = (
+        db.query(func.coalesce(func.sum(Purchase.total_price), 0))
+        .join(Ingredient, Ingredient.id == Purchase.ingredient_id)
+        .filter(Ingredient.cost_role == "per_order", Purchase.usage_type == "menu")
+        .scalar()
+    )
+    units = db.query(func.coalesce(func.sum(ItemSale.qty), 0)).scalar()
+    spend = decimal.Decimal(str(spend or 0))
+    units = decimal.Decimal(str(units or 0))
+    return (spend / units) if units > 0 else decimal.Decimal("0")
+
+
+def _spice_per_dish(db: Session) -> decimal.Decimal:
+    """Spice cost amortized across dishes sold — same shape as packaging.
+
+    Individual spices (category='Spices') are used in almost every dish in
+    amounts too small and variable to portion-map to each recipe, so their total
+    menu spend is spread over dishes sold and added to each dish:
+        sum(Spices-category menu spend) / sum(units sold)
+    Spices are therefore NOT portioned per recipe — _dish_recipe_costs skips
+    category='Spices' so a spice mapped to a dish can never double-count.
+    """
+    spend = (
+        db.query(func.coalesce(func.sum(Purchase.total_price), 0))
+        .join(Ingredient, Ingredient.id == Purchase.ingredient_id)
+        .filter(Ingredient.category == _SPICE_CATEGORY, Purchase.usage_type == "menu")
+        .scalar()
+    )
+    units = db.query(func.coalesce(func.sum(ItemSale.qty), 0)).scalar()
+    spend = decimal.Decimal(str(spend or 0))
+    units = decimal.Decimal(str(units or 0))
+    return (spend / units) if units > 0 else decimal.Decimal("0")
+
+
 def _dish_recipe_costs(
     db: Session,
     ing_cost: dict[int, decimal.Decimal],
     skip_menu_item_ids: frozenset[int] = frozenset(),
+    per_order_per_dish: decimal.Decimal = decimal.Decimal("0"),
+    spice_per_dish: decimal.Decimal = decimal.Decimal("0"),
 ) -> dict[int, tuple[decimal.Decimal, bool]]:
     """{menu_item_id: (recipe_cost_with_overhead, complete)} where `complete`
     is True only if every mapped recipe ingredient had both a price and a
     portion size (drives cost_confidence).
+
+    Each dish carries OVERHEAD_PER_DISH (flat, fixed — gas) plus two amortized
+    variable pools: per_order_per_dish (packaging) and spice_per_dish (spices).
 
     `skip_menu_item_ids` (combo items) are left out entirely — their own
     ingredient_dish_map rows are legacy/duplicate; they're costed separately
@@ -139,7 +202,9 @@ def _dish_recipe_costs(
             continue
         entry = acc.setdefault(m.menu_item_id, [decimal.Decimal("0"), True])
         if ing.cost_role != "recipe":
-            continue  # overhead / per_order never priced per dish
+            continue  # overhead (flat) / per_order (amortized) not priced per portion
+        if ing.category == _SPICE_CATEGORY:
+            continue  # spices are amortized per dish, not portioned — no double count
         grams = getattr(ing, _INTENSITY_COL.get(m.intensity, "portion_medium_g"))
         per_g = ing_cost.get(ing.id)
         if grams is None or per_g is None:
@@ -147,7 +212,8 @@ def _dish_recipe_costs(
             continue
         entry[0] += decimal.Decimal(str(grams)) * per_g
 
-    return {mid: (v[0] + OVERHEAD_PER_DISH, v[1]) for mid, v in acc.items()}
+    fixed = OVERHEAD_PER_DISH + per_order_per_dish + spice_per_dish
+    return {mid: (v[0] + fixed, v[1]) for mid, v in acc.items()}
 
 
 def _combo_costs(
@@ -188,13 +254,16 @@ def run_cost_engine(db: Session) -> dict:
     """Recompute derived_cost_per_unit, derived_food_cost_pct and
     cost_confidence for every active food menu item. Idempotent."""
     ing_cost, anomalies = _ingredient_cost_per_g(db)
+    per_order_pd = _per_order_per_dish(db)  # packaging amortized per dish
+    spice_pd = _spice_per_dish(db)          # spices amortized per dish
 
     combo_ids = frozenset(
         row[0] for row in db.query(ComboComponent.combo_menu_item_id).distinct().all()
     )
 
     # Pass 1: component (non-combo) dishes. Pass 2: combos, from pass-1 costs.
-    dish_cost = _dish_recipe_costs(db, ing_cost, skip_menu_item_ids=combo_ids)
+    dish_cost = _dish_recipe_costs(db, ing_cost, skip_menu_item_ids=combo_ids,
+                                   per_order_per_dish=per_order_pd, spice_per_dish=spice_pd)
     dish_cost.update(_combo_costs(db, dish_cost))
 
     items = (
