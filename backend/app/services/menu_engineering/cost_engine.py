@@ -12,6 +12,9 @@ Corrected cost-derivation model — fixes three root causes found in diagnosis:
      (SPICE_PER_DISH): used in nearly every dish but too small/variable to
      portion-map, so their spend is spread over dishes and they're skipped from
      per-portion costing (no double count).
+     All of this overhead is applied ONCE PER SOLD ITEM (in run_cost_engine,
+     after combos are assembled) — a combo is one sold line, so it carries the
+     overhead once, not once per component.
   2. REAL PORTIONS
      intensity (light/medium/heavy) maps to the ingredient's own
      portion_light_g / portion_medium_g / portion_heavy_g — real grams/ml —
@@ -176,15 +179,14 @@ def _dish_recipe_costs(
     db: Session,
     ing_cost: dict[int, decimal.Decimal],
     skip_menu_item_ids: frozenset[int] = frozenset(),
-    per_order_per_dish: decimal.Decimal = decimal.Decimal("0"),
-    spice_per_dish: decimal.Decimal = decimal.Decimal("0"),
 ) -> dict[int, tuple[decimal.Decimal, bool]]:
-    """{menu_item_id: (recipe_cost_with_overhead, complete)} where `complete`
-    is True only if every mapped recipe ingredient had both a price and a
-    portion size (drives cost_confidence).
+    """{menu_item_id: (recipe_cost, complete)} — portioned recipe-ingredient cost
+    ONLY, WITHOUT the per-dish overhead. `complete` is True only if every mapped
+    recipe ingredient had both a price and a portion size (drives cost_confidence).
 
-    Each dish carries OVERHEAD_PER_DISH (flat, fixed — gas) plus two amortized
-    variable pools: per_order_per_dish (packaging) and spice_per_dish (spices).
+    Overhead (flat gas + amortized packaging + amortized spices) is deliberately
+    NOT added here — the caller adds it once per SOLD ITEM, so a combo built from
+    N components is not charged overhead N times (see run_cost_engine).
 
     `skip_menu_item_ids` (combo items) are left out entirely — their own
     ingredient_dish_map rows are legacy/duplicate; they're costed separately
@@ -212,8 +214,7 @@ def _dish_recipe_costs(
             continue
         entry[0] += decimal.Decimal(str(grams)) * per_g
 
-    fixed = OVERHEAD_PER_DISH + per_order_per_dish + spice_per_dish
-    return {mid: (v[0] + fixed, v[1]) for mid, v in acc.items()}
+    return {mid: (v[0], v[1]) for mid, v in acc.items()}
 
 
 def _combo_costs(
@@ -254,17 +255,22 @@ def run_cost_engine(db: Session) -> dict:
     """Recompute derived_cost_per_unit, derived_food_cost_pct and
     cost_confidence for every active food menu item. Idempotent."""
     ing_cost, anomalies = _ingredient_cost_per_g(db)
-    per_order_pd = _per_order_per_dish(db)  # packaging amortized per dish
-    spice_pd = _spice_per_dish(db)          # spices amortized per dish
+    # Per-sold-item overhead, added ONCE below — flat gas + amortized packaging +
+    # amortized spices. Applied after combos are assembled so a combo (one sold
+    # line) carries it once, not once per component.
+    fixed_per_dish = OVERHEAD_PER_DISH + _per_order_per_dish(db) + _spice_per_dish(db)
 
     combo_ids = frozenset(
         row[0] for row in db.query(ComboComponent.combo_menu_item_id).distinct().all()
     )
 
-    # Pass 1: component (non-combo) dishes. Pass 2: combos, from pass-1 costs.
-    dish_cost = _dish_recipe_costs(db, ing_cost, skip_menu_item_ids=combo_ids,
-                                   per_order_per_dish=per_order_pd, spice_per_dish=spice_pd)
-    dish_cost.update(_combo_costs(db, dish_cost))
+    # Pass 1: recipe-only cost for component (non-combo) dishes.
+    # Pass 2: combos, from those recipe-only component costs.
+    recipe = _dish_recipe_costs(db, ing_cost, skip_menu_item_ids=combo_ids)
+    recipe.update(_combo_costs(db, recipe))
+    # Overhead once per sold item — standalone dish OR combo.
+    dish_cost = {mid: (cost + fixed_per_dish, complete)
+                 for mid, (cost, complete) in recipe.items()}
 
     items = (
         db.query(MenuItem)
