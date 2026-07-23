@@ -1,21 +1,30 @@
 """Daily WhatsApp brief — tomorrow's prep sheet + ingredients due to order.
 
 Sends one WhatsApp *template* message per recipient via the Meta WhatsApp Cloud
-API. Intended to run as a Render Cron Job at 1 PM IST:
+API. Two Render Cron Jobs (schedules are UTC; IST = UTC+5:30):
 
-    Schedule (UTC):  30 7 * * *                     # 1 PM Asia/Kolkata
-    Command:         python -m scripts.send_daily_whatsapp
+    Midday brief (prep + order)   30 7  * * *   # 1 PM IST
+        python -m scripts.send_daily_whatsapp
+
+    Evening order forecast only   30 14 * * *   # 8 PM IST
+        python -m scripts.send_daily_whatsapp --only order
 
 Why a template (not free text): WhatsApp business-INITIATED messages outside the
 24h customer window must use a pre-approved template. Template variable values
 also cannot contain newlines/tabs, so each list here is squeezed onto a single
 separator-delimited line; the line breaks live in the template's fixed text.
 
-Expected template — name = WHATSAPP_TEMPLATE_NAME, 3 body params {{1}}/{{2}}/{{3}}:
+Two approved Meta templates are needed:
 
+  WHATSAPP_TEMPLATE_NAME (default 'daily_brief') — 3 params {{1}}/{{2}}/{{3}}:
     URS Majestic — Daily Brief
     Prep for {{1}}: {{2}}
     To order now: {{3}}
+
+  WHATSAPP_ORDER_TEMPLATE_NAME (default 'order_forecast') — 2 params, used by
+  --only order:
+    URS Majestic — Order Forecast ({{1}})
+    To order now: {{2}}
 
 Safe by default: with WHATSAPP_TOKEN / WHATSAPP_PHONE_ID unset (or with
 --dry-run) it prints the exact params and sends nothing — so it can be committed
@@ -91,7 +100,7 @@ def _order_summary(db) -> str:
     return ", ".join(f"{_clean(r.name)} {_fmt_qty(r.suggested_order_qty)}{r.unit}" for r in rows)
 
 
-def _send(to: str, params: list[str]) -> tuple[bool, str]:
+def _send(to: str, params: list[str], template: str) -> tuple[bool, str]:
     url = (
         f"https://graph.facebook.com/{settings.WHATSAPP_API_VERSION}"
         f"/{settings.WHATSAPP_PHONE_ID}/messages"
@@ -101,7 +110,7 @@ def _send(to: str, params: list[str]) -> tuple[bool, str]:
         "to": to,
         "type": "template",
         "template": {
-            "name": settings.WHATSAPP_TEMPLATE_NAME,
+            "name": template,
             "language": {"code": settings.WHATSAPP_TEMPLATE_LANG},
             "components": [
                 {"type": "body", "parameters": [{"type": "text", "text": p} for p in params]}
@@ -130,6 +139,11 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Send the daily WhatsApp prep + order brief.")
     ap.add_argument("--dry-run", action="store_true", help="print the message, send nothing")
     ap.add_argument("--date", help="prep target date YYYY-MM-DD (default: tomorrow IST)")
+    ap.add_argument(
+        "--only", choices=["both", "order"], default="both",
+        help="'order' sends just the reorder list (evening run), using the "
+             "order-only template; default 'both' sends prep + order.",
+    )
     args = ap.parse_args()
 
     # Windows consoles default to cp1252; the message uses "·". Never let a
@@ -139,26 +153,35 @@ def main() -> int:
     except Exception:
         pass
 
-    target = business_today() + datetime.timedelta(days=1)
+    today = business_today()
+    target = today + datetime.timedelta(days=1)
     if args.date:
         target = datetime.date.fromisoformat(args.date)
 
     db = SessionLocal()
     try:
-        date_label = target.strftime("%a %d %b")
-        prep = _clip(_prep_summary(db, target))
-        order = _clip(_order_summary(db))
+        if args.only == "order":
+            # Evening run: what's due to order right now. Dated today (when the
+            # order is actually placed), not tomorrow.
+            template = settings.WHATSAPP_ORDER_TEMPLATE_NAME
+            date_label = today.strftime("%a %d %b")
+            params = [date_label, _clip(_order_summary(db))]
+            shown = [("{{1}} date ", date_label), ("{{2}} order", params[1])]
+        else:
+            template = settings.WHATSAPP_TEMPLATE_NAME
+            date_label = target.strftime("%a %d %b")
+            params = [date_label, _clip(_prep_summary(db, target)), _clip(_order_summary(db))]
+            shown = [("{{1}} date ", date_label), ("{{2}} prep ", params[1]),
+                     ("{{3}} order", params[2])]
     finally:
         db.close()
 
-    params = [date_label, prep, order]
     recipients = [n.strip() for n in settings.WHATSAPP_RECIPIENTS.split(",") if n.strip()]
 
-    print("== Daily WhatsApp brief ==============================")
-    print(f"Template   : {settings.WHATSAPP_TEMPLATE_NAME} ({settings.WHATSAPP_TEMPLATE_LANG})")
-    print(f"{{{{1}}}} date : {date_label}")
-    print(f"{{{{2}}}} prep : {prep}")
-    print(f"{{{{3}}}} order: {order}")
+    print(f"== WhatsApp {'order forecast' if args.only == 'order' else 'daily brief'} ==========")
+    print(f"Template   : {template} ({settings.WHATSAPP_TEMPLATE_LANG})")
+    for label, value in shown:
+        print(f"{label}: {value}")
     print(f"Recipients : {', '.join(recipients) or '(none configured)'}")
 
     configured = bool(settings.WHATSAPP_TOKEN and settings.WHATSAPP_PHONE_ID)
@@ -173,7 +196,7 @@ def main() -> int:
 
     failures = 0
     for to in recipients:
-        ok, resp = _send(to, params)
+        ok, resp = _send(to, params, template)
         print(f"  -> {to}: {'SENT' if ok else 'FAILED'} - {resp[:200]}")
         failures += 0 if ok else 1
     print(f"\nDone: {len(recipients) - failures}/{len(recipients)} sent.")

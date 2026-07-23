@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     WHATSAPP_PHONE_ID: str = ""         # WhatsApp phone number ID (Cloud API)
     WHATSAPP_API_VERSION: str = "v21.0"
     WHATSAPP_TEMPLATE_NAME: str = "daily_brief"   # must be approved in Meta first
+    # Order-only template for the evening run (--only order); 2 params: date, list.
+    WHATSAPP_ORDER_TEMPLATE_NAME: str = "order_forecast"
     WHATSAPP_TEMPLATE_LANG: str = "en"
     # Comma-separated recipients in E.164 without '+' (91 = India). Owner + kitchen.
     WHATSAPP_RECIPIENTS: str = "919150102001,919884194662,919985335358"
