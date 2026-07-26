@@ -1,3 +1,4 @@
+// NOTE: the 'New' tags below are a launch device. Remove them around 2026-08-25.
 export const CATEGORIES = [
   {
     id: 'soups',
@@ -33,11 +34,32 @@ export const CATEGORIES = [
     ],
   },
   {
+    id: 'snacks',
+    name: 'Snacks',
+    note: 'Soya items are 100% plant protein',
+    items: [
+      { name: 'Veg Money Bags (5 pcs)', price: 119, tags: ['New'] },
+      { name: 'Veg Lollipop (5 pcs)', price: 129, tags: ['New'] },
+      { name: 'Soya Fish Fry (4 pcs)', price: 199, tags: ['New', 'Intro price'] },
+      { name: 'Soya Chicken 65', price: 149, tags: ['New'] },
+      { name: 'Soya Chicken Manchurian', price: 159, tags: ['New'] },
+    ],
+  },
+  {
     id: 'tikka',
     name: 'Tikka',
     items: [
       { name: 'Mushroom Tikka', price: 149 },
       { name: 'Paneer Tikka (5 pcs)', price: 179 },
+    ],
+  },
+  {
+    id: 'shawarma',
+    name: 'Shawarma',
+    note: 'Rolled fresh to order',
+    items: [
+      { name: 'Paneer Tikka Shawarma', price: 169, tags: ['New'] },
+      { name: 'Mushroom Tikka Shawarma', price: 169, tags: ['New'] },
     ],
   },
   {
@@ -81,6 +103,7 @@ export const CATEGORIES = [
     id: 'biryani',
     name: 'Biryani & Rice',
     items: [
+      { name: 'Sambar Rice', price: 99, tags: ['New', '1–3 PM only'] },
       { name: 'Jeera Rice', price: 109 },
       { name: 'Veg Biryani / Pulav', price: 149 },
       { name: 'Mushroom Biryani / Pulav', price: 169 },
