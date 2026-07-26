@@ -27,6 +27,9 @@ function CategorySection({ cat }) {
               {item.bestseller && (
                 <span className="item-badge" aria-label="Bestseller">Best Seller</span>
               )}
+              {(item.tags || []).map((tag) => (
+                <span key={tag} className="item-badge">{tag}</span>
+              ))}
             </span>
             <span className="item-price">₹{item.price}</span>
           </li>
