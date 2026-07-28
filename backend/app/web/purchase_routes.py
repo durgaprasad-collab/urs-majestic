@@ -9,7 +9,7 @@ A purchase row is a financial record. Three rules hold everywhere below:
 3. Every change is followed by resync_derived_costs(), because menu_items
    carries a frozen cost snapshot that does not recompute on its own.
 """
-from datetime import date
+from datetime import date, timedelta
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func
@@ -35,6 +35,100 @@ MIN_EDIT_REASON = 5
 def _live(q):
     """Restrict a Purchase query to rows that have not been soft-deleted."""
     return q.filter(Purchase.deleted_at.is_(None))
+
+
+DUP_WINDOW_DAYS = 1
+
+
+def _unit_str(unit) -> str:
+    """unit arrives as a Python enum from the ORM and as a plain string from
+    the form. Render both the same way."""
+    return getattr(unit, "value", unit)
+
+
+# Rates are shown in the base unit of their family so a gram row and a
+# kilogram row can be read against each other on the same screen. Without
+# this, Butter 28 Jul reads as Rs 0.60/g beside Rs 220.00/kg and the
+# contradiction is invisible.
+_RATE_BASE = {"g": ("kg", 1000.0), "ml": ("l", 1000.0)}
+
+
+def _rate_text(qty, total_price, unit) -> str:
+    """Price per base unit, or a dash when it cannot be computed.
+
+    The rate is what exposes the mistakes a price match cannot see. Butter on
+    28 Jul is the live example: 200 g for Rs 120 (Rs 600/kg) sitting next to
+    2 kg for Rs 440 (Rs 220/kg). Same ingredient, same day, different price,
+    and one of the two rows is wrong.
+    """
+    try:
+        q = float(qty)
+        if q <= 0:
+            return "\u2014"
+        u = _unit_str(unit)
+        base, factor = _RATE_BASE.get(u, (u, 1.0))
+        return "\u20b9{:,.2f}/{}".format((float(total_price) / q) * factor, base)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return "\u2014"
+
+
+def _duplicate_candidates(db: Session, ingredient_id: int, purchase_date: date, total_price: float):
+    """Live purchases of the same ingredient that this entry may be repeating.
+
+    Two windows, because they catch different mistakes:
+
+    * same day, any price -- the same paper memo keyed twice by two people,
+      and same-day rate contradictions where one of the two rows is wrong.
+    * same total price, within one day either side -- the same memo entered on
+      adjacent days. Cooking Gas ids 64 and 113 (Rs 3,400, 30 Jun and 1 Jul)
+      is the live example.
+
+    Measured against all 292 live rows on 2026-07-28, these two windows would
+    have fired on 18 entries (6.2%, about one warning every day and a half at
+    current entry volume), of which 6 look like genuine defects.
+
+    It warns; it never blocks. Daily greens legitimately repeat -- coriander,
+    curd, milk and lemon all recur at the same price on consecutive days -- so
+    a hard block would be wrong most of the time it fired, and would push
+    people into worse workarounds.
+    """
+    lo = purchase_date - timedelta(days=DUP_WINDOW_DAYS)
+    hi = purchase_date + timedelta(days=DUP_WINDOW_DAYS)
+    rows = (
+        _live(db.query(Purchase))
+        .filter(Purchase.ingredient_id == ingredient_id)
+        .filter(Purchase.purchase_date.between(lo, hi))
+        .order_by(Purchase.purchase_date.desc(), Purchase.id.desc())
+        .all()
+    )
+    out = []
+    for r in rows:
+        same_day = r.purchase_date == purchase_date
+        # Rounded to the paisa: total_price is NUMERIC and float() round-trips
+        # can differ in the last bit.
+        price_equal = abs(float(r.total_price) - float(total_price)) < 0.005
+        if not (same_day or price_equal):
+            continue
+        gap = abs((r.purchase_date - purchase_date).days)
+        if same_day and price_equal:
+            why = "same day, same amount"
+        elif same_day:
+            why = "same day, different amount"
+        else:
+            why = "same amount, {} day{} apart".format(gap, "" if gap == 1 else "s")
+        out.append({
+            "id": r.id,
+            "qty": r.qty,
+            "unit": _unit_str(r.unit),
+            "total_price": r.total_price,
+            "purchase_date": r.purchase_date,
+            "rate": _rate_text(r.qty, r.total_price, r.unit),
+            "entered_by": r.entered_by_user_id,
+            "notes": r.notes,
+            "why": why,
+        })
+    return out
+
 
 
 def _ingredient_options(db: Session, purchase: Purchase | None = None):
@@ -126,41 +220,97 @@ async def purchases_new_post(
     purchase_date: str = Form(...),
     usage_type: str = Form(...),
     notes: str = Form(default=""),
+    override_duplicate: str = Form(default=""),
     db: Session = Depends(get_db),
 ):
     user, redir = require_user(request, db)
     if redir:
         return redir
-    ctx = {
-        "user": user,
-        "ingredients": _ingredient_options(db),
-        "error": None,
-        "today": date.today().isoformat(),
+
+    entered = {
+        "ingredient_id": ingredient_id,
+        "qty": qty,
+        "unit": unit,
+        "total_price": total_price,
+        "purchase_date": purchase_date,
+        "usage_type": usage_type,
+        "notes": notes,
     }
+
+    def render_form(message, duplicates=None, status: int = 400):
+        """Re-render the form with everything the operator typed still in it.
+
+        The previous version dropped every field on any failure and made them
+        start again -- which is exactly the pressure that produces a careless
+        re-entry.
+        """
+        return _tmpl(request, "purchases_new.html", {
+            "user": user,
+            "ingredients": _ingredient_options(db),
+            "error": message,
+            "today": date.today().isoformat(),
+            "form": entered,
+            "new_ingredient_id": ingredient_id,
+            "duplicates": duplicates or [],
+        }, status_code=status)
+
     if usage_type not in _SELECTABLE_USAGE:
-        ctx["error"] = f"Unknown usage type '{usage_type}'."
-        return _tmpl(request, "purchases_new.html", ctx, status_code=400)
+        return render_form(f"Unknown usage type '{usage_type}'.")
+
+    try:
+        qty_f = float(qty)
+        price_f = float(total_price)
+        pdate = date.fromisoformat(purchase_date)
+    except ValueError as exc:
+        return render_form(f"Could not read what you entered: {exc}")
+
+    # Computed even when the operator is overriding, so the audit log can
+    # record what was overridden rather than just that something was.
+    duplicates = _duplicate_candidates(db, ingredient_id, pdate, price_f)
+    if duplicates and not override_duplicate:
+        return render_form(None, duplicates=duplicates, status=200)
+
     try:
         p = Purchase(
             ingredient_id=ingredient_id,
-            qty=float(qty),
+            qty=qty_f,
             unit=unit,
-            total_price=float(total_price),
-            purchase_date=date.fromisoformat(purchase_date),
+            total_price=price_f,
+            purchase_date=pdate,
             usage_type=usage_type,
             entered_by_user_id=user.id,
             notes=notes.strip() or None,
         )
         db.add(p)
         db.flush()
+        if duplicates:
+            # An override is a judgement call on a financial record, so it is
+            # logged like every other one. This also makes the override rate
+            # measurable: if it runs near 100%, the warning is noise and the
+            # windows need narrowing.
+            log_change(
+                db,
+                batch="purchase_duplicate_override",
+                target_table="purchases",
+                target_id=p.id,
+                field="duplicate_warning_overridden",
+                old_value=None,
+                new_value="; ".join(
+                    "#{} ({})".format(d["id"], d["why"]) for d in duplicates
+                ),
+                reason=(
+                    "Operator confirmed this is a separate purchase despite "
+                    "{} nearby row(s) for the same ingredient.".format(len(duplicates))
+                ),
+                actor_user_id=user.id,
+            )
         # A new purchase moves ingredient cost, so the menu snapshot is stale
         # from this moment until it is repointed.
         resync_derived_costs(db)
         db.commit()
     except Exception as exc:
         db.rollback()
-        ctx["error"] = f"Could not save: {exc}"
-        return _tmpl(request, "purchases_new.html", ctx, status_code=400)
+        return render_form(f"Could not save: {exc}")
     return RedirectResponse("/purchases", status_code=303)
 
 
