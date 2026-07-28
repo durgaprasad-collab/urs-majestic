@@ -69,6 +69,22 @@ class Settings(BaseSettings):
     # newlines, so lists are separator-delimited and capped).
     WHATSAPP_PREP_LIMIT: int = 10
     WHATSAPP_ORDER_LIMIT: int = 15
+    # Verify token Meta calls this endpoint's GET handshake with -- must match
+    # the "Verify token" configured in Meta's WhatsApp webhook settings.
+    WHATSAPP_WEBHOOK_VERIFY_TOKEN: str = ""
+
+    # Daily Brief — Telegram (bot) ───────────────────────────────────────────
+    # Telegram Bot API. No template pre-approval needed (unlike WhatsApp): free
+    # text to any chat that has messaged the bot first. With TOKEN/CHAT_IDS
+    # empty the daily job runs dry-run only (prints, never sends).
+    TELEGRAM_BOT_TOKEN: str = ""        # from @BotFather, e.g. "123456:AAE..."
+    # Comma-separated numeric chat IDs (owner + kitchen). Each person must have
+    # messaged the bot at least once first — get IDs via @userinfobot.
+    TELEGRAM_CHAT_IDS: str = ""
+    # No per-param char cap like WhatsApp (Telegram's message cap is 4096
+    # chars total), so these can run more generous than the WhatsApp limits.
+    TELEGRAM_PREP_LIMIT: int = 15
+    TELEGRAM_ORDER_LIMIT: int = 20
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import menu, orders, customers, menu_engineering, feedback, kpi, recon, ceo_brief
+from app.api.routes import menu, orders, customers, menu_engineering, feedback, kpi, recon, ceo_brief, whatsapp_webhooks
 from app.core.config import settings
 from app.core.middleware import (
     HTTPSRedirectMiddleware,
@@ -71,6 +71,7 @@ app.include_router(feedback.router)
 app.include_router(kpi.router)
 app.include_router(recon.router)
 app.include_router(ceo_brief.router)
+app.include_router(whatsapp_webhooks.router)
 
 
 @app.get("/health", tags=["system"])
