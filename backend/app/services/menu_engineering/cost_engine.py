@@ -100,7 +100,8 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
             (func.sum(Purchase.total_price) / func.nullif(func.sum(Purchase.qty), 0)).label("cost_per_unit"),
         )
         .join(Purchase, Purchase.ingredient_id == Ingredient.id)
-        .filter(Ingredient.cost_role == "recipe", Purchase.usage_type == "menu")
+        .filter(Ingredient.cost_role == "recipe", Purchase.usage_type == "menu",
+                Purchase.deleted_at.is_(None))
         .group_by(Ingredient.id, Ingredient.name, Ingredient.unit)
         .all()
     )
@@ -144,7 +145,8 @@ def _per_order_per_dish(db: Session) -> decimal.Decimal:
     spend = (
         db.query(func.coalesce(func.sum(Purchase.total_price), 0))
         .join(Ingredient, Ingredient.id == Purchase.ingredient_id)
-        .filter(Ingredient.cost_role == "per_order", Purchase.usage_type == "menu")
+        .filter(Ingredient.cost_role == "per_order", Purchase.usage_type == "menu",
+                Purchase.deleted_at.is_(None))
         .scalar()
     )
     units = db.query(func.coalesce(func.sum(ItemSale.qty), 0)).scalar()
@@ -166,7 +168,8 @@ def _spice_per_dish(db: Session) -> decimal.Decimal:
     spend = (
         db.query(func.coalesce(func.sum(Purchase.total_price), 0))
         .join(Ingredient, Ingredient.id == Purchase.ingredient_id)
-        .filter(Ingredient.category == _SPICE_CATEGORY, Purchase.usage_type == "menu")
+        .filter(Ingredient.category == _SPICE_CATEGORY, Purchase.usage_type == "menu",
+                Purchase.deleted_at.is_(None))
         .scalar()
     )
     units = db.query(func.coalesce(func.sum(ItemSale.qty), 0)).scalar()

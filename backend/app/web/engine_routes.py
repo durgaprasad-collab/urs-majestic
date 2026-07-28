@@ -48,7 +48,13 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
 
     # All ingredients that have at least one purchase — the only ones that can
     # produce rows below, so the dropdown never offers a choice that yields nothing.
-    purchased_ids = {r[0] for r in db.query(Purchase.ingredient_id).distinct().all()}
+    purchased_ids = {
+        r[0]
+        for r in db.query(Purchase.ingredient_id)
+        .filter(Purchase.deleted_at.is_(None))
+        .distinct()
+        .all()
+    }
     filter_options = (
         db.query(Ingredient)
         .filter(Ingredient.id.in_(purchased_ids))
@@ -58,7 +64,9 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     )
 
     # Total cost by usage type
-    agg_q = db.query(Purchase.usage_type, func.sum(Purchase.total_price).label("total"))
+    agg_q = db.query(Purchase.usage_type, func.sum(Purchase.total_price).label("total")).filter(
+        Purchase.deleted_at.is_(None)
+    )
     if filter_id:
         agg_q = agg_q.filter(Purchase.ingredient_id == filter_id)
     agg = agg_q.group_by(Purchase.usage_type).all()
@@ -74,7 +82,10 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     }
     menu_ingredient_ids = {
         row[0]
-        for row in db.query(Purchase.ingredient_id).filter(Purchase.usage_type == "menu").distinct().all()
+        for row in db.query(Purchase.ingredient_id)
+        .filter(Purchase.usage_type == "menu", Purchase.deleted_at.is_(None))
+        .distinct()
+        .all()
     }
     unmapped_ids = menu_ingredient_ids - mapped_ingredient_ids
 
@@ -83,7 +94,11 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     if unmapped_ids:
         unmapped_agg = (
             db.query(Purchase.ingredient_id, func.sum(Purchase.total_price).label("total"))
-            .filter(Purchase.ingredient_id.in_(unmapped_ids), Purchase.usage_type == "menu")
+            .filter(
+                Purchase.ingredient_id.in_(unmapped_ids),
+                Purchase.usage_type == "menu",
+                Purchase.deleted_at.is_(None),
+            )
             .group_by(Purchase.ingredient_id)
             .all()
         )
@@ -96,7 +111,11 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
             unmapped_names.append(ing_map.get(row.ingredient_id, f"ID {row.ingredient_id}"))
 
     # Per-ingredient purchase summary (restocking interval + avg qty)
-    purch_q = db.query(Purchase).order_by(Purchase.ingredient_id, Purchase.purchase_date)
+    purch_q = (
+        db.query(Purchase)
+        .filter(Purchase.deleted_at.is_(None))
+        .order_by(Purchase.ingredient_id, Purchase.purchase_date)
+    )
     if filter_id:
         purch_q = purch_q.filter(Purchase.ingredient_id == filter_id)
     all_purchases = purch_q.all()

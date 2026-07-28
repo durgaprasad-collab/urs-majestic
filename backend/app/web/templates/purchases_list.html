@@ -3,11 +3,19 @@
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title">Purchases</h1>
-  <a href="/purchases/new" class="btn-primary btn-sm">+ New entry</a>
+  <h1 class="page-title">{% if show_deleted %}Deleted purchases{% else %}Purchases{% endif %}</h1>
+  {% if not show_deleted %}<a href="/purchases/new" class="btn-primary btn-sm">+ New entry</a>{% endif %}
 </div>
 
+{% if error %}
+<p class="alert-error">{{ error }}</p>
+{% endif %}
+{% if notice %}
+<p class="alert-error" style="background:#eef7ee;border-color:#b7d9b7;color:#245c24">{{ notice }}</p>
+{% endif %}
+
 <form method="get" action="/purchases" class="filter-bar">
+  {% if show_deleted %}<input type="hidden" name="show_deleted" value="1" />{% endif %}
   <select name="ingredient_id" class="form-input filter-select" onchange="this.form.submit()">
     <option value="">All ingredients</option>
     {% for ing in ingredients %}
@@ -15,14 +23,24 @@
     {% endfor %}
   </select>
   {% if filter_id %}
-  <a href="/purchases" class="btn-link-sm" style="white-space:nowrap">✕ Clear</a>
+  <a href="/purchases{% if show_deleted %}?show_deleted=1{% endif %}" class="btn-link-sm" style="white-space:nowrap">✕ Clear</a>
   {% endif %}
 </form>
+
+<p style="margin:.25rem 0 1rem;font-size:.85rem">
+  {% if show_deleted %}
+    <a href="/purchases{% if filter_id %}?ingredient_id={{ filter_id }}{% endif %}" class="btn-link-sm">← Back to live purchases</a>
+  {% elif deleted_count %}
+    <a href="/purchases?show_deleted=1{% if filter_id %}&ingredient_id={{ filter_id }}{% endif %}" class="btn-link-sm">
+      View {{ deleted_count }} deleted purchase{{ '' if deleted_count == 1 else 's' }}
+    </a>
+  {% endif %}
+</p>
 
 {% if purchases %}
 <div class="purchase-list">
   {% for p in purchases %}
-  <div class="purchase-row">
+  <div class="purchase-row"{% if p.deleted_at %} style="opacity:.72"{% endif %}>
     <div class="purchase-main">
       <span class="purchase-name">{{ p.ingredient.name }}</span>
       <span class="purchase-qty">{{ p.qty }} {{ p.unit }} — ₹{{ "{:,.0f}".format(p.total_price) }}</span>
@@ -30,22 +48,54 @@
     <div class="purchase-meta">
       <span class="purchase-date">{{ p.purchase_date.strftime('%d %b %Y') }}</span>
       <span class="usage-badge {% if p.usage_type == 'menu' %}usage-menu{% else %}usage-personal{% endif %}">
-        {{ 'Menu' if p.usage_type == 'menu' else 'Personal/Other' }}
+        {% if p.usage_type == 'menu' %}Menu{% elif p.usage_type == 'others_personal' %}Personal/Other{% else %}{{ p.usage_type }}{% endif %}
       </span>
       <span class="purchase-by">by {{ p.entered_by.name }}</span>
     </div>
     {% if p.notes %}
     <p class="purchase-notes">{{ p.notes }}</p>
     {% endif %}
+
+    {% if p.deleted_at %}
+    <p class="purchase-notes" style="color:#8a2b2b">
+      Deleted {{ p.deleted_at.strftime('%d %b %Y') }}{% if p.deleted_by_user %} by {{ p.deleted_by_user.name }}{% endif %} — {{ p.delete_reason }}
+    </p>
+    <div class="purchase-actions">
+      <form method="post" action="/purchases/{{ p.id }}/restore" style="display:inline">
+        <input type="hidden" name="row_version" value="{{ p.row_version }}" />
+        <button type="submit" class="btn-link-sm" style="background:none;border:none;padding:0;cursor:pointer;text-decoration:underline">Restore</button>
+      </form>
+    </div>
+    {% else %}
     <div class="purchase-actions">
       <a href="/purchases/{{ p.id }}/edit" class="btn-link-sm">Edit</a>
+      <details style="display:inline-block;margin-left:.75rem">
+        <summary style="cursor:pointer;color:#8a2b2b;font-size:.85rem;list-style:none">Delete</summary>
+        <form method="post" action="/purchases/{{ p.id }}/delete" style="margin-top:.5rem">
+          <input type="hidden" name="row_version" value="{{ p.row_version }}" />
+          <label for="reason-{{ p.id }}" class="form-label" style="font-size:.8rem">
+            Why is this row being removed? It is kept in the audit log against your name.
+          </label>
+          <input id="reason-{{ p.id }}" name="reason" type="text" class="form-input"
+                 minlength="{{ min_delete_reason }}" required
+                 placeholder="e.g. duplicate of the ₹3,400 gas entry on the same day" />
+          <button type="submit" class="btn-primary btn-sm" style="margin-top:.4rem;background:#8a2b2b;border-color:#8a2b2b">
+            Delete this purchase
+          </button>
+        </form>
+      </details>
     </div>
+    {% endif %}
   </div>
   {% endfor %}
 </div>
 {% else %}
 <div class="card">
+  {% if show_deleted %}
+  <p>No deleted purchases.</p>
+  {% else %}
   <p>No purchases logged yet. <a href="/purchases/new">Add the first entry.</a></p>
+  {% endif %}
 </div>
 {% endif %}
 {% endblock %}

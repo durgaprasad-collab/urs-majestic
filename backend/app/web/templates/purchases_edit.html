@@ -10,6 +10,8 @@
   {% endif %}
 
   <form method="post" action="/purchases/{{ purchase.id }}/edit">
+    <input type="hidden" name="row_version" value="{{ purchase.row_version }}" />
+
     <label for="ingredient_id" class="form-label">Ingredient</label>
     <select id="ingredient_id" name="ingredient_id" class="form-input" required>
       <option value="">— select —</option>
@@ -49,11 +51,25 @@
     <select id="usage_type" name="usage_type" class="form-input" required>
       <option value="menu" {% if purchase.usage_type == "menu" %}selected{% endif %}>Menu (used in dishes)</option>
       <option value="others_personal" {% if purchase.usage_type == "others_personal" %}selected{% endif %}>Personal / Other</option>
+      {% if purchase.usage_type not in selectable_usage %}
+      {# This row holds a usage state the form does not offer. Show it selected #}
+      {# so saving cannot silently reclassify it into the cost base.            #}
+      <option value="{{ purchase.usage_type }}" selected>{{ purchase.usage_type }} (current — not selectable)</option>
+      {% endif %}
     </select>
 
     <label for="notes" class="form-label">Notes (optional)</label>
     <input id="notes" name="notes" type="text" class="form-input"
            value="{{ purchase.notes or '' }}" placeholder="e.g. Nilgiris, bulk discount" />
+
+    <label for="reason" class="form-label">Reason for the change (required)</label>
+    <input id="reason" name="reason" type="text" class="form-input"
+           minlength="{{ min_edit_reason }}" required
+           placeholder="e.g. bill shows 10 kg, not 20 kg" />
+    <p style="font-size:.8rem;color:#666;margin:.25rem 0 .75rem">
+      This is a financial record. Every field you change is written to the audit
+      log with the old value, the new value, your name and this reason.
+    </p>
 
     <div style="display:flex;gap:.75rem;margin-top:.5rem">
       <button type="submit" class="btn-primary">Save changes</button>
