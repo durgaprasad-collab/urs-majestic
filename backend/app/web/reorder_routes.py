@@ -1,22 +1,22 @@
 """Ingredient reorder forecast.
 
-Reads `v_ingredient_reorder_forecast` — a purchase-cadence forecast of when each
-menu ingredient is next due to be ordered and roughly how much. See migration
-0012 for the method; the short version is: next order = last purchase + this
-ingredient's own average gap between order dates, quantity = its average buy
-size, both in the unit it is actually bought in.
+Reads `v_ingredient_reorder_forecast` — a per-ingredient forecast of when each
+menu ingredient is next due to be ordered and roughly how much.
 
-This page is the human-facing view of that data. The same view is the intended
-source for automated ordering later — everything shown here (date, quantity,
-estimated cost, status) is a column, so the automation reads rows, not scraped
-HTML.
+Two signals, in priority order per row:
+  1. On-hand stock. If the owner has entered a current count (ingredient_stock,
+     surfaced as the view's stock_* columns) and the ingredient has a usage
+     rate, the row is driven by `remaining / daily_use` — real runout, not a
+     guess. This is ground truth and overrides cadence.
+  2. Purchase cadence. With no count, it falls back to last purchase + this
+     ingredient's average gap between order dates (migration 0012), quantity =
+     its average buy size, in the unit it is bought in.
 
-Deliberately honest about its limits: at ~1 month of history these are cadence
-estimates, not a fitted model, and ingredients bought on fewer than two distinct
-days are shown separately as "not enough history" rather than forecast.
+The same view is the intended source for automated ordering later — every
+number shown is a column, so automation reads rows, not scraped HTML.
 """
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Request, Depends, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -25,23 +25,31 @@ from app.web.deps import _tmpl, require_user
 
 router = APIRouter(tags=["reorder"])
 
-# Buckets in the order the kitchen cares about them. Everything with a real
-# cadence is ranked by how soon it is due; no-history items sink to their own
-# section so they are visible but never mistaken for a due date.
 _ACTION = {"overdue", "due", "soon"}
 
 _SQL = text("""
     select *
     from v_ingredient_reorder_forecast
     where (:include_inactive or is_active)
-    order by
-      case status
-        when 'overdue' then 0 when 'due' then 1 when 'soon' then 2
-        when 'ok' then 3 else 4
-      end,
-      days_until_due nulls last,
-      name
 """)
+
+
+def _enrich(row) -> dict:
+    """Attach effective (stock-preferred, else cadence) fields for display."""
+    d = dict(row)
+    has_stock = d.get("on_hand_qty") is not None and d.get("stock_status") is not None
+    d["has_stock"] = has_stock
+    if has_stock:
+        d["eff_status"] = d["stock_status"]
+        d["eff_days_until_due"] = d["stock_days_until_due"]
+        d["eff_cover_left"] = d["stock_days_cover_left"]
+        d["eff_order_date"] = d["stock_runout_date"]
+    else:
+        d["eff_status"] = d["status"]
+        d["eff_days_until_due"] = d["days_until_due"]
+        d["eff_cover_left"] = d["days_cover_left"]
+        d["eff_order_date"] = d["next_order_date"]
+    return d
 
 
 @router.get("/order-forecast", response_class=HTMLResponse)
@@ -51,25 +59,29 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         return redir
 
     include_inactive = request.query_params.get("inactive") == "1"
-    # Default hides the steady "ok" items to keep the working list short; the
-    # owner can switch to the full list to review everything.
     show_all = request.query_params.get("show") == "all"
 
-    rows = db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()
+    rows = [_enrich(r) for r in db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()]
 
     action, upcoming, no_history, recently_bought = [], [], [], []
     for r in rows:
-        if r["status"] == "insufficient_history":
+        if r["status"] == "insufficient_history" and not r["has_stock"]:
             no_history.append(r)
+        elif r["has_stock"]:
+            # A physical count is ground truth — it beats cadence AND the
+            # recently-bought skip (you can buy and still be low, or vice versa).
+            (action if r["eff_status"] in _ACTION else upcoming).append(r)
         elif r["recently_purchased"]:
-            # Bought in the last few days — freshly stocked, so skip it from the
-            # order list even if the cadence says it's due. Shown separately so
-            # it's visible, not silently dropped.
             recently_bought.append(r)
         elif r["status"] in _ACTION:
             action.append(r)
-        else:  # ok
+        else:
             upcoming.append(r)
+
+    # Most urgent first, by effective days-until-due.
+    _key = lambda r: (r["eff_days_until_due"] if r["eff_days_until_due"] is not None else 9999, r["name"])
+    action.sort(key=_key)
+    upcoming.sort(key=_key)
 
     est_action_cost = sum(
         float(r["est_order_cost"]) for r in action if r["est_order_cost"] is not None
@@ -86,3 +98,45 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         "show_all": show_all,
         "generated_on": rows[0]["today"] if rows else None,
     })
+
+
+@router.post("/order-forecast/stock")
+def save_stock(
+    request: Request,
+    ingredient_id: int = Form(...),
+    qty: float = Form(...),
+    unit: str = Form(...),
+    count_unit: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Record a current on-hand count. Stored in the ingredient's forecast
+    (primary) unit so the view can divide by daily_consumption directly."""
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+
+    count_unit = count_unit or unit
+    on_hand = max(qty, 0.0)
+
+    # Packets -> primary unit via pack_size_g (grams/packet). Only weight units
+    # convert; a volume primary unit with 'packet' should never happen.
+    if count_unit == "packet":
+        pack_g = db.execute(
+            text("SELECT pack_size_g FROM ingredients WHERE id = :i"), {"i": ingredient_id}
+        ).scalar()
+        if pack_g:
+            grams = on_hand * float(pack_g)
+            if unit == "kg":
+                on_hand = grams / 1000.0
+            elif unit == "g":
+                on_hand = grams
+
+    db.execute(
+        text(
+            "INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by) "
+            "VALUES (:i, :q, :u, :by)"
+        ),
+        {"i": ingredient_id, "q": on_hand, "u": unit, "by": getattr(user, "id", None)},
+    )
+    db.commit()
+    return RedirectResponse(url="/order-forecast", status_code=303)

@@ -6,26 +6,45 @@
   <td>
     {{ r.name }}
     {% if not r.is_active %}<span class="ord-tag">inactive</span>{% endif %}
+    {% if r.has_stock %}<span class="ord-tag ord-tag-stock"
+      title="From your count of {{ '%g'|format(r.on_hand_qty) }} {{ r.unit }} on {{ r.stock_counted_on.strftime('%d %b') }}">stock</span>{% endif %}
   </td>
   <td class="ord-date">
-    {% if r.next_order_date %}{{ r.next_order_date.strftime('%a %d %b') }}{% else %}—{% endif %}
+    {% if r.eff_order_date %}{{ r.eff_order_date.strftime('%a %d %b') }}{% else %}—{% endif %}
   </td>
   <td class="col-num ord-qty">{{ "%g"|format(r.suggested_order_qty) }} <span class="ord-unit">{{ r.unit }}</span></td>
   <td class="ord-status">
-    {% if r.status == 'overdue' %}
-      <span class="ord-pill ord-overdue">Overdue {{ -r.days_until_due }}d</span>
-    {% elif r.status == 'due' %}
-      <span class="ord-pill ord-due">{% if r.days_until_due < 0 %}Due{% else %}Order today{% endif %}</span>
-    {% elif r.status == 'soon' %}
-      <span class="ord-pill ord-soon">In {{ r.days_until_due }}d</span>
-    {% elif r.status == 'ok' %}
-      <span class="ord-pill ord-ok">In {{ r.days_until_due }}d</span>
+    {% set st = r.eff_status %}
+    {% if st == 'overdue' %}
+      <span class="ord-pill ord-overdue">Overdue{% if r.eff_days_until_due is not none %} {{ -r.eff_days_until_due }}d{% endif %}</span>
+    {% elif st == 'due' %}
+      <span class="ord-pill ord-due">{% if r.eff_days_until_due is not none and r.eff_days_until_due < 0 %}Out{% else %}Order today{% endif %}</span>
+    {% elif st == 'soon' %}
+      <span class="ord-pill ord-soon">In {{ r.eff_days_until_due }}d</span>
+    {% elif st == 'ok' %}
+      <span class="ord-pill ord-ok">In {{ r.eff_days_until_due }}d</span>
     {% endif %}
   </td>
-  <td class="col-num print-hide ord-dim">every {{ "%g"|format(r.avg_interval_days) }}d</td>
-  <td class="col-num print-hide ord-dim">{{ r.last_purchase.strftime('%d %b') }}</td>
+  <td class="print-hide ord-remaining">
+    {% if r.has_stock %}<div class="ord-stock-cur">{{ "%g"|format(r.on_hand_qty) }} {{ r.unit }}<span class="ord-dim"> · {{ r.stock_counted_on.strftime('%d %b') }}</span></div>{% endif %}
+    <form method="post" action="/order-forecast/stock" class="ord-stock-form">
+      <input type="hidden" name="ingredient_id" value="{{ r.ingredient_id }}">
+      <input type="hidden" name="unit" value="{{ r.unit }}">
+      <input type="number" step="any" min="0" name="qty" class="ord-stock-input" placeholder="left…">
+      {% if r.pack_size_g %}
+        <select name="count_unit" class="ord-stock-unit">
+          <option value="{{ r.unit }}">{{ r.unit }}</option>
+          <option value="packet">pkt</option>
+        </select>
+      {% else %}
+        <input type="hidden" name="count_unit" value="{{ r.unit }}">
+        <span class="ord-stock-lbl">{{ r.unit }}</span>
+      {% endif %}
+      <button type="submit" class="ord-stock-btn">Save</button>
+    </form>
+  </td>
   <td class="col-num print-hide ord-dim">
-    {% if r.days_cover_left is not none %}{{ "%g"|format(r.days_cover_left) }}d left{% else %}—{% endif %}
+    {% if r.eff_cover_left is not none %}{{ "%g"|format(r.eff_cover_left) }}d{% else %}—{% endif %}
   </td>
   <td class="col-num print-hide ord-dim">
     {% if r.est_order_cost is not none %}₹{{ "%.0f"|format(r.est_order_cost) }}{% else %}—{% endif %}
@@ -34,7 +53,31 @@
 </tr>
 {% endmacro %}
 
+{% macro head() %}
+<tr>
+  <th>Ingredient</th>
+  <th>Order by</th>
+  <th class="col-num">Qty</th>
+  <th>Status</th>
+  <th class="print-hide">Remaining now</th>
+  <th class="col-num print-hide">Cover</th>
+  <th class="col-num print-hide">Est. ₹</th>
+  <th class="ord-tick">Done</th>
+</tr>
+{% endmacro %}
+
 {% block content %}
+<style>
+  .ord-tag-stock{background:#e6f4ea;color:#1e7e34;border-color:#bfe3ca}
+  .ord-stock-form{display:flex;align-items:center;gap:.25rem;flex-wrap:nowrap}
+  .ord-stock-cur{font-size:.78rem;color:#1e7e34;margin-bottom:.18rem;white-space:nowrap}
+  .ord-stock-input{width:4.4rem;padding:.2rem .35rem;font-size:.82rem;border:1px solid #d3d3cf;border-radius:4px}
+  .ord-stock-unit{padding:.2rem;font-size:.8rem;border:1px solid #d3d3cf;border-radius:4px}
+  .ord-stock-lbl{font-size:.8rem;color:#888}
+  .ord-stock-btn{padding:.2rem .5rem;font-size:.8rem;border:1px solid #c9a227;background:#c9a227;color:#fff;border-radius:4px;cursor:pointer}
+  .ord-remaining{min-width:9.5rem}
+</style>
+
 <div class="page-header">
   <h1 class="page-title">Order Forecast</h1>
   <button type="button" class="btn-primary btn-sm print-btn print-hide" onclick="window.print()">Print</button>
@@ -58,7 +101,7 @@
   <span class="prep-meta">
     {% if generated_on %}As of {{ generated_on.strftime('%d %b %Y') }} (IST) · {% endif %}
     {% if est_action_cost %}est. ₹{{ "%.0f"|format(est_action_cost) }} · {% endif %}
-    forecast from purchase cadence
+    stock count where entered, else purchase cadence
   </span>
 </div>
 
@@ -66,19 +109,7 @@
 <div class="card">
   <div class="recon-table-wrap">
     <table class="recon-table ord-table">
-      <thead>
-        <tr>
-          <th>Ingredient</th>
-          <th>Order by</th>
-          <th class="col-num">Qty</th>
-          <th>Status</th>
-          <th class="col-num print-hide">Cadence</th>
-          <th class="col-num print-hide">Last order</th>
-          <th class="col-num print-hide">Cover</th>
-          <th class="col-num print-hide">Est. ₹</th>
-          <th class="ord-tick">Done</th>
-        </tr>
-      </thead>
+      <thead>{{ head() }}</thead>
       <tbody>
         {% for r in action %}{{ row(r) }}{% endfor %}
       </tbody>
@@ -87,7 +118,7 @@
 </div>
 {% else %}
 <div class="card">
-  <p>Nothing due to order right now. Everything with a known cadence has cover for more than 3 days.</p>
+  <p>Nothing due to order right now. Everything with a known usage rate has more than 3 days of cover.</p>
 </div>
 {% endif %}
 
@@ -99,14 +130,7 @@
 <div class="card">
   <div class="recon-table-wrap">
     <table class="recon-table ord-table">
-      <thead>
-        <tr>
-          <th>Ingredient</th><th>Order by</th><th class="col-num">Qty</th><th>Status</th>
-          <th class="col-num print-hide">Cadence</th><th class="col-num print-hide">Last order</th>
-          <th class="col-num print-hide">Cover</th><th class="col-num print-hide">Est. ₹</th>
-          <th class="ord-tick">Done</th>
-        </tr>
-      </thead>
+      <thead>{{ head() }}</thead>
       <tbody>
         {% for r in upcoming %}{{ row(r) }}{% endfor %}
       </tbody>
@@ -118,7 +142,7 @@
 {% if recently_bought %}
 <div class="prep-head print-hide" style="margin-top:1.4rem">
   <h2 class="prep-title">Recently bought — skipped</h2>
-  <span class="prep-meta">purchased in the last 3 days, so not due to reorder yet</span>
+  <span class="prep-meta">purchased in the last 3 days (and no stock count), so not due to reorder yet</span>
 </div>
 <div class="card print-hide">
   <p class="ord-nohist">
@@ -131,7 +155,7 @@
 {% if no_history %}
 <div class="prep-head print-hide" style="margin-top:1.4rem">
   <h2 class="prep-title">Not enough history</h2>
-  <span class="prep-meta">bought on fewer than two days — no cadence yet</span>
+  <span class="prep-meta">bought on fewer than two days — no usage rate yet</span>
 </div>
 <div class="card print-hide">
   <p class="ord-nohist">
@@ -142,16 +166,15 @@
 
 <div class="card recon-disclaimer print-hide" style="margin-top:1rem">
   <p>
-    <strong>Order by</strong> = the last purchase date plus this ingredient's own average gap
-    between orders. <strong>Qty</strong> = its average purchase size, in the unit it is usually
-    bought in. <strong>Cover</strong> = roughly how many days the last purchase lasts at the
-    implied usage rate.
+    <strong>Remaining now</strong> — type what's physically left (in the shown unit; Baby Corn
+    also takes packets). The row then uses <strong>remaining ÷ daily usage</strong> for a real
+    runout date, overriding the cadence guess. Leave it blank and the row falls back to
+    <strong>last purchase + average gap between orders</strong>.
   </p>
   <p style="margin-top:.4rem">
-    <strong>This is a cadence estimate, not a fitted forecast.</strong> It rests on about a month
-    of purchases and assumes buying habits reflect real usage. Treat it as a prompt to check
-    stock, not an instruction — and correct any wrong quantity by simply ordering what you know
-    is right; the average will follow.
+    <strong>Cover</strong> = days left at the implied usage rate. Usage rate comes from ~a month
+    of purchases, so treat it as a prompt to check stock, not gospel — and correcting a wrong
+    quantity is as simple as entering what's actually on the shelf.
   </p>
 </div>
 {% endblock %}
