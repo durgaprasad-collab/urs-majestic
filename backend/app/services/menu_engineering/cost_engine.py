@@ -90,26 +90,30 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
     per-gram (solids) / per-ml (liquids) basis.
         kg, l  -> divide by 1000
         g, ml  -> as-is
-        pcs    -> skipped (not portionable by grams)
+        pcs    -> divided by pack_size_g (grams per piece) when set, so items
+                  bought by the bunch/piece but portioned by grams (e.g. coriander,
+                  mint, spring onion) still get a per-gram cost; skipped if no
+                  pack_size_g (can't convert a bare count to grams).
     """
     rows = (
         db.query(
             Ingredient.id,
             Ingredient.name,
             Ingredient.unit,
+            Ingredient.pack_size_g,
             (func.sum(Purchase.total_price) / func.nullif(func.sum(Purchase.qty), 0)).label("cost_per_unit"),
         )
         .join(Purchase, Purchase.ingredient_id == Ingredient.id)
         .filter(Ingredient.cost_role == "recipe", Purchase.usage_type == "menu",
                 Purchase.deleted_at.is_(None))
-        .group_by(Ingredient.id, Ingredient.name, Ingredient.unit)
+        .group_by(Ingredient.id, Ingredient.name, Ingredient.unit, Ingredient.pack_size_g)
         .all()
     )
 
     cost: dict[int, decimal.Decimal] = {}
     anomalies: list[UnitAnomaly] = []
 
-    for ing_id, name, unit, cpu in rows:
+    for ing_id, name, unit, pack_size_g, cpu in rows:
         if cpu is None:
             continue
         cpu = decimal.Decimal(str(cpu))
@@ -117,7 +121,12 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
             per_g = cpu / 1000
         elif unit in ("g", "ml"):
             per_g = cpu
-        else:  # pcs and anything else: not portionable by grams here
+        elif unit == "pcs" and pack_size_g:
+            # Bought by the piece/bunch but portioned by grams. pack_size_g is
+            # grams per piece (same meaning as v_purchase_normalised), so
+            # (rupees/piece) / (grams/piece) = rupees/gram.
+            per_g = cpu / decimal.Decimal(str(pack_size_g))
+        else:  # pcs with no pack weight, and anything else: not portionable by grams
             continue
 
         # Unit-entry guard: implausible per-gram cost => 1000x error.

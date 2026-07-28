@@ -28,6 +28,11 @@ class Ingredient(Base):
     portion_light_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     portion_medium_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     portion_heavy_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # Grams per piece for items bought by the piece/bunch (unit='pcs') but portioned
+    # by grams — e.g. a coriander bunch ~100 g. Lets the cost engine derive rupees/gram
+    # (rupees per piece / grams per piece) and v_purchase_normalised convert pcs to a
+    # gram base. NULL for items already bought by weight/volume.
+    pack_size_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     dish_maps: Mapped[list["IngredientDishMap"]] = relationship(
         "IngredientDishMap", back_populates="ingredient", cascade="all, delete-orphan"
