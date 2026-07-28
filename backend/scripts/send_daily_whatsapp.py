@@ -36,6 +36,7 @@ and even scheduled before the Meta setup is finished.
 import argparse
 import datetime
 import json
+import math
 import sys
 import urllib.error
 import urllib.request
@@ -56,7 +57,10 @@ def _clean(s: str) -> str:
 
 
 def _fmt_qty(q) -> str:
-    return f"{float(q):g}" if q is not None else "?"
+    """Round UP to a whole unit — staff can't buy "926.67ml" off a physical
+    list. Note this can overstate kg-scale ingredients by up to ~1 unit
+    (1.71kg -> 2kg); fine for a purchase nudge, not a precision order qty."""
+    return str(math.ceil(float(q))) if q is not None else "?"
 
 
 def _clip(s: str) -> str:
