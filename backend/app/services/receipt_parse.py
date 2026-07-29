@@ -51,14 +51,58 @@ class ReceiptLine:
     ingredient_name: str | None = None
 
 
-def ocr_image(image_bytes: bytes) -> str:
-    """Raw OCR text from an image. Imports are local so this module still loads
-    where tesseract / Pillow are unavailable (e.g. a dev box without the binary);
-    the ImportError only surfaces when an upload is actually processed."""
-    import pytesseract
-    from PIL import Image
+_OCR_ENDPOINT = "https://api.ocr.space/parse/image"
 
-    return pytesseract.image_to_string(Image.open(io.BytesIO(image_bytes)))
+
+def _shrink(image_bytes: bytes, content_type: str) -> tuple[bytes, str]:
+    """Downscale + JPEG-compress so the upload stays under OCR.space's free-tier
+    size cap and OCRs faster. Falls back to the original bytes if Pillow can't
+    open it."""
+    try:
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        img.thumbnail((2200, 2200))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=82, optimize=True)
+        return buf.getvalue(), "image/jpeg"
+    except Exception:
+        return image_bytes, content_type or "image/png"
+
+
+def ocr_image(image_bytes: bytes, content_type: str = "image/png") -> str:
+    """Raw OCR text via OCR.space (a free hosted OCR API — no system binary, so
+    it runs on a plain Python host). Raises on an API/transport error; the caller
+    treats any failure as 'OCR unavailable' and falls back to manual entry."""
+    import base64
+    import json
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    from app.core.config import settings
+
+    data_bytes, ctype = _shrink(image_bytes, content_type)
+    b64 = base64.b64encode(data_bytes).decode("ascii")
+    body = urllib.parse.urlencode({
+        "apikey": settings.OCR_SPACE_API_KEY or "helloworld",
+        "base64Image": f"data:{ctype};base64,{b64}",
+        "language": "eng",
+        "isTable": "true",   # receipts are tabular -- keeps columns aligned
+        "scale": "true",
+        "OCREngine": "2",
+    }).encode()
+    req = urllib.request.Request(
+        _OCR_ENDPOINT, data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    with urllib.request.urlopen(req, timeout=40) as resp:
+        payload = json.load(resp)
+
+    if payload.get("IsErroredOnProcessing"):
+        err = payload.get("ErrorMessage") or payload.get("ErrorDetails") or "OCR failed"
+        raise RuntimeError(err if isinstance(err, str) else "; ".join(err))
+    return "\n".join(r.get("ParsedText", "") for r in payload.get("ParsedResults") or [])
 
 
 def parse_receipt_text(text: str, ingredient_names: dict[str, int]) -> list[ReceiptLine]:

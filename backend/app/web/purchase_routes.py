@@ -602,10 +602,10 @@ async def upload_receipt(request: Request, file: UploadFile = File(...),
         return back("That image is too large -- please keep it under 10 MB.")
 
     try:
-        ocr_text = ocr_image(data)
+        ocr_text = ocr_image(data, ctype)
     except Exception:
-        return back("Could not read the image -- OCR isn't available right now. "
-                    "Enter the purchase manually below.")
+        return back("Could not read the image right now -- please try again, or "
+                    "enter the purchase manually below.")
 
     ing_map = {i.name.lower(): i.id for i in _ingredient_options(db)}
     lines = parse_receipt_text(ocr_text, ing_map)

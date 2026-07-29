@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     GOOGLE_SERVICE_ACCOUNT_JSON: str = ""   # the service-account key file's contents
     GDRIVE_RECEIPTS_FOLDER_ID: str = ""     # target Drive folder id
 
+    # Receipt OCR — OCR.space (free hosted OCR, no system binary; runs on the
+    # native Python service). Get a free key at https://ocr.space/ocrapi
+    # (25k req/mo). "helloworld" is the public demo key -- works but is shared and
+    # rate-limited, so register your own for reliability.
+    OCR_SPACE_API_KEY: str = "helloworld"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
