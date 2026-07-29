@@ -37,7 +37,16 @@ _SQL = text("""
 def _enrich(row) -> dict:
     """Attach effective (stock-preferred, else cadence) fields for display."""
     d = dict(row)
-    has_stock = d.get("on_hand_qty") is not None and d.get("stock_status") is not None
+    # A stock count goes STALE the moment a purchase lands after it -- the shelf
+    # now holds more than the count says. In that case ignore the count and fall
+    # back to cadence, which already treats a just-bought item as recently
+    # purchased (so a fresh buy stops it showing as "due").
+    counted = d.get("stock_counted_on")
+    last_buy = d.get("last_purchase_any")
+    stock_fresh = counted is not None and (last_buy is None or counted >= last_buy)
+    has_stock = (d.get("on_hand_qty") is not None
+                 and d.get("stock_status") is not None
+                 and stock_fresh)
     d["has_stock"] = has_stock
     if has_stock:
         d["eff_status"] = d["stock_status"]
