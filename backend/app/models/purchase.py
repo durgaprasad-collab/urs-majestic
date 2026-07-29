@@ -28,11 +28,12 @@ class Purchase(Base):
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Set when the purchase was created from an uploaded receipt (migration 0020),
-    # linking it back to the archived image + OCR text for audit.
-    purchase_receipt_id: Mapped[int | None] = mapped_column(
-        ForeignKey("purchase_receipts.id", ondelete="SET NULL"), nullable=True
-    )
+    # Set when the purchase was created from an uploaded receipt: links back to the
+    # archived image + OCR text (purchase_receipts, migration 0020). Kept a plain
+    # int -- the FK constraint lives in the DB; there is no ORM PurchaseReceipt
+    # model (that table is written via raw SQL), so an ORM ForeignKey here would
+    # leave the mapper unable to resolve the target table and break every Purchase.
+    purchase_receipt_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
