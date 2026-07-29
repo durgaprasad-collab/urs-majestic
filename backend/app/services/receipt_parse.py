@@ -138,8 +138,16 @@ def parse_receipt_text(text: str, ingredient_names: dict[str, int]) -> list[Rece
         qty_end = um.end() if um else 0
         price_m = None
         for m in _NUMBER_RE.finditer(s):
-            if m.start() >= qty_end:
-                price_m = m
+            if m.start() < qty_end:
+                continue
+            try:
+                # Ignore implausibly large numbers (order ids, phone numbers) --
+                # no single grocery line costs six figures.
+                if float(m.group(1)) > 100000:
+                    continue
+            except ValueError:
+                continue
+            price_m = m
         if price_m:
             try:
                 rl.total_price = float(price_m.group(1))
@@ -154,7 +162,9 @@ def parse_receipt_text(text: str, ingredient_names: dict[str, int]) -> list[Rece
         if rl.name.lower() in _SKIP_WORDS:
             continue  # total / tax / footer line, not an item
 
-        if rl.name:
+        # Require a few real letters before trusting a fuzzy match, so stray
+        # tokens like "mT" (a status-bar glyph) don't map onto "Mint".
+        if len(rl.name) >= 4:
             match = difflib.get_close_matches(rl.name.lower(), lc_names, n=1, cutoff=0.6)
             if match:
                 rl.ingredient_name = match[0]
