@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Review receipt — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1 class="card-title">Review receipt</h1>
+  <p class="prep-meta">
+    {{ lines|length }} line{{ 's' if lines|length != 1 }} read from your receipt ·
+    {% if archived %}image saved{% if drive_link %} (<a href="{{ drive_link }}" target="_blank" rel="noopener">view</a>){% endif %}{% else %}<span style="color:#9a6b00">image not archived (Drive not set up)</span>{% endif %}
+  </p>
+  <p style="font-size:.86rem;color:#5c6154;margin:.2rem 0 1rem">
+    OCR is best-effort — <strong>check every row.</strong> Untick anything that isn't a purchase,
+    fix the ingredient / quantity / price, then save. Nothing is created until you press the button.
+  </p>
+
+  {% if not lines %}
+  <p class="alert-error">Couldn't read any line items from that image.
+    Try a clearer photo, or enter the purchase <a href="/purchases/new">manually</a>.</p>
+  {% else %}
+  <form method="post" action="/purchases/receipt-confirm">
+    <input type="hidden" name="receipt_id" value="{{ receipt_id }}">
+    <input type="hidden" name="row_count" value="{{ lines|length }}">
+    <div class="recon-table-wrap">
+      <table class="recon-table">
+        <thead>
+          <tr><th>Use</th><th>Ingredient</th><th class="col-num">Qty</th><th>Unit</th>
+              <th class="col-num">Price ₹</th><th>Date</th><th>Usage</th></tr>
+        </thead>
+        <tbody>
+          {% for l in lines %}{% set i = loop.index0 %}
+          <tr>
+            <td><input type="checkbox" name="include_{{ i }}" value="1" {% if l.ingredient_id %}checked{% endif %}></td>
+            <td>
+              <select name="ingredient_id_{{ i }}" class="form-input rcpt-ing" style="min-width:11rem">
+                <option value="0">— pick —</option>
+                {% for ing in ingredients %}
+                <option value="{{ ing.id }}" data-unit="{{ ing.unit }}"
+                  {% if l.ingredient_id == ing.id %}selected{% endif %}>{{ ing.name }} ({{ ing.unit }})</option>
+                {% endfor %}
+              </select>
+              <div class="ord-dim" style="font-size:.72rem;margin-top:.15rem">read: &ldquo;{{ l.raw }}&rdquo;</div>
+            </td>
+            <td class="col-num"><input type="number" step="0.001" min="0" name="qty_{{ i }}"
+                   class="form-input" style="width:5rem" value="{{ l.qty if l.qty is not none else '' }}"></td>
+            <td>
+              <select name="unit_{{ i }}" class="form-input" style="width:4.6rem">
+                {% for u, lab in [('kg','kg'),('g','g'),('l','L'),('ml','mL'),('pcs','pcs')] %}
+                <option value="{{ u }}" {% if l.unit == u %}selected{% endif %}>{{ lab }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td class="col-num"><input type="number" step="0.01" min="0" name="total_price_{{ i }}"
+                   class="form-input" style="width:5.5rem" value="{{ l.total_price if l.total_price is not none else '' }}"></td>
+            <td><input type="date" name="purchase_date_{{ i }}" class="form-input" value="{{ today }}"></td>
+            <td>
+              <select name="usage_type_{{ i }}" class="form-input">
+                <option value="menu">Menu</option>
+                <option value="others_personal">Personal</option>
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:.6rem;align-items:center">
+      <button type="submit" class="btn-primary">Create purchases</button>
+      <a href="/purchases/new" class="btn-secondary">Cancel</a>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+<script>
+  // When an ingredient is picked, default its row's unit to the ingredient's unit.
+  document.querySelectorAll('.rcpt-ing').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      var unit = this.options[this.selectedIndex].dataset.unit;
+      if (!unit) return;
+      var row = this.closest('tr');
+      var us = row.querySelector('select[name^="unit_"]');
+      for (var i = 0; i < us.options.length; i++) {
+        if (us.options[i].value === unit) { us.selectedIndex = i; break; }
+      }
+      var cb = row.querySelector('input[type=checkbox]');
+      if (cb) cb.checked = true;
+    });
+  });
+</script>
+{% endblock %}

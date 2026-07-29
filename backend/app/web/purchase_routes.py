@@ -9,17 +9,24 @@ A purchase row is a financial record. Three rules hold everywhere below:
 3. Every change is followed by resync_derived_costs(), because menu_items
    carries a frozen cost snapshot that does not recompute on its own.
 """
+import re
 from datetime import date, timedelta
-from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 from app.core.database import get_db
+from app.core.clock import business_today
 from app.models.ingredient import Ingredient
 from app.models.purchase import Purchase
+from app.services import gdrive
+from app.services.receipt_parse import ocr_image, parse_receipt_text
 from app.web.audit import log_change, log_field_diffs, resync_derived_costs
 from app.web.deps import _tmpl, require_user
+
+# Reject non-images and oversized uploads before OCR.
+_MAX_RECEIPT_BYTES = 10 * 1024 * 1024  # 10 MB
 
 router = APIRouter(tags=["purchases"])
 
@@ -550,3 +557,123 @@ async def purchases_restore_post(
     return RedirectResponse(
         f"/purchases?notice=Purchase+restored.+{moved}+menu+cost(s)+updated.", status_code=303
     )
+
+
+# ---------------------------------------------------------------------------
+# Receipt upload -> OCR -> review -> bulk create
+# ---------------------------------------------------------------------------
+def _snake(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", (s or "").lower()).strip("_") or "user"
+
+
+def _receipt_filename(db: Session, user, original: str | None) -> str:
+    """snake_case(uploader)_YYYY_MM_DD[.n].ext, unique within purchase_receipts."""
+    uploader = (getattr(user, "name", None) or getattr(user, "username", None)
+                or getattr(user, "email", None) or f"user{user.id}")
+    ext = ""
+    if original and "." in original:
+        ext = "." + re.sub(r"[^a-z0-9]", "", original.rsplit(".", 1)[1].lower())[:5]
+    base = f"{_snake(uploader)}_{business_today().isoformat().replace('-', '_')}"
+    name, n = f"{base}{ext}", 2
+    while db.execute(text("SELECT 1 FROM purchase_receipts WHERE stored_filename = :n"),
+                     {"n": name}).first():
+        name, n = f"{base}_{n}{ext}", n + 1
+    return name
+
+
+@router.post("/purchases/upload-receipt")
+async def upload_receipt(request: Request, file: UploadFile = File(...),
+                         db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+
+    def back(msg):
+        return _tmpl(request, "purchases_new.html", {
+            "user": user, "ingredients": _ingredient_options(db), "error": msg,
+            "today": date.today().isoformat(), "new_ingredient_id": None,
+        }, status_code=400)
+
+    data = await file.read()
+    ctype = file.content_type or ""
+    if not ctype.startswith("image/"):
+        return back("Please upload an image of the receipt (JPG or PNG).")
+    if len(data) > _MAX_RECEIPT_BYTES:
+        return back("That image is too large -- please keep it under 10 MB.")
+
+    try:
+        ocr_text = ocr_image(data)
+    except Exception:
+        return back("Could not read the image -- OCR isn't available right now. "
+                    "Enter the purchase manually below.")
+
+    ing_map = {i.name.lower(): i.id for i in _ingredient_options(db)}
+    lines = parse_receipt_text(ocr_text, ing_map)
+
+    # Archive the image (best-effort) and record the receipt.
+    stored = _receipt_filename(db, user, file.filename)
+    file_id, link = gdrive.upload_receipt(data, stored, ctype)
+    rid = db.execute(text(
+        "INSERT INTO purchase_receipts (drive_file_id, drive_link, original_filename, "
+        " stored_filename, content_type, ocr_text, uploaded_by) "
+        "VALUES (:fid, :link, :orig, :stored, :ct, :ocr, :uid) RETURNING id"
+    ), {"fid": file_id, "link": link, "orig": file.filename, "stored": stored,
+        "ct": ctype, "ocr": ocr_text, "uid": user.id}).scalar()
+    db.commit()
+
+    return _tmpl(request, "purchases_receipt_review.html", {
+        "user": user,
+        "ingredients": _ingredient_options(db),
+        "lines": lines,
+        "receipt_id": rid,
+        "drive_link": link,
+        "archived": bool(file_id),
+        "today": business_today().isoformat(),
+    })
+
+
+@router.post("/purchases/receipt-confirm")
+async def receipt_confirm(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    form = await request.form()
+    receipt_id = int(form["receipt_id"]) if form.get("receipt_id", "").isdigit() else None
+    try:
+        n = int(form.get("row_count", "0"))
+    except ValueError:
+        n = 0
+
+    created = skipped = 0
+    for i in range(n):
+        if form.get(f"include_{i}") != "1":
+            continue
+        try:
+            ingredient_id = int(form.get(f"ingredient_id_{i}", ""))
+            qty = float(form.get(f"qty_{i}", ""))
+            unit = form.get(f"unit_{i}", "")
+            price = float(form.get(f"total_price_{i}", ""))
+            pdate = date.fromisoformat(form.get(f"purchase_date_{i}", ""))
+            usage = form.get(f"usage_type_{i}", "menu")
+        except (TypeError, ValueError):
+            skipped += 1
+            continue
+        if (usage not in _SELECTABLE_USAGE or ingredient_id <= 0
+                or unit not in ("kg", "g", "l", "ml", "pcs")):
+            skipped += 1
+            continue
+        db.add(Purchase(
+            ingredient_id=ingredient_id, qty=qty, unit=unit, total_price=price,
+            purchase_date=pdate, usage_type=usage, entered_by_user_id=user.id,
+            purchase_receipt_id=receipt_id, notes="From uploaded receipt",
+        ))
+        created += 1
+
+    if created:
+        db.flush()
+        resync_derived_costs(db)  # single cost engine; caller commits
+        db.commit()
+    msg = f"Created+{created}+purchase(s)+from+the+receipt."
+    if skipped:
+        msg += f"+{skipped}+row(s)+skipped."
+    return RedirectResponse(f"/purchases?notice={msg}", status_code=303)

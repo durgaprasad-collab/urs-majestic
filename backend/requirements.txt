@@ -13,3 +13,9 @@ openpyxl>=3.1.0
 jinja2>=3.1.0
 itsdangerous>=2.1.0
 tzdata>=2024.1
+# Receipt OCR (needs the tesseract-ocr system binary — see Aptfile)
+pytesseract>=0.3.10
+Pillow>=10.0.0
+# Google Drive archival of uploaded receipts (optional — degrades if unconfigured)
+google-api-python-client>=2.100.0
+google-auth>=2.30.0

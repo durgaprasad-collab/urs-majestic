@@ -4,6 +4,18 @@
 {% set f = form or {} %}
 
 {% block content %}
+<div class="card" style="margin-bottom:1rem">
+  <h2 class="card-title" style="font-size:1.05rem">📷 Upload a receipt</h2>
+  <p style="font-size:.85rem;color:#5c6154;margin:.2rem 0 .6rem">
+    Snap or upload a bill photo — we'll read the line items and let you review each one before anything is saved.
+  </p>
+  <form method="post" action="/purchases/upload-receipt" enctype="multipart/form-data"
+        style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+    <input type="file" name="file" accept="image/*" required class="form-input" style="max-width:20rem" />
+    <button type="submit" class="btn-secondary">Read receipt</button>
+  </form>
+</div>
+
 <div class="card">
   <h1 class="card-title">Log a purchase</h1>
 

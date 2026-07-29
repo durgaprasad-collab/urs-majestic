@@ -86,6 +86,14 @@ class Settings(BaseSettings):
     TELEGRAM_PREP_LIMIT: int = 15
     TELEGRAM_ORDER_LIMIT: int = 20
 
+    # Receipt archival — Google Drive ─────────────────────────────────────────
+    # Uploaded purchase receipts are archived to a Drive folder. Needs a Google
+    # service account (JSON key pasted whole into this var) whose email has been
+    # given Editor on the target folder. Both empty -> archival is skipped and the
+    # purchase still saves (the feature degrades, never blocks a purchase).
+    GOOGLE_SERVICE_ACCOUNT_JSON: str = ""   # the service-account key file's contents
+    GDRIVE_RECEIPTS_FOLDER_ID: str = ""     # target Drive folder id
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
