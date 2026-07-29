@@ -86,55 +86,68 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
     """{ingredient_id: cost_per_gram_or_ml} for recipe ingredients with menu
     purchases, plus any unit-entry anomalies detected and auto-corrected.
 
-    Normalization: cost in the ingredient's declared unit, converted to a
-    per-gram (solids) / per-ml (liquids) basis.
-        kg, l  -> divide by 1000
-        g, ml  -> as-is
-        pcs    -> divided by pack_size_g (grams per piece) when set, so items
-                  bought by the bunch/piece but portioned by grams (e.g. coriander,
-                  mint, spring onion) still get a per-gram cost; skipped if no
-                  pack_size_g (can't convert a bare count to grams).
+    Each purchase row is normalized to a gram (solids) / ml (liquids) base using
+    THAT ROW's OWN unit -- never the ingredient's declared unit -- then summed:
+    per_g = sum(total_price) / sum(qty_in_base). This makes a row logged in a
+    different unit than the ingredient (500 g on a kg item, a kg/L row on an ml
+    item, etc.) impossible to miscount -- the recurring 1000x-cost bug that hit
+    spring onion, butter, cream, lemon and milk.
+        kg, l  -> qty * 1000
+        g, ml  -> qty
+        pcs    -> qty * pack_size_g (grams per piece) when set, so items bought by
+                  the bunch/piece but portioned by grams (coriander, mint) still
+                  get a per-gram cost; skipped if no pack_size_g.
     """
     rows = (
         db.query(
             Ingredient.id,
             Ingredient.name,
-            Ingredient.unit,
+            Ingredient.category,
             Ingredient.pack_size_g,
-            (func.sum(Purchase.total_price) / func.nullif(func.sum(Purchase.qty), 0)).label("cost_per_unit"),
+            Purchase.qty,
+            Purchase.unit,
+            Purchase.total_price,
         )
         .join(Purchase, Purchase.ingredient_id == Ingredient.id)
         .filter(Ingredient.cost_role == "recipe", Purchase.usage_type == "menu",
                 Purchase.deleted_at.is_(None))
-        .group_by(Ingredient.id, Ingredient.name, Ingredient.unit, Ingredient.pack_size_g)
         .all()
     )
+
+    # ingredient_id -> [spend, base_qty (g/ml), name, category, pack_size_g]
+    acc: dict[int, list] = {}
+    for ing_id, name, category, pack_size_g, qty, unit, price in rows:
+        if qty is None or price is None:
+            continue
+        qty = decimal.Decimal(str(qty))
+        unit = getattr(unit, "value", unit)  # ORM enum -> plain string
+        if unit in ("kg", "l"):
+            base = qty * 1000
+        elif unit in ("g", "ml"):
+            base = qty
+        elif unit == "pcs" and pack_size_g:
+            base = qty * decimal.Decimal(str(pack_size_g))
+        else:  # pcs with no pack weight, or an unknown unit -- not portionable by grams
+            continue
+        e = acc.setdefault(ing_id, [decimal.Decimal("0"), decimal.Decimal("0"), name, category, pack_size_g])
+        e[0] += decimal.Decimal(str(price))
+        e[1] += base
 
     cost: dict[int, decimal.Decimal] = {}
     anomalies: list[UnitAnomaly] = []
 
-    for ing_id, name, unit, pack_size_g, cpu in rows:
-        if cpu is None:
+    for ing_id, (spend, base, name, category, pack_size_g) in acc.items():
+        if base <= 0:
             continue
-        cpu = decimal.Decimal(str(cpu))
-        if unit in ("kg", "l"):
-            per_g = cpu / 1000
-        elif unit in ("g", "ml"):
-            per_g = cpu
-        elif unit == "pcs" and pack_size_g:
-            # Bought by the piece/bunch but portioned by grams. pack_size_g is
-            # grams per piece (same meaning as v_purchase_normalised), so
-            # (rupees/piece) / (grams/piece) = rupees/gram.
-            per_g = cpu / decimal.Decimal(str(pack_size_g))
-        else:  # pcs with no pack weight, and anything else: not portionable by grams
-            continue
-
-        # Unit-entry guard: implausible per-gram cost => 1000x error.
-        if per_g > IMPLAUSIBLE_PER_G:
+        per_g = spend / base
+        # Implausibility guard catches a genuine 1000x data error. SKIP it for
+        # spices: they are amortized by total spend (not portion-costed), and some
+        # (cardamom, saffron) are legitimately > IMPLAUSIBLE_PER_G, so applying it
+        # would false-flag them and wrongly divide the cost down.
+        if category != _SPICE_CATEGORY and per_g > IMPLAUSIBLE_PER_G:
             corrected = per_g / 1000
-            anomalies.append(UnitAnomaly(ing_id, name, float(cpu), float(corrected)))
+            anomalies.append(UnitAnomaly(ing_id, name, float(per_g), float(corrected)))
             per_g = corrected
-
         cost[ing_id] = per_g
 
     return cost, anomalies
@@ -265,7 +278,13 @@ def _combo_costs(
 
 def run_cost_engine(db: Session) -> dict:
     """Recompute derived_cost_per_unit, derived_food_cost_pct and
-    cost_confidence for every active food menu item. Idempotent."""
+    cost_confidence for every active food menu item. Idempotent.
+
+    This is the SINGLE source of truth for menu_items cost. It is invoked both by
+    the "Run cost engine" button and by the purchase-edit resync path
+    (app/web/audit.py:resync_derived_costs), so a purchase change and its cost
+    recompute always agree. Mutates the session but does NOT commit -- the caller
+    commits."""
     ing_cost, anomalies = _ingredient_cost_per_g(db)
     # Per-sold-item overhead, added ONCE below — flat gas + amortized packaging +
     # amortized spices. Applied after combos are assembled so a combo (one sold
@@ -319,7 +338,10 @@ def run_cost_engine(db: Session) -> dict:
             building += 1
         updated += 1
 
-    db.commit()
+    # No commit here -- the caller owns the transaction. Both callers (the "Run
+    # cost engine" button and the purchase-edit resync path) need this to run
+    # INSIDE their transaction so a purchase change and its cost recompute commit
+    # atomically. Callers must db.commit() afterward.
 
     if anomalies:
         print("WARNING: unit-entry errors auto-corrected in cost engine (fix the source purchase rows):")

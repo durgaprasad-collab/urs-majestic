@@ -27,6 +27,7 @@ async def run_engine(request: Request, db: Session = Depends(get_db)):
     if redir:
         return redir
     run_cost_engine(db)
+    db.commit()
     return RedirectResponse("/results?engine=1", status_code=303)
 
 

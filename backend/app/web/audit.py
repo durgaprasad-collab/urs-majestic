@@ -14,6 +14,8 @@ from decimal import Decimal
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.services.menu_engineering.cost_engine import run_cost_engine
+
 _INSERT = text(
     """
     INSERT INTO cost_base_repair_log
@@ -102,11 +104,17 @@ def log_field_diffs(
 
 
 def resync_derived_costs(db: Session) -> int:
-    """Repoint menu_items.derived_* at the live cost views.
+    """Recompute every menu_items cost snapshot after a purchase change.
 
-    menu_items carries a frozen snapshot of each dish's cost. It does not
-    recompute when a purchase changes. Call this after ANY purchase insert,
-    edit or soft delete or the menu keeps quoting pre-change costs.
-    Returns the number of menu rows whose cost actually moved.
+    menu_items carries a frozen snapshot of each dish's cost that does not
+    recompute on its own. Call this after ANY purchase insert, edit or soft
+    delete or the menu keeps quoting pre-change costs.
+
+    Delegates to the Python cost engine (run_cost_engine) so the purchase-edit
+    path and the "Run cost engine" button share ONE cost model. The old SQL
+    resync_derived_costs() function read the v_menu_item_cost VIEW -- a second,
+    diverging model that lacked the engine's combo/overhead/pcs handling and let
+    the 100x scale bug slip in; it is no longer used. Runs inside the caller's
+    transaction (no commit). Returns the number of active food items recomputed.
     """
-    return int(db.execute(text("SELECT resync_derived_costs()")).scalar() or 0)
+    return int(run_cost_engine(db).get("items_updated", 0))
