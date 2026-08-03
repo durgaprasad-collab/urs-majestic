@@ -5,9 +5,13 @@ Corrected cost-derivation model — fixes three root causes found in diagnosis:
      Ingredients with cost_role='overhead' (e.g. cooking gas) are NOT charged
      per dish — a flat OVERHEAD_PER_DISH is added instead, because gas is a fixed
      cost that doesn't scale with the exact number of dishes.
-     cost_role='per_order' (e.g. packaging) IS a variable per-order cost, so its
-     total menu spend is amortized across dishes sold (PER_ORDER_PER_DISH) and
-     added to every dish. Gas stays flat; packaging follows real volume.
+     cost_role='per_order' (packaging/containers) is charged per DISH, not as a
+     flat menu-wide average: dish_packaging_map says which container(s) a dish
+     uses when parceled, costed at that container's real per-piece purchase
+     price, then weighted by _parcel_rate (the real fraction of orders that are
+     parcel/delivery) — so a dine-in sale is never charged for a container it
+     never used, and a parcel sale carries its actual container cost instead of
+     a menu-wide average diluted by every dine-in sale too.
      Ingredients in category='Spices' are handled the same amortized way
      (SPICE_PER_DISH): used in nearly every dish but too small/variable to
      portion-map, so their spend is spread over dishes and they're skipped from
@@ -51,6 +55,8 @@ from app.models.purchase import Purchase
 from app.models.ingredient import Ingredient, IngredientDishMap
 from app.models.item_sale import ItemSale
 from app.models.combo import ComboComponent
+from app.models.daily_channel_sales import DailyChannelSales
+from app.models.packaging import DishPackagingMap
 
 # Flat overhead added to every dish for FIXED costs (gas + small misc), in rupees.
 # Gas is deliberately flat, not amortized per dish — the kitchen burns roughly the
@@ -153,28 +159,66 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
     return cost, anomalies
 
 
-def _per_order_per_dish(db: Session) -> decimal.Decimal:
-    """Variable per-order overhead (packaging) amortized across dishes sold.
-
-    Packaging (cost_role='per_order') is a real cost of every order but isn't
-    portioned into a recipe. Spread its total menu spend over the number of
-    dishes sold so each dish carries its average share:
-        sum(per_order menu spend) / sum(units sold)
-    Returns 0 when there are no sales yet (so a fresh DB never divides by zero).
-    Note: this averages across ALL dishes (dine-in included); it's an estimate,
-    not a per-delivery-order figure.
+def _parcel_rate(db: Session) -> decimal.Decimal:
+    """Real fraction of all orders that are parcel/delivery, from data already
+    in the DB — no separate upload needed. Zomato/Swiggy orders are always
+    parcel (those channels have no dine-in option); counter (petpooja) orders
+    are parcel only when a "Parcel" charge line was rung up alongside them, so
+    that item's sold qty is the counter-parcel count. Returns 0 with no order
+    history yet, so a fresh DB never divides by zero or fabricates a rate.
     """
-    spend = (
-        db.query(func.coalesce(func.sum(Purchase.total_price), 0))
-        .join(Ingredient, Ingredient.id == Purchase.ingredient_id)
-        .filter(Ingredient.cost_role == "per_order", Purchase.usage_type == "menu",
-                Purchase.deleted_at.is_(None))
+    total_orders = db.query(func.coalesce(func.sum(DailyChannelSales.orders), 0)).scalar()
+    parcel_counter = (
+        db.query(func.coalesce(func.sum(ItemSale.qty), 0))
+        .filter(func.lower(ItemSale.item_name) == "parcel")
         .scalar()
     )
-    units = db.query(func.coalesce(func.sum(ItemSale.qty), 0)).scalar()
-    spend = decimal.Decimal(str(spend or 0))
-    units = decimal.Decimal(str(units or 0))
-    return (spend / units) if units > 0 else decimal.Decimal("0")
+    parcel_channel_orders = (
+        db.query(func.coalesce(func.sum(DailyChannelSales.orders), 0))
+        .filter(DailyChannelSales.channel.in_(("zomato", "swiggy")))
+        .scalar()
+    )
+    total_orders = decimal.Decimal(str(total_orders or 0))
+    parcel_orders = decimal.Decimal(str(parcel_counter or 0)) + decimal.Decimal(str(parcel_channel_orders or 0))
+    if total_orders <= 0:
+        return decimal.Decimal("0")
+    return min(parcel_orders / total_orders, decimal.Decimal("1"))
+
+
+def _container_cost_per_pc(db: Session) -> dict[int, decimal.Decimal]:
+    """{ingredient_id: cost per piece} for per_order (packaging) ingredients
+    bought by the piece — the containers dish_packaging_map references."""
+    rows = (
+        db.query(Ingredient.id, func.sum(Purchase.total_price), func.sum(Purchase.qty))
+        .join(Purchase, Purchase.ingredient_id == Ingredient.id)
+        .filter(Ingredient.cost_role == "per_order", Purchase.usage_type == "menu",
+                Purchase.deleted_at.is_(None), Purchase.unit == "pcs")
+        .group_by(Ingredient.id)
+        .all()
+    )
+    out: dict[int, decimal.Decimal] = {}
+    for ing_id, spend, qty in rows:
+        qty = decimal.Decimal(str(qty or 0))
+        if qty > 0:
+            out[ing_id] = decimal.Decimal(str(spend or 0)) / qty
+    return out
+
+
+def _dish_packaging_cost(db: Session) -> dict[int, decimal.Decimal]:
+    """{menu_item_id: packaging cost}, real container cost weighted by the
+    parcel rate — see the module docstring's OVERHEAD SEPARATION note. A dish
+    with no dish_packaging_map row (or an unpriced container) simply gets 0."""
+    cost_per_pc = _container_cost_per_pc(db)
+    rate = _parcel_rate(db)
+    full_cost: dict[int, decimal.Decimal] = {}
+    for menu_item_id, ingredient_id, qty in db.query(
+        DishPackagingMap.menu_item_id, DishPackagingMap.ingredient_id, DishPackagingMap.qty
+    ).all():
+        per_pc = cost_per_pc.get(ingredient_id)
+        if per_pc is None:
+            continue
+        full_cost[menu_item_id] = full_cost.get(menu_item_id, decimal.Decimal("0")) + decimal.Decimal(str(qty)) * per_pc
+    return {mid: cost * rate for mid, cost in full_cost.items()}
 
 
 def _spice_per_dish(db: Session) -> decimal.Decimal:
@@ -286,10 +330,12 @@ def run_cost_engine(db: Session) -> dict:
     recompute always agree. Mutates the session but does NOT commit -- the caller
     commits."""
     ing_cost, anomalies = _ingredient_cost_per_g(db)
-    # Per-sold-item overhead, added ONCE below — flat gas + amortized packaging +
-    # amortized spices. Applied after combos are assembled so a combo (one sold
-    # line) carries it once, not once per component.
-    fixed_per_dish = OVERHEAD_PER_DISH + _per_order_per_dish(db) + _spice_per_dish(db)
+    # Per-sold-item overhead, added ONCE below — flat gas + amortized spices are
+    # the same for every dish; packaging is dish-specific (see
+    # _dish_packaging_cost). Applied after combos are assembled so a combo (one
+    # sold line) carries it once, not once per component.
+    flat_per_dish = OVERHEAD_PER_DISH + _spice_per_dish(db)
+    packaging_cost = _dish_packaging_cost(db)
 
     combo_ids = frozenset(
         row[0] for row in db.query(ComboComponent.combo_menu_item_id).distinct().all()
@@ -300,8 +346,10 @@ def run_cost_engine(db: Session) -> dict:
     recipe = _dish_recipe_costs(db, ing_cost, skip_menu_item_ids=combo_ids)
     recipe.update(_combo_costs(db, recipe))
     # Overhead once per sold item — standalone dish OR combo.
-    dish_cost = {mid: (cost + fixed_per_dish, complete)
-                 for mid, (cost, complete) in recipe.items()}
+    dish_cost = {
+        mid: (cost + flat_per_dish + packaging_cost.get(mid, decimal.Decimal("0")), complete)
+        for mid, (cost, complete) in recipe.items()
+    }
 
     items = (
         db.query(MenuItem)

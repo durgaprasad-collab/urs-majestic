@@ -11,6 +11,7 @@ from app.models.daily_channel_sales import DailyChannelSales
 from app.models.upload_log import UploadLog
 from app.models.recon_exception import ReconException
 from app.models.business import FixedExpense, BusinessSetting
+from app.models.packaging import DishPackagingMap
 
 __all__ = [
     "User",
@@ -31,4 +32,5 @@ __all__ = [
     "ReconException",
     "FixedExpense",
     "BusinessSetting",
+    "DishPackagingMap",
 ]
