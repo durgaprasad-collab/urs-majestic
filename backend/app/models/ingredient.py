@@ -54,4 +54,11 @@ class IngredientDishMap(Base):
         SAEnum("light", "medium", "heavy", name="intensity_type", create_type=False),
         nullable=False,
     )
+    # Escape hatch for when an ingredient plays a genuinely different-sized role
+    # in this one dish than its shared light/medium/heavy tiers assume (e.g. a
+    # fried-noodle garnish on a soup vs. the same noodles as a main-course
+    # portion) — set this instead of relying on `intensity`, and the cost
+    # engine uses it verbatim instead of looking up the ingredient's tier.
+    # NULL (the common case) means "use the intensity tier" as before.
+    portion_override_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     ingredient: Mapped["Ingredient"] = relationship("Ingredient", back_populates="dish_maps")

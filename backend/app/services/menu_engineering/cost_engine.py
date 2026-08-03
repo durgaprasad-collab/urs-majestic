@@ -22,7 +22,11 @@ Corrected cost-derivation model — fixes three root causes found in diagnosis:
   2. REAL PORTIONS
      intensity (light/medium/heavy) maps to the ingredient's own
      portion_light_g / portion_medium_g / portion_heavy_g — real grams/ml —
-     instead of a fraction of a whole purchase unit.
+     instead of a fraction of a whole purchase unit. A mapping row can instead
+     set portion_override_g for an explicit gram amount that bypasses the
+     shared tiers entirely — for when the same ingredient plays a genuinely
+     different-sized role in this one dish (e.g. a fried-noodle garnish on a
+     soup vs. the same noodles as a main-course portion elsewhere).
   3. UNIT-ENTRY GUARD
      Any derived per-gram/ml cost above IMPLAUSIBLE_PER_G is treated as a
      1000x unit-entry error (e.g. a litre bought but logged as ml), corrected
@@ -276,7 +280,11 @@ def _dish_recipe_costs(
             continue  # overhead (flat) / per_order (amortized) not priced per portion
         if ing.category == _SPICE_CATEGORY:
             continue  # spices are amortized per dish, not portioned — no double count
-        grams = getattr(ing, _INTENSITY_COL.get(m.intensity, "portion_medium_g"))
+        # An explicit per-dish override (e.g. a garnish quantity that doesn't
+        # fit the ingredient's shared tiers) wins over the intensity lookup.
+        grams = m.portion_override_g
+        if grams is None:
+            grams = getattr(ing, _INTENSITY_COL.get(m.intensity, "portion_medium_g"))
         per_g = ing_cost.get(ing.id)
         if grams is None or per_g is None:
             entry[1] = False  # incomplete data for this dish
