@@ -109,21 +109,18 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
     })
 
 
-@router.post("/order-forecast/stock")
-def save_stock(
-    request: Request,
-    ingredient_id: int = Form(...),
-    qty: float = Form(...),
-    unit: str = Form(...),
-    count_unit: str = Form(None),
-    db: Session = Depends(get_db),
-):
-    """Record a current on-hand count. Stored in the ingredient's forecast
-    (primary) unit so the view can divide by daily_consumption directly."""
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-
+def record_stock(
+    db: Session,
+    ingredient_id: int,
+    qty: float,
+    unit: str,
+    count_unit: str | None,
+    counted_by: int | None,
+) -> None:
+    """Insert one on-hand count row, in the ingredient's forecast (primary)
+    unit so the view can divide by daily_consumption directly. Shared by the
+    single-row form on this page and the bulk stock-log checklist. Caller
+    commits."""
     count_unit = count_unit or unit
     on_hand = max(qty, 0.0)
 
@@ -145,7 +142,23 @@ def save_stock(
             "INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by) "
             "VALUES (:i, :q, :u, :by)"
         ),
-        {"i": ingredient_id, "q": on_hand, "u": unit, "by": getattr(user, "id", None)},
+        {"i": ingredient_id, "q": on_hand, "u": unit, "by": counted_by},
     )
+
+
+@router.post("/order-forecast/stock")
+def save_stock(
+    request: Request,
+    ingredient_id: int = Form(...),
+    qty: float = Form(...),
+    unit: str = Form(...),
+    count_unit: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+
+    record_stock(db, ingredient_id, qty, unit, count_unit, getattr(user, "id", None))
     db.commit()
     return RedirectResponse(url="/order-forecast", status_code=303)

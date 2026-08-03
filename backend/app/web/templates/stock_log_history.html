@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Stock Log History — URS Majestic{% endblock %}
+
+{% block content %}
+<style>
+  .sl-search{margin-bottom:1rem}
+</style>
+
+<div class="page-header">
+  <h1 class="page-title">Stock Log History</h1>
+  <a href="/stock-log" class="btn-primary btn-sm">Back to checklist</a>
+</div>
+
+<input type="text" class="form-input sl-search" placeholder="Search an item…" oninput="slhFilter(this.value)">
+
+<div class="card">
+  <div class="recon-table-wrap">
+    <table class="recon-table">
+      <thead>
+        <tr>
+          <th>Counted at</th>
+          <th>Item</th>
+          <th>Category</th>
+          <th class="col-num">Qty</th>
+          <th>By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr data-slh-row data-slh-name="{{ r.name|lower }}">
+          <td>{{ r.counted_at.strftime('%d %b %Y, %I:%M %p') }}</td>
+          <td>{{ r.name }}</td>
+          <td>{{ r.category or '—' }}</td>
+          <td class="col-num">{{ "%g"|format(r.on_hand_qty) }} {{ r.unit }}</td>
+          <td>{{ r.counted_by_name or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No counts logged yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="prep-meta" style="margin-top:.6rem">Showing the most recent {{ rows|length }} entries.</p>
+
+<script>
+function slhFilter(q) {
+  q = q.trim().toLowerCase();
+  document.querySelectorAll('[data-slh-row]').forEach(function (row) {
+    row.style.display = row.dataset.slhName.includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}
