@@ -23,6 +23,12 @@ import json
 from datetime import date
 from decimal import Decimal
 
+# Windows consoles default to cp1252, which can't encode the rupee sign this
+# script prints in its summary -- crashes AFTER the DB commit, making a
+# successful import look like a failure. Linux (Render) is already UTF-8.
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
+
 # Allow running from project root or backend/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
