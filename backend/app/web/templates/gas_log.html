@@ -47,6 +47,7 @@
     {% if avg_kg_per_day %}
       <div class="gl-stat-val">{{ "%.2f"|format(avg_kg_per_day) }} kg</div>
       <div class="gl-stat-sub">over {{ "%.1f"|format(span_days) }}d, {{ reading_count }} reading{{ 's' if reading_count != 1 }}</div>
+      {% if span_days < 1 %}<div class="gl-stat-sub">short window — extrapolated, not a real daily average yet</div>{% endif %}
     {% else %}
       <div class="gl-stat-val">—</div>
       <div class="gl-stat-sub">need 2+ same-cylinder readings</div>

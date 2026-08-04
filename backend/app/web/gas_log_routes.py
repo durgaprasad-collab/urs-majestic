@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core.clock import business_tz
 from app.core.database import get_db
 from app.web.deps import _tmpl, require_user
 
@@ -49,17 +50,30 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
     rows = list(db.execute(_READINGS_SQL).mappings().all())
 
     # Chronological order to compute consumption deltas, then re-reverse for display.
+    # recorded_at is stored UTC (DB default now()); convert to IST for both display
+    # and the elapsed-time math below (elapsed-seconds between two aware instants
+    # is timezone-invariant, so this only fixes what's shown, not the arithmetic).
     chrono = list(reversed(rows))
     last_in_use = None
     enriched = []
     last_full_kg = None
+    delta_seconds_total = 0.0
+    total_kg_used = decimal.Decimal("0")
+    reading_count = 0
     for r in chrono:
         d = dict(r)
+        d["recorded_at"] = d["recorded_at"].astimezone(business_tz())
         if d["is_new_cylinder"]:
             last_full_kg = d["net_kg"]
         if d["cylinder_role"] == "in_use":
             if last_in_use is not None and not d["is_new_cylinder"]:
-                d["kg_used"] = last_in_use["net_kg"] - d["net_kg"]
+                kg_used = last_in_use["net_kg"] - d["net_kg"]
+                elapsed = (d["recorded_at"] - last_in_use["recorded_at"]).total_seconds()
+                d["kg_used"] = kg_used
+                if elapsed > 0:
+                    delta_seconds_total += elapsed
+                    total_kg_used += kg_used
+                    reading_count += 1
             else:
                 d["kg_used"] = None
             last_in_use = d
@@ -68,15 +82,11 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
         enriched.append(d)
     enriched.reverse()
 
-    used_deltas = [d for d in enriched if d["kg_used"] is not None]
-    total_kg_used = sum((d["kg_used"] for d in used_deltas), decimal.Decimal("0"))
-    span_days = None
-    avg_kg_per_day = None
-    if len(used_deltas) >= 1:
-        oldest = min(d["recorded_at"] for d in used_deltas)
-        newest = max(d["recorded_at"] for d in used_deltas)
-        span_days = max((newest - oldest).total_seconds() / 86400, 0.01)
-        avg_kg_per_day = total_kg_used / decimal.Decimal(str(span_days)) if total_kg_used > 0 else None
+    span_days = (delta_seconds_total / 86400) if delta_seconds_total > 0 else None
+    avg_kg_per_day = (
+        total_kg_used / decimal.Decimal(str(span_days))
+        if span_days and total_kg_used > 0 else None
+    )
 
     latest_price = db.execute(text(
         "select total_price from purchases p join ingredients i on i.id = p.ingredient_id "
@@ -111,7 +121,7 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
         "full_kg": full_kg,
         "cost_per_day": cost_per_day,
         "cost_per_dish": cost_per_dish,
-        "reading_count": len(used_deltas),
+        "reading_count": reading_count,
     })
 
 

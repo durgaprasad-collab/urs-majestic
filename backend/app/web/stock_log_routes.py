@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.clock import business_today
+from app.core.clock import business_today, business_tz
 from app.core.database import get_db
 from app.web.deps import _tmpl, require_user
 from app.web.reorder_routes import record_stock
@@ -60,7 +60,12 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
 
     rows = db.execute(_LIST_SQL).mappings().all()
     by_cat: dict[str, list] = {}
-    for r in rows:
+    for row in rows:
+        r = dict(row)
+        # counted_at is stored UTC (DB default now()); convert to IST for both
+        # display and the "counted today" freshness check below.
+        if r["counted_at"] is not None:
+            r["counted_at"] = r["counted_at"].astimezone(business_tz())
         by_cat.setdefault(r["category"] or "Other", []).append(r)
 
     ordered = [(c, by_cat[c]) for c in _CATEGORY_ORDER if c in by_cat]
@@ -110,5 +115,7 @@ def stock_log_history(request: Request, db: Session = Depends(get_db)):
     if redir:
         return redir
 
-    rows = db.execute(_HISTORY_SQL).mappings().all()
+    rows = [dict(r) for r in db.execute(_HISTORY_SQL).mappings().all()]
+    for r in rows:
+        r["counted_at"] = r["counted_at"].astimezone(business_tz())
     return _tmpl(request, "stock_log_history.html", {"user": user, "rows": rows})
