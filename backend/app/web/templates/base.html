@@ -4,41 +4,104 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0B3A2E" />
-  <title>{% block title %}URS Majestic — Owner Portal{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=15" />
+  <title>{% block title %}URS Majestic — Restaurant OS{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v=16" />
+  <script src="/static/app.js?v=1" defer></script>
 </head>
-<body>
-  <header class="app-header">
-    <span class="app-header-name">URS Majestic</span>
-    {% if request.session.get("user_id") %}
-    <span class="app-header-user">{{ request.session.get("name") }}</span>
-    <a href="/logout" class="app-header-logout">Sign out</a>
-    {% endif %}
-  </header>
+<body class="{% if request.session.get('user_id') %}os-authenticated{% else %}os-guest{% endif %}">
+{% if request.session.get("user_id") %}
+  {% set path = request.url.path %}
+  <div class="os-shell">
+    <aside class="app-nav" id="app-nav" aria-label="Main navigation">
+      <a href="/daily-brief" class="brand-lockup" aria-label="URS Majestic home">
+        <span class="brand-mark">UM</span>
+        <span><b>URS Majestic</b><small>Restaurant OS</small></span>
+      </a>
 
-  {% if request.session.get("user_id") %}
-  <nav class="app-nav">
-    <a href="/daily-brief" class="nav-link {% if request.url.path == '/daily-brief' %}active{% endif %}">Daily Brief</a>
-    <a href="/upload" class="nav-link {% if request.url.path == '/upload' %}active{% endif %}">Upload</a>
-    <a href="/results" class="nav-link {% if request.url.path == '/results' %}active{% endif %}">Analysis</a>
-    <a href="/prep-sheet" class="nav-link {% if request.url.path == '/prep-sheet' %}active{% endif %}">Prep Sheet</a>
-    <a href="/order-forecast" class="nav-link {% if request.url.path == '/order-forecast' %}active{% endif %}">Order Forecast</a>
-    <a href="/stock-log" class="nav-link {% if request.url.path.startswith('/stock-log') %}active{% endif %}">Stock Log</a>
-    <a href="/gas-log" class="nav-link {% if request.url.path.startswith('/gas-log') %}active{% endif %}">Gas Log</a>
-    <a href="/purchases" class="nav-link {% if request.url.path.startswith('/purchases') %}active{% endif %}">Purchases</a>
-    <a href="/ingredients/mapping" class="nav-link {% if request.url.path.startswith('/ingredients') %}active{% endif %}">Mapping</a>
-    <a href="/reconciliation" class="nav-link {% if request.url.path == '/reconciliation' %}active{% endif %}">Reconcile</a>
-    <a href="/data-reconciliation" class="nav-link {% if request.url.path == '/data-reconciliation' %}active{% endif %}">Data Trust</a>
-    <a href="/business-settings" class="nav-link {% if request.url.path.startswith('/business-settings') %}active{% endif %}">Business Settings</a>
-    {% if request.session.get("is_admin") %}
-    <a href="/users" class="nav-link {% if request.url.path == '/users' %}active{% endif %}">Users</a>
-    {% endif %}
-    <a href="/change-password" class="nav-link {% if request.url.path == '/change-password' %}active{% endif %}">Password</a>
+      <nav class="nav-groups">
+        <a href="/daily-brief" class="nav-link nav-home {% if path == '/daily-brief' or path == '/dashboard' %}active{% endif %}"><span>✦</span> Today</a>
+
+        <div class="nav-group">
+          <span class="nav-group-label">Operations</span>
+          <a href="/prep-sheet" class="nav-link {% if path == '/prep-sheet' %}active{% endif %}"><span>☑</span> Prep Sheet</a>
+          <a href="/order-forecast" class="nav-link {% if path == '/order-forecast' %}active{% endif %}"><span>↗</span> Order Forecast</a>
+          <a href="/stock-log" class="nav-link {% if path.startswith('/stock-log') %}active{% endif %}"><span>▦</span> Stock Log</a>
+          <a href="/gas-log" class="nav-link {% if path.startswith('/gas-log') %}active{% endif %}"><span>◉</span> Gas Log</a>
+        </div>
+
+        <div class="nav-group">
+          <span class="nav-group-label">Money</span>
+          <a href="/purchases" class="nav-link {% if path.startswith('/purchases') %}active{% endif %}"><span>₹</span> Purchases</a>
+          <a href="/reconciliation" class="nav-link {% if path == '/reconciliation' %}active{% endif %}"><span>↻</span> Reconcile</a>
+          <a href="/business-settings" class="nav-link {% if path.startswith('/business-settings') %}active{% endif %}"><span>◎</span> Business Setup</a>
+        </div>
+
+        <div class="nav-group">
+          <span class="nav-group-label">Insights</span>
+          <a href="/results" class="nav-link {% if path == '/results' %}active{% endif %}"><span>⌁</span> Menu Analysis</a>
+          <a href="/data-reconciliation" class="nav-link {% if path == '/data-reconciliation' %}active{% endif %}"><span>✓</span> Data Trust</a>
+          <a href="/ingredients/mapping" class="nav-link {% if path.startswith('/ingredients') %}active{% endif %}"><span>⇄</span> Ingredient Mapping</a>
+        </div>
+      </nav>
+
+      <div class="nav-status"><span class="status-dot"></span><span><small>Data health</small><b>System online</b></span></div>
+      <div class="nav-profile">
+        <span class="profile-avatar">{{ (request.session.get('name') or 'U')[:2]|upper }}</span>
+        <span><b>{{ request.session.get("name") }}</b><small>Owner</small></span>
+        <a href="/logout" title="Sign out" aria-label="Sign out">↗</a>
+      </div>
+    </aside>
+
+    <div class="os-workspace">
+      <header class="app-header">
+        <button class="mobile-menu" type="button" data-nav-toggle aria-label="Open navigation" aria-controls="app-nav">☰</button>
+        <button class="command-search" type="button" data-command-open><span>⌕</span><span>Search or type an action…</span><kbd>Ctrl K</kbd></button>
+        <div class="quick-wrap">
+          <button class="quick-add" type="button" data-quick-toggle aria-expanded="false">＋ Quick add <span>⌄</span></button>
+          <div class="quick-menu" data-quick-menu hidden>
+            <span class="quick-menu-title">What are you adding?</span>
+            <a href="/purchases/new"><b>₹</b><span>Purchase<small>Log an expense</small></span></a>
+            <a href="/stock-log"><b>▦</b><span>Stock count<small>Update many at once</small></span></a>
+            <a href="/gas-log"><b>◉</b><span>Gas reading<small>Record cylinder weight</small></span></a>
+            <a href="/upload"><b>⇧</b><span>Sales report<small>POS, Zomato or Swiggy</small></span></a>
+          </div>
+        </div>
+        <a class="header-avatar" href="/change-password" title="Account settings">{{ (request.session.get('name') or 'U')[:2]|upper }}</a>
+      </header>
+
+      <main class="app-main">{% block content %}{% endblock %}</main>
+    </div>
+  </div>
+
+  <div class="command-palette" data-command-palette hidden>
+    <button class="command-backdrop" data-command-close aria-label="Close command menu"></button>
+    <section class="command-panel" role="dialog" aria-modal="true" aria-label="Navigate or take action">
+      <div class="command-input-wrap"><span>⌕</span><input type="search" data-command-input placeholder="Try “purchase”, “stock” or “analysis”…" autocomplete="off" /><kbd>Esc</kbd></div>
+      <div class="command-results" data-command-results>
+        <a href="/purchases/new" data-command-item data-keywords="add create log expense bill receipt purchase"><b>＋ Purchase</b><small>Log an expense</small></a>
+        <a href="/stock-log" data-command-item data-keywords="stock inventory count update"><b>▦ Stock count</b><small>Update inventory</small></a>
+        <a href="/gas-log" data-command-item data-keywords="gas cylinder weight reading"><b>◉ Gas reading</b><small>Record LPG usage</small></a>
+        <a href="/upload" data-command-item data-keywords="upload report petpooja zomato swiggy sales"><b>⇧ Upload sales report</b><small>Refresh channel data</small></a>
+        <a href="/daily-brief" data-command-item data-keywords="today home daily brief dashboard"><b>✦ Today</b><small>Open the daily brief</small></a>
+        <a href="/prep-sheet" data-command-item data-keywords="prep kitchen sheet"><b>☑ Prep Sheet</b><small>Plan the next service</small></a>
+        <a href="/order-forecast" data-command-item data-keywords="order forecast purchase stock"><b>↗ Order Forecast</b><small>See what to order</small></a>
+        <a href="/results" data-command-item data-keywords="menu analysis food cost item performance"><b>⌁ Menu Analysis</b><small>Explore performance</small></a>
+        <a href="/reconciliation" data-command-item data-keywords="reconcile mismatch channel money"><b>↻ Reconcile</b><small>Resolve mismatches</small></a>
+      </div>
+      <p class="command-empty" data-command-empty hidden>No match. Try a page or action name.</p>
+    </section>
+  </div>
+
+  <nav class="mobile-actions" aria-label="Mobile shortcuts">
+    <a href="/daily-brief" class="{% if path == '/daily-brief' %}active{% endif %}"><span>✦</span>Today</a>
+    <a href="/prep-sheet" class="{% if path == '/prep-sheet' %}active{% endif %}"><span>☑</span>Prep</a>
+    <button type="button" data-quick-toggle><span>＋</span>Add</button>
+    <a href="/stock-log" class="{% if path.startswith('/stock-log') %}active{% endif %}"><span>▦</span>Stock</a>
+    <button type="button" data-command-open><span>⌕</span>Search</button>
   </nav>
-  {% endif %}
-
-  <main class="app-main">
-    {% block content %}{% endblock %}
-  </main>
+{% else %}
+  <header class="guest-header"><a href="/login" class="brand-lockup"><span class="brand-mark">UM</span><span><b>URS Majestic</b><small>Restaurant OS</small></span></a></header>
+  <main class="app-main guest-main">{% block guest_content %}{% block content_fallback %}{% endblock %}{% endblock %}</main>
+{% endif %}
 </body>
 </html>
