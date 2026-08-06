@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0B3A2E" />
   <title>{% block title %}URS Majestic — Restaurant OS{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=17" />
+  <link rel="stylesheet" href="/static/style.css?v=18" />
   <script src="/static/app.js?v=1" defer></script>
 </head>
 <body class="{% if request.session.get('user_id') %}os-authenticated{% else %}os-guest{% endif %}">
@@ -69,7 +69,7 @@
         <a class="header-avatar" href="/change-password" title="Account settings">{{ (request.session.get('name') or 'U')[:2]|upper }}</a>
       </header>
 
-      <main class="app-main">{% block content %}{% endblock %}</main>
+      <main class="app-main" data-page="{{ path }}">{% block content %}{% endblock %}</main>
     </div>
   </div>
 
