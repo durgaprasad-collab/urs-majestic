@@ -887,8 +887,8 @@ a { color: var(--green); }
 
 body { background: var(--bg); }
 body.os-authenticated { overflow-x: hidden; }
-.os-shell { min-height: 100dvh; display: grid; grid-template-columns: 244px minmax(0,1fr); }
-.os-workspace { min-width: 0; }
+.os-shell { min-height: 100dvh; display: block; }
+.os-workspace { min-width: 0; margin-left: 244px; }
 
 .app-nav {
   position: fixed; inset: 18px auto 18px 18px; width: 226px; height: calc(100dvh - 36px);
@@ -955,7 +955,7 @@ body.os-authenticated { overflow-x: hidden; }
 }
 
 @media (max-width: 860px) {
-  .os-shell { display: block; }.app-nav { transform: translateX(calc(-100% - 30px)); transition: transform .2s ease; }.nav-open .app-nav { transform: translateX(0); }.nav-open::after { content: ""; position: fixed; inset: 0; z-index: 55; background: rgba(3,25,18,.45); }
+  .os-workspace { margin-left: 0; }.app-nav { transform: translateX(calc(-100% - 30px)); transition: transform .2s ease; }.nav-open .app-nav { transform: translateX(0); }.nav-open::after { content: ""; position: fixed; inset: 0; z-index: 55; background: rgba(3,25,18,.45); }
   .app-header { min-height: 68px; padding: 12px 16px; }.mobile-menu { display: block; }.command-search { width: auto; flex: 1; }.command-search kbd, .command-search span:nth-child(2) { display: none; }.quick-add { font-size: 0; width: 44px; padding: 0; }.quick-add::after { content: "+"; font-size: 1.35rem; }.quick-add > span { display: none; }.header-avatar { display: none; }
   .app-main { padding: 8px 15px 92px; }.mobile-actions { position: fixed; inset: auto 10px 10px; z-index: 48; height: 66px; display: grid; grid-template-columns: repeat(5,1fr); border: 1px solid var(--border); border-radius: 20px; background: rgba(255,255,255,.96); box-shadow: 0 12px 35px rgba(11,58,46,.18); backdrop-filter: blur(14px); }
   .mobile-actions a, .mobile-actions button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; background: none; color: var(--muted); text-decoration: none; font: 650 .6rem inherit; }.mobile-actions span { font-size: 1.05rem; }.mobile-actions .active { color: var(--green); }.mobile-actions button:nth-child(3) span { width: 38px; height: 38px; margin-top: -22px; display: grid; place-items: center; border-radius: 13px; background: var(--gold); color: var(--green); font-size: 1.4rem; box-shadow: 0 7px 15px rgba(201,162,39,.25); }
