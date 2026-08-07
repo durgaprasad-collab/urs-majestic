@@ -31,7 +31,7 @@ _LIST_SQL = text("""
            s.on_hand_qty, s.counted_at, s.note
     from ingredients i
     left join lateral (
-        select on_hand_qty, counted_at
+        select on_hand_qty, counted_at, note
         from ingredient_stock
         where ingredient_id = i.id
         order by counted_at desc
