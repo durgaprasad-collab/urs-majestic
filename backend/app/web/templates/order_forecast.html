@@ -76,6 +76,7 @@
   .ord-stock-lbl{font-size:.8rem;color:#888}
   .ord-stock-btn{padding:.2rem .5rem;font-size:.8rem;border:1px solid #c9a227;background:#c9a227;color:#fff;border-radius:4px;cursor:pointer}
   .ord-remaining{min-width:9.5rem}
+  .ord-print-sheet{display:none}
 
   /* Mobile card view: same <table><tr><td> markup, restyled as a stacked
      card list at narrow widths so the stock-count mini-form stays a single
@@ -103,6 +104,38 @@
     .ord-table .ord-remaining { justify-content: flex-start; }
     .ord-table .ord-remaining::before { display: none; }
     .ord-table .ord-stock-form { width: 100%; justify-content: flex-start; }
+  }
+
+  @media print {
+    @page { size: A4 portrait; margin: 8mm; }
+    html, body { width: 210mm; min-height: 0; background: #fff !important; }
+    .os-workspace { margin: 0 !important; }
+    .app-main { padding: 0 !important; max-width: none !important; }
+    .app-main > *:not(.ord-print-sheet) { display: none !important; }
+    .ord-print-sheet { display: block !important; color: #17211d; font-family: Arial, sans-serif; }
+    .ord-print-head { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 4mm; border-bottom: 2px solid #0B3A2E; }
+    .ord-print-brand { font-size: 8pt; font-weight: 800; letter-spacing: .08em; color: #0B3A2E; text-transform: uppercase; }
+    .ord-print-title { margin: 1mm 0 0; font-size: 18pt; line-height: 1; color: #17211d; }
+    .ord-print-meta { text-align: right; font-size: 8pt; color: #59645e; line-height: 1.45; }
+    .ord-print-summary { display: grid; grid-template-columns: repeat(3,1fr); gap: 2mm; margin: 4mm 0; }
+    .ord-print-stat { padding: 2.5mm 3mm; border: 1px solid #d8d5cb; border-radius: 2mm; }
+    .ord-print-stat span { display: block; font-size: 6.5pt; color: #68736d; text-transform: uppercase; letter-spacing: .06em; }
+    .ord-print-stat b { display: block; margin-top: .5mm; font-size: 12pt; color: #0B3A2E; }
+    .ord-print-columns { display: grid; grid-template-columns: 1fr; gap: 1.2mm 3mm; }
+    .ord-print-columns.dense { grid-template-columns: 1fr 1fr; }
+    .ord-print-columns.ultra { grid-template-columns: repeat(3,1fr); gap: .7mm; zoom: .9; }
+    .ord-print-row { display: grid; grid-template-columns: 5mm minmax(0,1fr) auto; gap: 2mm; align-items: center; min-height: 8mm; padding: 1.3mm 2mm; border: 1px solid #e2dfd6; border-radius: 1.5mm; break-inside: avoid; }
+    .ord-print-box { width: 4mm; height: 4mm; border: 1.2px solid #5f6863; border-radius: .5mm; }
+    .ord-print-item { min-width: 0; font-size: 8.5pt; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ord-print-item small { display: block; margin-top: .4mm; color: #69736e; font-size: 6.7pt; font-weight: 500; }
+    .ord-print-qty { text-align: right; font-size: 8pt; font-weight: 800; color: #0B3A2E; white-space: nowrap; }
+    .ord-print-cover { display: block; margin-top: .4mm; color: #a33c28; font-size: 6.5pt; font-weight: 650; }
+    .ord-print-columns.ultra .ord-print-row { grid-template-columns: 4mm minmax(0,1fr); gap: 1.2mm; min-height: 6.5mm; padding: .6mm 1mm; }
+    .ord-print-columns.ultra .ord-print-item { font-size: 7pt; }
+    .ord-print-columns.ultra .ord-print-item small { font-size: 5.7pt; }
+    .ord-print-columns.ultra .ord-print-qty { grid-column: 2; display: flex; justify-content: space-between; gap: 1mm; text-align: left; font-size: 6.5pt; }
+    .ord-print-columns.ultra .ord-print-cover { display: inline; margin: 0; font-size: 5.7pt; }
+    .ord-print-foot { display: flex; justify-content: space-between; margin-top: 3mm; padding-top: 2mm; border-top: 1px solid #d8d5cb; color: #69736e; font-size: 6.5pt; }
   }
 </style>
 
@@ -197,4 +230,48 @@
     </div>
   </details>
 </div>
+
+<section class="ord-print-sheet" aria-hidden="true">
+  <header class="ord-print-head">
+    <div>
+      <div class="ord-print-brand">URS Majestic · Kitchen Operations</div>
+      <h1 class="ord-print-title">Order Forecast</h1>
+    </div>
+    <div class="ord-print-meta">
+      {% if generated_on %}Generated {{ generated_on.strftime('%d %b %Y') }} (IST)<br>{% endif %}
+      Reorder rule: cover below 3 days
+    </div>
+  </header>
+
+  <div class="ord-print-summary">
+    <div class="ord-print-stat"><span>Items to order</span><b>{{ action|length }}</b></div>
+    <div class="ord-print-stat"><span>Estimated total</span><b>{% if est_action_cost %}₹{{ "%.0f"|format(est_action_cost) }}{% else %}—{% endif %}</b></div>
+    <div class="ord-print-stat"><span>Priority</span><b>{% if action %}Under 3d{% else %}All clear{% endif %}</b></div>
+  </div>
+
+  {% if action %}
+  <div class="ord-print-columns{% if action|length > 36 %} ultra{% elif action|length > 16 %} dense{% endif %}">
+    {% for r in action %}
+    <div class="ord-print-row">
+      <span class="ord-print-box"></span>
+      <div class="ord-print-item">
+        {{ r.name }}
+        <small>{% if r.eff_order_date %}Order by {{ r.eff_order_date.strftime('%a %d %b') }}{% else %}Order now{% endif %}</small>
+      </div>
+      <div class="ord-print-qty">
+        {{ "%g"|format(r.suggested_order_qty) }} {{ r.unit }}
+        <span class="ord-print-cover">{{ "%g"|format(r.eff_cover_left) }}d cover</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="ord-print-row"><span>✓</span><div class="ord-print-item">Nothing needs ordering</div><div class="ord-print-qty">All ≥ 3d</div></div>
+  {% endif %}
+
+  <footer class="ord-print-foot">
+    <span>Check items as orders are placed.</span>
+    <span>Export summary · detailed stock-entry controls omitted</span>
+  </footer>
+</section>
 {% endblock %}
