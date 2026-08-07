@@ -171,11 +171,13 @@
     .ord-print-item small { display: block; margin-top: .4mm; color: #69736e; font-size: 6.7pt; font-weight: 500; }
     .ord-print-qty { text-align: right; font-size: 8pt; font-weight: 800; color: #0B3A2E; white-space: nowrap; }
     .ord-print-cover { display: block; margin-top: .4mm; color: #a33c28; font-size: 6.5pt; font-weight: 650; }
+    .ord-print-calc { display: block; margin-top: .35mm; color: #69736e; font-size: 5.8pt; font-weight: 500; }
     .ord-print-columns.ultra .ord-print-row { grid-template-columns: 4mm minmax(0,1fr); gap: 1.2mm; min-height: 6.5mm; padding: .6mm 1mm; }
     .ord-print-columns.ultra .ord-print-item { font-size: 7pt; }
     .ord-print-columns.ultra .ord-print-item small { font-size: 5.7pt; }
     .ord-print-columns.ultra .ord-print-qty { grid-column: 2; display: flex; justify-content: space-between; gap: 1mm; text-align: left; font-size: 6.5pt; }
     .ord-print-columns.ultra .ord-print-cover { display: inline; margin: 0; font-size: 5.7pt; }
+    .ord-print-columns.ultra .ord-print-calc { font-size: 5.2pt; }
     .ord-print-foot { display: flex; justify-content: space-between; margin-top: 3mm; padding-top: 2mm; border-top: 1px solid #d8d5cb; color: #69736e; font-size: 6.5pt; }
   }
 </style>
@@ -302,6 +304,15 @@
       <div class="ord-print-qty">
         {% if r.is_gas %}1 cylinder{% else %}{{ "%g"|format(r.suggested_order_qty) }} {{ r.unit }}{% endif %}
         <span class="ord-print-cover">{% if r.is_gas %}{{ "%.1f"|format(r.gas_net_kg) }}kg net{% else %}{{ "%g"|format(r.eff_cover_left) }}d cover{% endif %}</span>
+        <span class="ord-print-calc">
+          {% if r.is_gas %}
+            {{ "%.1f"|format(r.gas_gross_kg) }}kg gross - {{ "%.1f"|format(r.gas_tare_kg) }}kg tare = {{ "%.1f"|format(r.gas_net_kg) }}kg
+          {% elif r.has_stock and r.daily_consumption is not none %}
+            {{ "%g"|format(r.on_hand_qty) }} {{ r.unit }} ÷ {{ "%g"|format(r.daily_consumption) }} {{ r.unit }}/day = {{ "%g"|format(r.eff_cover_left) }}d
+          {% elif r.runout_date and r.today %}
+            Runout {{ r.runout_date.strftime('%d %b') }} - {{ r.today.strftime('%d %b') }} = {{ "%g"|format(r.eff_cover_left) }}d
+          {% endif %}
+        </span>
       </div>
     </div>
     {% endfor %}
