@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.core.clock import business_tz
 from app.web.deps import _tmpl, require_user
 
 router = APIRouter(tags=["reorder"])
@@ -32,6 +33,15 @@ _SQL = text("""
     select *
     from v_ingredient_reorder_forecast
     where (:include_inactive or is_active)
+""")
+
+_GAS_REORDER_KG = Decimal("10")
+_LATEST_GAS_SQL = text("""
+    SELECT recorded_at, gross_kg, tare_kg, (gross_kg - tare_kg) AS net_kg
+      FROM gas_readings
+     WHERE cylinder_role = 'in_use'
+     ORDER BY recorded_at DESC
+     LIMIT 1
 """)
 
 
@@ -74,6 +84,32 @@ def _enrich(row) -> dict:
     return d
 
 
+def _apply_gas_log(d: dict, gas_reading) -> dict:
+    """Replace Cooking Gas cadence with the latest measured in-use cylinder."""
+    d["is_gas"] = d.get("name") == "Cooking Gas"
+    if not d["is_gas"]:
+        return d
+    d["gas_reorder_kg"] = _GAS_REORDER_KG
+    d["gas_net_kg"] = gas_reading["net_kg"] if gas_reading else None
+    d["gas_gross_kg"] = gas_reading["gross_kg"] if gas_reading else None
+    d["gas_tare_kg"] = gas_reading["tare_kg"] if gas_reading else None
+    d["gas_recorded_at"] = (
+        gas_reading["recorded_at"].astimezone(business_tz()) if gas_reading else None
+    )
+    d["eff_status"] = "due" if d["gas_net_kg"] is not None and d["gas_net_kg"] < _GAS_REORDER_KG else "ok"
+    d["eff_days_until_due"] = None
+    d["eff_cover_left"] = None
+    d["eff_order_date"] = d.get("today") if d["eff_status"] == "due" else None
+    return d
+
+
+def _needs_order(r: dict) -> bool:
+    if r.get("is_gas"):
+        return r.get("gas_net_kg") is not None and r["gas_net_kg"] < _GAS_REORDER_KG
+    cover = r.get("eff_cover_left")
+    return cover is not None and cover < 3
+
+
 @router.get("/order-forecast", response_class=HTMLResponse)
 def order_forecast(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
@@ -81,10 +117,17 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         return redir
 
     include_inactive = request.query_params.get("inactive") == "1"
-    rows = [_enrich(r) for r in db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()]
+    gas_reading = db.execute(_LATEST_GAS_SQL).mappings().first()
+    rows = [
+        _apply_gas_log(_enrich(r), gas_reading)
+        for r in db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()
+    ]
 
     action, upcoming, no_history, recently_bought = [], [], [], []
     for r in rows:
+        if r.get("is_gas"):
+            (action if _needs_order(r) else upcoming).append(r)
+            continue
         cover = r["eff_cover_left"]
         if cover is not None:
             # One explicit gate: populate only when cover is strictly under 3 days.

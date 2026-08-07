@@ -8,12 +8,16 @@
     {% if not r.is_active %}<span class="ord-tag">inactive</span>{% endif %}
     {% if r.has_stock %}<span class="ord-tag ord-tag-stock"
       title="From your count of {{ '%g'|format(r.on_hand_qty) }} {{ r.unit }} on {{ r.stock_counted_on.strftime('%d %b') }}">stock</span>{% endif %}
+    {% if r.is_gas %}<span class="ord-tag ord-tag-gas">gas log</span>{% endif %}
   </td>
   <td class="ord-date" data-label="Order by">
     {% if r.eff_order_date %}{{ r.eff_order_date.strftime('%a %d %b') }}{% else %}—{% endif %}
   </td>
-  <td class="col-num ord-qty" data-label="Qty">{{ "%g"|format(r.suggested_order_qty) }} <span class="ord-unit">{{ r.unit }}</span></td>
+  <td class="col-num ord-qty" data-label="Qty">{% if r.is_gas %}1 <span class="ord-unit">cylinder</span>{% else %}{{ "%g"|format(r.suggested_order_qty) }} <span class="ord-unit">{{ r.unit }}</span>{% endif %}</td>
   <td class="ord-status" data-label="Status">
+    {% if r.is_gas %}
+      <span class="ord-pill ord-due">Below 10 kg</span>
+    {% else %}
     {% set st = r.eff_status %}
     {% if st == 'overdue' %}
       <span class="ord-pill ord-overdue">Overdue{% if r.eff_days_until_due is not none %} {{ -r.eff_days_until_due }}d{% endif %}</span>
@@ -24,8 +28,13 @@
     {% elif st == 'ok' %}
       <span class="ord-pill ord-ok">In {{ r.eff_days_until_due }}d</span>
     {% endif %}
+    {% endif %}
   </td>
   <td class="print-hide ord-remaining" data-label="Current stock">
+    {% if r.is_gas %}
+      {% if r.gas_net_kg is not none %}<div class="ord-stock-cur">{{ "%.1f"|format(r.gas_net_kg) }} kg net<span class="ord-dim"> · {{ r.gas_recorded_at.strftime('%d %b, %I:%M %p') }}</span></div>{% endif %}
+      <a href="/gas-log" class="ord-gas-link">Update in Gas Log →</a>
+    {% else %}
     {% if r.has_stock %}<div class="ord-stock-cur">{{ "%g"|format(r.on_hand_qty) }} {{ r.unit }}<span class="ord-dim"> · {{ r.stock_counted_on.strftime('%d %b') }}</span></div>{% endif %}
     {% if not r.has_stock %}<div class="ord-stock-missing">Not freshly counted</div>{% endif %}
     <form method="post" action="/order-forecast/stock" class="ord-stock-form">
@@ -43,14 +52,20 @@
       {% endif %}
       <button type="submit" class="ord-stock-btn">Save</button>
     </form>
+    {% endif %}
   </td>
   <td class="col-num print-hide ord-daily-use" data-label="Daily usage">
-    {% if r.daily_consumption is not none %}
+    {% if r.is_gas %}
+      <span class="ord-unit">Gas Log threshold</span>
+    {% elif r.daily_consumption is not none %}
       {{ "%g"|format(r.daily_consumption) }} <span class="ord-unit">{{ r.unit }}/day</span>
     {% else %}—{% endif %}
   </td>
   <td class="print-hide ord-calc" data-label="Cover calculation">
-    {% if r.has_stock and r.daily_consumption is not none %}
+    {% if r.is_gas and r.gas_net_kg is not none %}
+      <strong>{{ "%.1f"|format(r.gas_gross_kg) }} kg gross − {{ "%.1f"|format(r.gas_tare_kg) }} kg tare</strong>
+      <span>= {{ "%.1f"|format(r.gas_net_kg) }} kg net · reorder below {{ "%g"|format(r.gas_reorder_kg) }} kg</span>
+    {% elif r.has_stock and r.daily_consumption is not none %}
       <strong>{{ "%g"|format(r.on_hand_qty) }} {{ r.unit }} ÷ {{ "%g"|format(r.daily_consumption) }} {{ r.unit }}/day</strong>
       <span>= {{ "%g"|format(r.eff_cover_left) }} days</span>
     {% elif r.runout_date and r.today %}
@@ -61,7 +76,7 @@
     {% endif %}
   </td>
   <td class="col-num print-hide ord-dim" data-label="Cover">
-    {% if r.eff_cover_left is not none %}{{ "%g"|format(r.eff_cover_left) }}d{% else %}—{% endif %}
+    {% if r.is_gas and r.gas_net_kg is not none %}{{ "%.1f"|format(r.gas_net_kg) }} kg net{% elif r.eff_cover_left is not none %}{{ "%g"|format(r.eff_cover_left) }}d{% else %}—{% endif %}
   </td>
   <td class="col-num print-hide ord-dim" data-label="Est. ₹">
     {% if r.est_order_cost is not none %}₹{{ "%.0f"|format(r.est_order_cost) }}{% else %}—{% endif %}
@@ -88,6 +103,7 @@
 {% block content %}
 <style>
   .ord-tag-stock{background:#e6f4ea;color:#1e7e34;border-color:#bfe3ca}
+  .ord-tag-gas{background:#fff3df;color:#8a5717;border-color:#e7c78e}
   .ord-stock-form{display:flex;align-items:center;gap:.25rem;flex-wrap:nowrap}
   .ord-stock-cur{font-size:.78rem;color:#1e7e34;margin-bottom:.18rem;white-space:nowrap}
   .ord-stock-missing{font-size:.7rem;color:#9a6b24;margin-bottom:.18rem;white-space:nowrap}
@@ -100,6 +116,7 @@
   .ord-calc{min-width:12.5rem;font-size:.72rem;line-height:1.35;color:#4f5b55}
   .ord-calc strong,.ord-calc span{display:block}
   .ord-calc span{margin-top:.12rem;color:#9a3412;font-weight:700}
+  .ord-gas-link{font-size:.7rem;font-weight:750;color:#8a5717;text-decoration:none}
   .ord-print-sheet{display:none}
 
   /* Mobile card view: same <table><tr><td> markup, restyled as a stacked
@@ -283,8 +300,8 @@
         <small>{% if r.eff_order_date %}Order by {{ r.eff_order_date.strftime('%a %d %b') }}{% else %}Order now{% endif %}</small>
       </div>
       <div class="ord-print-qty">
-        {{ "%g"|format(r.suggested_order_qty) }} {{ r.unit }}
-        <span class="ord-print-cover">{{ "%g"|format(r.eff_cover_left) }}d cover</span>
+        {% if r.is_gas %}1 cylinder{% else %}{{ "%g"|format(r.suggested_order_qty) }} {{ r.unit }}{% endif %}
+        <span class="ord-print-cover">{% if r.is_gas %}{{ "%.1f"|format(r.gas_net_kg) }}kg net{% else %}{{ "%g"|format(r.eff_cover_left) }}d cover{% endif %}</span>
       </div>
     </div>
     {% endfor %}
