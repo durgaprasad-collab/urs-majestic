@@ -10,122 +10,139 @@
 {% if saved %}<p class="alert-success">✓ Saved.</p>{% endif %}
 {% if error %}<p class="alert-error">{{ error }}</p>{% endif %}
 
-<div class="v2-row">
-  {# ── Fixed Expense Summary ── #}
-  <div class="card">
-    <h2 class="card-title">Fixed Expense Summary</h2>
-    <table class="recon-table" style="margin-top:.5rem">
-      <thead><tr><th>Category</th><th class="col-num">Monthly Cost</th></tr></thead>
-      <tbody>
-        {% for r in summary_rows %}
-        <tr><td>{{ r.category }}</td><td class="col-num">₹{{ "{:,.0f}".format(r.monthly) }}</td></tr>
-        {% endfor %}
-        {% if not summary_rows %}<tr><td colspan="2" class="recon-sub">No active expenses yet.</td></tr>{% endif %}
-      </tbody>
-      <tfoot>
-        <tr class="recon-group-start"><td><b>Total Fixed Expenses</b></td><td class="col-num"><b>₹{{ "{:,.0f}".format(fixed_total) }}/mo</b></td></tr>
-      </tfoot>
-    </table>
+<div class="hero-band">
+  <span class="hero-label">Total fixed cost / month</span>
+  <div class="hero-value">₹{{ "{:,.0f}".format(fixed_total) }}</div>
+  <span class="hero-sub">across {{ summary_rows|length }} categories</span>
+</div>
+
+<div data-tabs>
+  <div class="tabs">
+    <button type="button" class="tab-btn active" data-tab-btn="overview">Overview</button>
+    <button type="button" class="tab-btn" data-tab-btn="recurring">Recurring expenses</button>
+    <button type="button" class="tab-btn" data-tab-btn="assumptions">Assumptions</button>
+  </div>
+
+  {# ── Overview: Fixed Expense Summary ── #}
+  <div data-tab-panel="overview">
+    <div class="card">
+      <h2 class="card-title">Fixed Expense Summary</h2>
+      <table class="recon-table" style="margin-top:.5rem">
+        <thead><tr><th>Category</th><th class="col-num">Monthly Cost</th></tr></thead>
+        <tbody>
+          {% for r in summary_rows %}
+          <tr><td>{{ r.category }}</td><td class="col-num">₹{{ "{:,.0f}".format(r.monthly) }}</td></tr>
+          {% endfor %}
+          {% if not summary_rows %}<tr><td colspan="2" class="recon-sub">No active expenses yet.</td></tr>{% endif %}
+        </tbody>
+        <tfoot>
+          <tr class="recon-group-start"><td><b>Total Fixed Expenses</b></td><td class="col-num"><b>₹{{ "{:,.0f}".format(fixed_total) }}/mo</b></td></tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  {# ── Recurring expenses management + Add expense ── #}
+  <div data-tab-panel="recurring" hidden>
+    <div class="card">
+      <h2 class="card-title">Recurring Expenses</h2>
+      <div class="recon-table-wrap" style="margin-top:.5rem">
+        <table class="recon-table">
+          <thead>
+            <tr><th>Name</th><th>Category</th><th class="col-num">Amount</th><th>Frequency</th><th class="col-num">Monthly</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for e in expenses %}
+            <tr {% if not e.active %}style="opacity:.55"{% endif %}>
+              <td>{{ e.name }}</td>
+              <td>{{ e.category }}</td>
+              <td class="col-num">₹{{ "{:,.0f}".format(e.amount) }}</td>
+              <td>{{ frequency_labels.get(e.frequency, e.frequency) }}</td>
+              <td class="col-num">₹{{ "{:,.0f}".format(e.monthly_equivalent) }}</td>
+              <td>{{ "Active" if e.active else "Inactive" }}</td>
+              <td class="col-num" style="white-space:nowrap">
+                <a class="btn-link-sm" href="/business-settings/expenses/{{ e.id }}/edit">Edit</a>
+                <form method="post" action="/business-settings/expenses/{{ e.id }}/toggle" style="display:inline">
+                  <input type="hidden" name="active" value="{{ '0' if e.active else '1' }}" />
+                  <button type="submit" class="btn-link-sm" style="background:none;border:none;cursor:pointer;color:var(--muted)">
+                    {{ 'Deactivate' if e.active else 'Activate' }}
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+            {% if not expenses %}<tr><td colspan="7" class="recon-sub">No expenses yet — add your first below.</td></tr>{% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:.6rem">
+      <h2 class="card-title">Add Recurring Expense</h2>
+      <form method="post" action="/business-settings/expenses">
+        <div class="form-row">
+          <div class="form-col">
+            <label for="name" class="form-label">Expense name</label>
+            <input id="name" name="name" type="text" class="form-input" placeholder="e.g. Insurance" required />
+          </div>
+          <div class="form-col">
+            <label for="category" class="form-label">Category</label>
+            <select id="category" name="category" class="form-input" required>
+              {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col">
+            <label for="amount" class="form-label">Amount (₹)</label>
+            <input id="amount" name="amount" type="number" step="0.01" min="0" class="form-input" placeholder="e.g. 5000" required />
+          </div>
+          <div class="form-col">
+            <label for="frequency" class="form-label">Frequency</label>
+            <select id="frequency" name="frequency" class="form-input" required>
+              {% for key, label in frequency_labels.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col">
+            <label for="effective_from" class="form-label">Effective from</label>
+            <input id="effective_from" name="effective_from" type="date" class="form-input" value="{{ today }}" />
+          </div>
+          <div class="form-col">
+            <label for="effective_to" class="form-label">Effective to (optional)</label>
+            <input id="effective_to" name="effective_to" type="date" class="form-input" />
+          </div>
+        </div>
+        <label for="notes" class="form-label">Notes (optional)</label>
+        <input id="notes" name="notes" type="text" class="form-input" placeholder="e.g. annual policy, paid in April" />
+        <button type="submit" class="btn-primary" style="margin-top:.7rem">Add expense</button>
+      </form>
+    </div>
   </div>
 
   {# ── Financial assumptions ── #}
-  <div class="card">
-    <h2 class="card-title">Financial Assumptions</h2>
-    <form method="post" action="/business-settings/financials">
-      <label for="desired_profit" class="form-label">Desired monthly profit (₹)</label>
-      <input id="desired_profit" name="desired_profit" type="number" step="1" min="0" class="form-input"
-             value="{{ "{:.0f}".format(financials.desired_profit) }}" required />
+  <div data-tab-panel="assumptions" hidden>
+    <div class="card">
+      <h2 class="card-title">Financial Assumptions</h2>
+      <form method="post" action="/business-settings/financials">
+        <label for="desired_profit" class="form-label">Desired monthly profit (₹)</label>
+        <input id="desired_profit" name="desired_profit" type="number" step="1" min="0" class="form-input"
+               value="{{ "{:.0f}".format(financials.desired_profit) }}" required />
 
-      <label for="margin_pct" class="form-label">Estimated contribution margin (%)</label>
-      <input id="margin_pct" name="margin_pct" type="number" step="0.1" min="0" max="100" class="form-input"
-             value="{{ "{:g}".format(financials.margin_pct) }}" required />
-      <p class="recon-sub">Replaced automatically by actual margin once recipe costing + aggregator commission are live.</p>
+        <label for="margin_pct" class="form-label">Estimated contribution margin (%)</label>
+        <input id="margin_pct" name="margin_pct" type="number" step="0.1" min="0" max="100" class="form-input"
+               value="{{ "{:g}".format(financials.margin_pct) }}" required />
+        <p class="recon-sub">Replaced automatically by actual margin once recipe costing + aggregator commission are live.</p>
 
-      <label for="growth_pct" class="form-label">Growth target (%)</label>
-      <input id="growth_pct" name="growth_pct" type="number" step="0.1" min="0" max="100" class="form-input"
-             value="{{ "{:g}".format(financials.growth_pct) }}" required />
+        <label for="growth_pct" class="form-label">Growth target (%)</label>
+        <input id="growth_pct" name="growth_pct" type="number" step="0.1" min="0" max="100" class="form-input"
+               value="{{ "{:g}".format(financials.growth_pct) }}" required />
 
-      <button type="submit" class="btn-primary" style="margin-top:.7rem">Save assumptions</button>
-    </form>
-    <p class="recon-sub" style="margin-top:.5rem">Changes are appended to history — previous months are never overwritten.</p>
+        <button type="submit" class="btn-primary" style="margin-top:.7rem">Save assumptions</button>
+      </form>
+      <p class="recon-sub" style="margin-top:.5rem">Changes are appended to history — previous months are never overwritten.</p>
+    </div>
   </div>
-</div>
-
-{# ── Recurring expenses management ── #}
-<div class="card" style="margin-top:.6rem">
-  <h2 class="card-title">Recurring Expenses</h2>
-  <div class="recon-table-wrap" style="margin-top:.5rem">
-    <table class="recon-table">
-      <thead>
-        <tr><th>Name</th><th>Category</th><th class="col-num">Amount</th><th>Frequency</th><th class="col-num">Monthly</th><th>Status</th><th></th></tr>
-      </thead>
-      <tbody>
-        {% for e in expenses %}
-        <tr {% if not e.active %}style="opacity:.55"{% endif %}>
-          <td>{{ e.name }}</td>
-          <td>{{ e.category }}</td>
-          <td class="col-num">₹{{ "{:,.0f}".format(e.amount) }}</td>
-          <td>{{ frequency_labels.get(e.frequency, e.frequency) }}</td>
-          <td class="col-num">₹{{ "{:,.0f}".format(e.monthly_equivalent) }}</td>
-          <td>{{ "Active" if e.active else "Inactive" }}</td>
-          <td class="col-num" style="white-space:nowrap">
-            <a class="btn-link-sm" href="/business-settings/expenses/{{ e.id }}/edit">Edit</a>
-            <form method="post" action="/business-settings/expenses/{{ e.id }}/toggle" style="display:inline">
-              <input type="hidden" name="active" value="{{ '0' if e.active else '1' }}" />
-              <button type="submit" class="btn-link-sm" style="background:none;border:none;cursor:pointer;color:var(--muted)">
-                {{ 'Deactivate' if e.active else 'Activate' }}
-              </button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-        {% if not expenses %}<tr><td colspan="7" class="recon-sub">No expenses yet — add your first below.</td></tr>{% endif %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-{# ── Add expense ── #}
-<div class="card" style="margin-top:.6rem">
-  <h2 class="card-title">Add Recurring Expense</h2>
-  <form method="post" action="/business-settings/expenses">
-    <div class="form-row">
-      <div class="form-col">
-        <label for="name" class="form-label">Expense name</label>
-        <input id="name" name="name" type="text" class="form-input" placeholder="e.g. Insurance" required />
-      </div>
-      <div class="form-col">
-        <label for="category" class="form-label">Category</label>
-        <select id="category" name="category" class="form-input" required>
-          {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-col">
-        <label for="amount" class="form-label">Amount (₹)</label>
-        <input id="amount" name="amount" type="number" step="0.01" min="0" class="form-input" placeholder="e.g. 5000" required />
-      </div>
-      <div class="form-col">
-        <label for="frequency" class="form-label">Frequency</label>
-        <select id="frequency" name="frequency" class="form-input" required>
-          {% for key, label in frequency_labels.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-col">
-        <label for="effective_from" class="form-label">Effective from</label>
-        <input id="effective_from" name="effective_from" type="date" class="form-input" value="{{ today }}" />
-      </div>
-      <div class="form-col">
-        <label for="effective_to" class="form-label">Effective to (optional)</label>
-        <input id="effective_to" name="effective_to" type="date" class="form-input" />
-      </div>
-    </div>
-    <label for="notes" class="form-label">Notes (optional)</label>
-    <input id="notes" name="notes" type="text" class="form-input" placeholder="e.g. annual policy, paid in April" />
-    <button type="submit" class="btn-primary" style="margin-top:.7rem">Add expense</button>
-  </form>
 </div>
 {% endblock %}

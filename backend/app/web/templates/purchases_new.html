@@ -2,70 +2,72 @@
 {% block title %}New Purchase — URS Majestic{% endblock %}
 
 {% set f = form or {} %}
+{% set default_tab = 'manual' if (duplicates or error) else 'scan' %}
 
 {% block content %}
-<div class="card" style="margin-bottom:1rem">
-  <h2 class="card-title" style="font-size:1.05rem">📷 Upload a receipt</h2>
-  <p style="font-size:.85rem;color:#5c6154;margin:.2rem 0 .6rem">
-    Snap or upload a bill photo — we'll read the line items and let you review each one before anything is saved.
+{% if error %}
+<p class="alert-error">{{ error }}</p>
+{% endif %}
+
+{# Duplicate warning. Warns, never blocks: coriander, curd, milk and lemon
+   legitimately repeat at the same price on consecutive days, so a hard
+   block would be wrong most of the time it fired. The operator must tick
+   the box to proceed, and the override is written to the audit log. #}
+{% if duplicates %}
+<div class="alert-error" style="background:#fff8e1;border-color:#e0a800;color:#5c4400">
+  <strong>Not saved yet — this looks like it may already be logged.</strong>
+  <p style="margin:.4rem 0 .6rem">
+    {{ duplicates|length }} purchase{{ '' if duplicates|length == 1 else 's' }}
+    of the same ingredient {{ 'is' if duplicates|length == 1 else 'are' }} already
+    recorded within a day of this date. Check the amounts and the rate below
+    before you save.
+    <details class="info-tip">
+      <summary>ⓘ</summary>
+      <div class="info-tip-panel">
+        Each chip below is an existing purchase of the same ingredient close to this
+        date — shown so you can compare price and quantity before saving. Some
+        ingredients (coriander, curd, milk, lemon) legitimately repeat at the same
+        price on consecutive days, so this only warns; it never blocks the save.
+      </div>
+    </details>
   </p>
-  <form method="post" action="/purchases/upload-receipt" enctype="multipart/form-data"
-        style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
-    <input type="file" name="file" accept="image/*" required class="form-input" style="max-width:20rem" />
-    <button type="submit" class="btn-secondary">Read receipt</button>
-  </form>
-</div>
-
-<div class="card">
-  <h1 class="card-title">Log a purchase</h1>
-
-  {% if error %}
-  <p class="alert-error">{{ error }}</p>
-  {% endif %}
-
-  {# Duplicate warning. Warns, never blocks: coriander, curd, milk and lemon
-     legitimately repeat at the same price on consecutive days, so a hard
-     block would be wrong most of the time it fired. The operator must tick
-     the box to proceed, and the override is written to the audit log. #}
-  {% if duplicates %}
-  <div class="alert-error" style="background:#fff8e1;border-color:#e0a800;color:#5c4400">
-    <strong>Not saved yet — this looks like it may already be logged.</strong>
-    <p style="margin:.4rem 0 .6rem">
-      {{ duplicates|length }} purchase{{ '' if duplicates|length == 1 else 's' }}
-      of the same ingredient {{ 'is' if duplicates|length == 1 else 'are' }} already
-      recorded within a day of this date. Check the amounts and the rate below
-      before you save.
-    </p>
-    <table style="width:100%;border-collapse:collapse;font-size:.9rem">
-      <tr style="text-align:left">
-        <th style="padding:.2rem .5rem .2rem 0">#</th>
-        <th style="padding:.2rem .5rem .2rem 0">Date</th>
-        <th style="padding:.2rem .5rem .2rem 0">Qty</th>
-        <th style="padding:.2rem .5rem .2rem 0">Paid</th>
-        <th style="padding:.2rem .5rem .2rem 0">Rate</th>
-        <th style="padding:.2rem .5rem .2rem 0">By</th>
-        <th style="padding:.2rem .5rem .2rem 0">Why flagged</th>
-      </tr>
-      {% for d in duplicates %}
-      <tr style="border-top:1px solid #e0d0a0">
-        <td style="padding:.25rem .5rem .25rem 0">{{ d.id }}</td>
-        <td style="padding:.25rem .5rem .25rem 0">{{ d.purchase_date }}</td>
-        <td style="padding:.25rem .5rem .25rem 0">{{ d.qty }} {{ d.unit }}</td>
-        <td style="padding:.25rem .5rem .25rem 0">₹{{ d.total_price }}</td>
-        <td style="padding:.25rem .5rem .25rem 0">{{ d.rate }}</td>
-        <td style="padding:.25rem .5rem .25rem 0">user {{ d.entered_by }}</td>
-        <td style="padding:.25rem .5rem .25rem 0">{{ d.why }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-    <p style="margin:.6rem 0 0">
-      Your entry: {{ f.qty }} {{ f.unit }} for ₹{{ f.total_price }} on {{ f.purchase_date }}.
-    </p>
+  <div class="chip-row">
+    {% for d in duplicates %}
+    <span class="chip chip-warn">₹{{ d.total_price }} · {{ d.qty }} {{ d.unit }} · {{ d.purchase_date }}</span>
+    {% endfor %}
   </div>
-  {% endif %}
+  <p style="margin:.6rem 0 0">
+    Your entry: {{ f.qty }} {{ f.unit }} for ₹{{ f.total_price }} on {{ f.purchase_date }}.
+  </p>
+</div>
+{% endif %}
 
-  {# Purchase form — closed BEFORE the quick-add form to avoid nested forms #}
-  <form method="post" action="/purchases/new" id="purchase-form">
+<div data-tabs data-tabs-initial="{{ default_tab }}">
+  <div class="tabs segmented">
+    <button type="button" class="tab-btn{% if default_tab == 'scan' %} active{% endif %}" data-tab-btn="scan">📷 Scan receipt</button>
+    <button type="button" class="tab-btn{% if default_tab == 'manual' %} active{% endif %}" data-tab-btn="manual">✍️ Type manually</button>
+  </div>
+
+  <div data-tab-panel="scan"{% if default_tab != 'scan' %} hidden{% endif %}>
+    <div class="card">
+      <h2 class="card-title" style="font-size:1.05rem">📷 Upload a receipt</h2>
+      <p style="font-size:.85rem;color:#5c6154;margin:.2rem 0 .6rem">
+        Snap or upload a bill photo — we'll read the line items and let you review each one before anything is saved.
+      </p>
+      <form method="post" action="/purchases/upload-receipt" enctype="multipart/form-data"
+            style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+        <input type="file" name="file" accept="image/*" required class="form-input" style="max-width:20rem" />
+        <button type="submit" class="btn-secondary">Read receipt</button>
+      </form>
+    </div>
+  </div>
+
+  <div data-tab-panel="manual"{% if default_tab != 'manual' %} hidden{% endif %}>
+    <div class="card">
+      <h1 class="card-title">Log a purchase</h1>
+
+      {# Purchase form — closed BEFORE the quick-add form to avoid nested forms #}
+      <form method="post" action="/purchases/new" id="purchase-form">
     <label for="ingredient_id" class="form-label">Ingredient</label>
     <select id="ingredient_id" name="ingredient_id" class="form-input" required>
       <option value="">— select —</option>
@@ -145,6 +147,8 @@
       </form>
     </div>
   </details>
+    </div>
+  </div>
 </div>
 
 <script>

@@ -2,6 +2,42 @@
 {% block title %}Review receipt — URS Majestic{% endblock %}
 
 {% block content %}
+<style>
+  /* Responsive table-to-cards: the recon-table is the one real set of form
+     fields (name="..._{{i}}") for every line. Below ~700px we reflow it —
+     tr becomes a card, td becomes a labelled row — instead of duplicating
+     the fields, so there is exactly one input per name and the existing
+     unit-auto-select script (keyed off .rcpt-ing / closest('tr')) still works. */
+  @media (max-width: 700px) {
+    .recon-table-wrap table.recon-table thead { position: absolute; top: -9999px; left: -9999px; }
+    .recon-table-wrap table.recon-table,
+    .recon-table-wrap table.recon-table tbody { display: block; width: 100%; }
+    .recon-table-wrap table.recon-table tr {
+      display: flex; flex-direction: column; gap: .4rem;
+      border: 1px solid var(--border); border-left: 4px solid var(--gold);
+      border-radius: 12px; margin-bottom: .75rem; padding: .8rem .85rem; background: #fff;
+      box-shadow: 0 4px 14px rgba(11,58,46,.05);
+    }
+    .recon-table-wrap table.recon-table td {
+      display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+      border: 0; padding: 0; text-align: right;
+    }
+    .recon-table-wrap table.recon-table td::before {
+      content: attr(data-label); font-size: .72rem; font-weight: 750; color: var(--muted);
+      text-align: left; margin-right: auto;
+    }
+    .recon-table-wrap table.recon-table td .form-input,
+    .recon-table-wrap table.recon-table td select { max-width: 60%; }
+    /* Ingredient cell (with the "read: ..." OCR text) pinned to the top of the card. */
+    .recon-table-wrap table.recon-table td[data-label="Ingredient"] {
+      order: -1; flex-direction: column; align-items: stretch; text-align: left;
+    }
+    .recon-table-wrap table.recon-table td[data-label="Ingredient"]::before { margin-bottom: .3rem; }
+    .recon-table-wrap table.recon-table td[data-label="Ingredient"] .form-input { max-width: 100%; width: 100%; }
+    /* Raw OCR text shown before the editable ingredient picker within the card. */
+    .recon-table-wrap table.recon-table td[data-label="Ingredient"] .ord-dim { order: -1; margin: 0 0 .3rem; }
+  }
+</style>
 <div class="card">
   <h1 class="card-title">Review receipt</h1>
   <p class="prep-meta">
@@ -29,8 +65,8 @@
         <tbody>
           {% for l in lines %}{% set i = loop.index0 %}
           <tr>
-            <td><input type="checkbox" name="include_{{ i }}" value="1" {% if l.ingredient_id %}checked{% endif %}></td>
-            <td>
+            <td data-label="Use"><input type="checkbox" name="include_{{ i }}" value="1" {% if l.ingredient_id %}checked{% endif %}></td>
+            <td data-label="Ingredient">
               <select name="ingredient_id_{{ i }}" class="form-input rcpt-ing" style="min-width:11rem">
                 <option value="0">— pick —</option>
                 {% for ing in ingredients %}
@@ -40,19 +76,19 @@
               </select>
               <div class="ord-dim" style="font-size:.72rem;margin-top:.15rem">read: &ldquo;{{ l.raw }}&rdquo;</div>
             </td>
-            <td class="col-num"><input type="number" step="0.001" min="0" name="qty_{{ i }}"
+            <td class="col-num" data-label="Qty"><input type="number" step="0.001" min="0" name="qty_{{ i }}"
                    class="form-input" style="width:5rem" value="{{ l.qty if l.qty is not none else '' }}"></td>
-            <td>
+            <td data-label="Unit">
               <select name="unit_{{ i }}" class="form-input" style="width:4.6rem">
                 {% for u, lab in [('kg','kg'),('g','g'),('l','L'),('ml','mL'),('pcs','pcs')] %}
                 <option value="{{ u }}" {% if l.unit == u %}selected{% endif %}>{{ lab }}</option>
                 {% endfor %}
               </select>
             </td>
-            <td class="col-num"><input type="number" step="0.01" min="0" name="total_price_{{ i }}"
+            <td class="col-num" data-label="Price ₹"><input type="number" step="0.01" min="0" name="total_price_{{ i }}"
                    class="form-input" style="width:5.5rem" value="{{ l.total_price if l.total_price is not none else '' }}"></td>
-            <td><input type="date" name="purchase_date_{{ i }}" class="form-input" value="{{ today }}"></td>
-            <td>
+            <td data-label="Date"><input type="date" name="purchase_date_{{ i }}" class="form-input" value="{{ today }}"></td>
+            <td data-label="Usage">
               <select name="usage_type_{{ i }}" class="form-input">
                 <option value="menu">Menu</option>
                 <option value="others_personal">Personal</option>

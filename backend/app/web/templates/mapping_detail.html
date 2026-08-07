@@ -2,6 +2,36 @@
 {% block title %}Map {{ ingredient.name }} — URS Majestic{% endblock %}
 
 {% block content %}
+<style>
+  .map-dish-row .intensity-select,
+  .apply-all-bar .intensity-select,
+  .cat-summary .intensity-select {
+    min-width: 96px;
+    padding: .45rem .7rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--border);
+    font-weight: 700;
+    font-size: .78rem;
+    text-align: center;
+    background: #F5F3EC;
+    cursor: pointer;
+  }
+  .map-dish-row .intensity-select:focus,
+  .apply-all-bar .intensity-select:focus,
+  .cat-summary .intensity-select:focus { border-color: var(--coral); outline: none; }
+  .intensity-select[data-val="light"]  { background: #EAF4FB; border-color: #CDDDEF; color: #1a5276; }
+  .intensity-select[data-val="medium"] { background: #FEF4D6; border-color: #E6D08A; color: #7a6010; }
+  .intensity-select[data-val="heavy"]  { background: #FDECEC; border-color: #F3C0C0; color: #c0392b; }
+
+  .apply-all-bar.prominent {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+    border: 2px solid var(--coral);
+    box-shadow: 0 10px 24px rgba(255,118,88,.18);
+  }
+</style>
+
 <div class="page-header">
   <a href="/ingredients/mapping" class="back-link">← All ingredients</a>
   <h1 class="page-title">{{ ingredient.name }}</h1>
@@ -15,7 +45,7 @@
 <form method="post" action="/ingredients/mapping/{{ ingredient.id }}">
 
   {# ── Apply-to-all bar ─────────────────────────────────────────── #}
-  <div class="apply-all-bar">
+  <div class="apply-all-bar prominent">
     <label class="apply-all-label">
       <input type="checkbox" name="apply_all" value="1" id="apply_all_chk" />
       Apply to <strong>all</strong> menu items
@@ -80,11 +110,21 @@
 </form>
 
 <script>
+function syncIntensityVisual(sel) {
+  sel.setAttribute('data-val', sel.value);
+}
 function toggleCat(catId, checked) {
   document.querySelectorAll('.cat-' + catId).forEach(cb => cb.checked = checked);
 }
 function setCatIntensity(catId, val) {
-  document.querySelectorAll('.dish-intensity-' + catId).forEach(sel => sel.value = val);
+  document.querySelectorAll('.dish-intensity-' + catId).forEach(function (sel) {
+    sel.value = val;
+    syncIntensityVisual(sel);
+  });
 }
+document.querySelectorAll('.intensity-select').forEach(function (sel) {
+  syncIntensityVisual(sel);
+  sel.addEventListener('change', function () { syncIntensityVisual(sel); });
+});
 </script>
 {% endblock %}

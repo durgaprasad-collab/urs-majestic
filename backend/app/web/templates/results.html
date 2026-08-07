@@ -13,6 +13,11 @@
   <a href="/upload" class="link-upload">Upload new file</a>
 </div>
 
+<div class="tabs">
+  <a href="/results" class="tab-btn active">Menu Analysis</a>
+  <a href="/data-reconciliation" class="tab-btn">Data Trust</a>
+</div>
+
 {% if engine_ran %}
 <p class="alert-success">Cost engine ran — derived costs updated.</p>
 {% endif %}
@@ -63,59 +68,70 @@
 </div>
 {% endmacro %}
 
-{% if stars %}
-<section class="result-section section-star">
-  <span class="section-badge badge-star">Push These</span>
-  <h2 class="section-title">⭐ Stars</h2>
-  <p class="section-desc">
-    High volume, high margin — your money-makers.
-    Feature them on WhatsApp, put them at the top of the menu,
-    and train staff to suggest them first.
-  </p>
-  {{ item_table(stars) }}
-</section>
-{% endif %}
+{% set first_key = 'stars' if stars else ('workhorses' if workhorses else ('puzzles' if puzzles else ('dogs' if dogs else none))) %}
 
-{% if workhorses %}
-<section class="result-section section-workhorse">
-  <span class="section-badge badge-workhorse">Bundle These</span>
-  <h2 class="section-title">🐴 Workhorses</h2>
-  <p class="section-desc">
-    Customers love them, but the margin is thin.
-    Bundle with a high-margin side (naan, dessert, soup),
-    or try a small price increase.
-  </p>
-  {{ item_table(workhorses) }}
-</section>
-{% endif %}
+{% if first_key %}
+<div data-tabs style="margin-top:1rem">
+  <div class="tabs">
+    {% if stars %}<button type="button" data-tab-btn="stars" class="tab-btn {% if first_key == 'stars' %}active{% endif %}">⭐ Stars</button>{% endif %}
+    {% if workhorses %}<button type="button" data-tab-btn="workhorses" class="tab-btn {% if first_key == 'workhorses' %}active{% endif %}">🐴 Workhorses</button>{% endif %}
+    {% if puzzles %}<button type="button" data-tab-btn="puzzles" class="tab-btn {% if first_key == 'puzzles' %}active{% endif %}">🧩 Puzzles</button>{% endif %}
+    {% if dogs %}<button type="button" data-tab-btn="dogs" class="tab-btn {% if first_key == 'dogs' %}active{% endif %}">🐾 Low Performers</button>{% endif %}
+  </div>
 
-{% if puzzles %}
-<section class="result-section section-puzzle">
-  <span class="section-badge badge-puzzle">Promote These</span>
-  <h2 class="section-title">🧩 Puzzles</h2>
-  <p class="section-desc">
-    Good margin but not many orders.
-    Post about them on Instagram or run a combo deal —
-    once customers try them, they tend to reorder.
-  </p>
-  {{ item_table(puzzles) }}
-</section>
-{% endif %}
+  {% if stars %}
+  <section class="result-section section-star" data-tab-panel="stars" {% if first_key != 'stars' %}hidden{% endif %}>
+    <span class="section-badge badge-star">Push These</span>
+    <h2 class="section-title">⭐ Stars</h2>
+    <p class="section-desc">
+      High volume, high margin — your money-makers.
+      Feature them on WhatsApp, put them at the top of the menu,
+      and train staff to suggest them first.
+    </p>
+    {{ item_table(stars) }}
+  </section>
+  {% endif %}
 
-{% if dogs %}
-<section class="result-section section-dog">
-  <span class="section-badge badge-dog">Review These</span>
-  <h2 class="section-title">🐾 Low Performers</h2>
-  <p class="section-desc">
-    Low orders and low margin.
-    Ask: are these slow to make? Do they use unique ingredients?
-    If yes, consider removing them to keep operations simple.
-  </p>
-  {{ item_table(dogs) }}
-</section>
-{% endif %}
+  {% if workhorses %}
+  <section class="result-section section-workhorse" data-tab-panel="workhorses" {% if first_key != 'workhorses' %}hidden{% endif %}>
+    <span class="section-badge badge-workhorse">Bundle These</span>
+    <h2 class="section-title">🐴 Workhorses</h2>
+    <p class="section-desc">
+      Customers love them, but the margin is thin.
+      Bundle with a high-margin side (naan, dessert, soup),
+      or try a small price increase.
+    </p>
+    {{ item_table(workhorses) }}
+  </section>
+  {% endif %}
 
-{% if not stars and not workhorses and not puzzles and not dogs %}
+  {% if puzzles %}
+  <section class="result-section section-puzzle" data-tab-panel="puzzles" {% if first_key != 'puzzles' %}hidden{% endif %}>
+    <span class="section-badge badge-puzzle">Promote These</span>
+    <h2 class="section-title">🧩 Puzzles</h2>
+    <p class="section-desc">
+      Good margin but not many orders.
+      Post about them on Instagram or run a combo deal —
+      once customers try them, they tend to reorder.
+    </p>
+    {{ item_table(puzzles) }}
+  </section>
+  {% endif %}
+
+  {% if dogs %}
+  <section class="result-section section-dog" data-tab-panel="dogs" {% if first_key != 'dogs' %}hidden{% endif %}>
+    <span class="section-badge badge-dog">Review These</span>
+    <h2 class="section-title">🐾 Low Performers</h2>
+    <p class="section-desc">
+      Low orders and low margin.
+      Ask: are these slow to make? Do they use unique ingredients?
+      If yes, consider removing them to keep operations simple.
+    </p>
+    {{ item_table(dogs) }}
+  </section>
+  {% endif %}
+</div>
+{% else %}
 <div class="card">
   <p>No data found. <a href="/upload">Upload a POS file</a> to get started.</p>
 </div>

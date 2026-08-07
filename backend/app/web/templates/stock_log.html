@@ -4,8 +4,8 @@
 {% block content %}
 <style>
   .sl-search{margin-bottom:1rem}
-  .sl-cat{margin-top:1.4rem}
-  .sl-cat:first-of-type{margin-top:0}
+  .sl-cat{margin-top:0}
+  .sl-cat + .sl-cat{margin-top:1.4rem}
   .sl-row-name{white-space:nowrap}
   .sl-last{font-size:.74rem;color:#6b6b6b;white-space:nowrap}
   .sl-last-fresh{color:#1e7e34}
@@ -29,8 +29,14 @@
 <input type="text" class="form-input sl-search" placeholder="Search an item…" oninput="slFilter(this.value)">
 
 <form method="post" action="/stock-log/count" id="sl-form">
-  {% for category, items in categories %}
-  <div class="sl-cat" data-sl-cat>
+  <div data-tabs>
+    <div class="tabs print-hide">
+      {% for category, items in categories %}
+      <button type="button" class="tab-btn {% if loop.first %}active{% endif %}" data-tab-btn="{{ category }}">{{ category }}</button>
+      {% endfor %}
+    </div>
+    {% for category, items in categories %}
+    <div class="sl-cat" data-sl-cat data-tab-panel="{{ category }}" {% if not loop.first %}hidden{% endif %}>
     <div class="prep-head">
       <h2 class="prep-title">{{ category }}</h2>
       <span class="prep-meta">{{ items|length }} item{{ 's' if items|length != 1 }}</span>
@@ -79,28 +85,43 @@
         </table>
       </div>
     </div>
+    </div>
+    {% endfor %}
   </div>
-  {% endfor %}
 
   <div class="sl-save-bar">
-    <button type="submit" class="btn-primary">Save today's count</button>
+    <button type="submit" class="btn-primary fab">Save today's count</button>
     <span class="prep-meta">Leave an item blank to skip it — only filled-in rows are saved.</span>
   </div>
 </form>
 
 <script>
+// Categories are now tabbed (one panel visible at a time, via the generic
+// [data-tabs] handler in app.js). Search still needs to work across every
+// category, not just the active tab — so while there's a query we flatten
+// the view: every panel is shown and rows/panels are filtered by match.
+// Clearing the box restores whichever tab was last active.
 function slFilter(q) {
   q = q.trim().toLowerCase();
-  document.querySelectorAll('[data-sl-row]').forEach(function (row) {
-    row.style.display = row.dataset.slName.includes(q) ? '' : 'none';
-  });
-  document.querySelectorAll('[data-sl-cat]').forEach(function (cat) {
-    var anyVisible = Array.prototype.some.call(
-      cat.querySelectorAll('[data-sl-row]'),
-      function (row) { return row.style.display !== 'none'; }
-    );
-    cat.style.display = anyVisible ? '' : 'none';
-  });
+  var panels = document.querySelectorAll('[data-tab-panel]');
+  if (q) {
+    panels.forEach(function (p) { p.hidden = false; });
+    document.querySelectorAll('[data-sl-row]').forEach(function (row) {
+      row.style.display = row.dataset.slName.includes(q) ? '' : 'none';
+    });
+    document.querySelectorAll('[data-sl-cat]').forEach(function (cat) {
+      var anyVisible = Array.prototype.some.call(
+        cat.querySelectorAll('[data-sl-row]'),
+        function (row) { return row.style.display !== 'none'; }
+      );
+      cat.style.display = anyVisible ? '' : 'none';
+    });
+  } else {
+    document.querySelectorAll('[data-sl-row]').forEach(function (row) { row.style.display = ''; });
+    document.querySelectorAll('[data-sl-cat]').forEach(function (cat) { cat.style.display = ''; });
+    var activeBtn = document.querySelector('[data-tab-btn].active');
+    panels.forEach(function (p) { p.hidden = activeBtn ? p.dataset.tabPanel !== activeBtn.dataset.tabBtn : false; });
+  }
 }
 </script>
 {% endblock %}

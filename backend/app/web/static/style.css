@@ -1158,3 +1158,127 @@ details[open] > summary::after { content: "−"; }
   .app-main > * { animation: none !important; }
   .page-header::after, .results-header::after, .prep-head::after { display: none !important; }
 }
+
+/* ══ v6: simpler & peppier — shared components ═══════════════════════════
+   Reusable building blocks for the site-wide simplification pass. Every
+   page keeps its existing markup/classes where it still fits; these are
+   additive so nothing above breaks. ─────────────────────────────────── */
+
+/* Hero band — one big friendly number, used on Today, Gas Log, Business
+   Settings, upload results. */
+.hero-band {
+  position: relative; overflow: hidden; border-radius: 20px; padding: 1.1rem 1.3rem;
+  background: linear-gradient(135deg, var(--green), var(--green2)); color: #fff;
+  box-shadow: 0 14px 34px rgba(11,58,46,.22);
+}
+.hero-band::after {
+  content: "✦"; position: absolute; right: 16px; top: 10px; font-size: 1.6rem; color: var(--gold); opacity: .45;
+}
+.hero-label { display: block; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #9EBBB0; }
+.hero-value { font-size: 2rem; font-weight: 850; margin: .1rem 0 .2rem; line-height: 1.05; }
+.hero-sub { font-size: .82rem; color: #CFE3DB; }
+.hero-pill { display: inline-flex; align-items: center; gap: .3rem; margin-top: .55rem; font-size: .68rem; font-weight: 800;
+  padding: .28rem .65rem; border-radius: 999px; background: var(--gold); color: var(--green); }
+.hero-pill.hero-pill-warn { background: var(--coral); color: #fff; }
+.hero-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: .7rem; }
+.hero-row .hero-band { padding: .9rem 1.05rem; }
+.hero-row .hero-value { font-size: 1.5rem; }
+.hero-mini-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: .6rem; margin-top: .8rem; padding-top: .7rem; border-top: 1px solid rgba(255,255,255,.18); }
+.hero-mini-grid > div { display: flex; flex-direction: column; gap: .1rem; }
+.hero-mini-grid .hmg-label { font-size: .58rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #9EBBB0; }
+.hero-mini-grid .hmg-val { font-size: .92rem; font-weight: 800; color: #fff; }
+@media (max-width: 480px) { .hero-mini-grid { grid-template-columns: repeat(2,1fr); } }
+
+/* Chips — generic small pill, replaces one-off badge classes going forward. */
+.chip-row { display: flex; flex-wrap: wrap; gap: .4rem; }
+.chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .7rem; font-weight: 750;
+  padding: .3rem .7rem; border-radius: 999px; white-space: nowrap; border: 1px solid transparent; }
+.chip-ok   { background: #E8F5EC; color: #1e6a44; border-color: #C9E7D4; }
+.chip-warn { background: #FDECEC; color: #c0392b; border-color: #F3C0C0; }
+.chip-info { background: #EAF4FB; color: #1a5276; border-color: #CDDDEF; }
+.chip-gold { background: #FEF4D6; color: #7a6010; border-color: #E6D08A; }
+.chip-neutral { background: #F2F1EA; color: var(--muted); border-color: var(--border); }
+.chip-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: 0 0 7px; }
+
+/* Status chip (traffic light) — data-reconciliation channel rows etc. */
+.status-chip { display: inline-flex; align-items: center; gap: .4rem; font-size: .78rem; font-weight: 700; padding: .4rem .75rem;
+  border-radius: 999px; background: #fff; border: 1px solid var(--border); }
+.status-chip .chip-dot { width: 9px; height: 9px; }
+.status-chip.ok   .chip-dot { background: #35B073; }
+.status-chip.warn .chip-dot { background: #E6A23C; }
+.status-chip.bad  .chip-dot { background: var(--coral); }
+
+/* FAB — coral primary action, used for "Add purchase", "Add teammate" etc. */
+.fab { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border: 0; cursor: pointer;
+  background: var(--coral); color: #fff; font-weight: 800; font-size: .85rem; letter-spacing: .01em;
+  padding: .8rem 1.3rem; border-radius: 999px; box-shadow: 0 10px 24px rgba(255,118,88,.32);
+  text-decoration: none; transition: transform .14s ease, box-shadow .14s ease; }
+.fab:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(255,118,88,.4); }
+.fab-bar { display: flex; justify-content: flex-end; margin: 0 0 1rem; }
+@media (max-width: 560px) {
+  .fab-bar { position: sticky; bottom: 12px; z-index: 20; margin-top: .75rem; }
+  .fab-bar .fab { width: 100%; justify-content: center; padding: .9rem 1.3rem; }
+}
+
+/* Tabs / segmented control — one generic component, driven by app.js.
+   Markup: <div data-tabs> <div class="tabs">
+             <button data-tab-btn="a" class="tab-btn active">A</button>...
+           </div>
+           <div data-tab-panel="a">...</div> <div data-tab-panel="b" hidden>...</div> </div> */
+.tabs { display: inline-flex; gap: .25rem; padding: .25rem; background: #EFEEE7; border-radius: 999px; margin: 0 0 1rem; }
+.tab-btn { border: 0; background: transparent; cursor: pointer; padding: .5rem 1rem; border-radius: 999px;
+  font-size: .78rem; font-weight: 750; color: var(--muted); transition: background .14s, color .14s; }
+.tab-btn.active { background: var(--green); color: #fff; box-shadow: 0 5px 14px rgba(11,58,46,.2); }
+.tabs.segmented { width: 100%; }
+.tabs.segmented .tab-btn { flex: 1; }
+.tabs.segmented .tab-btn.active { background: var(--coral); }
+
+/* Info tip — a tap-to-read ⓘ replacing standing disclaimer paragraphs. */
+details.info-tip { display: inline-block; margin-left: .35rem; border-radius: 0; }
+details.info-tip > summary { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+  border-radius: 50%; background: #EFEEE7; color: var(--muted); font-size: .68rem; font-weight: 800; cursor: pointer; }
+details.info-tip > summary::after { content: none; }
+details.info-tip[open] > summary { background: var(--gold); color: var(--green); }
+.info-tip-panel { margin-top: .5rem; padding: .7rem .85rem; border-radius: 12px; background: #FEF9E7; border: 1px solid #F0D76A;
+  font-size: .8rem; color: #7a6010; line-height: 1.55; max-width: 520px; }
+
+/* Show more — collapsible block for content pushed below the fold. */
+details.show-more { border: 1px dashed var(--border); background: transparent; box-shadow: none; }
+details.show-more > summary { display: flex; align-items: center; gap: .5rem; padding: .7rem 1rem; font-size: .78rem; font-weight: 750; color: var(--muted); cursor: pointer; text-align: left; }
+details.show-more > summary::after { content: "▾"; flex: 0 0 auto; margin-left: auto; color: var(--muted); font-weight: 750; }
+details.show-more[open] > summary::after { content: "▴"; }
+details.show-more > summary > * { display: none; } /* hide any literal text, ::after supplies the label */
+details.show-more .show-more-body { padding: 0 .2rem 1rem; display: flex; flex-direction: column; gap: .6rem; }
+
+/* People card list — Users page. */
+.people-list { display: flex; flex-direction: column; gap: .55rem; }
+.person-card { display: flex; align-items: center; gap: .75rem; background: #fff; border: 1px solid var(--border);
+  border-radius: 15px; padding: .7rem .9rem; box-shadow: 0 6px 16px rgba(11,58,46,.045); }
+.person-avatar { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; display: grid; place-items: center;
+  background: #F3E8B9; color: var(--green); font-weight: 800; font-size: .8rem; }
+.person-name { font-weight: 750; font-size: .9rem; }
+.person-meta { font-size: .72rem; color: var(--muted); }
+.person-actions { margin-left: auto; display: flex; align-items: center; gap: .4rem; }
+
+/* Channel picker tiles — Upload hub. */
+.channel-tiles { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: .7rem; margin-bottom: 1rem; }
+.channel-tile { display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; border: 1px solid var(--border);
+  background: #fff; border-radius: 16px; padding: .9rem 1rem; cursor: pointer; text-align: left;
+  box-shadow: 0 6px 16px rgba(11,58,46,.045); transition: transform .14s, box-shadow .14s, border-color .14s; }
+.channel-tile:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(11,58,46,.09); }
+.channel-tile.active { border-color: var(--green); background: #F4FAF6; }
+.channel-tile .ic { font-size: 1.3rem; }
+.channel-tile b { font-size: .85rem; }
+.channel-tile small { color: var(--muted); font-size: .68rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fab, .channel-tile, .tab-btn { transition: none !important; }
+}
+
+@media print {
+  /* Collapsed "Show more" sections must still print/export in full. */
+  details.show-more { display: block !important; border: 0 !important; }
+  details.show-more > summary { display: none !important; }
+  details.show-more .show-more-body { display: flex !important; }
+  .fab-bar, .fab { display: none !important; }
+}

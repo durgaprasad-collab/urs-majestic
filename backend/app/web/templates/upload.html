@@ -2,71 +2,107 @@
 {% block title %}Upload POS Report — URS Majestic{% endblock %}
 
 {% block content %}
-<div class="card">
-  <h1 class="card-title">Upload POS report</h1>
-  <p class="card-sub">
-    Export the <strong>Item Report Day Wise</strong> from your POS as an
-    <strong>.xlsx</strong> file and upload it here.
-    The analysis will update immediately.
-  </p>
+<style>
+  /* The shared .app-main[data-page="/upload"] grid (style.css) lays its
+     *direct* .card children into a 2-col grid. Our tab wrapper isn't a
+     .card, so give it a full-width row and let .channel-tiles' own grid
+     (also from style.css) lay out the picker tiles. The upload forms now
+     live one level deeper (inside [data-tab-panel]), so they naturally
+     opt out of the old per-card grid sizing — that's intentional. */
+  .app-main[data-page="/upload"] > [data-tabs] { grid-column: 1 / -1; }
+  .app-main[data-page="/upload"] > .card { grid-column: 1 / -1; }
+</style>
 
-  {% if error %}
-  <p class="alert-error">{{ error }}</p>
-  {% endif %}
+<div data-tabs>
+  <div class="channel-tiles">
+    <button type="button" class="channel-tile active" data-tab-btn="pos">
+      <span class="ic">📊</span>
+      <b>POS report</b>
+      <small>Item Report Day Wise .xlsx — updates sales &amp; costs now</small>
+    </button>
+    <button type="button" class="channel-tile" data-tab-btn="orders">
+      <span class="ic">📋</span>
+      <b>Order Listing</b>
+      <small>Order Report .xlsx — recovers order counts &amp; AOV</small>
+    </button>
+    <button type="button" class="channel-tile" data-tab-btn="zomato">
+      <span class="ic">🍽</span>
+      <b>Zomato</b>
+      <small>Order history .csv from the Zomato partner dashboard</small>
+    </button>
+    <button type="button" class="channel-tile" data-tab-btn="swiggy">
+      <span class="ic">🛵</span>
+      <b>Swiggy</b>
+      <small>Past orders .csv from the Swiggy partner dashboard</small>
+    </button>
+  </div>
 
-  <form method="post" action="/upload" enctype="multipart/form-data">
-    <label for="file" class="form-label">Select .xlsx file</label>
-    <input
-      id="file"
-      name="file"
-      type="file"
-      accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      class="form-input-file"
-      required
-    />
-    <button type="submit" class="btn-primary">Upload &amp; Analyse</button>
-  </form>
-  <p class="hint">Takes about 5–10 seconds to process.</p>
-</div>
+  <div data-tab-panel="pos" class="card">
+    <h1 class="card-title">Upload POS report</h1>
+    <p class="card-sub">
+      Export the <strong>Item Report Day Wise</strong> from your POS as an
+      <strong>.xlsx</strong> file and upload it here.
+      The analysis will update immediately.
+    </p>
 
-<div class="card" style="margin-top:1rem">
-  <h2 class="card-title" style="font-size:1rem">Upload Petpooja Order Listing</h2>
-  <p class="card-sub">
-    Export <strong>Order Listing</strong> (Reports → Order Report) as an
-    <strong>.xlsx</strong> file. Recovers counter order counts/AOV — upload the
-    item report above first, this only updates order counts on top of it.
-  </p>
-  <form method="post" action="/upload/petpooja-orders" enctype="multipart/form-data">
-    <label for="order-listing-file" class="form-label">Select .xlsx file</label>
-    <input id="order-listing-file" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="form-input-file" required />
-    <button type="submit" class="btn-primary">Upload Order Listing</button>
-  </form>
-</div>
+    {% if error %}
+    <p class="alert-error">{{ error }}</p>
+    {% endif %}
 
-<div class="card" style="margin-top:1rem">
-  <h2 class="card-title" style="font-size:1rem">Upload Zomato order history</h2>
-  <p class="card-sub">
-    Export <strong>Order history</strong> as a <strong>.csv</strong> from the Zomato
-    partner dashboard and upload it here.
-  </p>
-  <form method="post" action="/upload/zomato" enctype="multipart/form-data">
-    <label for="zomato-file" class="form-label">Select .csv file</label>
-    <input id="zomato-file" name="file" type="file" accept=".csv,text/csv" class="form-input-file" required />
-    <button type="submit" class="btn-primary">Upload Zomato orders</button>
-  </form>
-</div>
+    <form method="post" action="/upload" enctype="multipart/form-data">
+      <label for="file" class="form-label">Select .xlsx file</label>
+      <input
+        id="file"
+        name="file"
+        type="file"
+        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        class="form-input-file"
+        required
+      />
+      <button type="submit" class="btn-primary">Upload &amp; Analyse</button>
+    </form>
+    <p class="hint">Takes about 5–10 seconds to process.</p>
+  </div>
 
-<div class="card" style="margin-top:1rem">
-  <h2 class="card-title" style="font-size:1rem">Upload Swiggy past orders</h2>
-  <p class="card-sub">
-    Export the <strong>past orders</strong> report as a <strong>.csv</strong> from the
-    Swiggy partner dashboard and upload it here.
-  </p>
-  <form method="post" action="/upload/swiggy" enctype="multipart/form-data">
-    <label for="swiggy-file" class="form-label">Select .csv file</label>
-    <input id="swiggy-file" name="file" type="file" accept=".csv,text/csv" class="form-input-file" required />
-    <button type="submit" class="btn-primary">Upload Swiggy orders</button>
-  </form>
+  <div data-tab-panel="orders" class="card" hidden>
+    <h2 class="card-title" style="font-size:1rem">Upload Petpooja Order Listing</h2>
+    <p class="card-sub">
+      Export <strong>Order Listing</strong> (Reports → Order Report) as an
+      <strong>.xlsx</strong> file. Recovers counter order counts/AOV — upload the
+      item report above first, this only updates order counts on top of it.
+    </p>
+    <form method="post" action="/upload/petpooja-orders" enctype="multipart/form-data">
+      <label for="order-listing-file" class="form-label">Select .xlsx file</label>
+      <input id="order-listing-file" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="form-input-file" required />
+      <button type="submit" class="btn-primary">Upload Order Listing</button>
+    </form>
+  </div>
+
+  <div data-tab-panel="zomato" class="card" hidden>
+    <h2 class="card-title" style="font-size:1rem">Upload Zomato order history</h2>
+    <p class="card-sub">
+      Export <strong>Order history</strong> as a <strong>.csv</strong> from the Zomato
+      partner dashboard and upload it here.
+    </p>
+    <form method="post" action="/upload/zomato" enctype="multipart/form-data">
+      <label for="zomato-file" class="form-label">Select .csv file</label>
+      <input id="zomato-file" name="file" type="file" accept=".csv,text/csv" class="form-input-file" required />
+      <button type="submit" class="btn-primary">Upload Zomato orders</button>
+    </form>
+  </div>
+
+  <div data-tab-panel="swiggy" class="card" hidden>
+    <h2 class="card-title" style="font-size:1rem">Upload Swiggy past orders</h2>
+    <p class="card-sub">
+      Export the <strong>past orders</strong> report as a <strong>.csv</strong> from the
+      Swiggy partner dashboard and upload it here.
+    </p>
+    <form method="post" action="/upload/swiggy" enctype="multipart/form-data">
+      <label for="swiggy-file" class="form-label">Select .csv file</label>
+      <input id="swiggy-file" name="file" type="file" accept=".csv,text/csv" class="form-input-file" required />
+      <button type="submit" class="btn-primary">Upload Swiggy orders</button>
+    </form>
+  </div>
 </div>
 
 <div class="card" style="margin-top:1rem">

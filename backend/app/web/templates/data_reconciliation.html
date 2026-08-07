@@ -7,6 +7,11 @@
   <p class="page-sub">Cross-checks each channel's declared sales against what was actually ingested.</p>
 </div>
 
+<div class="tabs">
+  <a href="/results" class="tab-btn">Menu Analysis</a>
+  <a href="/data-reconciliation" class="tab-btn active">Data Trust</a>
+</div>
+
 {% if trust %}
   {% if trust.indicator == 'DATA TRUSTED' %}
   <p class="alert-success">✓ DATA TRUSTED — every upload reconciles.</p>
@@ -18,16 +23,16 @@
   {% endif %}
 {% endif %}
 
-<div class="recon-grid" style="margin-top:1rem">
+<div class="chip-row" style="margin-top:1rem; align-items:flex-start">
   {% for c in channels %}
-  <div class="recon-card {{ 'recon-total' if c.indicator == 'TRUSTED' else 'recon-personal' }}">
-    <span class="recon-label">{{ c.channel }}</span>
-    <span class="recon-value" style="font-size:1rem">
-      {{ '✓ TRUSTED' if c.indicator == 'TRUSTED' else '⚠ NEEDS ATTENTION' }}
+  <div style="display:flex; flex-direction:column; gap:.3rem">
+    <span class="status-chip {{ 'ok' if c.indicator == 'TRUSTED' else 'warn' }}"
+          title="Latest data: {{ c.latest_data_date.strftime('%d %b %Y') if c.latest_data_date else '—' }} · Last upload: {{ c.last_upload_at.strftime('%d %b %Y %H:%M') if c.last_upload_at else '—' }} · {{ c.unexplained_mismatches }} unexplained, {{ c.explained_mismatches }} explained">
+      <span class="chip-dot"></span>{{ c.channel }}
     </span>
     <span class="recon-sub">
-      Latest data: {{ c.latest_data_date.strftime('%d %b %Y') if c.latest_data_date else '—' }}<br>
-      Last upload: {{ c.last_upload_at.strftime('%d %b %Y %H:%M') if c.last_upload_at else '—' }}<br>
+      Latest: {{ c.latest_data_date.strftime('%d %b %Y') if c.latest_data_date else '—' }} ·
+      Upload: {{ c.last_upload_at.strftime('%d %b %Y %H:%M') if c.last_upload_at else '—' }}<br>
       {{ c.unexplained_mismatches }} unexplained · {{ c.explained_mismatches }} explained
     </span>
   </div>

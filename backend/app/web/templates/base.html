@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0B3A2E" />
   <title>{% block title %}URS Majestic — Restaurant OS{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=18" />
-  <script src="/static/app.js?v=1" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=20" />
+  <script src="/static/app.js?v=2" defer></script>
 </head>
 <body class="{% if request.session.get('user_id') %}os-authenticated{% else %}os-guest{% endif %}">
 {% if request.session.get("user_id") %}
@@ -22,25 +22,20 @@
         <a href="/daily-brief" class="nav-link nav-home {% if path == '/daily-brief' or path == '/dashboard' %}active{% endif %}"><span>✦</span> Today</a>
 
         <div class="nav-group">
-          <span class="nav-group-label">Operations</span>
+          <span class="nav-group-label">Run the day</span>
           <a href="/prep-sheet" class="nav-link {% if path == '/prep-sheet' %}active{% endif %}"><span>☑</span> Prep Sheet</a>
           <a href="/order-forecast" class="nav-link {% if path == '/order-forecast' %}active{% endif %}"><span>↗</span> Order Forecast</a>
           <a href="/stock-log" class="nav-link {% if path.startswith('/stock-log') %}active{% endif %}"><span>▦</span> Stock Log</a>
           <a href="/gas-log" class="nav-link {% if path.startswith('/gas-log') %}active{% endif %}"><span>◉</span> Gas Log</a>
-        </div>
-
-        <div class="nav-group">
-          <span class="nav-group-label">Money</span>
           <a href="/purchases" class="nav-link {% if path.startswith('/purchases') %}active{% endif %}"><span>₹</span> Purchases</a>
-          <a href="/reconciliation" class="nav-link {% if path == '/reconciliation' %}active{% endif %}"><span>↻</span> Reconcile</a>
-          <a href="/business-settings" class="nav-link {% if path.startswith('/business-settings') %}active{% endif %}"><span>◎</span> Business Setup</a>
         </div>
 
         <div class="nav-group">
-          <span class="nav-group-label">Insights</span>
+          <span class="nav-group-label">Manage the business</span>
+          <a href="/reconciliation" class="nav-link {% if path == '/reconciliation' %}active{% endif %}"><span>↻</span> Reconcile</a>
           <a href="/results" class="nav-link {% if path == '/results' %}active{% endif %}"><span>⌁</span> Menu Analysis</a>
-          <a href="/data-reconciliation" class="nav-link {% if path == '/data-reconciliation' %}active{% endif %}"><span>✓</span> Data Trust</a>
           <a href="/ingredients/mapping" class="nav-link {% if path.startswith('/ingredients') %}active{% endif %}"><span>⇄</span> Ingredient Mapping</a>
+          <a href="/business-settings" class="nav-link {% if path.startswith('/business-settings') %}active{% endif %}"><span>◎</span> Settings</a>
         </div>
       </nav>
 
@@ -87,6 +82,9 @@
         <a href="/order-forecast" data-command-item data-keywords="order forecast purchase stock"><b>↗ Order Forecast</b><small>See what to order</small></a>
         <a href="/results" data-command-item data-keywords="menu analysis food cost item performance"><b>⌁ Menu Analysis</b><small>Explore performance</small></a>
         <a href="/reconciliation" data-command-item data-keywords="reconcile mismatch channel money"><b>↻ Reconcile</b><small>Resolve mismatches</small></a>
+        <a href="/data-reconciliation" data-command-item data-keywords="data trust channel mismatch"><b>✓ Data Trust</b><small>Cross-check channel data</small></a>
+        <a href="/ingredients/mapping" data-command-item data-keywords="ingredient mapping dish recipe"><b>⇄ Ingredient Mapping</b><small>Map ingredients to dishes</small></a>
+        <a href="/business-settings" data-command-item data-keywords="business settings expenses targets"><b>◎ Settings</b><small>Business setup</small></a>
       </div>
       <p class="command-empty" data-command-empty hidden>No match. Try a page or action name.</p>
     </section>

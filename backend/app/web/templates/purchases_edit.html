@@ -62,13 +62,12 @@
     <input id="notes" name="notes" type="text" class="form-input"
            value="{{ purchase.notes or '' }}" placeholder="e.g. Nilgiris, bulk discount" />
 
-    <label for="reason" class="form-label">Reason for the change (required)</label>
+    <label for="reason" class="form-label">What changed, and why?</label>
     <input id="reason" name="reason" type="text" class="form-input"
            minlength="{{ min_edit_reason }}" required
            placeholder="e.g. bill shows 10 kg, not 20 kg" />
     <p style="font-size:.8rem;color:#666;margin:.25rem 0 .75rem">
-      This is a financial record. Every field you change is written to the audit
-      log with the old value, the new value, your name and this reason.
+      Kept in the audit log so nothing gets lost — just a sentence is fine.
     </p>
 
     <div style="display:flex;gap:.75rem;margin-top:.5rem">

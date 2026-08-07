@@ -55,6 +55,20 @@
     if (body.classList.contains('nav-open') && !event.target.closest('.app-nav') && !event.target.closest('[data-nav-toggle]')) body.classList.remove('nav-open');
   });
 
+  // Generic tabs / segmented control: [data-tabs] wraps buttons with
+  // [data-tab-btn="key"] and panels with [data-tab-panel="key"].
+  document.querySelectorAll('[data-tabs]').forEach((wrap) => {
+    const btns = Array.from(wrap.querySelectorAll('[data-tab-btn]'));
+    const panels = Array.from(wrap.querySelectorAll('[data-tab-panel]'));
+    function activate(key) {
+      btns.forEach((b) => b.classList.toggle('active', b.dataset.tabBtn === key));
+      panels.forEach((p) => { p.hidden = p.dataset.tabPanel !== key; });
+    }
+    btns.forEach((b) => b.addEventListener('click', () => activate(b.dataset.tabBtn)));
+    const initial = wrap.dataset.tabsInitial || (btns[0] && btns[0].dataset.tabBtn);
+    if (initial) activate(initial);
+  });
+
   document.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();

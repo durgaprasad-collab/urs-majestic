@@ -13,7 +13,6 @@ from scripts.import_pos import (
     exclude_today, upsert_daily_channel_sales, write_upload_log,
 )
 from app.services.menu_engineering.analysis import get_analysis
-from app.services.kpi import get_yesterday_sales, get_channel_upload_status
 from app.services.uploads.petpooja_order_listing import (
     parse_order_listing_xlsx, aggregate_by_day, check_aggregator_alarm,
     find_unpaired_diffs, upsert_order_counts, cross_check_amounts, ALARM_MESSAGE,
@@ -42,20 +41,12 @@ def index(request: Request):
 
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
+    # Legacy alias — dashboard.html was a strictly smaller version of the
+    # Today page. Redirect rather than maintain two near-duplicate templates.
     user, redir = require_user(request, db)
     if redir:
         return redir
-
-    kpi = get_yesterday_sales(db)
-    kpi_data_through = _fmt_date(kpi["data_through"]) if kpi else None
-    channel_status = get_channel_upload_status(db)
-
-    return _tmpl(request, "dashboard.html", {
-        "user": user,
-        "kpi": kpi,
-        "kpi_data_through": kpi_data_through,
-        "channel_status": channel_status,
-    })
+    return RedirectResponse("/daily-brief", status_code=302)
 
 
 @router.get("/upload", response_class=HTMLResponse)

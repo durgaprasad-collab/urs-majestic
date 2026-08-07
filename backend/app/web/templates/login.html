@@ -3,8 +3,8 @@
 
 {% block guest_content %}
 <div class="card">
-  <h1 class="card-title">URS Majestic</h1>
-  <p class="card-sub">Owner portal — sign in to continue.</p>
+  <h1 class="card-title">Welcome back 👋</h1>
+  <p class="card-sub">Sign in to your URS Majestic owner portal.</p>
 
   {% if error %}
   <p class="alert-error">{{ error }}</p>
@@ -19,7 +19,7 @@
     <input id="password" name="password" type="password" class="form-input"
            autocomplete="current-password" required />
 
-    <button type="submit" class="btn-primary">Sign in</button>
+    <button type="submit" class="btn-primary fab" style="width:100%;margin-top:.75rem">Sign in →</button>
   </form>
 </div>
 {% endblock %}

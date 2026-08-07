@@ -9,11 +9,11 @@
     {% if r.has_stock %}<span class="ord-tag ord-tag-stock"
       title="From your count of {{ '%g'|format(r.on_hand_qty) }} {{ r.unit }} on {{ r.stock_counted_on.strftime('%d %b') }}">stock</span>{% endif %}
   </td>
-  <td class="ord-date">
+  <td class="ord-date" data-label="Order by">
     {% if r.eff_order_date %}{{ r.eff_order_date.strftime('%a %d %b') }}{% else %}—{% endif %}
   </td>
-  <td class="col-num ord-qty">{{ "%g"|format(r.suggested_order_qty) }} <span class="ord-unit">{{ r.unit }}</span></td>
-  <td class="ord-status">
+  <td class="col-num ord-qty" data-label="Qty">{{ "%g"|format(r.suggested_order_qty) }} <span class="ord-unit">{{ r.unit }}</span></td>
+  <td class="ord-status" data-label="Status">
     {% set st = r.eff_status %}
     {% if st == 'overdue' %}
       <span class="ord-pill ord-overdue">Overdue{% if r.eff_days_until_due is not none %} {{ -r.eff_days_until_due }}d{% endif %}</span>
@@ -25,7 +25,7 @@
       <span class="ord-pill ord-ok">In {{ r.eff_days_until_due }}d</span>
     {% endif %}
   </td>
-  <td class="print-hide ord-remaining">
+  <td class="print-hide ord-remaining" data-label="Remaining now">
     {% if r.has_stock %}<div class="ord-stock-cur">{{ "%g"|format(r.on_hand_qty) }} {{ r.unit }}<span class="ord-dim"> · {{ r.stock_counted_on.strftime('%d %b') }}</span></div>{% endif %}
     <form method="post" action="/order-forecast/stock" class="ord-stock-form">
       <input type="hidden" name="ingredient_id" value="{{ r.ingredient_id }}">
@@ -43,13 +43,13 @@
       <button type="submit" class="ord-stock-btn">Save</button>
     </form>
   </td>
-  <td class="col-num print-hide ord-dim">
+  <td class="col-num print-hide ord-dim" data-label="Cover">
     {% if r.eff_cover_left is not none %}{{ "%g"|format(r.eff_cover_left) }}d{% else %}—{% endif %}
   </td>
-  <td class="col-num print-hide ord-dim">
+  <td class="col-num print-hide ord-dim" data-label="Est. ₹">
     {% if r.est_order_cost is not none %}₹{{ "%.0f"|format(r.est_order_cost) }}{% else %}—{% endif %}
   </td>
-  <td class="ord-tick"><span class="ord-box"></span></td>
+  <td class="ord-tick" data-label="Done"><span class="ord-box"></span></td>
 </tr>
 {% endmacro %}
 
@@ -76,6 +76,34 @@
   .ord-stock-lbl{font-size:.8rem;color:#888}
   .ord-stock-btn{padding:.2rem .5rem;font-size:.8rem;border:1px solid #c9a227;background:#c9a227;color:#fff;border-radius:4px;cursor:pointer}
   .ord-remaining{min-width:9.5rem}
+
+  /* Mobile card view: same <table><tr><td> markup, restyled as a stacked
+     card list at narrow widths so the stock-count mini-form stays a single
+     real <form> (no duplicated markup / double-submit risk). */
+  @media (max-width: 720px) {
+    .ord-table thead { display: none; }
+    .ord-table, .ord-table tbody, .ord-table tr, .ord-table td { display: block; width: 100%; }
+    .ord-table tr {
+      border-radius: 14px; border: 1px solid var(--border); border-left-width: 4px;
+      margin-bottom: .7rem; padding: .2rem 0; overflow: hidden;
+    }
+    .ord-table tr:has(.ord-overdue) { border-left-color: #9a3412; }
+    .ord-table tr:has(.ord-due) { border-left-color: #92600a; }
+    .ord-table tr:has(.ord-soon) { border-left-color: #1a5c47; }
+    .ord-table tr:has(.ord-ok) { border-left-color: #6b6b6b; }
+    .ord-table td {
+      display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+      padding: .4rem .8rem; border-bottom: 1px dashed #ECE9E0; text-align: right; background: transparent !important;
+    }
+    .ord-table td:last-child { border-bottom: 0; }
+    .ord-table td::before { content: attr(data-label); font-size: .68rem; font-weight: 750; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; text-align: left; }
+    .ord-table td:first-child { font-weight: 750; font-size: .92rem; }
+    .ord-table td:first-child::before { content: none; }
+    .ord-table .ord-tick { display: none; }
+    .ord-table .ord-remaining { justify-content: flex-start; }
+    .ord-table .ord-remaining::before { display: none; }
+    .ord-table .ord-stock-form { width: 100%; justify-content: flex-start; }
+  }
 </style>
 
 <div class="page-header">
@@ -139,42 +167,55 @@
 </div>
 {% endif %}
 
-{% if recently_bought %}
-<div class="prep-head print-hide" style="margin-top:1.4rem">
-  <h2 class="prep-title">Recently bought — skipped</h2>
-  <span class="prep-meta">purchased in the last 3 days (and no stock count), so not due to reorder yet</span>
-</div>
-<div class="card print-hide">
-  <p class="ord-nohist">
-    {% for r in recently_bought %}<span>{{ r.name }}{% if r.days_since_purchase is not none %}
-      <span class="ord-dim">({{ r.days_since_purchase }}d ago)</span>{% endif %}</span>{% if not loop.last %} · {% endif %}{% endfor %}
-  </p>
-</div>
+{% if recently_bought or no_history %}
+<details class="show-more print-hide" style="margin-top:1.4rem">
+  <summary>Skipped items</summary>
+  <div class="show-more-body">
+    {% if recently_bought %}
+    <div>
+      <div class="prep-head" style="margin-top:0">
+        <h2 class="prep-title">Recently bought — skipped</h2>
+        <span class="prep-meta">purchased in the last 3 days (and no stock count), so not due to reorder yet</span>
+      </div>
+      <p class="ord-nohist">
+        {% for r in recently_bought %}<span>{{ r.name }}{% if r.days_since_purchase is not none %}
+          <span class="ord-dim">({{ r.days_since_purchase }}d ago)</span>{% endif %}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+      </p>
+    </div>
+    {% endif %}
+
+    {% if no_history %}
+    <div>
+      <div class="prep-head" style="margin-top:0">
+        <h2 class="prep-title">Not enough history</h2>
+        <span class="prep-meta">bought on fewer than two days — no usage rate yet</span>
+      </div>
+      <p class="ord-nohist">
+        {% for r in no_history %}<span>{{ r.name }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</details>
 {% endif %}
 
-{% if no_history %}
-<div class="prep-head print-hide" style="margin-top:1.4rem">
-  <h2 class="prep-title">Not enough history</h2>
-  <span class="prep-meta">bought on fewer than two days — no usage rate yet</span>
-</div>
-<div class="card print-hide">
-  <p class="ord-nohist">
-    {% for r in no_history %}<span>{{ r.name }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
-  </p>
-</div>
-{% endif %}
-
-<div class="card recon-disclaimer print-hide" style="margin-top:1rem">
-  <p>
-    <strong>Remaining now</strong> — type what's physically left (in the shown unit; Baby Corn
-    also takes packets). The row then uses <strong>remaining ÷ daily usage</strong> for a real
-    runout date, overriding the cadence guess. Leave it blank and the row falls back to
-    <strong>last purchase + average gap between orders</strong>.
-  </p>
-  <p style="margin-top:.4rem">
-    <strong>Cover</strong> = days left at the implied usage rate. Usage rate comes from ~a month
-    of purchases, so treat it as a prompt to check stock, not gospel — and correcting a wrong
-    quantity is as simple as entering what's actually on the shelf.
-  </p>
+<div class="print-hide" style="margin-top:1rem; display:flex; align-items:center; gap:.3rem; font-size:.78rem; color:#6b6b6b">
+  How "Remaining now" and "Cover" work
+  <details class="info-tip">
+    <summary>ⓘ</summary>
+    <div class="info-tip-panel">
+      <p>
+        <strong>Remaining now</strong> — type what's physically left (in the shown unit; Baby Corn
+        also takes packets). The row then uses <strong>remaining ÷ daily usage</strong> for a real
+        runout date, overriding the cadence guess. Leave it blank and the row falls back to
+        <strong>last purchase + average gap between orders</strong>.
+      </p>
+      <p style="margin-top:.4rem">
+        <strong>Cover</strong> = days left at the implied usage rate. Usage rate comes from ~a month
+        of purchases, so treat it as a prompt to check stock, not gospel — and correcting a wrong
+        quantity is as simple as entering what's actually on the shelf.
+      </p>
+    </div>
+  </details>
 </div>
 {% endblock %}

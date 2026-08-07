@@ -7,20 +7,42 @@
   <button type="button" class="btn-primary btn-sm print-btn print-hide" onclick="window.print()">Print</button>
 </div>
 
-<form method="get" action="/prep-sheet" class="filter-bar print-hide">
-  <select name="band" class="form-input filter-select" onchange="this.form.submit()">
-    <option value="kitchen" {% if band_key == 'kitchen' %}selected{% endif %}>Core + occasional</option>
-    <option value="core" {% if band_key == 'core' %}selected{% endif %}>Core only</option>
-    <option value="all" {% if band_key == 'all' %}selected{% endif %}>Everything (incl. tail)</option>
-  </select>
-  <label style="font-size:.82rem; display:flex; align-items:center; gap:.35rem; white-space:nowrap">
-    <input type="checkbox" name="non_food" value="1" {% if include_non_food %}checked{% endif %}
-           onchange="this.form.submit()"> Include non-food
-  </label>
-</form>
+<div class="filter-bar print-hide" style="justify-content:space-between; flex-wrap:wrap">
+  <div class="tabs">
+    <a href="/prep-sheet?band=kitchen{% if include_non_food %}&non_food=1{% endif %}" class="tab-btn {% if band_key == 'kitchen' %}active{% endif %}">Core + occasional</a>
+    <a href="/prep-sheet?band=core{% if include_non_food %}&non_food=1{% endif %}" class="tab-btn {% if band_key == 'core' %}active{% endif %}">Core only</a>
+    <a href="/prep-sheet?band=all{% if include_non_food %}&non_food=1{% endif %}" class="tab-btn {% if band_key == 'all' %}active{% endif %}">Everything (incl. tail)</a>
+  </div>
+  <form method="get" action="/prep-sheet">
+    <input type="hidden" name="band" value="{{ band_key }}">
+    <label style="font-size:.82rem; display:flex; align-items:center; gap:.35rem; white-space:nowrap">
+      <input type="checkbox" name="non_food" value="1" {% if include_non_food %}checked{% endif %}
+             onchange="this.form.submit()"> Include non-food
+    </label>
+  </form>
+</div>
 
 <div class="prep-head">
-  <h2 class="prep-title">Next {{ horizon }} days</h2>
+  <h2 class="prep-title">
+    Next {{ horizon }} days
+    <details class="info-tip">
+      <summary>ⓘ</summary>
+      <div class="info-tip-panel">
+        <p>
+          Each column is one day's prep = the higher of that weekday's average and the 7-day
+          average, rounded up. A second number after a slash (e.g. <strong>3 / 6</strong>) is the
+          <strong>busy-day</strong> figure — the highest quantity actually sold on a single such day
+          in the last 4 weeks, the number to keep stock for, not to cook to. <strong>3-day</strong>
+          totals the three columns, for shopping short-shelf-life items ahead.
+        </p>
+        <p style="margin-top:.4rem">
+          <strong>This is not a forecast.</strong> Each weekday figure rests on about four
+          observations, over a period in which Zomato pricing and offers changed. Treat these as a
+          starting point and override them with what the kitchen knows.
+        </p>
+      </div>
+    </details>
+  </h2>
   <span class="prep-meta">
     {{ day_cols[0].date.strftime('%a %d %b') }} – {{ day_cols[-1].date.strftime('%a %d %b %Y') }} ·
     based on {{ meta.open_days }} trading days
@@ -87,20 +109,6 @@
   </div>
 </div>
 
-<div class="card recon-disclaimer" style="margin-top:1rem">
-  <p>
-    Each column is one day's prep = the higher of that weekday's average and the 7-day
-    average, rounded up. A second number after a slash (e.g. <strong>3 / 6</strong>) is the
-    <strong>busy-day</strong> figure — the highest quantity actually sold on a single such day
-    in the last 4 weeks, the number to keep stock for, not to cook to. <strong>3-day</strong>
-    totals the three columns, for shopping short-shelf-life items ahead.
-  </p>
-  <p style="margin-top:.4rem">
-    <strong>This is not a forecast.</strong> Each weekday figure rests on about four
-    observations, over a period in which Zomato pricing and offers changed. Treat these as a
-    starting point and override them with what the kitchen knows.
-  </p>
-</div>
 {% else %}
 <div class="card">
   <p>No items match this filter. Try “Everything (incl. tail)”.</p>

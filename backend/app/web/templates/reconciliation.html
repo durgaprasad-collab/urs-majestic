@@ -63,92 +63,101 @@
 </div>
 {% endif %}
 
-{% if ingredient_summary %}
-<div class="card" style="margin-top:1rem">
-  <h2 class="card-title" style="font-size:1rem">Ingredient purchase summary</h2>
-  <p class="card-sub" style="margin-bottom:.75rem">Average quantity and restocking interval per ingredient across all purchases.</p>
-  <div class="recon-table-wrap">
-    <table class="recon-table">
-      <thead>
-        <tr>
-          <th>Ingredient</th>
-          <th class="col-num">Buys</th>
-          <th class="col-num">Total qty</th>
-          <th class="col-num">Avg qty / buy</th>
-          <th class="col-num">Avg days between buys</th>
-          <th class="col-num">Total spent</th>
-          <th class="col-num">Last bought</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in ingredient_summary %}
-        <tr>
-          <td>{{ row.name }}</td>
-          <td class="col-num">{{ row.count }}</td>
-          <td class="col-num">{{ "%.2f"|format(row.total_qty) }} {{ row.unit }}</td>
-          <td class="col-num">{{ "%.2f"|format(row.avg_qty) }} {{ row.unit }}</td>
-          <td class="col-num">
-            {% if row.avg_days is not none %}
-              {{ "%.0f"|format(row.avg_days) }} d
-            {% else %}
-              <span style="color:#888">—</span>
-            {% endif %}
-          </td>
-          <td class="col-num">₹{{ "{:,.0f}".format(row.total_spent) }}</td>
-          <td class="col-num">{{ row.last_date.strftime('%d %b %Y') }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
+{% if ingredient_summary or ingredient_usage or usage_empty_reason %}
+<details class="show-more" style="margin-top:1rem">
+  <summary>View ingredient purchase &amp; usage detail</summary>
+  <div class="show-more-body">
 
-{% if ingredient_usage %}
-<div class="card" style="margin-top:1rem">
-  <h2 class="card-title" style="font-size:1rem">Ingredient usage by dish</h2>
-  <p class="card-sub" style="margin-bottom:.75rem">
-    Share of each ingredient's consumption going to each mapped dish, based on portion
-    size (light/medium/heavy) × units sold.
-  </p>
-  <div class="recon-table-wrap recon-table-scroll">
-    <table class="recon-table">
-      <thead>
-        <tr>
-          <th>Ingredient</th>
-          <th>Dish</th>
-          <th class="col-num">Intensity</th>
-          <th class="col-num">Units sold</th>
-          <th class="col-num">% of ingredient use</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ing in ingredient_usage %}
-          {% for row in ing.rows %}
-          <tr {% if loop.first %}class="recon-group-start"{% endif %}>
-            <td>{% if loop.first %}<strong>{{ ing.name }}</strong>{% endif %}</td>
-            <td>{{ row.dish }}</td>
-            <td class="col-num">{{ row.intensity }}</td>
-            <td class="col-num">{{ "{:,.0f}".format(row.units_sold) }}</td>
-            <td class="col-num">
-              {% if row.pct is not none %}
-                {{ "%.1f"|format(row.pct) }}%
-              {% else %}
-                <span style="color:#888">—</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        {% endfor %}
-      </tbody>
-    </table>
+    {% if ingredient_summary %}
+    <div class="card">
+      <h2 class="card-title" style="font-size:1rem">Ingredient purchase summary</h2>
+      <p class="card-sub" style="margin-bottom:.75rem">Average quantity and restocking interval per ingredient across all purchases.</p>
+      <div class="recon-table-wrap">
+        <table class="recon-table">
+          <thead>
+            <tr>
+              <th>Ingredient</th>
+              <th class="col-num">Buys</th>
+              <th class="col-num">Total qty</th>
+              <th class="col-num">Avg qty / buy</th>
+              <th class="col-num">Avg days between buys</th>
+              <th class="col-num">Total spent</th>
+              <th class="col-num">Last bought</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in ingredient_summary %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td class="col-num">{{ row.count }}</td>
+              <td class="col-num">{{ "%.2f"|format(row.total_qty) }} {{ row.unit }}</td>
+              <td class="col-num">{{ "%.2f"|format(row.avg_qty) }} {{ row.unit }}</td>
+              <td class="col-num">
+                {% if row.avg_days is not none %}
+                  {{ "%.0f"|format(row.avg_days) }} d
+                {% else %}
+                  <span style="color:#888">—</span>
+                {% endif %}
+              </td>
+              <td class="col-num">₹{{ "{:,.0f}".format(row.total_spent) }}</td>
+              <td class="col-num">{{ row.last_date.strftime('%d %b %Y') }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if ingredient_usage %}
+    <div class="card">
+      <h2 class="card-title" style="font-size:1rem">Ingredient usage by dish</h2>
+      <p class="card-sub" style="margin-bottom:.75rem">
+        Share of each ingredient's consumption going to each mapped dish, based on portion
+        size (light/medium/heavy) × units sold.
+      </p>
+      <div class="recon-table-wrap recon-table-scroll">
+        <table class="recon-table">
+          <thead>
+            <tr>
+              <th>Ingredient</th>
+              <th>Dish</th>
+              <th class="col-num">Intensity</th>
+              <th class="col-num">Units sold</th>
+              <th class="col-num">% of ingredient use</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ing in ingredient_usage %}
+              {% for row in ing.rows %}
+              <tr {% if loop.first %}class="recon-group-start"{% endif %}>
+                <td>{% if loop.first %}<strong>{{ ing.name }}</strong>{% endif %}</td>
+                <td>{{ row.dish }}</td>
+                <td class="col-num">{{ row.intensity }}</td>
+                <td class="col-num">{{ "{:,.0f}".format(row.units_sold) }}</td>
+                <td class="col-num">
+                  {% if row.pct is not none %}
+                    {{ "%.1f"|format(row.pct) }}%
+                  {% else %}
+                    <span style="color:#888">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% elif usage_empty_reason %}
+    <div class="card">
+      <h2 class="card-title" style="font-size:1rem">Ingredient usage by dish</h2>
+      <p class="card-sub">{{ usage_empty_reason }}</p>
+    </div>
+    {% endif %}
+
   </div>
-</div>
-{% elif usage_empty_reason %}
-<div class="card" style="margin-top:1rem">
-  <h2 class="card-title" style="font-size:1rem">Ingredient usage by dish</h2>
-  <p class="card-sub">{{ usage_empty_reason }}</p>
-</div>
+</details>
 {% endif %}
 
 <div class="card recon-disclaimer" style="margin-top:1rem">

@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="card">
-  <h1 class="card-title">Owner sign in</h1>
+  <h1 class="card-title">Welcome back 👋</h1>
   <p class="card-sub">Enter your PIN to continue.</p>
 
   {% if error %}
@@ -20,10 +20,11 @@
       autocomplete="current-password"
       class="form-input"
       placeholder="Enter PIN"
+      style="text-align:center;letter-spacing:.4em;font-size:1.3rem"
       autofocus
       required
     />
-    <button type="submit" class="btn-primary">Sign in</button>
+    <button type="submit" class="btn-primary fab" style="width:100%;margin-top:.75rem">Sign in →</button>
   </form>
 </div>
 {% endblock %}
