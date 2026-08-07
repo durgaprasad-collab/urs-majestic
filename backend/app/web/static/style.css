@@ -1225,11 +1225,13 @@ details[open] > summary::after { content: "−"; }
              <button data-tab-btn="a" class="tab-btn active">A</button>...
            </div>
            <div data-tab-panel="a">...</div> <div data-tab-panel="b" hidden>...</div> </div> */
-.tabs { display: inline-flex; gap: .25rem; padding: .25rem; background: #EFEEE7; border-radius: 999px; margin: 0 0 1rem; }
-.tab-btn { border: 0; background: transparent; cursor: pointer; padding: .5rem 1rem; border-radius: 999px;
+.tabs { display: flex; flex-wrap: nowrap; gap: .25rem; padding: .25rem; background: #EFEEE7; border-radius: 999px; margin: 0 0 1rem;
+  max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab-btn { border: 0; background: transparent; cursor: pointer; padding: .5rem 1rem; border-radius: 999px; flex: 0 0 auto; white-space: nowrap;
   font-size: .78rem; font-weight: 750; color: var(--muted); transition: background .14s, color .14s; }
 .tab-btn.active { background: var(--green); color: #fff; box-shadow: 0 5px 14px rgba(11,58,46,.2); }
-.tabs.segmented { width: 100%; }
+.tabs.segmented { width: 100%; overflow-x: visible; }
 .tabs.segmented .tab-btn { flex: 1; }
 .tabs.segmented .tab-btn.active { background: var(--coral); }
 
