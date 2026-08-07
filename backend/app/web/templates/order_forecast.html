@@ -25,8 +25,9 @@
       <span class="ord-pill ord-ok">In {{ r.eff_days_until_due }}d</span>
     {% endif %}
   </td>
-  <td class="print-hide ord-remaining" data-label="Remaining now">
+  <td class="print-hide ord-remaining" data-label="Current stock">
     {% if r.has_stock %}<div class="ord-stock-cur">{{ "%g"|format(r.on_hand_qty) }} {{ r.unit }}<span class="ord-dim"> · {{ r.stock_counted_on.strftime('%d %b') }}</span></div>{% endif %}
+    {% if not r.has_stock %}<div class="ord-stock-missing">Not freshly counted</div>{% endif %}
     <form method="post" action="/order-forecast/stock" class="ord-stock-form">
       <input type="hidden" name="ingredient_id" value="{{ r.ingredient_id }}">
       <input type="hidden" name="unit" value="{{ r.unit }}">
@@ -42,6 +43,22 @@
       {% endif %}
       <button type="submit" class="ord-stock-btn">Save</button>
     </form>
+  </td>
+  <td class="col-num print-hide ord-daily-use" data-label="Daily usage">
+    {% if r.daily_consumption is not none %}
+      {{ "%g"|format(r.daily_consumption) }} <span class="ord-unit">{{ r.unit }}/day</span>
+    {% else %}—{% endif %}
+  </td>
+  <td class="print-hide ord-calc" data-label="Cover calculation">
+    {% if r.has_stock and r.daily_consumption is not none %}
+      <strong>{{ "%g"|format(r.on_hand_qty) }} {{ r.unit }} ÷ {{ "%g"|format(r.daily_consumption) }} {{ r.unit }}/day</strong>
+      <span>= {{ "%g"|format(r.eff_cover_left) }} days</span>
+    {% elif r.runout_date and r.today %}
+      <strong>Estimated runout {{ r.runout_date.strftime('%d %b') }} − today</strong>
+      <span>= {{ "%g"|format(r.eff_cover_left) }} days remaining</span>
+    {% else %}
+      <span>Not enough usage history</span>
+    {% endif %}
   </td>
   <td class="col-num print-hide ord-dim" data-label="Cover">
     {% if r.eff_cover_left is not none %}{{ "%g"|format(r.eff_cover_left) }}d{% else %}—{% endif %}
@@ -59,7 +76,9 @@
   <th>Order by</th>
   <th class="col-num">Qty</th>
   <th>Status</th>
-  <th class="print-hide">Remaining now</th>
+  <th class="print-hide">Current stock</th>
+  <th class="col-num print-hide">Daily usage</th>
+  <th class="print-hide">Cover calculation</th>
   <th class="col-num print-hide">Cover</th>
   <th class="col-num print-hide">Est. ₹</th>
   <th class="ord-tick">Done</th>
@@ -71,11 +90,16 @@
   .ord-tag-stock{background:#e6f4ea;color:#1e7e34;border-color:#bfe3ca}
   .ord-stock-form{display:flex;align-items:center;gap:.25rem;flex-wrap:nowrap}
   .ord-stock-cur{font-size:.78rem;color:#1e7e34;margin-bottom:.18rem;white-space:nowrap}
+  .ord-stock-missing{font-size:.7rem;color:#9a6b24;margin-bottom:.18rem;white-space:nowrap}
   .ord-stock-input{width:4.4rem;padding:.2rem .35rem;font-size:.82rem;border:1px solid #d3d3cf;border-radius:4px}
   .ord-stock-unit{padding:.2rem;font-size:.8rem;border:1px solid #d3d3cf;border-radius:4px}
   .ord-stock-lbl{font-size:.8rem;color:#888}
   .ord-stock-btn{padding:.2rem .5rem;font-size:.8rem;border:1px solid #c9a227;background:#c9a227;color:#fff;border-radius:4px;cursor:pointer}
   .ord-remaining{min-width:9.5rem}
+  .ord-daily-use{white-space:nowrap;color:var(--green);font-weight:750}
+  .ord-calc{min-width:12.5rem;font-size:.72rem;line-height:1.35;color:#4f5b55}
+  .ord-calc strong,.ord-calc span{display:block}
+  .ord-calc span{margin-top:.12rem;color:#9a3412;font-weight:700}
   .ord-print-sheet{display:none}
 
   /* Mobile card view: same <table><tr><td> markup, restyled as a stacked
