@@ -54,7 +54,10 @@
           <tbody>
             {% for r in items %}
             <tr data-sl-row data-sl-name="{{ r.name|lower }}">
-              <td class="sl-row-name">{{ r.name }}</td>
+              <td class="sl-row-name">
+                {{ r.name }}
+                {% if r.note == 'reorder_required' %}<span class="sl-reorder-badge">Reorder</span>{% endif %}
+              </td>
               <td>
                 {% if r.on_hand_qty is not none %}
                   <span class="sl-last{% if r.counted_at and r.counted_at.date() == today %} sl-last-fresh{% endif %}">
@@ -77,6 +80,10 @@
                     <input type="hidden" name="count_unit_{{ r.ingredient_id }}" value="{{ r.unit }}">
                     <span class="sl-unit-lbl">{{ r.unit }}</span>
                   {% endif %}
+                  <label class="sl-reorder-check" title="Mark this item for reorder">
+                    <input type="checkbox" name="reorder_{{ r.ingredient_id }}" value="1" {% if r.note == 'reorder_required' %}checked{% endif %}>
+                    Reorder
+                  </label>
                 </div>
               </td>
             </tr>

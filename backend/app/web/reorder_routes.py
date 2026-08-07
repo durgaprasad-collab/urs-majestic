@@ -116,6 +116,7 @@ def record_stock(
     unit: str,
     count_unit: str | None,
     counted_by: int | None,
+    note: str | None = None,
 ) -> None:
     """Insert one on-hand count row, in the ingredient's forecast (primary)
     unit so the view can divide by daily_consumption directly. Shared by the
@@ -139,10 +140,10 @@ def record_stock(
 
     db.execute(
         text(
-            "INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by) "
-            "VALUES (:i, :q, :u, :by)"
+            "INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by, note) "
+            "VALUES (:i, :q, :u, :by, :note)"
         ),
-        {"i": ingredient_id, "q": on_hand, "u": unit, "by": counted_by},
+        {"i": ingredient_id, "q": on_hand, "u": unit, "by": counted_by, "note": note},
     )
 
 

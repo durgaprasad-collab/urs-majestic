@@ -30,7 +30,7 @@
         {% for r in rows %}
         <tr data-slh-row data-slh-name="{{ r.name|lower }}">
           <td>{{ r.counted_at.strftime('%d %b %Y, %I:%M %p') }}</td>
-          <td>{{ r.name }}</td>
+          <td>{{ r.name }} {% if r.note == 'reorder_required' %}<span class="sl-reorder-badge">Reorder</span>{% endif %}</td>
           <td>{{ r.category or '—' }}</td>
           <td class="col-num">{{ "%g"|format(r.on_hand_qty) }} {{ r.unit }}</td>
           <td>{{ r.counted_by_name or '—' }}</td>

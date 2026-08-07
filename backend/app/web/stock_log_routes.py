@@ -28,7 +28,7 @@ _CATEGORY_ORDER = [
 
 _LIST_SQL = text("""
     select i.id as ingredient_id, i.name, i.unit, i.category, i.pack_size_g,
-           s.on_hand_qty, s.counted_at
+           s.on_hand_qty, s.counted_at, s.note
     from ingredients i
     left join lateral (
         select on_hand_qty, counted_at
@@ -42,7 +42,7 @@ _LIST_SQL = text("""
 """)
 
 _HISTORY_SQL = text("""
-    select s.id, i.name, i.category, s.on_hand_qty, s.unit, s.counted_at,
+    select s.id, i.name, i.category, s.on_hand_qty, s.unit, s.counted_at, s.note,
            u.name as counted_by_name
     from ingredient_stock s
     join ingredients i on i.id = s.ingredient_id
@@ -102,7 +102,8 @@ async def save_stock_log(request: Request, db: Session = Depends(get_db)):
         if not unit:
             continue
         count_unit = form.get(f"count_unit_{ingredient_id}") or unit
-        record_stock(db, ingredient_id, qty, unit, count_unit, getattr(user, "id", None))
+        note = "reorder_required" if form.get(f"reorder_{ingredient_id}") == "1" else None
+        record_stock(db, ingredient_id, qty, unit, count_unit, getattr(user, "id", None), note)
         saved += 1
 
     db.commit()

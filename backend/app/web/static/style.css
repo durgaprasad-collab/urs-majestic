@@ -1128,6 +1128,9 @@ details[open] > summary::after { content: "−"; }
 .sl-cat, .ord-section { margin-bottom: 1rem; padding: .8rem; border: 1px solid var(--border); border-radius: 17px; background: rgba(255,255,255,.56); }
 .sl-save-bar { margin-inline: -.8rem; padding-inline: .8rem; border-radius: 0 0 15px 15px; backdrop-filter: blur(12px); }
 .sl-qty, .sl-unit-select, .ord-stock-input, .ord-stock-unit, .gl-field input, .gl-field select { border-radius: 9px; background: #FFFEFB; }
+.sl-reorder-badge { display: inline-block; margin-left: .4rem; padding: .12rem .48rem; border-radius: 999px; background: #FFF0EC; color: #A83D28; border: 1px solid #F3C1B6; font-size: .6rem; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; vertical-align: middle; }
+.sl-reorder-check { display: inline-flex; align-items: center; gap: .28rem; margin-left: .35rem; color: #87542E; font-size: .68rem; font-weight: 750; cursor: pointer; }
+.sl-reorder-check input { width: 15px; height: 15px; accent-color: var(--coral); }
 .gl-stats { gap: .75rem; }.gl-stat { border-radius: 15px; border-color: var(--border); box-shadow: 0 5px 16px rgba(11,58,46,.05); }.gl-stat-value { color: var(--green); }
 .gl-form { padding: 1rem; border: 1px solid var(--border); border-radius: 16px; background: #FAF9F5; }
 
