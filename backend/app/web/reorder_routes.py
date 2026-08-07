@@ -19,6 +19,7 @@ from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from decimal import Decimal
 
 from app.core.database import get_db
 from app.web.deps import _tmpl, require_user
@@ -54,10 +55,22 @@ def _enrich(row) -> dict:
         d["eff_cover_left"] = d["stock_days_cover_left"]
         d["eff_order_date"] = d["stock_runout_date"]
     else:
-        d["eff_status"] = d["status"]
-        d["eff_days_until_due"] = d["days_until_due"]
-        d["eff_cover_left"] = d["days_cover_left"]
-        d["eff_order_date"] = d["next_order_date"]
+        # `days_cover_left` is the original batch duration and never decreases.
+        # Current cover is the time remaining from today to the estimated runout.
+        runout = d.get("runout_date")
+        today = d.get("today")
+        remaining_cover = (runout - today).days if runout is not None and today is not None else None
+        d["eff_cover_left"] = Decimal(remaining_cover) if remaining_cover is not None else None
+        d["eff_order_date"] = runout
+        d["eff_days_until_due"] = remaining_cover
+        if remaining_cover is None:
+            d["eff_status"] = d["status"]
+        elif remaining_cover <= 0:
+            d["eff_status"] = "due"
+        elif remaining_cover < 3:
+            d["eff_status"] = "soon"
+        else:
+            d["eff_status"] = "ok"
     return d
 
 
@@ -68,14 +81,14 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         return redir
 
     include_inactive = request.query_params.get("inactive") == "1"
-    show_all = request.query_params.get("show") == "all"
-
     rows = [_enrich(r) for r in db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()]
 
     action, upcoming, no_history, recently_bought = [], [], [], []
     for r in rows:
-        if r["status"] == "insufficient_history" and not r["has_stock"]:
-            no_history.append(r)
+        cover = r["eff_cover_left"]
+        if cover is not None:
+            # One explicit gate: populate only when cover is strictly under 3 days.
+            (action if cover < 3 else upcoming).append(r)
         elif r["has_stock"]:
             # A physical count is ground truth — it beats cadence AND the
             # recently-bought skip (you can buy and still be low, or vice versa).
@@ -83,9 +96,9 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         elif r["recently_purchased"]:
             recently_bought.append(r)
         elif r["status"] in _ACTION:
-            action.append(r)
+            no_history.append(r)
         else:
-            upcoming.append(r)
+            no_history.append(r)
 
     # Most urgent first, by effective days-until-due.
     _key = lambda r: (r["eff_days_until_due"] if r["eff_days_until_due"] is not None else 9999, r["name"])
@@ -104,7 +117,6 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         "recently_bought": recently_bought,
         "est_action_cost": est_action_cost,
         "include_inactive": include_inactive,
-        "show_all": show_all,
         "generated_on": rows[0]["today"] if rows else None,
     })
 
@@ -125,25 +137,38 @@ def record_stock(
     count_unit = count_unit or unit
     on_hand = max(qty, 0.0)
 
+    units = db.execute(
+        text(
+            "SELECT i.pack_size_g, COALESCE(v.unit::text, i.unit::text) AS forecast_unit "
+            "FROM ingredients i LEFT JOIN v_ingredient_reorder_forecast v ON v.ingredient_id = i.id "
+            "WHERE i.id = :i"
+        ),
+        {"i": ingredient_id},
+    ).mappings().one()
+    forecast_unit = units["forecast_unit"] or unit
+
     # Packets -> primary unit via pack_size_g (grams/packet). Only weight units
     # convert; a volume primary unit with 'packet' should never happen.
     if count_unit == "packet":
-        pack_g = db.execute(
-            text("SELECT pack_size_g FROM ingredients WHERE id = :i"), {"i": ingredient_id}
-        ).scalar()
+        pack_g = units["pack_size_g"]
         if pack_g:
-            grams = on_hand * float(pack_g)
-            if unit == "kg":
-                on_hand = grams / 1000.0
-            elif unit == "g":
-                on_hand = grams
+            on_hand = on_hand * float(pack_g)
+            count_unit = "g"
+
+    conversions = {
+        ("kg", "g"): 1000.0,
+        ("g", "kg"): 0.001,
+        ("l", "ml"): 1000.0,
+        ("ml", "l"): 0.001,
+    }
+    on_hand *= conversions.get((count_unit, forecast_unit), 1.0)
 
     db.execute(
         text(
             "INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by, note) "
             "VALUES (:i, :q, :u, :by, :note)"
         ),
-        {"i": ingredient_id, "q": on_hand, "u": unit, "by": counted_by, "note": note},
+        {"i": ingredient_id, "q": on_hand, "u": forecast_unit, "by": counted_by, "note": note},
     )
 
 

@@ -112,10 +112,6 @@
 </div>
 
 <form method="get" action="/order-forecast" class="filter-bar print-hide">
-  <select name="show" class="form-input filter-select" onchange="this.form.submit()">
-    <option value="action" {% if not show_all %}selected{% endif %}>Needs ordering</option>
-    <option value="all" {% if show_all %}selected{% endif %}>All ingredients</option>
-  </select>
   <label style="font-size:.82rem; display:flex; align-items:center; gap:.35rem; white-space:nowrap">
     <input type="checkbox" name="inactive" value="1" {% if include_inactive %}checked{% endif %}
            onchange="this.form.submit()"> Include inactive
@@ -129,7 +125,7 @@
   <span class="prep-meta">
     {% if generated_on %}As of {{ generated_on.strftime('%d %b %Y') }} (IST) · {% endif %}
     {% if est_action_cost %}est. ₹{{ "%.0f"|format(est_action_cost) }} · {% endif %}
-    stock count where entered, else purchase cadence
+    only cover below 3 days · stock count where entered, else estimated remaining cover
   </span>
 </div>
 
@@ -146,24 +142,7 @@
 </div>
 {% else %}
 <div class="card">
-  <p>Nothing due to order right now. Everything with a known usage rate has more than 3 days of cover.</p>
-</div>
-{% endif %}
-
-{% if show_all and upcoming %}
-<div class="prep-head" style="margin-top:1.4rem">
-  <h2 class="prep-title">Not due yet</h2>
-  <span class="prep-meta">{{ upcoming|length }} ingredient{{ 's' if upcoming|length != 1 }} with cover</span>
-</div>
-<div class="card">
-  <div class="recon-table-wrap">
-    <table class="recon-table ord-table">
-      <thead>{{ head() }}</thead>
-      <tbody>
-        {% for r in upcoming %}{{ row(r) }}{% endfor %}
-      </tbody>
-    </table>
-  </div>
+  <p>Nothing due to order right now. Every ingredient with measurable cover has at least 3 days remaining.</p>
 </div>
 {% endif %}
 
@@ -175,7 +154,7 @@
     <div>
       <div class="prep-head" style="margin-top:0">
         <h2 class="prep-title">Recently bought — skipped</h2>
-        <span class="prep-meta">purchased in the last 3 days (and no stock count), so not due to reorder yet</span>
+        <span class="prep-meta">no measurable remaining cover yet</span>
       </div>
       <p class="ord-nohist">
         {% for r in recently_bought %}<span>{{ r.name }}{% if r.days_since_purchase is not none %}
@@ -211,7 +190,7 @@
         <strong>last purchase + average gap between orders</strong>.
       </p>
       <p style="margin-top:.4rem">
-        <strong>Cover</strong> = days left at the implied usage rate. Usage rate comes from ~a month
+        <strong>Cover</strong> = days remaining as of today at the implied usage rate. Usage rate comes from ~a month
         of purchases, so treat it as a prompt to check stock, not gospel — and correcting a wrong
         quantity is as simple as entering what's actually on the shelf.
       </p>
