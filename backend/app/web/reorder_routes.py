@@ -92,13 +92,36 @@ _MANUAL_REORDER_SQL = text("""
        AND (pe.event_at IS NULL OR s.counted_at > pe.event_at)
 """)
 
-_GAS_REORDER_KG = Decimal("10")
 _LATEST_GAS_SQL = text("""
     SELECT recorded_at, gross_kg, tare_kg, (gross_kg - tare_kg) AS net_kg
       FROM gas_readings
      WHERE cylinder_role = 'in_use'
      ORDER BY recorded_at DESC
      LIMIT 1
+""")
+
+_GAS_AVERAGE_SQL = text("""
+    WITH ordered AS (
+        SELECT recorded_at, is_new_cylinder,
+               gross_kg - tare_kg AS net_kg,
+               LAG(recorded_at) OVER (ORDER BY recorded_at) AS previous_at,
+               LAG(gross_kg - tare_kg) OVER (ORDER BY recorded_at) AS previous_net_kg
+          FROM gas_readings
+         WHERE cylinder_role = 'in_use'
+    ), intervals AS (
+        SELECT EXTRACT(EPOCH FROM recorded_at - previous_at) AS elapsed_seconds,
+               CASE
+                   WHEN is_new_cylinder THEN
+                       previous_net_kg + GREATEST(19.2 - net_kg, 0)
+                   ELSE GREATEST(previous_net_kg - net_kg, 0)
+               END AS kg_used
+          FROM ordered
+         WHERE previous_at IS NOT NULL AND recorded_at > previous_at
+    )
+    SELECT CASE WHEN SUM(elapsed_seconds) > 0
+                THEN SUM(kg_used) / (SUM(elapsed_seconds) / 86400)
+                ELSE NULL END AS avg_kg_per_day
+      FROM intervals
 """)
 
 _LATEST_GAS_PURCHASE_SQL = text("""
@@ -166,12 +189,13 @@ def _enrich(row, activity=None) -> dict:
     return d
 
 
-def _apply_gas_log(d: dict, gas_reading, gas_purchase=None) -> dict:
+def _apply_gas_log(d: dict, gas_reading, gas_purchase=None, gas_avg_per_day=None) -> dict:
     """Replace Cooking Gas cadence with the latest measured in-use cylinder."""
     d["is_gas"] = d.get("name") == "Cooking Gas"
     if not d["is_gas"]:
         return d
-    d["gas_reorder_kg"] = _GAS_REORDER_KG
+    d["gas_avg_kg_per_day"] = gas_avg_per_day
+    d["gas_reorder_kg"] = gas_avg_per_day
     d["gas_net_kg"] = gas_reading["net_kg"] if gas_reading else None
     d["gas_gross_kg"] = gas_reading["gross_kg"] if gas_reading else None
     d["gas_tare_kg"] = gas_reading["tare_kg"] if gas_reading else None
@@ -183,11 +207,17 @@ def _apply_gas_log(d: dict, gas_reading, gas_purchase=None) -> dict:
         and (not gas_reading or gas_purchase["event_at"] > gas_reading["recorded_at"])
     )
     d["gas_purchase_date"] = gas_purchase["purchase_date"] if gas_purchase else None
+    d["gas_cover_days"] = (
+        d["gas_net_kg"] / gas_avg_per_day
+        if d["gas_net_kg"] is not None and gas_avg_per_day is not None and gas_avg_per_day > 0
+        else None
+    )
     d["eff_status"] = (
         "due"
         if not d["gas_purchase_after_reading"]
+        and gas_avg_per_day is not None
         and d["gas_net_kg"] is not None
-        and d["gas_net_kg"] < _GAS_REORDER_KG
+        and d["gas_net_kg"] < gas_avg_per_day
         else "ok"
     )
     d["eff_days_until_due"] = None
@@ -202,8 +232,9 @@ def _needs_order(r: dict) -> bool:
     if r.get("is_gas"):
         return (
             not r.get("gas_purchase_after_reading")
+            and r.get("gas_avg_kg_per_day") is not None
             and r.get("gas_net_kg") is not None
-            and r["gas_net_kg"] < _GAS_REORDER_KG
+            and r["gas_net_kg"] < r["gas_avg_kg_per_day"]
         )
     cover = r.get("eff_cover_left")
     return cover is not None and cover < 3
@@ -217,6 +248,7 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
 
     include_inactive = request.query_params.get("inactive") == "1"
     gas_reading = db.execute(_LATEST_GAS_SQL).mappings().first()
+    gas_avg_per_day = db.execute(_GAS_AVERAGE_SQL).scalar()
     gas_purchase = db.execute(_LATEST_GAS_PURCHASE_SQL).mappings().first()
     activity = {
         r["ingredient_id"]: r
@@ -227,6 +259,7 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
             _enrich(r, activity.get(r["ingredient_id"])),
             gas_reading,
             gas_purchase,
+            gas_avg_per_day,
         )
         for r in db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()
     ]
