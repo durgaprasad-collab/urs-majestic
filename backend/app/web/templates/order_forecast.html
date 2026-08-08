@@ -17,6 +17,8 @@
   <td class="ord-status" data-label="Status">
     {% if r.manual_reorder %}
       <span class="ord-pill ord-due">Stock Log reorder</span>
+    {% elif r.is_gas and r.gas_purchase_after_reading %}
+      <span class="ord-pill ord-ok">Purchased</span>
     {% elif r.is_gas %}
       <span class="ord-pill ord-due">Below 10 kg</span>
     {% else %}
@@ -67,6 +69,9 @@
     {% if r.manual_reorder %}
       <strong>Manually marked for reorder</strong>
       <span>From the latest Stock Log count</span>
+    {% elif r.is_gas and r.gas_purchase_after_reading %}
+      <strong>Purchase entered after this reading</strong>
+      <span>Next Gas Log reading becomes authoritative</span>
     {% elif r.is_gas and r.gas_net_kg is not none %}
       <strong>{{ "%.1f"|format(r.gas_gross_kg) }} kg gross − {{ "%.1f"|format(r.gas_tare_kg) }} kg tare</strong>
       <span>= {{ "%.1f"|format(r.gas_net_kg) }} kg net · reorder below {{ "%g"|format(r.gas_reorder_kg) }} kg</span>

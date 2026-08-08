@@ -59,6 +59,15 @@ _LATEST_GAS_SQL = text("""
      LIMIT 1
 """)
 
+_LATEST_GAS_PURCHASE_SQL = text("""
+    SELECT p.created_at, p.purchase_date
+      FROM purchases p
+      JOIN ingredients i ON i.id = p.ingredient_id
+     WHERE i.name = 'Cooking Gas' AND p.deleted_at IS NULL
+     ORDER BY p.created_at DESC
+     LIMIT 1
+""")
+
 
 def _enrich(row) -> dict:
     """Attach effective (stock-preferred, else cadence) fields for display."""
@@ -99,7 +108,7 @@ def _enrich(row) -> dict:
     return d
 
 
-def _apply_gas_log(d: dict, gas_reading) -> dict:
+def _apply_gas_log(d: dict, gas_reading, gas_purchase=None) -> dict:
     """Replace Cooking Gas cadence with the latest measured in-use cylinder."""
     d["is_gas"] = d.get("name") == "Cooking Gas"
     if not d["is_gas"]:
@@ -111,7 +120,18 @@ def _apply_gas_log(d: dict, gas_reading) -> dict:
     d["gas_recorded_at"] = (
         gas_reading["recorded_at"].astimezone(business_tz()) if gas_reading else None
     )
-    d["eff_status"] = "due" if d["gas_net_kg"] is not None and d["gas_net_kg"] < _GAS_REORDER_KG else "ok"
+    d["gas_purchase_after_reading"] = bool(
+        gas_purchase
+        and (not gas_reading or gas_purchase["created_at"] > gas_reading["recorded_at"])
+    )
+    d["gas_purchase_date"] = gas_purchase["purchase_date"] if gas_purchase else None
+    d["eff_status"] = (
+        "due"
+        if not d["gas_purchase_after_reading"]
+        and d["gas_net_kg"] is not None
+        and d["gas_net_kg"] < _GAS_REORDER_KG
+        else "ok"
+    )
     d["eff_days_until_due"] = None
     d["eff_cover_left"] = None
     d["eff_order_date"] = d.get("today") if d["eff_status"] == "due" else None
@@ -122,7 +142,11 @@ def _needs_order(r: dict) -> bool:
     if r.get("manual_reorder"):
         return True
     if r.get("is_gas"):
-        return r.get("gas_net_kg") is not None and r["gas_net_kg"] < _GAS_REORDER_KG
+        return (
+            not r.get("gas_purchase_after_reading")
+            and r.get("gas_net_kg") is not None
+            and r["gas_net_kg"] < _GAS_REORDER_KG
+        )
     cover = r.get("eff_cover_left")
     return cover is not None and cover < 3
 
@@ -135,8 +159,9 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
 
     include_inactive = request.query_params.get("inactive") == "1"
     gas_reading = db.execute(_LATEST_GAS_SQL).mappings().first()
+    gas_purchase = db.execute(_LATEST_GAS_PURCHASE_SQL).mappings().first()
     rows = [
-        _apply_gas_log(_enrich(r), gas_reading)
+        _apply_gas_log(_enrich(r), gas_reading, gas_purchase)
         for r in db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()
     ]
 
