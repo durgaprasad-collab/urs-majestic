@@ -100,6 +100,14 @@ class Settings(BaseSettings):
     # rate-limited, so register your own for reliability.
     OCR_SPACE_API_KEY: str = "helloworld"
 
+    # Notion — internal integration secret for the Daily Brief's live task
+    # panels (read) and task-complete write-through (PATCH). Empty = the
+    # brief's task panels degrade to "Notion not connected" rather than error.
+    # Create at notion.so/my-integrations, then share the task-board database
+    # with it (database "..." menu -> Connections).
+    NOTION_API_KEY: str = ""
+    NOTION_TASK_BOARD_DATA_SOURCE_ID: str = "df7239a8-f1e3-4507-afcb-d696cdd764e7"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

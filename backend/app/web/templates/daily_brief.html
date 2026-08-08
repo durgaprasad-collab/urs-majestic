@@ -1,392 +1,202 @@
 {% extends "base.html" %}
 {% block title %}Daily Brief — URS Majestic{% endblock %}
 
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
-{% if has_data %}
-
-<div class="print-bar print-hide">
-  <button type="button" class="btn-secondary print-btn" onclick="exportBriefPdf()">🖨 Save as PDF</button>
-  <span class="recon-sub">One-page printout of the whole brief.</span>
-</div>
-
-<div class="print-root" id="brief-print-root">
-
-{# ═══ HERO — one number, one status, on-track pill ══════════════════════════ #}
-<div class="hero-band">
-  <div class="v3-exec-top" style="align-items:flex-start">
-    <div>
-      <span class="hero-label">Daily Brief · {{ exec.reporting_date.strftime('%a %d %b %Y') }}{%- if exec.last_refresh %} · refreshed {{ exec.last_refresh.strftime('%H:%M') }}{% endif %}</span>
-      <div class="hero-value">₹{{ "{:,.0f}".format(exec.net_sales) }}</div>
-      <span class="hero-sub">
-        {% if exec.pct_vs_prior_day is not none %}{{ "%+.1f"|format(exec.pct_vs_prior_day) }}%{% else %}—{% endif %} prior day ·
-        {% if exec.pct_vs_same_weekday is not none %}{{ "%+.1f"|format(exec.pct_vs_same_weekday) }}%{% else %}—{% endif %} same weekday
-      </span>
-    </div>
-    <span class="v3-status
-      {%- if exec.data_status == 'DATA TRUSTED' %} v3-status-ok
-      {%- elif exec.data_status == 'DATA PENDING' %} v3-status-pending
-      {%- else %} v3-status-warn{% endif %}">
-      {%- if exec.data_status == 'DATA TRUSTED' %}✓ {% elif exec.data_status == 'DATA PENDING' %}⏳ {% else %}⚠ {% endif -%}
-      {{ exec.data_status }}
-    </span>
-  </div>
-
-  {% if exec.configured %}
-  <span class="hero-pill {{ '' if exec.on_track else 'hero-pill-warn' }}">{{ '✓ On track for the month' if exec.on_track else '✗ Behind pace' }}</span>
-  <div class="hero-mini-grid">
-    <div><span class="hmg-label">MTD sales</span><span class="hmg-val">₹{{ "{:,.0f}".format(exec.mtd_sales) }}</span></div>
-    <div><span class="hmg-label">Projected</span><span class="hmg-val">₹{{ "{:,.0f}".format(exec.projected) }}</span></div>
-    <div><span class="hmg-label">Target</span><span class="hmg-val">₹{{ "{:,.0f}".format(exec.operating_target) }}</span></div>
-  </div>
-  {% else %}
-  <p class="hero-sub" style="margin-top:.6rem">Add your fixed expenses in <a href="/business-settings" style="color:#fff;text-decoration:underline">Business Settings</a> to see break-even, operating and stretch targets here.</p>
-  {% endif %}
-</div>
-
-{# ═══ ATTENTION REQUIRED  +  WINS — always visible, short by design ═════════ #}
-<div class="v3-row2">
-  <div class="card v2-attention {{ 'v2-attention-clear' if not attention else '' }}">
-    <div class="v2-head">
-      <span class="v2-emoji">⚠️</span>
-      <h2 class="card-title">Attention Required</h2>
-      {% if attention %}<span class="v2-count">{{ attention|length }}</span>{% endif %}
-    </div>
-    {% if attention %}
-    <ul class="v2-attn-list">
-      {% for a in attention %}
-      <li class="v2-attn v2-sev{{ a.sev }}">
-        <span class="v3-pri v3-pri-{{ a.sev }}">{{ a.pri_label }}</span>
-        <div class="v2-attn-body">
-          <span class="v2-attn-title">{{ a.title }}</span>
-          {% if a.detail %}<span class="v2-attn-detail">{{ a.detail }}</span>{% endif %}
-        </div>
-        {% if a.link %}<a class="btn-link-sm v2-attn-cta" href="{{ a.link }}">{{ a.link_label or 'View' }} →</a>{% endif %}
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p class="v2-clear">✓ All clear — nothing needs your attention today.</p>
-    {% endif %}
-  </div>
-
-  <div class="card v3-wins">
-    <div class="v2-head"><span class="v2-emoji">🎉</span><h2 class="card-title">Wins of the Day</h2></div>
-    {% if wins %}
-    <ul class="v3-wins-list">
-      {% for w in wins %}
-      <li class="v3-win">
-        <span class="v3-win-ic">{{ w.icon }}</span>
-        <div class="v2-attn-body">
-          <span class="v2-attn-title">{{ w.title }}</span>
-          {% if w.detail %}<span class="v2-attn-detail">{{ w.detail }}</span>{% endif %}
-        </div>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p class="recon-sub">No standout wins today — keep the momentum going.</p>
-    {% endif %}
-  </div>
-</div>
-
-{# ═══ GM ACTIONS — the "what do I actually do today" list, stays visible ═══ #}
-<div class="card recon-disclaimer">
-  <h2 class="card-title" style="font-size:.95rem">GM Actions</h2>
-  {% if gm_actions %}
-  <ul class="v3-gm-list">
-    {% for a in gm_actions %}
-    <li class="v3-gm">
-      <span class="v3-pri v3-pri-{{ 1 if a.priority == 'HIGH' else (2 if a.priority == 'MEDIUM' else 3) }}">{{ a.priority }}</span>
-      <div class="v3-gm-body">
-        <span class="v3-gm-action">{{ a.action }}</span>
-        <span class="v3-gm-meta">Owner: {{ a.owner }} · Target: {{ a.deadline_label }}</span>
-      </div>
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="card-sub">Nothing needs attention.</p>
-  {% endif %}
-</div>
-
-{# ═══ SHOW MORE — targets detail, contribution, trend, channels, customer, ops, legacy sales/menu breakdown ═══ #}
-<details class="show-more" style="margin-top:.6rem">
-  <summary>Business targets, channel performance, customer &amp; ops detail</summary>
-  <div class="show-more-body">
-
-    <div class="card v3-targets">
-      <div class="v2-head">
-        <span class="v2-emoji">🎯</span>
-        <h2 class="card-title">Business Targets</h2>
-        <a class="btn-link-sm" href="/business-settings" style="margin-left:auto">Business Settings →</a>
-      </div>
-      {% if bt.computable %}
-      <div class="v3-tgt-grid">
-        <div class="v3-tgt-card v3-tgt-be">
-          <span class="recon-label">Break-even</span>
-          <span class="v3-tgt-big">₹{{ "{:,.0f}".format(bt.break_even) }}</span>
-          <span class="recon-sub">covers fixed expenses</span>
-        </div>
-        <div class="v3-tgt-card v3-tgt-op">
-          <span class="recon-label">Operating</span>
-          <span class="v3-tgt-big">₹{{ "{:,.0f}".format(bt.operating) }}</span>
-          <span class="recon-sub">+ ₹{{ "{:,.0f}".format(bt.desired_profit) }} profit</span>
-        </div>
-        <div class="v3-tgt-card v3-tgt-st">
-          <span class="recon-label">Stretch</span>
-          <span class="v3-tgt-big">₹{{ "{:,.0f}".format(bt.stretch) }}</span>
-          <span class="recon-sub">+ {{ "%g"|format(bt.growth_pct) }}% growth</span>
-        </div>
-        <div class="v3-tgt-card v3-tgt-proj {{ 'v3-tgt-ok' if exec.on_track else 'v3-tgt-warn' }}">
-          <span class="recon-label">Projected month-end</span>
-          <span class="v3-tgt-big">₹{{ "{:,.0f}".format(bt.projected_month_end) }}</span>
-          <span class="recon-sub">{{ bt.confidence }} confidence · {{ bt.days_elapsed }}/{{ bt.days_in_month }} days</span>
-        </div>
-      </div>
-
-      <div class="v3-tgt-assumptions">
-        <span>Fixed expenses <b>₹{{ "{:,.0f}".format(bt.fixed_expenses) }}</b></span>
-        <span>Desired profit <b>₹{{ "{:,.0f}".format(bt.desired_profit) }}</b></span>
-        <span>Contribution margin <b>{{ "%g"|format(bt.margin_pct) }}%</b></span>
-        <span>Growth <b>{{ "%g"|format(bt.growth_pct) }}%</b></span>
-        {% if bt.recommended_growth_pct is not none %}
-        <span class="v3-tgt-rec">💡 Suggested growth <b>{{ "%g"|format(bt.recommended_growth_pct) }}%</b> <span class="recon-sub">(needs your approval)</span></span>
-        {% endif %}
-      </div>
-
-      <details class="v3-explain">
-        <summary>How was this calculated?</summary>
-        <div class="v3-explain-body">
-          {% for key, label in [('break_even','Break-even'), ('operating','Operating'), ('stretch','Stretch'), ('projection','Projection')] %}
-          {% set e = bt.explain[key] %}
-          <div class="v3-explain-item">
-            <span class="v3-explain-title">{{ label }}</span>
-            <span class="v3-explain-formula">{{ e.formula }}</span>
-            <span class="recon-sub">Inputs: {% for k, v in e.inputs.items() %}{{ k }} = {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</span>
-            <span class="recon-sub">Source: {{ e.data_source }} · Confidence: {{ e.confidence }} · Owner: {{ e.owner }}</span>
-          </div>
-          {% endfor %}
-          <p class="recon-sub">Calculated {{ bt.calculated_at.strftime('%d %b %H:%M') if bt.calculated_at else '—' }} from Business Settings — the one source of truth for the whole OS.</p>
-        </div>
-      </details>
-      {% else %}
-      <p class="recon-sub">Set your fixed expenses and a contribution margin in <a href="/business-settings">Business Settings</a> to compute break-even, operating and stretch targets.</p>
-      {% endif %}
-    </div>
-
-    <div class="v2-row">
-      {% if contrib %}
-      <div class="card v2-contrib">
-        <div class="v2-head">
-          <span class="v2-emoji">💰</span>
-          <h2 class="card-title">Estimated Contribution</h2>
-          <span class="v2-badge" title="Estimate — {% if contrib.basis == 'derived' %}sales-weighted from engine-derived recipe costs, provisional until per-item weigh-ins are confirmed{% else %}flat food-cost assumption until recipe costing is available{% endif %}">EST</span>
-        </div>
-        <div class="v2-two">
-          <div class="v2-two-cell">
-            <span class="recon-label">Yesterday</span>
-            <span class="kpi-big">₹{{ "{:,.0f}".format(contrib.day_contribution) }}</span>
-            <span class="recon-sub">
-              {{ "%.0f"|format(contrib.contribution_pct) }}% margin
-              {%- if contrib.trend_pct is not none %} · <span class="{{ 'kpi-up' if contrib.trend_dir == 'up' else 'kpi-down' }}">{{ "%+.0f"|format(contrib.trend_pct) }}%</span> vs prior{% endif %}
-            </span>
-          </div>
-          <div class="v2-two-cell">
-            <span class="recon-label">Month-to-date</span>
-            <span class="kpi-big">₹{{ "{:,.0f}".format(contrib.mtd_contribution) }}</span>
-            <span class="recon-sub">of ₹{{ "{:,.0f}".format(contrib.mtd_sales) }} sales</span>
-          </div>
-        </div>
-        <p class="recon-sub v2-note">
-          {%- if contrib.basis == 'derived' %}
-          Estimated using derived recipe costs — sales-weighted ~{{ "%.0f"|format(contrib.food_cost_pct) }}% food cost
-          across {{ contrib.coverage_pct }}% of menu sales. Provisional until per-item weigh-ins are confirmed.
-          {%- else %}
-          Estimated at ~{{ "%.0f"|format(contrib.food_cost_pct) }}% food cost (flat assumption).
-          Becomes actual contribution once recipe costing is available.
-          {%- endif %}
-        </p>
-      </div>
-      {% endif %}
-
-      {% if trend and trend.days %}
-      <div class="card v2-trend">
-        <div class="v2-head">
-          <span class="v2-emoji">📈</span>
-          <h2 class="card-title">Last 7-Day Trend</h2>
-          <span class="v2-period">avg ₹{{ "{:,.0f}".format(trend.avg) }}</span>
-        </div>
-        <div class="v2-spark">
-          {% for r in trend.days %}
-          <div class="v2-spark-col" title="{{ r.date.strftime('%a %d %b') }}: ₹{{ '{:,.0f}'.format(r.net) }}">
-            <div class="v2-spark-track">
-              <div class="v2-spark-bar {{ 'v2-spark-empty' if not r.has_data else '' }}" style="height: {{ r.pct }}%"></div>
-            </div>
-            <span class="v2-spark-val">{{ '{:,.0f}'.format(r.net/1000) }}k</span>
-            <span class="v2-spark-lbl">{{ r.date.strftime('%a')[:2] }}</span>
-          </div>
-          {% endfor %}
-        </div>
-        <div class="v3-trend-foot">
-          {% if trend.high %}<span>▲ High {{ trend.high.date.strftime('%a') }} ₹{{ "{:,.0f}".format(trend.high.net) }}</span>{% endif %}
-          {% if trend.low %}<span>▼ Low {{ trend.low.date.strftime('%a') }} ₹{{ "{:,.0f}".format(trend.low.net) }}</span>{% endif %}
-          {% if trend.streak_len and trend.streak_dir %}
-          <span class="{{ 'kpi-up' if trend.streak_dir == 'up' else 'kpi-down' }}">
-            {{ trend.streak_len }} {{ 'growth' if trend.streak_dir == 'up' else 'declining' }} day{{ 's' if trend.streak_len != 1 else '' }}
-          </span>
-          {% endif %}
-        </div>
-      </div>
-      {% endif %}
-    </div>
-
-    <div class="card v3-channels">
-      <div class="v2-head"><span class="v2-emoji">🛒</span><h2 class="card-title">Channel Performance</h2><span class="v2-period">{{ exec.reporting_date.strftime('%d %b') }}</span></div>
-      <div class="v3-chan-grid">
-        {% for c in channels %}
-        <div class="v3-chan v3-chan-{{ c.status }}">
-          <span class="recon-label">{{ c.label }}</span>
-          {% if c.value is not none %}
-          <span class="recon-value">₹{{ "{:,.0f}".format(c.value) }}</span>
-          {% else %}
-          <span class="v3-chan-note">{{ c.note }}</span>
-          {% endif %}
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-
-    <div class="v2-row">
-      <div class="card v3-customer">
-        <div class="v2-head"><span class="v2-emoji">⭐</span><h2 class="card-title">Customer</h2></div>
-        <div class="v3-rating-row">
-          {% for label, val in [('Google', customer.google), ('Zomato', customer.zomato), ('Swiggy', customer.swiggy)] %}
-          <div class="v3-rating">
-            <span class="recon-label">{{ label }}</span>
-            {% if val is not none %}<span class="v3-rating-v">{{ "%.1f"|format(val) }}★</span>
-            {% else %}<span class="v3-rating-na">Not connected</span>{% endif %}
-          </div>
-          {% endfor %}
-        </div>
-        <div class="v3-cust-meta">
-          <span>Reviews: <b>{{ customer.review_count }}</b>{% if customer.counter_avg is not none %} · counter avg {{ customer.counter_avg }}★{% endif %}</span>
-          <span>New (7d): <b>{{ customer.new_reviews }}</b></span>
-          <span>Awaiting reply: <b>{% if customer.awaiting_response is not none %}{{ customer.awaiting_response }}{% else %}—{% endif %}</b></span>
-        </div>
-        {% if not customer.any_rating_connected %}<p class="recon-sub v2-note">Platform ratings are manual until review feeds connect — gracefully hidden when unset.</p>{% endif %}
-      </div>
-
-      <div class="card v3-ops">
-        <div class="v2-head"><span class="v2-emoji">⚙️</span><h2 class="card-title">Operations</h2></div>
-        <div class="kpi-staleness">
-          {% for u in operations.uploads %}
-          <span class="kpi-chip{% if u.is_stale %} kpi-chip-stale{% endif %}">
-            {{ u.channel }}: {{ u.latest_date.strftime('%d %b') if u.latest_date else "no data" }}
-            {%- if u.is_stale %} — ⚠ {{ u.days_behind }}d behind{% endif %}
-            {%- if operations.import_errors.get(u.channel) %} — ⚠ {{ operations.import_errors[u.channel] }} failed{% endif %}
-          </span>
-          {% endfor %}
-        </div>
-        <div class="v3-ops-meta">
-          <span>Reconciliation: <b class="{{ 'kpi-up' if operations.recon_status == 'DATA TRUSTED' else 'kpi-down' }}">{{ operations.recon_status }}</b></span>
-          <span>Import errors: <b>{{ operations.import_error_total }}</b></span>
-          <span>Avg prep time: <b>{% if operations.avg_prep_time is not none %}{{ "%.0f"|format(operations.avg_prep_time) }} min{% else %}Not tracked{% endif %}</b></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card {{ 'brief-dimmed' if not trusted else '' }}">
-      <span class="kpi-label">Net sales — {{ summary.data_through.strftime('%d %b %Y') }}</span>
-      <div class="kpi-big">₹{{ "{:,.0f}".format(summary.latest_day_sales) }}</div>
-      <div class="kpi-deltas">
-        <span class="kpi-delta{% if summary.pct_vs_prior_day is not none %}{{ ' kpi-up' if summary.pct_vs_prior_day >= 0 else ' kpi-down' }}{% endif %}">
-          {% if summary.pct_vs_prior_day is not none %}{{ "%+.1f"|format(summary.pct_vs_prior_day) }}%{% else %}—{% endif %} prior day
-        </span>
-        <span class="kpi-delta{% if summary.pct_vs_same_weekday is not none %}{{ ' kpi-up' if summary.pct_vs_same_weekday >= 0 else ' kpi-down' }}{% endif %}">
-          {% if summary.pct_vs_same_weekday is not none %}{{ "%+.1f"|format(summary.pct_vs_same_weekday) }}%{% else %}—{% endif %} same weekday
-        </span>
-      </div>
-
-      <div class="recon-grid" style="margin-top:.75rem; grid-template-columns: repeat(5, 1fr)">
-        <div class="recon-card recon-menu"><span class="recon-label">Counter</span><span class="recon-value">₹{{ "{:,.0f}".format(summary.counter_sales or 0) }}</span></div>
-        <div class="recon-card recon-menu"><span class="recon-label">Zomato</span><span class="recon-value">₹{{ "{:,.0f}".format(summary.zomato_sales or 0) }}</span></div>
-        <div class="recon-card recon-menu"><span class="recon-label">Swiggy</span><span class="recon-value">₹{{ "{:,.0f}".format(summary.swiggy_sales or 0) }}</span></div>
-        <div class="recon-card recon-personal"><span class="recon-label">Delivery orders</span><span class="recon-value">{{ summary.delivery_orders or 0 }}</span></div>
-        <div class="recon-card recon-personal"><span class="recon-label">Delivery AOV</span><span class="recon-value">₹{{ "{:,.0f}".format(summary.delivery_aov) if summary.delivery_aov is not none else "—" }}</span></div>
-      </div>
-      <p class="recon-sub" style="margin-top:.4rem">
-        Counter AOV: {{ "₹{:,.0f}".format(summary.counter_aov) if summary.counter_aov is not none else "—" }}
-      </p>
-    </div>
-
-    <div class="card">
-      <h2 class="card-title" style="font-size:.9rem">Menu — as of {{ menu_as_of.strftime('%d %b') if menu_as_of else "—" }}</h2>
-      <div class="brief-menu-cols">
-        <div class="brief-menu-col">
-          <span class="brief-menu-heading">Top</span>
-          {% for r in top %}<div class="brief-menu-row"><span>{{ r.item }}</span><span class="col-num">₹{{ "{:,.0f}".format(r.revenue) }}</span></div>{% endfor %}
-        </div>
-        <div class="brief-menu-col">
-          <span class="brief-menu-heading">Bottom</span>
-          {% for r in bottom %}<div class="brief-menu-row"><span>{{ r.item }}</span><span class="col-num">₹{{ "{:,.0f}".format(r.revenue) }}</span></div>{% endfor %}
-        </div>
-        <div class="brief-menu-col">
-          <span class="brief-menu-heading">Zero sales (14d) — {{ zero|length }}</span>
-          {% for r in zero[:5] %}<div class="brief-menu-row"><span>{{ r.item }}</span></div>{% endfor %}
-          {% if zero|length > 5 %}<div class="brief-menu-row"><span class="recon-sub">+ {{ zero|length - 5 }} more</span></div>{% endif %}
-        </div>
-      </div>
-    </div>
-
-    <div class="kpi-staleness">
-      {% for c in channel_status %}
-      <span class="kpi-chip{% if c.is_stale %} kpi-chip-stale{% endif %}">
-        {{ c.channel }}: {{ c.latest_date.strftime('%d %b') if c.latest_date else "no data" }}
-        {%- if c.is_stale %} — ⚠ {{ c.days_behind_freshest }}d behind{% endif %}
-        {%- if failed_rows_by_channel.get(c.channel) %} — ⚠ {{ failed_rows_by_channel[c.channel] }} row(s) failed last upload{% endif %}
-      </span>
-      {% endfor %}
-    </div>
-
-  </div>
-</details>
-
-{# ── KPI Governance — hidden metadata for future AI explainability (not user-visible) ── #}
-<script type="application/json" id="kpi-governance">{{ kpi_meta|tojson }}</script>
-</div>{# /.print-root #}
-
-<script>
-  // Fit the whole brief onto one A4 page for print / Save-as-PDF. `zoom` reflows
-  // (unlike transform), so the smaller layout genuinely fits one page. The rule
-  // only applies in @media print, so there's no on-screen change.
-  function fitBriefToPage() {
-    var root = document.getElementById('brief-print-root');
-    if (!root) return;
-    root.style.setProperty('--print-zoom', '1');
-    // Measure at the REAL A4 printable width (~198mm @96dpi) so the two-column
-    // rows lay out as they will on paper — measuring the phone's narrow width
-    // over-shrinks. Force the width briefly, read the packed height, restore.
-    var prevW = root.style.width;
-    root.style.width = '748px';
-    var h = root.scrollHeight;
-    root.style.width = prevW;
-    var availH = 1058; // A4 printable height @96dpi with ~5mm margins
-    var z = Math.min(1, availH / h) * 0.97;
-    root.style.setProperty('--print-zoom', Math.max(0.4, z).toFixed(3));
-  }
-  function exportBriefPdf() { fitBriefToPage(); window.print(); }
-  window.addEventListener('beforeprint', fitBriefToPage);
-  window.addEventListener('afterprint', function () {
-    var root = document.getElementById('brief-print-root');
-    if (root) root.style.setProperty('--print-zoom', '1');
-  });
-</script>
-
-{% else %}
+{% if not has_data %}
 <div class="page-header"><h1 class="page-title">Daily Brief</h1></div>
 <div class="card">
   <p class="alert-warning">⏳ DATA PENDING — no sales data has been uploaded yet.</p>
-  <p class="card-sub">Upload a POS or channel file to populate the brief. KPIs will never show stale or misleading values without a reporting date.</p>
+  <p class="card-sub">Upload a POS or channel file to populate the brief.</p>
+</div>
+{% else %}
+<style>
+  .tb-wrap{
+    --tb-paper:#FBF9F3; --tb-paper-fold:#EFE7D6;
+    --tb-ink-full:#12201A; --tb-ink-mid:#5B6B62; --tb-ink-faint:#A9B3AC;
+    --tb-rail:#0B3A2E; --tb-rail2:#174C3E; --tb-gold:#C9A227; --tb-coral:#FF7658;
+    --tb-page-bg:#EDEAE0;
+    font-family:"JetBrains Mono","SF Mono","Cascadia Code",Consolas,monospace;
+    color:var(--tb-ink-full);
+    margin:0 -30px; padding:18px 30px 40px; background:var(--tb-page-bg);
+  }
+  @media (max-width:860px){ .tb-wrap{ margin:0 -15px; padding:14px 15px 40px; } }
+  .tb-display{ font-family:Archivo,"Helvetica Neue",Arial,sans-serif; }
+
+  .tb-error{ background:#FDECEC; border:1px solid #F3C0C0; color:#c0392b; border-radius:10px; padding:10px 14px; font-size:.8rem; margin-bottom:16px; }
+
+  .tb-legend{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;font-size:.7rem;color:var(--tb-ink-mid);}
+  .tb-legend b{color:var(--tb-ink-full);}
+  .tb-ink-sample{font-weight:700;}
+  .tb-ink-sample.measured{color:var(--tb-ink-full);}
+  .tb-ink-sample.derived{color:var(--tb-ink-mid);}
+  .tb-ink-sample.assumed{color:var(--tb-ink-faint);font-style:italic;border-bottom:1px dashed var(--tb-ink-faint);}
+
+  .tb-rail{ background:linear-gradient(180deg,var(--tb-rail),var(--tb-rail2)); border-radius:14px; padding:20px 24px 28px; color:#fff; position:relative; box-shadow:0 18px 40px rgba(11,58,46,.22); }
+  .tb-rail::after{ content:""; position:absolute; left:24px; right:24px; bottom:-3px; height:6px; background:var(--tb-gold); border-radius:3px; box-shadow:0 3px 10px rgba(201,162,39,.4); }
+  .tb-rail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .tb-rail-label{font-size:.63rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9EBBB0;}
+  .tb-rail-figure{font-family:Archivo,sans-serif;font-size:2.2rem;font-weight:800;line-height:1;margin:4px 0 2px;}
+  .tb-rail-sub{font-size:.76rem;color:#CFE3DB;}
+  .tb-rail-status{font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);padding:5px 11px;border-radius:999px;white-space:nowrap;}
+
+  .tb-rail-channels{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.16);}
+  .tb-rail-channels div{display:flex;flex-direction:column;gap:2px;}
+  .tb-rail-ch-label{font-size:.6rem;letter-spacing:.07em;text-transform:uppercase;color:#9EBBB0;}
+  .tb-rail-ch-val{font-family:Archivo,sans-serif;font-size:1.1rem;font-weight:700;}
+
+  .tb-target-strip{ margin-top:16px;padding:13px 15px;border-radius:10px; background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.12); display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap; }
+  .tb-target-nums{display:flex;gap:20px;flex-wrap:wrap;font-size:.78rem;}
+  .tb-target-nums b{font-family:Archivo,sans-serif;font-weight:700;font-size:.92rem;display:block;}
+  .tb-stale-flag{ display:inline-flex;align-items:center;gap:6px;background:var(--tb-coral);color:#fff; font-size:.64rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase; padding:6px 11px;border-radius:8px;box-shadow:0 4px 12px rgba(255,118,88,.35); }
+  .tb-notion-off{ font-size:.63rem;color:#CFE3DB; margin-top:10px; }
+
+  .tb-tickets{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:22px;align-items:start;}
+  @media (max-width:1150px){.tb-tickets{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:620px){.tb-tickets{grid-template-columns:1fr;}}
+
+  .tb-ticket{ background:var(--tb-paper); border:1px solid var(--tb-paper-fold); box-shadow:0 10px 26px rgba(20,30,25,.1); position:relative; }
+  .tb-ticket::before{ content:""; display:block; height:9px; background:linear-gradient(135deg,transparent 50%, var(--tb-page-bg) 50%) 0 0/9px 9px repeat-x, linear-gradient(-135deg,transparent 50%, var(--tb-page-bg) 50%) 0 0/9px 9px repeat-x; background-color:var(--tb-paper); }
+  .tb-ticket-clip{ position:absolute; top:-9px; left:50%; transform:translateX(-50%); width:24px; height:13px; background:var(--tb-gold); border-radius:0 0 5px 5px; box-shadow:0 3px 6px rgba(0,0,0,.2); }
+  .tb-ticket-body{padding:15px 14px 13px;}
+  .tb-ticket-role{ font-family:Archivo,sans-serif; font-weight:800; font-size:.82rem; color:var(--tb-rail); margin:0 0 2px; }
+  .tb-ticket-owner{font-size:.6rem;color:var(--tb-ink-mid);letter-spacing:.03em;text-transform:uppercase;margin-bottom:10px;display:block;}
+
+  .tb-metric-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:5px 0;border-top:1px dashed var(--tb-paper-fold);font-size:.72rem;}
+  .tb-metric-row:first-of-type{border-top:none;}
+  .tb-metric-label{color:var(--tb-ink-mid);}
+  .tb-metric-val{font-weight:700;text-align:right;}
+  .tb-metric-val.measured{color:var(--tb-ink-full);}
+  .tb-metric-val.derived{color:var(--tb-ink-mid);}
+  .tb-metric-val.assumed{color:var(--tb-ink-faint);font-style:italic;}
+
+  .tb-review-form{display:flex;gap:5px;align-items:center;}
+  .tb-review-form input{width:52px;padding:3px 5px;font-size:.72rem;font-family:inherit;border:1px solid var(--tb-paper-fold);border-radius:4px;}
+  .tb-review-form button{font-size:.62rem;font-weight:700;padding:3px 7px;border:1px solid var(--tb-rail);background:#fff;color:var(--tb-rail);border-radius:4px;cursor:pointer;}
+
+  .tb-ticket-tasks{margin-top:10px;padding-top:10px;border-top:1px solid var(--tb-paper-fold);}
+  .tb-tasks-label{font-size:.58rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--tb-ink-mid);margin-bottom:7px;display:block;}
+  .tb-task{margin-bottom:8px;}
+  .tb-task-head{display:flex;align-items:flex-start;gap:6px;}
+  .tb-task-check{ width:15px;height:15px;flex:0 0 15px;border:1.5px solid var(--tb-ink-mid);border-radius:3px;background:#fff;cursor:pointer;padding:0; }
+  .tb-task-check:hover{border-color:var(--tb-rail);background:#F4FAF6;}
+  .tb-pri{font-size:.55rem;font-weight:800;padding:1px 5px;border-radius:3px;flex:0 0 auto;letter-spacing:.02em;}
+  .tb-pri-p0{background:#FDECEC;color:#c0392b;} .tb-pri-p1{background:#FEF4D6;color:#7a6010;} .tb-pri-p2{background:#EAF4FB;color:#1a5276;}
+  .tb-task-title{font-size:.7rem;line-height:1.4;font-weight:600;}
+  .tb-task-detail{font-size:.64rem;color:var(--tb-ink-mid);line-height:1.55;margin:4px 0 0 21px;padding-left:8px;border-left:2px solid var(--tb-paper-fold);}
+  .tb-task-detail b{color:var(--tb-ink-full);}
+  .tb-kill{color:var(--tb-coral);font-weight:600;}
+  .tb-no-tasks{font-size:.64rem;color:var(--tb-ink-mid);font-style:italic;}
+  .tb-notion-note{ margin-top:8px; padding:7px 8px; background:#FEF9E7; border:1px dashed #E6D08A; border-radius:6px; font-size:.6rem; color:#7a6010; line-height:1.5; }
+</style>
+
+<div class="tb-wrap">
+
+  {% if error %}<div class="tb-error">{{ error }}</div>{% endif %}
+
+  <div class="tb-legend">
+    <span><span class="tb-ink-sample measured">measured</span> — directly observed</span>
+    <span><span class="tb-ink-sample derived">derived</span> — calculated from other data</span>
+    <span><span class="tb-ink-sample assumed">assumed</span> — owner-stated or unsourced</span>
+  </div>
+
+  <div class="tb-rail">
+    <div class="tb-rail-top">
+      <div>
+        <span class="tb-rail-label">{{ reporting_date.strftime('%A · %d %b %Y') }} · {{ summary.data_status }}</span>
+        <div class="tb-rail-figure">₹{{ "{:,.2f}".format(summary.latest_day_sales) }}</div>
+        <span class="tb-rail-sub">
+          {% if summary.pct_vs_prior_day is not none %}{{ "%+.1f"|format(summary.pct_vs_prior_day) }}%{% else %}—{% endif %} vs prior day ·
+          {% if summary.pct_vs_same_weekday is not none %}{{ "%+.1f"|format(summary.pct_vs_same_weekday) }}%{% else %}—{% endif %} vs same weekday
+        </span>
+      </div>
+      <span class="tb-rail-status">
+        {%- if summary.data_status == 'DATA TRUSTED' %}✓ {% elif summary.data_status == 'DATA PENDING' %}⏳ {% else %}⚠ {% endif -%}
+        {{ summary.data_status }}
+      </span>
+    </div>
+    <div class="tb-rail-channels">
+      <div><span class="tb-rail-ch-label">Counter</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.counter_sales or 0) }}</span></div>
+      <div><span class="tb-rail-ch-label">Zomato</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.zomato_sales or 0) }}</span></div>
+      <div><span class="tb-rail-ch-label">Swiggy</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.swiggy_sales or 0) }}</span></div>
+    </div>
+    <div class="tb-target-strip">
+      <div class="tb-target-nums">
+        {% if target.computable %}
+        <span>Break-even<b>₹{{ "{:,.0f}".format(target.break_even) }}</b></span>
+        <span>Operating<b>₹{{ "{:,.0f}".format(target.operating) }}</b></span>
+        <span>Stretch<b>₹{{ "{:,.0f}".format(target.stretch) }}</b></span>
+        <span>Margin used<b>{{ "%g"|format(target.margin_pct) }}%</b></span>
+        {% else %}
+        <span>Set fixed expenses in <a href="/business-settings" style="color:#fff">Business Settings</a> to compute targets.</span>
+        {% endif %}
+      </div>
+      {% if target.margin_stale %}<span class="tb-stale-flag">⚠ {{ target.margin_stale_reason }}</span>{% endif %}
+    </div>
+    {% if not notion_connected %}<div class="tb-notion-off">ⓘ Notion not connected — task panels below are showing DB metrics only. Set NOTION_API_KEY to enable live tasks + task-complete write-through.</div>{% endif %}
+  </div>
+
+  <div class="tb-tickets">
+    {% for slug in ['gm', 'coo', 'cro', 'creative', 'bi'] %}
+    {% set panel = roles[slug] %}
+    <div class="tb-ticket">
+      <span class="tb-ticket-clip"></span>
+      <div class="tb-ticket-body">
+        <p class="tb-ticket-role tb-display">{{ panel.label }}</p>
+        <span class="tb-ticket-owner">{% if panel.metrics %}Metrics{% else %}Task-driven, no fixed metrics{% endif %}</span>
+
+        {% for m in panel.metrics %}
+        <div class="tb-metric-row">
+          <span class="tb-metric-label">{{ m.label }}</span>
+          {% if m.editable_key %}
+          <form class="tb-review-form" method="post" action="/daily-brief/creative/google-reviews">
+            <input type="number" name="count" value="{{ '' if m.value == '—' else m.value }}" min="0" required>
+            <button type="submit">Save</button>
+          </form>
+          {% else %}
+          <span class="tb-metric-val {{ m.confidence }}" {% if m.note %}title="{{ m.note }}"{% endif %}>{{ m.value }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="tb-ticket-tasks">
+          <span class="tb-tasks-label">Open tasks</span>
+          {% if not panel.tasks.connected %}
+            <p class="tb-no-tasks">Notion not connected.</p>
+          {% elif panel.tasks.error %}
+            <p class="tb-no-tasks">Notion error: {{ panel.tasks.error }}</p>
+          {% elif not panel.tasks.tasks %}
+            <p class="tb-no-tasks">Nothing open — clear.</p>
+          {% else %}
+            {% for t in panel.tasks.tasks %}
+            <div class="tb-task">
+              <div class="tb-task-head">
+                <form method="post" action="/daily-brief/tasks/{{ t.id }}/complete" style="display:contents">
+                  <button type="submit" class="tb-task-check" title="Mark done in Notion" aria-label="Mark '{{ t.task }}' done"></button>
+                </form>
+                {% if t.priority %}<span class="tb-pri tb-pri-{{ t.priority|lower }}">{{ t.priority }}</span>{% endif %}
+                <span class="tb-task-title">{{ t.task }}</span>
+              </div>
+              {% if t.done_means or t.kill_criterion %}
+              <div class="tb-task-detail">
+                {% if t.done_means %}<b>Done:</b> {{ t.done_means }}{% endif %}
+                {% if t.kill_criterion and t.kill_criterion != 'N/A' %}<br><span class="tb-kill">Kill: {{ t.kill_criterion }}</span>{% endif %}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
 </div>
 {% endif %}
 {% endblock %}
