@@ -36,6 +36,12 @@ _SQL = text("""
 """)
 
 _MANUAL_REORDER_SQL = text("""
+    WITH purchase_edits AS (
+        SELECT target_id, MAX(repaired_at) AS edited_at
+          FROM cost_base_repair_log
+         WHERE target_table = 'purchases'
+         GROUP BY target_id
+    )
     SELECT i.id AS ingredient_id, i.name, i.category, i.cost_role,
            i.is_active, i.unit, i.pack_size_g,
            s.on_hand_qty, s.counted_at::date AS stock_counted_on
@@ -47,7 +53,15 @@ _MANUAL_REORDER_SQL = text("""
            ORDER BY counted_at DESC
            LIMIT 1
       ) s ON true
-     WHERE i.is_active AND s.note = 'reorder_required'
+      LEFT JOIN LATERAL (
+          SELECT MAX(GREATEST(p.created_at, COALESCE(e.edited_at, p.created_at))) AS event_at
+            FROM purchases p
+            LEFT JOIN purchase_edits e ON e.target_id = p.id
+           WHERE p.ingredient_id = i.id AND p.deleted_at IS NULL
+      ) pe ON true
+     WHERE i.is_active
+       AND s.note = 'reorder_required'
+       AND (pe.event_at IS NULL OR s.counted_at > pe.event_at)
 """)
 
 _GAS_REORDER_KG = Decimal("10")
@@ -60,11 +74,19 @@ _LATEST_GAS_SQL = text("""
 """)
 
 _LATEST_GAS_PURCHASE_SQL = text("""
-    SELECT p.created_at, p.purchase_date
+    WITH purchase_edits AS (
+        SELECT target_id, MAX(repaired_at) AS edited_at
+          FROM cost_base_repair_log
+         WHERE target_table = 'purchases'
+         GROUP BY target_id
+    )
+    SELECT GREATEST(p.created_at, COALESCE(e.edited_at, p.created_at)) AS event_at,
+           p.created_at, p.purchase_date
       FROM purchases p
       JOIN ingredients i ON i.id = p.ingredient_id
+      LEFT JOIN purchase_edits e ON e.target_id = p.id
      WHERE i.name = 'Cooking Gas' AND p.deleted_at IS NULL
-     ORDER BY p.created_at DESC
+     ORDER BY event_at DESC
      LIMIT 1
 """)
 
@@ -122,7 +144,7 @@ def _apply_gas_log(d: dict, gas_reading, gas_purchase=None) -> dict:
     )
     d["gas_purchase_after_reading"] = bool(
         gas_purchase
-        and (not gas_reading or gas_purchase["created_at"] > gas_reading["recorded_at"])
+        and (not gas_reading or gas_purchase["event_at"] > gas_reading["recorded_at"])
     )
     d["gas_purchase_date"] = gas_purchase["purchase_date"] if gas_purchase else None
     d["eff_status"] = (
