@@ -28,7 +28,7 @@ router = APIRouter(tags=["gas-log"])
 # Used only until a reading is ever marked is_new_cylinder -- the printed
 # capacity of the commercial cylinders in use, before any of them have been
 # weighed full.
-_NOMINAL_FULL_KG = decimal.Decimal("19")
+_NOMINAL_FULL_KG = decimal.Decimal("19.2")
 
 _READINGS_SQL = text("""
     select gr.id, gr.recorded_at, gr.cylinder_role, gr.gross_kg, gr.tare_kg,
@@ -56,18 +56,25 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
     chrono = list(reversed(rows))
     last_in_use = None
     enriched = []
-    last_full_kg = None
     delta_seconds_total = 0.0
     total_kg_used = decimal.Decimal("0")
     reading_count = 0
     for r in chrono:
         d = dict(r)
         d["recorded_at"] = d["recorded_at"].astimezone(business_tz())
-        if d["is_new_cylinder"]:
-            last_full_kg = d["net_kg"]
         if d["cylinder_role"] == "in_use":
-            if last_in_use is not None and not d["is_new_cylinder"]:
-                kg_used = last_in_use["net_kg"] - d["net_kg"]
+            if last_in_use is not None:
+                if d["is_new_cylinder"]:
+                    # A swap closes the old cylinder and starts a new 19.2 kg
+                    # cylinder that may already have been used before weighing.
+                    # Count both the old remainder and the new-cylinder usage.
+                    kg_used = last_in_use["net_kg"] + max(
+                        _NOMINAL_FULL_KG - d["net_kg"], decimal.Decimal("0")
+                    )
+                else:
+                    kg_used = max(
+                        last_in_use["net_kg"] - d["net_kg"], decimal.Decimal("0")
+                    )
                 elapsed = (d["recorded_at"] - last_in_use["recorded_at"]).total_seconds()
                 d["kg_used"] = kg_used
                 if elapsed > 0:
@@ -93,7 +100,7 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
         "where i.name = 'Cooking Gas' and p.deleted_at is null "
         "order by p.purchase_date desc limit 1"
     )).scalar()
-    full_kg = last_full_kg or _NOMINAL_FULL_KG
+    full_kg = _NOMINAL_FULL_KG
     cost_per_kg = (decimal.Decimal(str(latest_price)) / full_kg) if latest_price else None
 
     cost_per_day = (cost_per_kg * avg_kg_per_day) if (cost_per_kg and avg_kg_per_day) else None
