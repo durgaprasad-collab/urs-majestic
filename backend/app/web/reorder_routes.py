@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from decimal import Decimal
 
 from app.core.database import get_db
-from app.core.clock import business_tz
+from app.core.clock import business_today, business_tz
 from app.web.deps import _tmpl, require_user
 
 router = APIRouter(tags=["reorder"])
@@ -33,6 +33,21 @@ _SQL = text("""
     select *
     from v_ingredient_reorder_forecast
     where (:include_inactive or is_active)
+""")
+
+_MANUAL_REORDER_SQL = text("""
+    SELECT i.id AS ingredient_id, i.name, i.category, i.cost_role,
+           i.is_active, i.unit, i.pack_size_g,
+           s.on_hand_qty, s.counted_at::date AS stock_counted_on
+      FROM ingredients i
+      JOIN LATERAL (
+          SELECT on_hand_qty, counted_at, note
+            FROM ingredient_stock
+           WHERE ingredient_id = i.id
+           ORDER BY counted_at DESC
+           LIMIT 1
+      ) s ON true
+     WHERE i.is_active AND s.note = 'reorder_required'
 """)
 
 _GAS_REORDER_KG = Decimal("10")
@@ -104,6 +119,8 @@ def _apply_gas_log(d: dict, gas_reading) -> dict:
 
 
 def _needs_order(r: dict) -> bool:
+    if r.get("manual_reorder"):
+        return True
     if r.get("is_gas"):
         return r.get("gas_net_kg") is not None and r["gas_net_kg"] < _GAS_REORDER_KG
     cover = r.get("eff_cover_left")
@@ -123,8 +140,48 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         for r in db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()
     ]
 
+    # A Stock Log "Reorder" tick is an explicit instruction and must work even
+    # without purchase history (Salt is the current example). The forecast view
+    # starts from purchase history, so append any flagged ingredient it omits.
+    manual_rows = db.execute(_MANUAL_REORDER_SQL).mappings().all()
+    by_id = {r["ingredient_id"]: r for r in rows}
+    for source in manual_rows:
+        ingredient_id = source["ingredient_id"]
+        if ingredient_id in by_id:
+            row = by_id[ingredient_id]
+            row["manual_reorder"] = True
+            row["eff_status"] = "due"
+            row["eff_order_date"] = row.get("today")
+            continue
+        row = dict(source)
+        row.update({
+            "manual_reorder": True,
+            "is_gas": False,
+            "today": business_today(),
+            "has_stock": True,
+            "stock_status": "due",
+            "stock_days_cover_left": None,
+            "stock_runout_date": None,
+            "daily_consumption": None,
+            "eff_status": "due",
+            "eff_days_until_due": 0,
+            "eff_cover_left": None,
+            "eff_order_date": business_today(),
+            "suggested_order_qty": source["on_hand_qty"] or Decimal("1"),
+            "est_order_cost": None,
+            "last_purchase_any": None,
+            "recently_purchased": False,
+            "status": "due",
+            "runout_date": None,
+        })
+        rows.append(row)
+        by_id[ingredient_id] = row
+
     action, upcoming, no_history, recently_bought = [], [], [], []
     for r in rows:
+        if r.get("manual_reorder"):
+            action.append(r)
+            continue
         if r.get("is_gas"):
             (action if _needs_order(r) else upcoming).append(r)
             continue

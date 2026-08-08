@@ -15,7 +15,9 @@
   </td>
   <td class="col-num ord-qty" data-label="Qty">{% if r.is_gas %}1 <span class="ord-unit">cylinder</span>{% else %}{{ "%g"|format(r.suggested_order_qty) }} <span class="ord-unit">{{ r.unit }}</span>{% endif %}</td>
   <td class="ord-status" data-label="Status">
-    {% if r.is_gas %}
+    {% if r.manual_reorder %}
+      <span class="ord-pill ord-due">Stock Log reorder</span>
+    {% elif r.is_gas %}
       <span class="ord-pill ord-due">Below 10 kg</span>
     {% else %}
     {% set st = r.eff_status %}
@@ -62,7 +64,10 @@
     {% else %}—{% endif %}
   </td>
   <td class="print-hide ord-calc" data-label="Cover calculation">
-    {% if r.is_gas and r.gas_net_kg is not none %}
+    {% if r.manual_reorder %}
+      <strong>Manually marked for reorder</strong>
+      <span>From the latest Stock Log count</span>
+    {% elif r.is_gas and r.gas_net_kg is not none %}
       <strong>{{ "%.1f"|format(r.gas_gross_kg) }} kg gross − {{ "%.1f"|format(r.gas_tare_kg) }} kg tare</strong>
       <span>= {{ "%.1f"|format(r.gas_net_kg) }} kg net · reorder below {{ "%g"|format(r.gas_reorder_kg) }} kg</span>
     {% elif r.has_stock and r.daily_consumption is not none %}
@@ -303,9 +308,11 @@
       </div>
       <div class="ord-print-qty">
         {% if r.is_gas %}1 cylinder{% else %}{{ "%g"|format(r.suggested_order_qty) }} {{ r.unit }}{% endif %}
-        <span class="ord-print-cover">{% if r.is_gas %}{{ "%.1f"|format(r.gas_net_kg) }}kg net{% else %}{{ "%g"|format(r.eff_cover_left) }}d cover{% endif %}</span>
+        <span class="ord-print-cover">{% if r.manual_reorder %}Manual reorder{% elif r.is_gas %}{{ "%.1f"|format(r.gas_net_kg) }}kg net{% else %}{{ "%g"|format(r.eff_cover_left) }}d cover{% endif %}</span>
         <span class="ord-print-calc">
-          {% if r.is_gas %}
+          {% if r.manual_reorder %}
+            Manually marked for reorder in Stock Log
+          {% elif r.is_gas %}
             {{ "%.1f"|format(r.gas_gross_kg) }}kg gross - {{ "%.1f"|format(r.gas_tare_kg) }}kg tare = {{ "%.1f"|format(r.gas_net_kg) }}kg
           {% elif r.has_stock and r.daily_consumption is not none %}
             {{ "%g"|format(r.on_hand_qty) }} {{ r.unit }} ÷ {{ "%g"|format(r.daily_consumption) }} {{ r.unit }}/day = {{ "%g"|format(r.eff_cover_left) }}d

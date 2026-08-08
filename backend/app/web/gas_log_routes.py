@@ -106,8 +106,11 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
     if cost_per_day and avg_dishes_per_day and float(avg_dishes_per_day) > 0:
         cost_per_dish = cost_per_day / decimal.Decimal(str(avg_dishes_per_day))
 
-    latest_in_use = next((d for d in reversed(enriched) if d["cylinder_role"] == "in_use"), None)
-    latest_spare = next((d for d in reversed(enriched) if d["cylinder_role"] == "spare"), None)
+    # `enriched` is newest-first for display, so the first matching role is the
+    # current reading. Reversing here previously made the summary show the
+    # oldest cylinder value while History correctly showed the newest one.
+    latest_in_use = next((d for d in enriched if d["cylinder_role"] == "in_use"), None)
+    latest_spare = next((d for d in enriched if d["cylinder_role"] == "spare"), None)
 
     return _tmpl(request, "gas_log.html", {
         "user": user,
