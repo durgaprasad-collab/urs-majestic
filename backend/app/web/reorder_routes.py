@@ -35,6 +35,33 @@ _SQL = text("""
     where (:include_inactive or is_active)
 """)
 
+_INGREDIENT_ACTIVITY_SQL = text("""
+    WITH purchase_edits AS (
+        SELECT target_id, MAX(repaired_at) AS edited_at
+          FROM cost_base_repair_log
+         WHERE target_table = 'purchases'
+         GROUP BY target_id
+    ), purchase_events AS (
+        SELECT p.ingredient_id,
+               MAX(GREATEST(p.created_at, COALESCE(e.edited_at, p.created_at))) AS event_at
+          FROM purchases p
+          LEFT JOIN purchase_edits e ON e.target_id = p.id
+         WHERE p.deleted_at IS NULL
+         GROUP BY p.ingredient_id
+    ), stock_events AS (
+        SELECT DISTINCT ON (ingredient_id) ingredient_id, counted_at
+          FROM ingredient_stock
+         ORDER BY ingredient_id, counted_at DESC
+    )
+    SELECT i.id AS ingredient_id,
+           pe.event_at AS purchase_event_at,
+           se.counted_at AS stock_counted_at
+      FROM ingredients i
+      LEFT JOIN purchase_events pe ON pe.ingredient_id = i.id
+      LEFT JOIN stock_events se ON se.ingredient_id = i.id
+     WHERE i.is_active
+""")
+
 _MANUAL_REORDER_SQL = text("""
     WITH purchase_edits AS (
         SELECT target_id, MAX(repaired_at) AS edited_at
@@ -91,7 +118,7 @@ _LATEST_GAS_PURCHASE_SQL = text("""
 """)
 
 
-def _enrich(row) -> dict:
+def _enrich(row, activity=None) -> dict:
     """Attach effective (stock-preferred, else cadence) fields for display."""
     d = dict(row)
     # A stock count goes STALE the moment a purchase lands after it -- the shelf
@@ -100,7 +127,12 @@ def _enrich(row) -> dict:
     # purchased (so a fresh buy stops it showing as "due").
     counted = d.get("stock_counted_on")
     last_buy = d.get("last_purchase_any")
-    stock_fresh = counted is not None and (last_buy is None or counted >= last_buy)
+    purchase_event_at = activity.get("purchase_event_at") if activity else None
+    stock_counted_at = activity.get("stock_counted_at") if activity else None
+    if purchase_event_at is not None and stock_counted_at is not None:
+        stock_fresh = stock_counted_at > purchase_event_at
+    else:
+        stock_fresh = counted is not None and (last_buy is None or counted >= last_buy)
     has_stock = (d.get("on_hand_qty") is not None
                  and d.get("stock_status") is not None
                  and stock_fresh)
@@ -182,8 +214,16 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
     include_inactive = request.query_params.get("inactive") == "1"
     gas_reading = db.execute(_LATEST_GAS_SQL).mappings().first()
     gas_purchase = db.execute(_LATEST_GAS_PURCHASE_SQL).mappings().first()
+    activity = {
+        r["ingredient_id"]: r
+        for r in db.execute(_INGREDIENT_ACTIVITY_SQL).mappings().all()
+    }
     rows = [
-        _apply_gas_log(_enrich(r), gas_reading, gas_purchase)
+        _apply_gas_log(
+            _enrich(r, activity.get(r["ingredient_id"])),
+            gas_reading,
+            gas_purchase,
+        )
         for r in db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()
     ]
 
