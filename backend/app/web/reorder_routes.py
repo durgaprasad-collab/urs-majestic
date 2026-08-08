@@ -49,13 +49,14 @@ _INGREDIENT_ACTIVITY_SQL = text("""
          WHERE p.deleted_at IS NULL
          GROUP BY p.ingredient_id
     ), stock_events AS (
-        SELECT DISTINCT ON (ingredient_id) ingredient_id, counted_at
+        SELECT DISTINCT ON (ingredient_id) ingredient_id, counted_at, note
           FROM ingredient_stock
-         ORDER BY ingredient_id, counted_at DESC
+         ORDER BY ingredient_id, counted_at DESC, id DESC
     )
     SELECT i.id AS ingredient_id,
            pe.event_at AS purchase_event_at,
-           se.counted_at AS stock_counted_at
+           se.counted_at AS stock_counted_at,
+           se.note AS stock_note
       FROM ingredients i
       LEFT JOIN purchase_events pe ON pe.ingredient_id = i.id
       LEFT JOIN stock_events se ON se.ingredient_id = i.id
@@ -129,7 +130,10 @@ def _enrich(row, activity=None) -> dict:
     last_buy = d.get("last_purchase_any")
     purchase_event_at = activity.get("purchase_event_at") if activity else None
     stock_counted_at = activity.get("stock_counted_at") if activity else None
-    if purchase_event_at is not None and stock_counted_at is not None:
+    stock_note = activity.get("stock_note") if activity else None
+    if stock_note and stock_note.startswith("purchase_auto:"):
+        stock_fresh = True
+    elif purchase_event_at is not None and stock_counted_at is not None:
         stock_fresh = stock_counted_at > purchase_event_at
     else:
         stock_fresh = counted is not None and (last_buy is None or counted >= last_buy)
