@@ -251,44 +251,67 @@ def _notion_request(method: str, path: str, body: dict) -> dict:
         return json.load(resp)
 
 
-def get_role_tasks(role_label: str) -> dict:
-    """{connected, tasks: [{id, task, done_means, kill_criterion, priority}]}
-    for one Notion 'Role' select value, Status != Done. Degrades to
-    connected=False (never raises) so one Notion hiccup doesn't break the
-    whole brief page."""
-    if not notion_connected():
-        return {"connected": False, "tasks": [], "error": None}
-    try:
-        payload = _notion_request(
-            "POST", f"/data_sources/{settings.NOTION_TASK_BOARD_DATA_SOURCE_ID}/query",
-            {
-                "filter": {
-                    "and": [
-                        {"property": "Role", "select": {"equals": role_label}},
-                        {"property": "Status", "select": {"does_not_equal": "Done"}},
-                    ]
-                },
-                "sorts": [{"property": "Priority", "direction": "ascending"}],
-            },
-        )
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
-        return {"connected": True, "tasks": [], "error": str(e)}
+def get_role_tasks(db: Session, role_label: str) -> dict:
+    """{connected, source, tasks: [...]} for one Notion 'Role' value.
 
-    tasks = []
-    for page in payload.get("results", []):
-        p = page.get("properties", {})
-        title_parts = p.get("Task", {}).get("title", [])
-        priority = (p.get("Priority", {}).get("select") or {}).get("name")
-        status = (p.get("Status", {}).get("select") or {}).get("name")
-        tasks.append({
-            "id": page["id"],
-            "task": "".join(t.get("plain_text", "") for t in title_parts),
-            "done_means": _rich_text(p.get("Done Means")),
-            "kill_criterion": _rich_text(p.get("Kill Criterion")),
-            "priority": priority,
-            "status": status,
-        })
-    return {"connected": True, "tasks": tasks, "error": None}
+    Two paths, chosen automatically:
+      - NOTION_API_KEY set  -> live Notion query (source='live'). This is the
+        real, final path -- once the credential exists this activates with
+        no further code changes.
+      - NOTION_API_KEY unset -> read the notion_task_cache table instead
+        (source='cache'), an interim bridge: Claude refreshes that table from
+        its own interactive Notion connector (refresh_task_cache below) since
+        the deployed app can't reach Notion on its own yet.
+    Never raises -- a Notion hiccup or an empty/stale cache degrades to an
+    empty task list, not a broken page."""
+    if notion_connected():
+        try:
+            payload = _notion_request(
+                "POST", f"/data_sources/{settings.NOTION_TASK_BOARD_DATA_SOURCE_ID}/query",
+                {
+                    "filter": {
+                        "and": [
+                            {"property": "Role", "select": {"equals": role_label}},
+                            {"property": "Status", "select": {"does_not_equal": "Done"}},
+                        ]
+                    },
+                    "sorts": [{"property": "Priority", "direction": "ascending"}],
+                },
+            )
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+            return {"connected": True, "source": "live", "tasks": [], "error": str(e), "cached_at": None}
+
+        tasks = []
+        for page in payload.get("results", []):
+            p = page.get("properties", {})
+            title_parts = p.get("Task", {}).get("title", [])
+            tasks.append({
+                "id": page["id"],
+                "task": "".join(t.get("plain_text", "") for t in title_parts),
+                "done_means": _rich_text(p.get("Done Means")),
+                "kill_criterion": _rich_text(p.get("Kill Criterion")),
+                "priority": (p.get("Priority", {}).get("select") or {}).get("name"),
+            })
+        return {"connected": True, "source": "live", "tasks": tasks, "error": None, "cached_at": None}
+
+    rows = db.execute(
+        text(
+            """
+            SELECT notion_page_id, task, done_means, kill_criterion, priority,
+                   max(cached_at) OVER () AS cached_at
+            FROM notion_task_cache
+            WHERE role = :role AND NOT local_done
+            ORDER BY priority NULLS LAST, id
+            """
+        ),
+        {"role": role_label},
+    ).mappings().all()
+    tasks = [{
+        "id": r["notion_page_id"], "task": r["task"], "done_means": r["done_means"],
+        "kill_criterion": r["kill_criterion"], "priority": r["priority"],
+    } for r in rows]
+    cached_at = rows[0]["cached_at"] if rows else None
+    return {"connected": True, "source": "cache", "tasks": tasks, "error": None, "cached_at": cached_at}
 
 
 def _rich_text(prop: dict | None) -> str:
@@ -297,18 +320,93 @@ def _rich_text(prop: dict | None) -> str:
     return "".join(t.get("plain_text", "") for t in prop.get("rich_text", []))
 
 
-def mark_task_done(page_id: str) -> tuple[bool, str | None]:
-    """PATCH the real Notion page's Status -> Done. Returns (ok, error)."""
-    if not notion_connected():
-        return False, "Notion not connected — set NOTION_API_KEY."
-    try:
-        _notion_request(
-            "PATCH", f"/pages/{page_id}",
-            {"properties": {"Status": {"select": {"name": "Done"}}}},
+def mark_task_done(db: Session, page_id: str, done_by: str) -> tuple[bool, str | None]:
+    """Mark a task done. Live path PATCHes Notion directly. Cache path marks
+    the row done locally (instant UI feedback) and queues it in
+    synced_to_notion=false for Claude to push to Notion afterward via
+    pending_notion_sync()/mark_synced() -- see the module docstring."""
+    if notion_connected():
+        try:
+            _notion_request(
+                "PATCH", f"/pages/{page_id}",
+                {"properties": {"Status": {"select": {"name": "Done"}}}},
+            )
+            return True, None
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+            return False, str(e)
+
+    result = db.execute(
+        text(
+            """
+            UPDATE notion_task_cache
+            SET local_done = true, local_done_at = now(), local_done_by = :by, synced_to_notion = false
+            WHERE notion_page_id = :pid
+            """
+        ),
+        {"pid": page_id, "by": done_by},
+    )
+    db.commit()
+    if result.rowcount == 0:
+        return False, "Task not found in local cache."
+    return True, None
+
+
+def refresh_task_cache(db: Session, rows: list[dict]) -> int:
+    """Upsert Notion task rows into the local cache. `rows` items:
+    {notion_page_id, role, task, done_means, kill_criterion, priority, status}.
+    Called from an interactive session using Claude's own Notion connector --
+    the deployed app never calls this itself. A row whose Notion status is
+    now 'Done' is upserted as local_done=True too, so a completion made
+    directly in Notion (not through the brief) also disappears from the list."""
+    n = 0
+    for r in rows:
+        is_done = (r.get("status") or "").strip().lower() == "done"
+        db.execute(
+            text(
+                """
+                INSERT INTO notion_task_cache
+                    (notion_page_id, role, task, done_means, kill_criterion, priority,
+                     notion_status, cached_at, local_done, synced_to_notion)
+                VALUES
+                    (:pid, :role, :task, :done_means, :kill, :priority, :status, now(), :done, true)
+                ON CONFLICT (notion_page_id) DO UPDATE SET
+                    role = EXCLUDED.role, task = EXCLUDED.task, done_means = EXCLUDED.done_means,
+                    kill_criterion = EXCLUDED.kill_criterion, priority = EXCLUDED.priority,
+                    notion_status = EXCLUDED.notion_status, cached_at = now(),
+                    -- Don't clobber a pending local completion that hasn't synced yet.
+                    local_done = notion_task_cache.local_done OR EXCLUDED.local_done,
+                    synced_to_notion = CASE WHEN notion_task_cache.synced_to_notion THEN true ELSE notion_task_cache.synced_to_notion END
+                """
+            ),
+            {
+                "pid": r["notion_page_id"], "role": r["role"], "task": r["task"],
+                "done_means": r.get("done_means"), "kill": r.get("kill_criterion"),
+                "priority": r.get("priority"), "status": r.get("status"), "done": is_done,
+            },
         )
-        return True, None
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
-        return False, str(e)
+        n += 1
+    db.commit()
+    return n
+
+
+def pending_notion_sync(db: Session) -> list[dict]:
+    """Cache rows marked done locally but not yet pushed to real Notion --
+    what Claude's next sync pass needs to PATCH."""
+    rows = db.execute(
+        text(
+            "SELECT notion_page_id, role, task, local_done_by, local_done_at "
+            "FROM notion_task_cache WHERE local_done AND NOT synced_to_notion ORDER BY local_done_at"
+        )
+    ).mappings().all()
+    return [dict(r) for r in rows]
+
+
+def mark_synced(db: Session, notion_page_id: str) -> None:
+    db.execute(
+        text("UPDATE notion_task_cache SET synced_to_notion = true WHERE notion_page_id = :pid"),
+        {"pid": notion_page_id},
+    )
+    db.commit()
 
 
 # Maps the frontend's role slug to the exact Notion select-option text.
@@ -351,7 +449,7 @@ def build_ticket_brief(db: Session) -> dict:
         builder = _PANEL_BUILDERS.get(slug)
         panel = builder(db) if builder else {"role": slug, "metrics": []}
         panel["label"] = label
-        panel["tasks"] = get_role_tasks(label)
+        panel["tasks"] = get_role_tasks(db, label)
         roles[slug] = panel
 
     return {

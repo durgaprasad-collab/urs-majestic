@@ -138,7 +138,7 @@
       </div>
       {% if target.margin_stale %}<span class="tb-stale-flag">⚠ {{ target.margin_stale_reason }}</span>{% endif %}
     </div>
-    {% if not notion_connected %}<div class="tb-notion-off">ⓘ Notion not connected — task panels below are showing DB metrics only. Set NOTION_API_KEY to enable live tasks + task-complete write-through.</div>{% endif %}
+    {% if not notion_connected %}<div class="tb-notion-off">ⓘ Tasks below are from a local cache Claude refreshes from Notion (no NOTION_API_KEY on the server yet) — not live-live. Marking one done here queues it for Claude to push back to Notion next time it checks in.</div>{% endif %}
   </div>
 
   <div class="tb-tickets">
@@ -165,10 +165,11 @@
         {% endfor %}
 
         <div class="tb-ticket-tasks">
-          <span class="tb-tasks-label">Open tasks</span>
-          {% if not panel.tasks.connected %}
-            <p class="tb-no-tasks">Notion not connected.</p>
-          {% elif panel.tasks.error %}
+          <span class="tb-tasks-label">
+            Open tasks
+            {%- if panel.tasks.source == 'cache' and panel.tasks.cached_at %} · synced {{ panel.tasks.cached_at.strftime('%d %b %H:%M') }}{% endif %}
+          </span>
+          {% if panel.tasks.error %}
             <p class="tb-no-tasks">Notion error: {{ panel.tasks.error }}</p>
           {% elif not panel.tasks.tasks %}
             <p class="tb-no-tasks">Nothing open — clear.</p>
@@ -177,7 +178,7 @@
             <div class="tb-task">
               <div class="tb-task-head">
                 <form method="post" action="/daily-brief/tasks/{{ t.id }}/complete" style="display:contents">
-                  <button type="submit" class="tb-task-check" title="Mark done in Notion" aria-label="Mark '{{ t.task }}' done"></button>
+                  <button type="submit" class="tb-task-check" title="{% if panel.tasks.source == 'cache' %}Mark done (queues for Notion sync){% else %}Mark done in Notion{% endif %}" aria-label="Mark '{{ t.task }}' done"></button>
                 </form>
                 {% if t.priority %}<span class="tb-pri tb-pri-{{ t.priority|lower }}">{{ t.priority }}</span>{% endif %}
                 <span class="tb-task-title">{{ t.task }}</span>

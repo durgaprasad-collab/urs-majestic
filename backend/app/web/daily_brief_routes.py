@@ -35,7 +35,7 @@ def complete_task(page_id: str, request: Request, db: Session = Depends(get_db))
     if redir:
         return redir
 
-    ok, error = mark_task_done(page_id)
+    ok, error = mark_task_done(db, page_id, done_by=user.name)
     if ok:
         return RedirectResponse("/daily-brief", status_code=303)
     # Surface the failure rather than silently dropping it -- the task stays
