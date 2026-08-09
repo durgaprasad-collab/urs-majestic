@@ -121,7 +121,11 @@ def get_target_line(db: Session, *, reporting_date: datetime.date, mtd: decimal.
     flag. Does NOT silently recompute a target off a stale margin -- the flag
     stays up until a human writes a new contribution_margin_pct row."""
     targets = target_engine.compute(db, mtd=mtd, reporting_date=reporting_date, days_elapsed=days_elapsed)
-    margin_row = _setting_full(db, bs.SETTING_CONTRIBUTION_MARGIN_PCT, as_of=reporting_date)
+    # as_of defaults to business_today(), matching how target_engine itself reads
+    # the margin (via bs.get_financials with no as_of) -- reporting_date is the
+    # latest *trusted sales* day and can lag today, which would make a same-day
+    # margin fix invisible until sales data caught up.
+    margin_row = _setting_full(db, bs.SETTING_CONTRIBUTION_MARGIN_PCT)
     margin_stale = bool(margin_row and margin_row["effective_from"] < _GAS_FIXED_COST_CUTOVER)
     targets["margin_stale"] = margin_stale
     targets["margin_stale_reason"] = (

@@ -62,10 +62,13 @@ from app.models.combo import ComboComponent
 from app.models.daily_channel_sales import DailyChannelSales
 from app.models.packaging import DishPackagingMap
 
-# Flat overhead added to every dish for FIXED costs (gas + small misc), in rupees.
-# Gas is deliberately flat, not amortized per dish — the kitchen burns roughly the
-# same gas regardless of the exact dish count, so it's a fixed cost, not variable.
-OVERHEAD_PER_DISH = decimal.Decimal("3.0")
+# Flat per-dish overhead for FIXED costs not covered elsewhere. Was Rs 3.0
+# (gas + small misc) until gas moved to a real Fixed Expenses line item on
+# 28 Jul 2026 (see business_settings/fixed_expenses: Cooking Gas). Charging
+# gas here too would double-count it against that monthly figure, so this
+# is zero until a genuine non-gas per-dish fixed cost is identified and
+# quantified from data.
+OVERHEAD_PER_DISH = decimal.Decimal("0.0")
 
 # Any food ingredient costing more than this per gram/ml is almost certainly
 # a unit-entry error (e.g. litres entered as ml). The most expensive real
