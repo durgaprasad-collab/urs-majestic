@@ -44,12 +44,13 @@ def upgrade() -> None:
         LANGUAGE plpgsql AS $$
         DECLARE
             v_target_unit text;
+            v_pack_size_g numeric;
             v_previous_qty numeric := 0;
             v_previous_unit text;
             v_delta numeric;
         BEGIN
-            SELECT COALESCE(v.unit::text, i.unit::text)
-              INTO v_target_unit
+            SELECT COALESCE(v.unit::text, i.unit::text), i.pack_size_g
+              INTO v_target_unit, v_pack_size_g
               FROM ingredients i
               LEFT JOIN v_ingredient_reorder_forecast v ON v.ingredient_id = i.id
              WHERE i.id = p_ingredient_id;
@@ -65,7 +66,13 @@ def upgrade() -> None:
             v_previous_qty := COALESCE(
                 inventory_convert_qty(v_previous_qty, v_previous_unit, v_target_unit), 0
             );
-            v_delta := inventory_convert_qty(p_qty, p_unit, v_target_unit) * p_sign;
+            v_delta := CASE
+                WHEN v_target_unit = 'pcs' AND v_pack_size_g IS NOT NULL AND p_unit = 'kg'
+                    THEN (p_qty * 1000 / v_pack_size_g) * p_sign
+                WHEN v_target_unit = 'pcs' AND v_pack_size_g IS NOT NULL AND p_unit = 'g'
+                    THEN (p_qty / v_pack_size_g) * p_sign
+                ELSE inventory_convert_qty(p_qty, p_unit, v_target_unit) * p_sign
+            END;
 
             INSERT INTO ingredient_stock
                 (ingredient_id, on_hand_qty, unit, counted_by, note)
@@ -121,4 +128,3 @@ def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS sync_purchase_to_stock()")
     op.execute("DROP FUNCTION IF EXISTS append_purchase_stock_delta(integer, numeric, text, integer, integer, integer)")
     op.execute("DROP FUNCTION IF EXISTS inventory_convert_qty(numeric, text, text)")
-
