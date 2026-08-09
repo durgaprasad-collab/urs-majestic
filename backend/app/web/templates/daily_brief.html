@@ -56,6 +56,15 @@
   .tb-stale-flag{ display:inline-flex;align-items:center;gap:6px;background:var(--tb-coral);color:#fff; font-size:.64rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase; padding:6px 11px;border-radius:8px;box-shadow:0 4px 12px rgba(255,118,88,.35); }
   .tb-notion-off{ font-size:.63rem;color:#CFE3DB; margin-top:10px; }
 
+  .tb-pace-row{ margin-top:10px;padding:12px 15px;border-radius:10px; background:rgba(0,0,0,.12);border:1px solid rgba(255,255,255,.1); display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap; }
+  .tb-pace-nums{font-size:.72rem;color:#CFE3DB;}
+  .tb-pace-nums b{color:#fff;font-weight:700;}
+  .tb-achieve-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .tb-achieve-chip{ font-size:.65rem;font-weight:700;padding:5px 10px;border-radius:8px; background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15); display:inline-flex;align-items:center;gap:6px;white-space:nowrap; }
+  .tb-achieve-chip.on{background:rgba(120,200,150,.15);border-color:rgba(120,200,150,.4);color:#BFEBCF;}
+  .tb-achieve-chip.off{background:rgba(255,118,88,.15);border-color:rgba(255,118,88,.4);color:#FFD3C6;}
+  .tb-achieve-chip small{font-weight:500;opacity:.8;}
+
   .tb-tickets{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:22px;align-items:start;}
   @media (max-width:1150px){.tb-tickets{grid-template-columns:repeat(2,1fr);}}
   @media (max-width:620px){.tb-tickets{grid-template-columns:1fr;}}
@@ -138,6 +147,25 @@
       </div>
       {% if target.margin_stale %}<span class="tb-stale-flag">⚠ {{ target.margin_stale_reason }}</span>{% endif %}
     </div>
+    {% if target.computable %}
+    <div class="tb-pace-row">
+      <span class="tb-pace-nums">
+        Day {{ target.days_elapsed }} of {{ target.days_in_month }} · MTD <b>₹{{ "{:,.0f}".format(target.mtd) }}</b>
+        · at current pace, projected month-end <b>₹{{ "{:,.0f}".format(target.projected_month_end) }}</b>
+      </span>
+      <div class="tb-achieve-row">
+        {% for key, tlabel in [('break_even', 'Break-even'), ('operating', 'Operating'), ('stretch', 'Stretch')] %}
+        {% set v = target.vs[key] %}
+        {% if v %}
+        <span class="tb-achieve-chip {{ 'on' if v.on_track else 'off' }}">
+          {{ '✓' if v.on_track else '⚠' }} {{ tlabel }} {{ '%g'|format(v.pct) }}%
+          <small>{{ 'on track' if v.on_track else '₹' + '{:,.0f}'.format(-v.gap) + ' short' }}</small>
+        </span>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
     {% if not notion_connected %}<div class="tb-notion-off">ⓘ Tasks below are from a local cache Claude refreshes from Notion (no NOTION_API_KEY on the server yet) — not live-live. Marking one done here queues it for Claude to push back to Notion next time it checks in.</div>{% endif %}
   </div>
 
