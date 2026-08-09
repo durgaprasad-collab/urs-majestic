@@ -51,6 +51,7 @@ from app.models.menu_item import MenuItem, PosAlias
 from app.models.item_sale import ItemSale
 from app.models.daily_channel_sales import DailyChannelSales
 from app.models.upload_log import UploadLog
+from app.services.sales_stock import adjust_stock_for_sales
 
 SEED_JSON = os.path.join(os.path.dirname(__file__), "..", "data", "menu_seed.json")
 DEFAULT_XLSX = os.path.join(os.path.dirname(__file__), "..", "data", "pos_export.xlsx")
@@ -374,11 +375,20 @@ def main(xlsx_path: str):
         resolver = build_resolver(seed, menu_map)
         matched, unmatched = load_sales(db, raw_rows, resolver)
 
-        print("\n-- Step 4: Upsert daily_channel_sales --------------------------------")
+        print("\n-- Step 4: Calculate ingredient usage and adjust Stock Log ----------")
+        stock_result = adjust_stock_for_sales(db, matched)
+        print(f"  {stock_result['adjusted']} stock balance(s) adjusted")
+        print(f"  {stock_result['unchanged']} unchanged usage balance(s) skipped")
+        if stock_result["initialized_zero"]:
+            print(f"  {stock_result['initialized_zero']} ingredient(s) initialized at zero: no compatible prior count")
+        if stock_result["unresolved"]:
+            print(f"  {len(stock_result['unresolved'])} recipe input(s) could not be calculated")
+
+        print("\n-- Step 5: Upsert daily_channel_sales --------------------------------")
         days = upsert_daily_channel_sales(db, raw_rows, os.path.basename(xlsx_path))
         print(f"  {days} business date(s) upserted (channel=petpooja)")
 
-        print("\n-- Step 5: Log upload -------------------------------------------------")
+        print("\n-- Step 6: Log upload -------------------------------------------------")
         write_upload_log(
             db,
             source_file=os.path.basename(xlsx_path),
