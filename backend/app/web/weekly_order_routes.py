@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -17,6 +18,7 @@ from app.services.weekly_ordering import (
     PILOT_CATEGORY, build_category_forecast, round_to_increment,
     split_delivery_quantities,
 )
+from app.services.weekly_order_pdf import build_supplier_delivery_pdf
 from app.web.deps import _tmpl, require_user
 
 
@@ -133,6 +135,26 @@ def weekly_order_detail(order_id: int, request: Request, db: Session = Depends(g
         "error": request.query_params.get("error"), "saved": request.query_params.get("saved"),
         "today": business_today(),
     })
+
+
+@router.get("/weekly-order/{order_id}/supplier.pdf")
+def supplier_pdf(order_id: int, request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    context = _order_context(db, order_id)
+    if not context:
+        return RedirectResponse("/weekly-order?error=Order+not+found", status_code=303)
+    order, _lines, deliveries = context
+    try:
+        payload = build_supplier_delivery_pdf(order, deliveries)
+    except ValueError as exc:
+        return RedirectResponse(f"/weekly-order/{order_id}?error={quote(str(exc))}", status_code=303)
+    filename = f"URS-Majestic-order-{order_id}-{order['horizon_start'].isoformat()}.pdf"
+    return StreamingResponse(
+        iter([payload]), media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/weekly-order/{order_id}/approve")

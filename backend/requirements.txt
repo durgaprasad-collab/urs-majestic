@@ -17,6 +17,8 @@ tzdata>=2024.1
 # image before upload. No system binary needed — runs on the native Python host.
 Pillow>=10.0.0
 scikit-learn>=1.5.0,<2.0
+reportlab>=4.2.0,<6.0
+pypdf>=5.0.0,<7.0
 # Google Drive archival of uploaded receipts (optional — degrades if unconfigured)
 google-api-python-client>=2.100.0
 google-auth>=2.30.0
