@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0B3A2E" />
   <title>{% block title %}URS Majestic — Restaurant OS{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=38" />
+  <link rel="stylesheet" href="/static/style.css?v=39" />
   <script src="/static/app.js?v=2" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
@@ -26,6 +26,7 @@
           <span class="nav-group-label">Run the day</span>
           <a href="/prep-sheet" class="nav-link {% if path == '/prep-sheet' %}active{% endif %}"><span>☑</span> Prep Sheet</a>
           <a href="/order-forecast" class="nav-link {% if path == '/order-forecast' %}active{% endif %}"><span>↗</span> Order Forecast</a>
+          <a href="/weekly-order" class="nav-link {% if path.startswith('/weekly-order') %}active{% endif %}"><span>7</span> Weekly Ordering</a>
           <a href="/stock-log" class="nav-link {% if path.startswith('/stock-log') %}active{% endif %}"><span>▦</span> Stock Log</a>
           <a href="/gas-log" class="nav-link {% if path.startswith('/gas-log') %}active{% endif %}"><span>◉</span> Gas Log</a>
           <a href="/purchases" class="nav-link {% if path.startswith('/purchases') %}active{% endif %}"><span>₹</span> Purchases</a>
@@ -81,6 +82,7 @@
         <a href="/daily-brief" data-command-item data-keywords="today home daily brief dashboard"><b>✦ Today</b><small>Open the daily brief</small></a>
         <a href="/prep-sheet" data-command-item data-keywords="prep kitchen sheet"><b>☑ Prep Sheet</b><small>Plan the next service</small></a>
         <a href="/order-forecast" data-command-item data-keywords="order forecast purchase stock"><b>↗ Order Forecast</b><small>See what to order</small></a>
+        <a href="/weekly-order" data-command-item data-keywords="weekly order inventory vegetables forecast"><b>7-day ordering</b><small>Plan one week of inventory</small></a>
         <a href="/results" data-command-item data-keywords="menu analysis food cost item performance"><b>⌁ Menu Analysis</b><small>Explore performance</small></a>
         <a href="/reconciliation" data-command-item data-keywords="reconcile mismatch channel money"><b>↻ Reconcile</b><small>Resolve mismatches</small></a>
         <a href="/data-reconciliation" data-command-item data-keywords="data trust channel mismatch"><b>✓ Data Trust</b><small>Cross-check channel data</small></a>

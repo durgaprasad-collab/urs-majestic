@@ -16,6 +16,7 @@ tzdata>=2024.1
 # Receipt OCR via OCR.space (hosted, called with urllib); Pillow downscales the
 # image before upload. No system binary needed — runs on the native Python host.
 Pillow>=10.0.0
+scikit-learn>=1.5.0,<2.0
 # Google Drive archival of uploaded receipts (optional — degrades if unconfigured)
 google-api-python-client>=2.100.0
 google-auth>=2.30.0

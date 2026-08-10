@@ -33,6 +33,9 @@ class Ingredient(Base):
     # (rupees per piece / grams per piece) and v_purchase_normalised convert pcs to a
     # gram base. NULL for items already bought by weight/volume.
     pack_size_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # Quantity increment accepted by the supplier when placing a weekly order.
+    # Kept separate from pack_size_g, which means grams per physical piece.
+    order_increment_qty: Mapped[decimal.Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
 
     dish_maps: Mapped[list["IngredientDishMap"]] = relationship(
         "IngredientDishMap", back_populates="ingredient", cascade="all, delete-orphan"
