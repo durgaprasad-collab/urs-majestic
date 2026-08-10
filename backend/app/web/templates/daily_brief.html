@@ -45,10 +45,13 @@
   .tb-rail-sub{font-size:.76rem;color:#CFE3DB;}
   .tb-rail-status{font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);padding:5px 11px;border-radius:999px;white-space:nowrap;}
 
-  .tb-rail-channels{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.16);}
+  .tb-rail-channels{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.16);}
   .tb-rail-channels div{display:flex;flex-direction:column;gap:2px;}
   .tb-rail-ch-label{font-size:.6rem;letter-spacing:.07em;text-transform:uppercase;color:#9EBBB0;}
   .tb-rail-ch-val{font-family:Archivo,sans-serif;font-size:1.1rem;font-weight:700;}
+  .tb-date-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+  .tb-date-select{appearance:none;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:5px 28px 5px 11px;font:700 .66rem Archivo,sans-serif;cursor:pointer;}
+  .tb-date-select option{color:#17211d;background:#fff;}
 
   .tb-target-strip{ margin-top:16px;padding:13px 15px;border-radius:10px; background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.12); display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap; }
   .tb-target-nums{display:flex;gap:20px;flex-wrap:wrap;font-size:.78rem;}
@@ -68,6 +71,7 @@
   .tb-tickets{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:22px;align-items:start;}
   @media (max-width:1150px){.tb-tickets{grid-template-columns:repeat(2,1fr);}}
   @media (max-width:620px){.tb-tickets{grid-template-columns:1fr;}}
+  @media (max-width:620px){.tb-rail-channels{grid-template-columns:repeat(2,1fr)}.tb-date-tools{justify-content:flex-start}.tb-rail{padding:17px 16px 24px}}
 
   .tb-ticket{ background:var(--tb-paper); border:1px solid var(--tb-paper-fold); box-shadow:0 10px 26px rgba(20,30,25,.1); position:relative; }
   .tb-ticket::before{ content:""; display:block; height:9px; background:linear-gradient(135deg,transparent 50%, var(--tb-page-bg) 50%) 0 0/9px 9px repeat-x, linear-gradient(-135deg,transparent 50%, var(--tb-page-bg) 50%) 0 0/9px 9px repeat-x; background-color:var(--tb-paper); }
@@ -124,15 +128,25 @@
           {% if summary.pct_vs_same_weekday is not none %}{{ "%+.1f"|format(summary.pct_vs_same_weekday) }}%{% else %}—{% endif %} vs same weekday
         </span>
       </div>
-      <span class="tb-rail-status">
-        {%- if summary.data_status == 'DATA TRUSTED' %}✓ {% elif summary.data_status == 'DATA PENDING' %}⏳ {% else %}⚠ {% endif -%}
-        {{ summary.data_status }}
-      </span>
+      <div class="tb-date-tools">
+        <form method="get" action="/daily-brief">
+          <select name="date" class="tb-date-select" onchange="this.form.submit()" aria-label="Daily summary date">
+            {% for day in available_dates|reverse %}
+            <option value="{{ day.isoformat() }}" {% if day == reporting_date %}selected{% endif %}>{{ day.strftime('%a · %d %b') }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        <span class="tb-rail-status">
+          {%- if summary.data_status == 'DATA TRUSTED' %}✓ {% elif summary.data_status == 'DATA PENDING' %}⏳ {% else %}⚠ {% endif -%}
+          {{ summary.data_status }}
+        </span>
+      </div>
     </div>
     <div class="tb-rail-channels">
       <div><span class="tb-rail-ch-label">Counter</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.counter_sales or 0) }}</span></div>
       <div><span class="tb-rail-ch-label">Zomato</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.zomato_sales or 0) }}</span></div>
       <div><span class="tb-rail-ch-label">Swiggy</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.swiggy_sales or 0) }}</span></div>
+      <div><span class="tb-rail-ch-label">Current month daily avg</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(month_daily_average) }}</span><small class="tb-rail-sub">{{ month_recorded_days }} recorded days</small></div>
     </div>
     <div class="tb-target-strip">
       <div class="tb-target-nums">

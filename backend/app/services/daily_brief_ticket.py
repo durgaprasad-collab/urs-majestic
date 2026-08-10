@@ -430,21 +430,84 @@ _PANEL_BUILDERS = {
 }
 
 
-def build_ticket_brief(db: Session) -> dict:
+def _summary_for_date(db: Session, reporting_date: datetime.date, data_status: str) -> dict:
+    rows = db.execute(text("""
+        SELECT channel, COALESCE(net_sales, 0) AS net_sales, orders
+          FROM daily_channel_sales WHERE business_date = :reporting_date
+    """), {"reporting_date": reporting_date}).mappings().all()
+    by_channel = {row["channel"]: row for row in rows}
+    total = sum((D(str(row["net_sales"])) for row in rows), D("0"))
+
+    def day_total(day):
+        return D(str(db.execute(text(
+            "SELECT COALESCE(SUM(net_sales), 0) FROM daily_channel_sales WHERE business_date = :day"
+        ), {"day": day}).scalar() or 0))
+
+    prior = day_total(reporting_date - datetime.timedelta(days=1))
+    weekday = day_total(reporting_date - datetime.timedelta(days=7))
+    delivery_sales = sum((D(str(by_channel.get(c, {}).get("net_sales", 0) or 0)) for c in ("zomato", "swiggy")), D("0"))
+    delivery_orders = sum((int(by_channel.get(c, {}).get("orders", 0) or 0) for c in ("zomato", "swiggy")), 0)
+    counter = by_channel.get("petpooja", {})
+    counter_orders = int(counter.get("orders", 0) or 0)
+    return {
+        "data_through": reporting_date,
+        "latest_day_sales": total,
+        "pct_vs_prior_day": ((total - prior) / prior * 100) if prior else None,
+        "pct_vs_same_weekday": ((total - weekday) / weekday * 100) if weekday else None,
+        "counter_sales": D(str(counter.get("net_sales", 0) or 0)),
+        "zomato_sales": D(str(by_channel.get("zomato", {}).get("net_sales", 0) or 0)),
+        "swiggy_sales": D(str(by_channel.get("swiggy", {}).get("net_sales", 0) or 0)),
+        "delivery_orders": delivery_orders,
+        "delivery_aov": (delivery_sales / delivery_orders) if delivery_orders else None,
+        "counter_aov": (D(str(counter.get("net_sales", 0) or 0)) / counter_orders) if counter_orders else None,
+        "data_status": data_status,
+    }
+
+
+def build_ticket_brief(db: Session, reporting_date: datetime.date | None = None) -> dict:
     """Full context for the ticket-rail /daily-brief page: revenue strip,
     target line (with staleness flag), and all five role panels, each with
     its own metrics plus a live Notion task list."""
-    summary = get_revenue_strip(db)
-    if not summary:
+    latest_summary = get_revenue_strip(db)
+    if not latest_summary:
         return {"has_data": False}
+
+    latest_date = latest_summary["data_through"]
+    month_start = business_today().replace(day=1)
+    available_dates = list(db.execute(text("""
+        SELECT DISTINCT business_date
+          FROM daily_channel_sales
+         WHERE business_date >= :month_start AND business_date <= :today
+         ORDER BY business_date
+    """), {"month_start": month_start, "today": business_today()}).scalars())
+    rep = reporting_date if reporting_date in available_dates else latest_date
+    status_row = db.execute(text("""
+        SELECT CASE
+                 WHEN COUNT(*) = 0 THEN 'DATA PENDING'
+                 WHEN COUNT(*) FILTER (WHERE status = 'MISMATCH') > 0 THEN 'DATA ISSUE'
+                 ELSE 'DATA TRUSTED'
+               END
+          FROM v_recon_daily WHERE business_date = :reporting_date
+    """), {"reporting_date": rep}).scalar()
+    summary = _summary_for_date(db, rep, status_row or latest_summary.get("data_status", "DATA PENDING"))
 
     # Reuses daily_brief_v3's own sales-series/MTD computation rather than a
     # second implementation of the same sum -- one series read, one convention.
     from app.services.daily_brief_v3 import _sales_series
-    rep = summary["data_through"]
     series = _sales_series(db, rep)
-    month_start = rep.replace(day=1)
-    mtd = sum((v for d, v in series.items() if d >= month_start), D("0"))
+    selected_month_start = rep.replace(day=1)
+    mtd = sum((v for d, v in series.items() if d >= selected_month_start), D("0"))
+
+    month_stats = db.execute(text("""
+        SELECT COALESCE(SUM(net_sales), 0) AS sales,
+               COUNT(DISTINCT business_date) AS recorded_days
+          FROM daily_channel_sales
+         WHERE business_date >= :month_start AND business_date <= :latest_date
+    """), {"month_start": month_start, "latest_date": latest_date}).mappings().one()
+    month_daily_average = (
+        D(str(month_stats["sales"])) / month_stats["recorded_days"]
+        if month_stats["recorded_days"] else D("0")
+    )
 
     target = get_target_line(db, reporting_date=rep, mtd=mtd, days_elapsed=rep.day)
 
@@ -463,4 +526,7 @@ def build_ticket_brief(db: Session) -> dict:
         "roles": roles,
         "reporting_date": rep,
         "notion_connected": notion_connected(),
+        "available_dates": available_dates,
+        "month_daily_average": month_daily_average,
+        "month_recorded_days": month_stats["recorded_days"],
     }

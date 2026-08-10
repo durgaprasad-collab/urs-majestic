@@ -6,6 +6,7 @@ marking a task done (write-through to Notion) and the Creative panel's manual
 Google review count.
 """
 from urllib.parse import quote
+from datetime import date
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -25,7 +26,12 @@ def daily_brief(request: Request, db: Session = Depends(get_db), error: str | No
     if redir:
         return redir
 
-    ctx = build_ticket_brief(db)
+    raw_date = request.query_params.get("date", "")
+    try:
+        selected_date = date.fromisoformat(raw_date) if raw_date else None
+    except ValueError:
+        selected_date = None
+    ctx = build_ticket_brief(db, reporting_date=selected_date)
     return _tmpl(request, "daily_brief.html", {**ctx, "user": user, "error": error})
 
 
