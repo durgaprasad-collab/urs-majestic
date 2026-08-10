@@ -23,6 +23,28 @@ _INTENSITY_PORTION_COL = {
 router = APIRouter(tags=["engine"])
 
 
+def _purchase_qty_in_ingredient_unit(purchase: Purchase, ingredient: Ingredient) -> float:
+    """Normalize mixed purchase units before reconciliation totals."""
+    qty = float(purchase.qty)
+    source = str(purchase.unit)
+    target = str(ingredient.unit)
+    if source == target:
+        return qty
+    conversions = {
+        ("kg", "g"): 1000.0, ("g", "kg"): 0.001,
+        ("l", "ml"): 1000.0, ("ml", "l"): 0.001,
+    }
+    if (source, target) in conversions:
+        return qty * conversions[(source, target)]
+    pack_size = float(ingredient.pack_size_g) if ingredient.pack_size_g else None
+    if target == "pcs" and pack_size:
+        if source == "kg":
+            return qty * 1000.0 / pack_size
+        if source == "g":
+            return qty / pack_size
+    return qty
+
+
 @router.post("/run-cost-engine")
 async def run_engine(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
@@ -167,7 +189,7 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         ingredient = rolling_ingredients.get(purchase.ingredient_id)
         category = (ingredient.category if ingredient else None) or "Other"
         amount = float(purchase.total_price)
-        qty = float(purchase.qty)
+        qty = _purchase_qty_in_ingredient_unit(purchase, ingredient) if ingredient else float(purchase.qty)
         month_totals[key] += amount
         category_acc[category][key] += amount
         item_key = (purchase.ingredient_id, purchase.usage_type)
@@ -175,7 +197,7 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         row["name"] = ingredient.name if ingredient else f"ID {purchase.ingredient_id}"
         row["category"] = category
         row["usage_type"] = purchase.usage_type
-        row["unit"] = purchase.unit
+        row["unit"] = ingredient.unit if ingredient else purchase.unit
         row["months"][key]["qty"] += qty
         row["months"][key]["spend"] += amount
         row["total_qty"] += qty
@@ -202,7 +224,7 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         if not ing:
             continue
         dates = sorted(p.purchase_date for p in purchases)
-        total_qty = sum(float(p.qty) for p in purchases)
+        total_qty = sum(_purchase_qty_in_ingredient_unit(p, ing) for p in purchases)
         avg_qty = total_qty / len(purchases)
         total_spent = sum(float(p.total_price) for p in purchases)
         if len(dates) >= 2:
@@ -215,7 +237,7 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
             "count": len(purchases),
             "total_qty": total_qty,
             "avg_qty": avg_qty,
-            "unit": purchases[-1].unit,
+            "unit": ing.unit,
             "avg_days": avg_days,
             "total_spent": total_spent,
             "last_date": max(dates),
