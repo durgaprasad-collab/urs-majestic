@@ -19,6 +19,7 @@ from app.services.uploads.petpooja_order_listing import (
 )
 from app.models.item_sale import ItemSale
 from app.models.upload_log import UploadLog
+from app.services.sales_stock import adjust_stock_for_sales
 from app.web.deps import _tmpl, require_user
 
 _SEED = os.path.normpath(
@@ -105,7 +106,8 @@ async def upload_post(
         raw_rows, parse_errors, declared_total, declared_rows = parse_xlsx(tmp.name)
         raw_rows, excluded_today = exclude_today(raw_rows, business_today())
         resolver = build_resolver(seed, menu_map)
-        load_sales(db, raw_rows, resolver)
+        imported_sales, _unmatched = load_sales(db, raw_rows, resolver)
+        adjust_stock_for_sales(db, imported_sales)
         upsert_daily_channel_sales(db, raw_rows, file.filename)
         write_upload_log(
             db,
