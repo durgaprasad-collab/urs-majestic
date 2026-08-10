@@ -3,8 +3,22 @@
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title">Purchase Reconciliation</h1>
+  <div>
+    <h1 class="page-title">Purchase Reconciliation</h1>
+    <p class="card-sub">Rolling three months · {{ window_start.strftime('%d %b %Y') }}–{{ window_end.strftime('%d %b %Y') }}</p>
+  </div>
 </div>
+
+<style>
+  .recon-month-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin:1rem 0}
+  .recon-month-card{padding:1rem;border:1px solid #e2ddd1;border-radius:14px;background:#fff}
+  .recon-month-card span{display:block;color:#777;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+  .recon-month-card b{display:block;margin-top:.25rem;font-size:1.35rem;color:#0b3a2e}
+  .recon-month-cell strong,.recon-month-cell small{display:block;white-space:nowrap}
+  .recon-month-cell small{color:#777;margin-top:.12rem}
+  .recon-section{margin-top:1rem}
+  @media(max-width:700px){.recon-month-grid{grid-template-columns:1fr}.recon-rolling-table{min-width:760px}}
+</style>
 
 <form method="get" action="/reconciliation" class="filter-bar">
   <select name="ingredient_id" class="form-input filter-select" onchange="this.form.submit()">
@@ -20,7 +34,7 @@
 
 {% if filter_ing %}
 <p class="card-sub" style="margin:-.4rem 0 .8rem">
-  Showing <strong>{{ filter_ing.name }}</strong> only. Spend cards, purchase summary and
+  Showing <strong>{{ filter_ing.name }}</strong> only. Monthly spend, purchase summary and
   usage-by-dish are scoped to this ingredient; the unmapped-ingredient warning below stays global.
 </p>
 {% endif %}
@@ -29,19 +43,86 @@
   <div class="recon-card recon-menu">
     <span class="recon-label">Menu purchases</span>
     <span class="recon-value">₹{{ "{:,.0f}".format(total_menu_cost) }}</span>
-    <span class="recon-sub">used in dish cost engine</span>
+    <span class="recon-sub">rolling 3 months · dish cost engine</span>
   </div>
   <div class="recon-card recon-personal">
     <span class="recon-label">Personal / Other</span>
     <span class="recon-value">₹{{ "{:,.0f}".format(total_personal_cost) }}</span>
-    <span class="recon-sub">excluded from dish cost</span>
+    <span class="recon-sub">rolling 3 months · excluded from dish cost</span>
+  </div>
+  <div class="recon-card">
+    <span class="recon-label">Excluded / unidentified</span>
+    <span class="recon-value">₹{{ "{:,.0f}".format(total_excluded_cost) }}</span>
+    <span class="recon-sub">rolling 3 months · awaiting classification</span>
   </div>
   <div class="recon-card recon-total">
     <span class="recon-label">Total recorded</span>
     <span class="recon-value">₹{{ "{:,.0f}".format(grand_total) }}</span>
-    <span class="recon-sub">{% if filter_ing %}{{ filter_ing.name }} only{% else %}all purchase entries{% endif %}</span>
+    <span class="recon-sub">rolling 3 months · {% if filter_ing %}{{ filter_ing.name }} only{% else %}all purchases{% endif %}</span>
   </div>
 </div>
+
+<div class="recon-month-grid">
+  {% for month in months %}
+  <div class="recon-month-card">
+    <span>{{ month.label }}</span>
+    <b>₹{{ "{:,.0f}".format(month_totals[month.key]) }}</b>
+  </div>
+  {% endfor %}
+</div>
+
+<section class="card recon-section">
+  <div class="prep-head" style="margin-top:0">
+    <div>
+      <h2 class="prep-title">Category breakdown</h2>
+      <p class="card-sub">Purchase spend by ingredient category for each month.</p>
+    </div>
+  </div>
+  <div class="recon-table-wrap">
+    <table class="recon-table recon-rolling-table">
+      <thead><tr><th>Category</th>{% for month in months %}<th class="col-num">{{ month.label }}</th>{% endfor %}<th class="col-num">3-month total</th></tr></thead>
+      <tbody>
+        {% for row in category_monthly %}
+        <tr>
+          <td><strong>{{ row.category }}</strong></td>
+          {% for month in months %}<td class="col-num">₹{{ "{:,.0f}".format(row.months[month.key]) }}</td>{% endfor %}
+          <td class="col-num"><strong>₹{{ "{:,.0f}".format(row.total) }}</strong></td>
+        </tr>
+        {% else %}<tr><td colspan="5" class="recon-sub">No purchases in this rolling window.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card recon-section">
+  <div class="prep-head" style="margin-top:0">
+    <div>
+      <h2 class="prep-title">Item-wise breakdown</h2>
+      <p class="card-sub">Quantity and spend for every ingredient, month by month.</p>
+    </div>
+  </div>
+  <div class="recon-table-wrap recon-table-scroll">
+    <table class="recon-table recon-rolling-table">
+      <thead><tr><th>Ingredient</th><th>Category</th><th>Use</th>{% for month in months %}<th class="col-num">{{ month.label }}</th>{% endfor %}<th class="col-num">3-month total</th></tr></thead>
+      <tbody>
+        {% for row in item_monthly %}
+        <tr>
+          <td><strong>{{ row.name }}</strong></td>
+          <td>{{ row.category }}</td>
+          <td>{% if row.usage_type == 'menu' %}Menu{% elif row.usage_type == 'others_personal' %}Personal / Other{% else %}Excluded / unidentified{% endif %}</td>
+          {% for month in months %}
+          {% set cell = row.months[month.key] %}
+          <td class="col-num recon-month-cell">
+            {% if cell.spend %}<strong>₹{{ "{:,.0f}".format(cell.spend) }}</strong><small>{{ "%g"|format(cell.qty) }} {{ row.unit }}</small>{% else %}—{% endif %}
+          </td>
+          {% endfor %}
+          <td class="col-num recon-month-cell"><strong>₹{{ "{:,.0f}".format(row.total_spend) }}</strong><small>{{ "%g"|format(row.total_qty) }} {{ row.unit }}</small></td>
+        </tr>
+        {% else %}<tr><td colspan="7" class="recon-sub">No purchases in this rolling window.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 
 {% if unmapped_names %}
 <div class="card" style="margin-top:1rem">
@@ -71,7 +152,7 @@
     {% if ingredient_summary %}
     <div class="card">
       <h2 class="card-title" style="font-size:1rem">Ingredient purchase summary</h2>
-      <p class="card-sub" style="margin-bottom:.75rem">Average quantity and restocking interval per ingredient across all purchases.</p>
+      <p class="card-sub" style="margin-bottom:.75rem">Average quantity and restocking interval per ingredient within the rolling three-month window.</p>
       <div class="recon-table-wrap">
         <table class="recon-table">
           <thead>
@@ -162,9 +243,7 @@
 
 <div class="card recon-disclaimer" style="margin-top:1rem">
   <p>
-    <strong>Note:</strong> True waste and leakage detection needs 2+ months of stable,
-    consistent purchase data before patterns are statistically meaningful.
-    This view is not yet available.
+    <strong>Rolling window:</strong> category, item, purchase-frequency and dish-usage figures above use the current calendar month plus the previous two months.
   </p>
 </div>
 {% endblock %}

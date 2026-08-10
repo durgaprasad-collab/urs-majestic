@@ -1,5 +1,6 @@
 """Cost engine trigger and reconciliation page."""
 from collections import defaultdict
+from datetime import date
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func
@@ -11,6 +12,7 @@ from app.models.menu_item import MenuItem
 from app.models.item_sale import ItemSale
 from app.services.menu_engineering.cost_engine import run_cost_engine
 from app.web.deps import _tmpl, require_user
+from app.core.clock import business_today
 
 _INTENSITY_PORTION_COL = {
     "light": "portion_light_g",
@@ -47,6 +49,16 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     if filter_ing is None:
         filter_id = None
 
+    today = business_today()
+    current_month_index = today.year * 12 + today.month - 1
+    month_starts = [
+        date((current_month_index - offset) // 12, (current_month_index - offset) % 12 + 1, 1)
+        for offset in (2, 1, 0)
+    ]
+    month_keys = [m.strftime("%Y-%m") for m in month_starts]
+    months = [{"key": key, "label": start.strftime("%b %Y")} for key, start in zip(month_keys, month_starts)]
+    window_start = month_starts[0]
+
     # All ingredients that have at least one purchase — the only ones that can
     # produce rows below, so the dropdown never offers a choice that yields nothing.
     purchased_ids = {
@@ -66,7 +78,9 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
 
     # Total cost by usage type
     agg_q = db.query(Purchase.usage_type, func.sum(Purchase.total_price).label("total")).filter(
-        Purchase.deleted_at.is_(None)
+        Purchase.deleted_at.is_(None),
+        Purchase.purchase_date >= window_start,
+        Purchase.purchase_date <= today,
     )
     if filter_id:
         agg_q = agg_q.filter(Purchase.ingredient_id == filter_id)
@@ -74,7 +88,8 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     totals = {row.usage_type: float(row.total) for row in agg}
     total_menu_cost = totals.get("menu", 0.0)
     total_personal_cost = totals.get("others_personal", 0.0)
-    grand_total = total_menu_cost + total_personal_cost
+    total_excluded_cost = totals.get("excluded_unidentified", 0.0)
+    grand_total = sum(totals.values())
 
     # Unmapped ingredients that have menu-usage purchases
     mapped_ingredient_ids = {
@@ -84,7 +99,12 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     menu_ingredient_ids = {
         row[0]
         for row in db.query(Purchase.ingredient_id)
-        .filter(Purchase.usage_type == "menu", Purchase.deleted_at.is_(None))
+        .filter(
+            Purchase.usage_type == "menu",
+            Purchase.deleted_at.is_(None),
+            Purchase.purchase_date >= window_start,
+            Purchase.purchase_date <= today,
+        )
         .distinct()
         .all()
     }
@@ -99,6 +119,8 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
                 Purchase.ingredient_id.in_(unmapped_ids),
                 Purchase.usage_type == "menu",
                 Purchase.deleted_at.is_(None),
+                Purchase.purchase_date >= window_start,
+                Purchase.purchase_date <= today,
             )
             .group_by(Purchase.ingredient_id)
             .all()
@@ -114,12 +136,57 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     # Per-ingredient purchase summary (restocking interval + avg qty)
     purch_q = (
         db.query(Purchase)
-        .filter(Purchase.deleted_at.is_(None))
+        .filter(
+            Purchase.deleted_at.is_(None),
+            Purchase.purchase_date >= window_start,
+            Purchase.purchase_date <= today,
+        )
         .order_by(Purchase.ingredient_id, Purchase.purchase_date)
     )
     if filter_id:
         purch_q = purch_q.filter(Purchase.ingredient_id == filter_id)
     all_purchases = purch_q.all()
+
+    # Three calendar months, category and ingredient/item level. Quantity and
+    # spend stay together at item level; category totals are monetary because
+    # kilograms, litres, grams and pieces cannot be meaningfully summed.
+    all_ingredient_ids = {p.ingredient_id for p in all_purchases}
+    rolling_ingredients = {
+        i.id: i for i in db.query(Ingredient).filter(Ingredient.id.in_(all_ingredient_ids)).all()
+    } if all_ingredient_ids else {}
+    month_totals = {key: 0.0 for key in month_keys}
+    category_acc = defaultdict(lambda: {key: 0.0 for key in month_keys})
+    item_acc = defaultdict(lambda: {
+        "months": {key: {"qty": 0.0, "spend": 0.0} for key in month_keys},
+        "total_qty": 0.0, "total_spend": 0.0, "unit": None,
+    })
+    for purchase in all_purchases:
+        key = purchase.purchase_date.strftime("%Y-%m")
+        if key not in month_totals:
+            continue
+        ingredient = rolling_ingredients.get(purchase.ingredient_id)
+        category = (ingredient.category if ingredient else None) or "Other"
+        amount = float(purchase.total_price)
+        qty = float(purchase.qty)
+        month_totals[key] += amount
+        category_acc[category][key] += amount
+        item_key = (purchase.ingredient_id, purchase.usage_type)
+        row = item_acc[item_key]
+        row["name"] = ingredient.name if ingredient else f"ID {purchase.ingredient_id}"
+        row["category"] = category
+        row["usage_type"] = purchase.usage_type
+        row["unit"] = purchase.unit
+        row["months"][key]["qty"] += qty
+        row["months"][key]["spend"] += amount
+        row["total_qty"] += qty
+        row["total_spend"] += amount
+    category_monthly = [
+        {"category": category, "months": values, "total": sum(values.values())}
+        for category, values in category_acc.items()
+    ]
+    category_monthly.sort(key=lambda row: (-row["total"], row["category"]))
+    item_monthly = list(item_acc.values())
+    item_monthly.sort(key=lambda row: (-row["total_spend"], row["name"], row["usage_type"]))
     ing_groups: dict[int, list] = defaultdict(list)
     for p in all_purchases:
         ing_groups[p.ingredient_id].append(p)
@@ -159,6 +226,7 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
     # consumption (portion size x units sold) going to each mapped dish.
     sales_agg = (
         db.query(ItemSale.item_name, func.sum(ItemSale.qty).label("units"))
+        .filter(ItemSale.sale_date >= window_start, ItemSale.sale_date <= today)
         .group_by(ItemSale.item_name)
         .all()
     )
@@ -216,6 +284,7 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         "user": user,
         "total_menu_cost": total_menu_cost,
         "total_personal_cost": total_personal_cost,
+        "total_excluded_cost": total_excluded_cost,
         "grand_total": grand_total,
         "unmapped_cost": unmapped_cost,
         "unmapped_names": sorted(unmapped_names),
@@ -225,4 +294,10 @@ def reconciliation(request: Request, db: Session = Depends(get_db)):
         "filter_id": filter_id,
         "filter_ing": filter_ing,
         "usage_empty_reason": usage_empty_reason,
+        "months": months,
+        "month_totals": month_totals,
+        "category_monthly": category_monthly,
+        "item_monthly": item_monthly,
+        "window_start": window_start,
+        "window_end": today,
     })
