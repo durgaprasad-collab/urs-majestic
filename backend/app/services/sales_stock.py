@@ -5,6 +5,8 @@ from decimal import Decimal
 
 from sqlalchemy import text
 
+from app.core.config import settings
+
 
 _MAP_SQL = text("""
     SELECT m.menu_item_id, m.ingredient_id, m.intensity, m.portion_override_g,
@@ -162,6 +164,28 @@ def adjust_stock_for_sales(db, sales) -> dict:
              ORDER BY counted_at DESC, id DESC
              LIMIT 1 FOR UPDATE
         """), {"ingredient_id": ingredient_id}).mappings().first()
+        # A physical count entered on a later business date is authoritative:
+        # it already includes all sales from ``sale_date``.  Re-importing that
+        # day's Petpooja report must still advance the idempotency ledger, but
+        # must not deduct the same usage again from the observed balance.
+        #
+        # Use the business timezone rather than the database/server date.  A
+        # count just after midnight IST is the normal closing count for the
+        # preceding trading day even though Render/Postgres may still be on the
+        # previous UTC date.
+        covered_by_physical_count = db.execute(text("""
+            SELECT EXISTS (
+                SELECT 1
+                  FROM ingredient_stock
+                 WHERE ingredient_id = :ingredient_id
+                   AND (note IS NULL OR note = 'reorder_required')
+                   AND timezone(:business_timezone, counted_at)::date > :sale_date
+            )
+        """), {
+            "ingredient_id": ingredient_id,
+            "sale_date": sale_date,
+            "business_timezone": settings.BUSINESS_TIMEZONE,
+        }).scalar_one()
         if latest is None:
             # No physical baseline exists. Record a conservative zero balance
             # plus the usage ledger so the same report cannot deduct twice.
@@ -172,6 +196,8 @@ def adjust_stock_for_sales(db, sales) -> dict:
             # silently treating litres, kilograms, or pieces as equivalent.
             initialized_zero += 1
             balance = Decimal("0")
+        elif covered_by_physical_count:
+            balance = Decimal(str(latest["on_hand_qty"]))
         else:
             balance = max(Decimal("0"), Decimal(str(latest["on_hand_qty"])) - delta)
         db.execute(text("""
