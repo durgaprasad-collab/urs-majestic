@@ -21,7 +21,7 @@
   .recon-month-cell strong,.recon-month-cell small{display:block;white-space:nowrap}
   .recon-month-cell small{color:#777;margin-top:.12rem}
   .recon-section{margin-top:1rem}
-  .recon-ledger-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;margin:1rem 0}
+  .recon-ledger-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem;margin:1rem 0}
   .recon-ledger-card{padding:1rem;border:1px solid #e2ddd1;border-top:4px solid #0b3a2e;border-radius:14px;background:#fff;box-shadow:0 4px 12px rgba(11,58,46,.04)}
   .recon-ledger-card span{display:block;color:#777;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
   .recon-ledger-card b{display:block;margin-top:.25rem;font-size:1.35rem;color:#0b3a2e}
@@ -29,6 +29,7 @@
   .recon-ledger-card.revenue{border-top-color:#1e8f5a}
   .recon-ledger-card.purchases{border-top-color:#8e44ad}
   .recon-ledger-card.target{border-top-color:#d18f00}
+  .recon-ledger-card.cash{border-top-color:#6c5ce7}
   .recon-ledger-card.achieved{border-top-color:#2d6cdf}
   .recon-ledger-note{margin:.35rem 0 .9rem;color:#666;font-size:.82rem}
   .recon-ledger-table tfoot td{background:#f4efe6;font-weight:700;border-top:2px solid #d8ccb8}
@@ -90,6 +91,15 @@
       <small>No target configured</small>
       {% endif %}
     </div>
+    <div class="recon-ledger-card cash">
+      <span>Cash needed this month</span>
+      <b>â‚¹{{ "{:,.0f}".format(month_ledger.cash_needed_total) }}</b>
+      {% if month_ledger.cash_gap_short %}
+      <small>â‚¹{{ "{:,.0f}".format(month_ledger.cash_gap_abs) }} still to cover from revenue</small>
+      {% else %}
+      <small>â‚¹{{ "{:,.0f}".format(month_ledger.cash_gap_abs) }} ahead of cash bills</small>
+      {% endif %}
+    </div>
     <div class="recon-ledger-card achieved">
       <span>Achieved subtotal</span>
       <b>₹{{ "{:,.0f}".format(month_ledger.achieved_total) }}</b>
@@ -101,7 +111,7 @@
     </div>
   </div>
 
-  <p class="recon-ledger-note">Revenue and purchases are daily values. Target and achieved are running totals through each day of the month.</p>
+  <p class="recon-ledger-note">Revenue and purchases are daily values. Break-even is fixed bills ÷ contribution margin. Cash needed this month is fixed bills + purchases so far.</p>
 
   <div class="recon-table-wrap recon-table-scroll">
     <table class="recon-table recon-ledger-table">

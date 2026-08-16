@@ -13,6 +13,7 @@ from app.models.purchase import Purchase
 from app.models.ingredient import Ingredient, IngredientDishMap
 from app.models.menu_item import MenuItem
 from app.models.item_sale import ItemSale
+from app.services import business_settings as bs
 from app.services import target_engine
 from app.services.menu_engineering.cost_engine import run_cost_engine
 from app.web.deps import _tmpl, require_user
@@ -134,6 +135,7 @@ def _calendar_month_ledger(db: Session, month_start: date, month_end: date, disp
     ).mappings().all()
 
     target_total, target_source = _monthly_target_total(db, display_end)
+    fixed_total = bs.monthly_fixed_total(db, display_end)
     days_in_month = calendar.monthrange(month_start.year, month_start.month)[1]
     revenue_total = D("0.00")
     purchases_total = D("0.00")
@@ -157,12 +159,19 @@ def _calendar_month_ledger(db: Session, month_start: date, month_end: date, disp
 
     month_subtotal_label = "Subtotal to date" if display_end < month_end else "Month subtotal"
     target_subtotal = target_total if target_total else None
+    cash_needed_total = (fixed_total + purchases_total).quantize(D("0.01"))
+    cash_gap_total = (cash_needed_total - revenue_total).quantize(D("0.01"))
     achieved_subtotal = revenue_total if target_total else None
     achieved_subtotal_pct = (revenue_total / target_total * 100) if target_total else None
     return {
         "rows": ledger_rows,
         "revenue_total": revenue_total.quantize(D("0.01")),
         "purchases_total": purchases_total.quantize(D("0.01")),
+        "fixed_total": fixed_total.quantize(D("0.01")),
+        "cash_needed_total": cash_needed_total,
+        "cash_gap_total": cash_gap_total,
+        "cash_gap_abs": abs(cash_gap_total),
+        "cash_gap_short": cash_gap_total > 0,
         "target_total": target_subtotal.quantize(D("0.01")) if target_subtotal is not None else None,
         "achieved_total": achieved_subtotal.quantize(D("0.01")) if achieved_subtotal is not None else revenue_total.quantize(D("0.01")),
         "achieved_total_pct": round(float(achieved_subtotal_pct), 1) if achieved_subtotal_pct is not None else None,
