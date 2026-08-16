@@ -418,6 +418,7 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
             "suggested_increment": suggested_increment,
             "recent_unit_cost": unit_cost,
             "forecast_value": (result["total"] * unit_cost) if result and unit_cost is not None else 0.0,
+            "model_key": result["model_key"] if result else None,
             "model_name": result["model_name"] if result else None,
             "backtest_wape": result["wape"] if result else None,
             "confidence": result["confidence"] if result else "insufficient",
