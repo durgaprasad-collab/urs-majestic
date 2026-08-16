@@ -15,8 +15,8 @@ from app.core.clock import business_today
 from app.core.database import get_db
 from app.models.purchase import Purchase
 from app.services.weekly_ordering import (
-    PILOT_CATEGORY, build_category_forecast, round_to_increment,
-    split_delivery_quantities,
+    DEFAULT_WEEKLY_CATEGORY, build_category_forecast, round_to_increment,
+    split_delivery_quantities, weekly_forecast_categories,
 )
 from app.services.weekly_order_pdf import build_supplier_delivery_pdf
 from app.web.deps import _tmpl, require_user
@@ -30,13 +30,21 @@ def weekly_order(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         return redir
-    forecast = build_category_forecast(db)
+    categories = weekly_forecast_categories(db)
+    selected_category = request.query_params.get("category")
+    if selected_category not in categories:
+        selected_category = DEFAULT_WEEKLY_CATEGORY if DEFAULT_WEEKLY_CATEGORY in categories else (categories[0] if categories else DEFAULT_WEEKLY_CATEGORY)
+    forecast = build_category_forecast(db, category=selected_category)
     recent = db.execute(text("""
         SELECT id, category, horizon_start, horizon_end, status, created_at
-          FROM weekly_inventory_orders ORDER BY created_at DESC LIMIT 8
-    """)).mappings().all()
+          FROM weekly_inventory_orders
+         WHERE category = :category
+         ORDER BY created_at DESC
+         LIMIT 8
+    """), {"category": selected_category}).mappings().all()
     return _tmpl(request, "weekly_order.html", {
         **forecast, "user": user, "recent_orders": recent,
+        "categories": categories, "selected_category": selected_category,
         "error": request.query_params.get("error"),
     })
 
@@ -46,7 +54,12 @@ async def create_draft(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         return redir
-    forecast = build_category_forecast(db)
+    form = await request.form()
+    categories = weekly_forecast_categories(db)
+    selected_category = form.get("category") or request.query_params.get("category") or DEFAULT_WEEKLY_CATEGORY
+    if selected_category not in categories:
+        selected_category = DEFAULT_WEEKLY_CATEGORY if DEFAULT_WEEKLY_CATEGORY in categories else (categories[0] if categories else selected_category)
+    forecast = build_category_forecast(db, category=selected_category)
     order_id = db.execute(text("""
         INSERT INTO weekly_inventory_orders
             (category, horizon_start, horizon_end, status, model_version, created_by)

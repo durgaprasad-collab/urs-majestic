@@ -22,7 +22,26 @@ from app.services.sales_stock import calculate_ingredient_usage
 
 
 MODEL_VERSION = "weekly-v1"
-PILOT_CATEGORY = "Vegetables"
+DEFAULT_WEEKLY_CATEGORY = "Vegetables"
+
+
+_CATEGORIES_SQL = text("""
+    SELECT i.category AS category,
+           COUNT(*) AS total_ingredients,
+           COUNT(*) FILTER (WHERE m.ingredient_id IS NOT NULL) AS mapped_ingredients
+      FROM ingredients i
+      LEFT JOIN ingredient_dish_map m ON m.ingredient_id = i.id
+     WHERE i.is_active
+       AND i.category IS NOT NULL
+     GROUP BY i.category
+     ORDER BY mapped_ingredients DESC, total_ingredients DESC, i.category
+""")
+
+
+def weekly_forecast_categories(db) -> list[str]:
+    """Return forecastable categories in a stable, useful order."""
+    rows = db.execute(_CATEGORIES_SQL).mappings().all()
+    return [r["category"] for r in rows if int(r["mapped_ingredients"] or 0) > 0]
 
 
 def _mean(values):
@@ -216,18 +235,18 @@ def split_delivery_quantities(approved_qty: float, daily: list[float], increment
     return [first, second, third]
 
 
-def build_category_forecast(db, category: str = PILOT_CATEGORY, horizon_start: date | None = None) -> dict:
-    if category != PILOT_CATEGORY:
-        raise ValueError("Only Vegetables are enabled in the weekly-order pilot.")
+def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon_start: date | None = None) -> dict:
     horizon_start = horizon_start or (business_today() + timedelta(days=1))
     future = [horizon_start + timedelta(days=i) for i in range(7)]
 
     ingredients = db.execute(text("""
         SELECT id, name, unit::text AS unit, pack_size_g, order_increment_qty
-          FROM ingredients
-         WHERE is_active AND category = :category
+        FROM ingredients
+        WHERE is_active AND category = :category
          ORDER BY name
     """), {"category": category}).mappings().all()
+    if not ingredients:
+        raise ValueError(f"No active ingredients found for category {category!r}.")
     ingredient_by_id = {r["id"]: r for r in ingredients}
 
     sales = db.query(ItemSale).order_by(ItemSale.sale_date, ItemSale.id).all()
