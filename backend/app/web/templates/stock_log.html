@@ -9,6 +9,12 @@
   .sl-row-name{white-space:nowrap}
   .sl-last{font-size:.74rem;color:#6b6b6b;white-space:nowrap}
   .sl-last-fresh{color:#1e7e34}
+  .sl-cover{display:inline-flex;align-items:center;gap:.32rem;padding:.28rem .55rem;border-radius:999px;font-size:.72rem;font-weight:850;white-space:nowrap}
+  .sl-cover::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .sl-cover-red{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
+  .sl-cover-orange{background:#FFF2DE;color:#A85C08;border:1px solid #F0CF9D}
+  .sl-cover-green{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
+  .sl-cover-neutral{background:#F2F1EA;color:#777;border:1px solid #DDD8CC}
   .sl-input-cell{display:flex;align-items:center;gap:.3rem;white-space:nowrap}
   .sl-qty{width:5.5rem;padding:.3rem .45rem;font-size:.85rem;border:1px solid #d3d3cf;border-radius:4px}
   .sl-unit-select{padding:.3rem;font-size:.8rem;border:1px solid #d3d3cf;border-radius:4px}
@@ -48,6 +54,7 @@
             <tr>
               <th>Item</th>
               <th>Last count</th>
+              <th>Cover</th>
               <th>Today's count</th>
             </tr>
           </thead>
@@ -65,6 +72,15 @@
                   </span>
                 {% else %}
                   <span class="sl-last">never counted</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if r.cover_days is not none %}
+                  <span class="sl-cover sl-cover-{{ r.cover_colour }}" title="{{ '%g'|format(r.cover_qty) }} {{ r.unit }} ÷ {{ '%g'|format(r.daily_consumption) }} {{ r.unit }}/day · {{ r.cover_source }}">
+                    {{ '%.1f'|format(r.cover_days) }} days
+                  </span>
+                {% else %}
+                  <span class="sl-cover sl-cover-neutral" title="A compatible stock count and consumption rate are required">No data</span>
                 {% endif %}
               </td>
               <td>

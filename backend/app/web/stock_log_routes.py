@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import business_today, business_tz
 from app.core.database import get_db
 from app.web.deps import _tmpl, require_user
-from app.web.reorder_routes import record_stock
+from app.web.reorder_routes import record_stock, _LATEST_GAS_SQL, _GAS_AVERAGE_SQL
 
 router = APIRouter(tags=["stock-log"])
 
@@ -28,15 +28,25 @@ _CATEGORY_ORDER = [
 
 _LIST_SQL = text("""
     select i.id as ingredient_id, i.name, i.unit, i.category, i.pack_size_g,
-           s.on_hand_qty, s.counted_at, s.note
+           s.on_hand_qty, s.counted_at, s.note,
+           v.daily_consumption,
+           case
+             when s.on_hand_qty is not null
+              and v.daily_consumption is not null
+              and v.daily_consumption > 0
+              and s.stock_unit = v.unit::text
+             then s.on_hand_qty / v.daily_consumption
+             else null
+           end as cover_days
     from ingredients i
     left join lateral (
-        select on_hand_qty, counted_at, note
+        select on_hand_qty, unit::text as stock_unit, counted_at, note
         from ingredient_stock
         where ingredient_id = i.id
         order by counted_at desc
         limit 1
     ) s on true
+    left join v_ingredient_reorder_forecast v on v.ingredient_id = i.id
     where i.is_active
     order by i.category nulls last, i.name
 """)
@@ -59,6 +69,8 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
         return redir
 
     rows = db.execute(_LIST_SQL).mappings().all()
+    gas_reading = db.execute(_LATEST_GAS_SQL).mappings().first()
+    gas_avg_per_day = db.execute(_GAS_AVERAGE_SQL).scalar()
     by_cat: dict[str, list] = {}
     for row in rows:
         r = dict(row)
@@ -66,6 +78,25 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
         # display and the "counted today" freshness check below.
         if r["counted_at"] is not None:
             r["counted_at"] = r["counted_at"].astimezone(business_tz())
+        r["cover_qty"] = r["on_hand_qty"]
+        cover = float(r["cover_days"]) if r["cover_days"] is not None else None
+        if (
+            r["name"] == "Cooking Gas" and gas_reading
+            and gas_avg_per_day is not None and gas_avg_per_day > 0
+        ):
+            r["cover_qty"] = gas_reading["net_kg"]
+            r["daily_consumption"] = gas_avg_per_day
+            cover = float(gas_reading["net_kg"] / gas_avg_per_day)
+            r["cover_source"] = "gas log"
+        else:
+            r["cover_source"] = "stock log"
+        r["cover_days"] = cover
+        r["cover_colour"] = (
+            "red" if cover is not None and cover < 3
+            else "orange" if cover is not None and cover < 7
+            else "green" if cover is not None
+            else "neutral"
+        )
         by_cat.setdefault(r["category"] or "Other", []).append(r)
 
     ordered = [(c, by_cat[c]) for c in _CATEGORY_ORDER if c in by_cat]
