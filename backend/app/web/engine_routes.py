@@ -86,22 +86,18 @@ def _month_bounds(month_start: date) -> tuple[date, date]:
 
 
 def _monthly_target_total(db: Session, report_date: date) -> tuple[decimal.Decimal, str]:
-    configured = D(str(settings.MONTHLY_SALES_TARGET or 0))
-    if configured > 0:
-        return configured.quantize(D("0.01")), "Configured monthly sales target"
-
     computed = target_engine.compute(
         db,
         mtd=D("0"),
         reporting_date=report_date,
         days_elapsed=max(report_date.day, 1),
     )
-    operating = D(str(computed.get("operating") or 0))
-    if operating > 0:
-        return operating.quantize(D("0.01")), "Operating target"
     break_even = D(str(computed.get("break_even") or 0))
     if break_even > 0:
         return break_even.quantize(D("0.01")), "Break-even target"
+    configured = D(str(settings.MONTHLY_SALES_TARGET or 0))
+    if configured > 0:
+        return configured.quantize(D("0.01")), "Configured monthly sales target"
     return D("0.00"), "No target configured"
 
 

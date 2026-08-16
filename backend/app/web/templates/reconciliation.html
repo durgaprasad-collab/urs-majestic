@@ -65,7 +65,7 @@
   <div class="prep-head" style="margin-top:0">
     <div>
       <h2 class="prep-title">Calendar month daily ledger</h2>
-      <p class="card-sub">Daily revenue and purchases for <strong>{{ selected_month_label }}</strong>. Target is {{ month_ledger.target_source|lower }} pace; achieved is cumulative actual revenue to date.</p>
+      <p class="card-sub">Daily revenue and purchases for <strong>{{ selected_month_label }}</strong>. Target is break-even pace; achieved is cumulative actual revenue to date.</p>
     </div>
   </div>
 
@@ -81,10 +81,10 @@
       <small>through {{ selected_month_display_end.strftime('%d %b %Y') }}</small>
     </div>
     <div class="recon-ledger-card target">
-      <span>Target subtotal</span>
+      <span>Break-even subtotal</span>
       {% if month_ledger.target_total is not none %}
       <b>₹{{ "{:,.0f}".format(month_ledger.target_total) }}</b>
-      <small>month target for {{ selected_month_label }}</small>
+      <small>break-even target for {{ selected_month_label }}</small>
       {% else %}
       <b>—</b>
       <small>No target configured</small>
@@ -110,7 +110,7 @@
           <th>Date</th>
           <th class="col-num">Revenue</th>
           <th class="col-num">Purchases</th>
-          <th class="col-num">Target</th>
+          <th class="col-num">Break-even</th>
           <th class="col-num">Achieved</th>
         </tr>
       </thead>
@@ -122,7 +122,7 @@
           <td class="col-num">₹{{ "{:,.0f}".format(row.purchases) }}<small>day</small></td>
           <td class="col-num">
             {% if row.target_to_date is not none %}
-            ₹{{ "{:,.0f}".format(row.target_to_date) }}<small>pace to date</small>
+            ₹{{ "{:,.0f}".format(row.target_to_date) }}<small>break-even pace to date</small>
             {% else %}
             —
             {% endif %}
