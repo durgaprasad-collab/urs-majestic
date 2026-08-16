@@ -32,6 +32,8 @@ def _shorten(value: str, font: str, size: float, max_width: float) -> str:
 
 def build_supplier_delivery_pdf(order: dict, deliveries: list[dict]) -> bytes:
     """Return an A4-landscape PDF containing every scheduled delivery."""
+    category = str(order.get("category") or "").strip()
+    category_label = category if category else "Inventory"
     groups = defaultdict(list)
     for delivery in deliveries:
         if delivery.get("status") == "cancelled" or float(delivery.get("planned_qty") or 0) <= 0:
@@ -46,7 +48,7 @@ def build_supplier_delivery_pdf(order: dict, deliveries: list[dict]) -> bytes:
     output = BytesIO()
     width, height = landscape(A4)
     pdf = canvas.Canvas(output, pagesize=(width, height), pageCompression=1)
-    pdf.setTitle(f"URS Majestic weekly delivery order {order['id']}")
+    pdf.setTitle(f"URS Majestic weekly delivery order {order['id']} - {category_label}")
     pdf.setAuthor("URS Majestic")
 
     margin = 24
@@ -59,10 +61,10 @@ def build_supplier_delivery_pdf(order: dict, deliveries: list[dict]) -> bytes:
     pdf.drawCentredString(margin + 14, height - 33, "UM")
     pdf.setFillColor(white)
     pdf.setFont("Helvetica-Bold", 19)
-    pdf.drawString(margin + 40, height - 35, "Weekly Vegetable Delivery Plan")
+    pdf.drawString(margin + 40, height - 35, "Weekly Delivery Plan")
     pdf.setFont("Helvetica", 8.5)
     pdf.setFillColor(HexColor("#CFE3DB"))
-    pdf.drawString(margin + 40, height - 52, "URS Majestic Pure Veg - supplier copy")
+    pdf.drawString(margin + 40, height - 52, f"URS Majestic supplier copy · {category_label}")
 
     pdf.setFillColor(white)
     pdf.setFont("Helvetica-Bold", 9)
