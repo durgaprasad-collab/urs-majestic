@@ -25,7 +25,10 @@
 
 <div class="page-header">
   <h1 class="page-title">Stock Log</h1>
-  <a href="/stock-log/history" class="btn-primary btn-sm">History</a>
+  <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+    <a href="/stock-log/low-cover.pdf" class="btn-primary btn-sm">Low-cover PDF</a>
+    <a href="/stock-log/history" class="btn-secondary btn-sm">History</a>
+  </div>
 </div>
 
 {% if saved is not none %}

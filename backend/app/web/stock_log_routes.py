@@ -1,20 +1,18 @@
-"""Daily closing stock log — a full checklist across every ingredient category,
-mirroring the paper "Daily Closing Stock Log" sheet used in the kitchen.
+"""Daily closing stock log - a full checklist across every ingredient category.
 
-Deliberately reuses the ingredients / ingredient_stock tables the order
-forecast already reads from, rather than a parallel catalog — every item on
-the paper sheet (produce, dairy, dry goods, frozen, spices, packaging &
-consumables, resale drinks) already exists as an ingredient row. One checklist
-page writes counts for all of them in one save, and /stock-log/history is the
-trace/audit log the paper binder used to be.
+This reuses the ingredients / ingredient_stock tables the order forecast
+already reads from. One checklist page writes counts for all items in one save,
+and /stock-log/history is the trace/audit log.
 """
+
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.clock import business_today, business_tz
 from app.core.database import get_db
+from app.services.stock_log_pdf import build_low_cover_stock_pdf
 from app.web.deps import _tmpl, require_user
 from app.web.reorder_routes import record_stock, _LATEST_GAS_SQL, _GAS_AVERAGE_SQL
 
@@ -62,16 +60,11 @@ _HISTORY_SQL = text("""
 """)
 
 
-@router.get("/stock-log", response_class=HTMLResponse)
-def stock_log(request: Request, db: Session = Depends(get_db)):
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-
+def _stock_rows(db: Session) -> list[dict]:
     rows = db.execute(_LIST_SQL).mappings().all()
     gas_reading = db.execute(_LATEST_GAS_SQL).mappings().first()
     gas_avg_per_day = db.execute(_GAS_AVERAGE_SQL).scalar()
-    by_cat: dict[str, list] = {}
+    decorated: list[dict] = []
     for row in rows:
         r = dict(row)
         # counted_at is stored UTC (DB default now()); convert to IST for both
@@ -97,6 +90,19 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
             else "green" if cover is not None
             else "neutral"
         )
+        decorated.append(r)
+    return decorated
+
+
+@router.get("/stock-log", response_class=HTMLResponse)
+def stock_log(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+
+    rows = _stock_rows(db)
+    by_cat: dict[str, list] = {}
+    for r in rows:
         by_cat.setdefault(r["category"] or "Other", []).append(r)
 
     ordered = [(c, by_cat[c]) for c in _CATEGORY_ORDER if c in by_cat]
@@ -109,6 +115,22 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
         "saved": int(saved) if saved and saved.isdigit() else None,
         "today": business_today(),
     })
+
+
+@router.get("/stock-log/low-cover.pdf")
+def stock_log_low_cover_pdf(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+
+    rows = _stock_rows(db)
+    payload = build_low_cover_stock_pdf(rows)
+    filename = f"URS-Majestic-stock-log-low-cover-{business_today().isoformat()}.pdf"
+    return StreamingResponse(
+        iter([payload]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/stock-log/count")
