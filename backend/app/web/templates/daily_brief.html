@@ -27,16 +27,13 @@
   }
   @media (max-width:860px){ .tb-wrap{ margin:0 -15px; padding:14px 15px 40px; } }
   .tb-display{ font-family:Archivo,"Helvetica Neue",Arial,sans-serif; }
-
   .tb-error{ background:#FDECEC; border:1px solid #F3C0C0; color:#c0392b; border-radius:10px; padding:10px 14px; font-size:.8rem; margin-bottom:16px; }
-
   .tb-legend{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;font-size:.7rem;color:var(--tb-ink-mid);}
   .tb-legend b{color:var(--tb-ink-full);}
   .tb-ink-sample{font-weight:700;}
   .tb-ink-sample.measured{color:var(--tb-ink-full);}
   .tb-ink-sample.derived{color:var(--tb-ink-mid);}
   .tb-ink-sample.assumed{color:var(--tb-ink-faint);font-style:italic;border-bottom:1px dashed var(--tb-ink-faint);}
-
   .tb-rail{ background:linear-gradient(180deg,var(--tb-rail),var(--tb-rail2)); border-radius:14px; padding:20px 24px 28px; color:#fff; position:relative; box-shadow:0 18px 40px rgba(11,58,46,.22); }
   .tb-rail::after{ content:""; position:absolute; left:24px; right:24px; bottom:-3px; height:6px; background:var(--tb-gold); border-radius:3px; box-shadow:0 3px 10px rgba(201,162,39,.4); }
   .tb-rail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
@@ -44,7 +41,8 @@
   .tb-rail-figure{font-family:Archivo,sans-serif;font-size:2.2rem;font-weight:800;line-height:1;margin:4px 0 2px;}
   .tb-rail-sub{font-size:.76rem;color:#CFE3DB;}
   .tb-rail-status{font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);padding:5px 11px;border-radius:999px;white-space:nowrap;}
-
+  .tb-rail-status.ok{background:rgba(120,200,150,.15);border-color:rgba(120,200,150,.35);color:#BFEBCF;}
+  .tb-rail-status.bad{background:rgba(255,118,88,.15);border-color:rgba(255,118,88,.35);color:#FFD3C6;}
   .tb-rail-channels{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.16);}
   .tb-rail-channels div{display:flex;flex-direction:column;gap:2px;}
   .tb-rail-ch-label{font-size:.6rem;letter-spacing:.07em;text-transform:uppercase;color:#9EBBB0;}
@@ -52,13 +50,16 @@
   .tb-date-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
   .tb-date-select{appearance:none;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:5px 28px 5px 11px;font:700 .66rem Archivo,sans-serif;cursor:pointer;}
   .tb-date-select option{color:#17211d;background:#fff;}
-
+  .tb-fitness-banner{margin-top:14px;padding:10px 14px;border-radius:10px;font:800 .9rem Archivo,sans-serif;letter-spacing:.01em;}
+  .tb-fitness-banner.short{background:rgba(255,118,88,.15);border:1px solid rgba(255,118,88,.35);color:#FFD3C6;}
+  .tb-fitness-banner.ahead{background:rgba(120,200,150,.15);border:1px solid rgba(120,200,150,.35);color:#BFEBCF;}
+  .tb-fitness-sub{margin-top:8px;font-size:.7rem;color:#CFE3DB;line-height:1.55;}
   .tb-target-strip{ margin-top:16px;padding:13px 15px;border-radius:10px; background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.12); display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap; }
   .tb-target-nums{display:flex;gap:20px;flex-wrap:wrap;font-size:.78rem;}
   .tb-target-nums b{font-family:Archivo,sans-serif;font-weight:700;font-size:.92rem;display:block;}
+  .tb-target-nums small{display:block;font-size:.63rem;font-weight:700;opacity:.85;margin-top:2px;}
   .tb-stale-flag{ display:inline-flex;align-items:center;gap:6px;background:var(--tb-coral);color:#fff; font-size:.64rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase; padding:6px 11px;border-radius:8px;box-shadow:0 4px 12px rgba(255,118,88,.35); }
   .tb-notion-off{ font-size:.63rem;color:#CFE3DB; margin-top:10px; }
-
   .tb-pace-row{ margin-top:10px;padding:12px 15px;border-radius:10px; background:rgba(0,0,0,.12);border:1px solid rgba(255,255,255,.1); display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap; }
   .tb-pace-nums{font-size:.72rem;color:#CFE3DB;}
   .tb-pace-nums b{color:#fff;font-weight:700;}
@@ -67,19 +68,16 @@
   .tb-achieve-chip.on{background:rgba(120,200,150,.15);border-color:rgba(120,200,150,.4);color:#BFEBCF;}
   .tb-achieve-chip.off{background:rgba(255,118,88,.15);border-color:rgba(255,118,88,.4);color:#FFD3C6;}
   .tb-achieve-chip small{font-weight:500;opacity:.8;}
-
   .tb-tickets{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:22px;align-items:start;}
   @media (max-width:1150px){.tb-tickets{grid-template-columns:repeat(2,1fr);}}
   @media (max-width:620px){.tb-tickets{grid-template-columns:1fr;}}
   @media (max-width:620px){.tb-rail-channels{grid-template-columns:repeat(2,1fr)}.tb-date-tools{justify-content:flex-start}.tb-rail{padding:17px 16px 24px}}
-
   .tb-ticket{ background:var(--tb-paper); border:1px solid var(--tb-paper-fold); box-shadow:0 10px 26px rgba(20,30,25,.1); position:relative; }
   .tb-ticket::before{ content:""; display:block; height:9px; background:linear-gradient(135deg,transparent 50%, var(--tb-page-bg) 50%) 0 0/9px 9px repeat-x, linear-gradient(-135deg,transparent 50%, var(--tb-page-bg) 50%) 0 0/9px 9px repeat-x; background-color:var(--tb-paper); }
   .tb-ticket-clip{ position:absolute; top:-9px; left:50%; transform:translateX(-50%); width:24px; height:13px; background:var(--tb-gold); border-radius:0 0 5px 5px; box-shadow:0 3px 6px rgba(0,0,0,.2); }
   .tb-ticket-body{padding:15px 14px 13px;}
   .tb-ticket-role{ font-family:Archivo,sans-serif; font-weight:800; font-size:.82rem; color:var(--tb-rail); margin:0 0 2px; }
   .tb-ticket-owner{font-size:.6rem;color:var(--tb-ink-mid);letter-spacing:.03em;text-transform:uppercase;margin-bottom:10px;display:block;}
-
   .tb-metric-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:5px 0;border-top:1px dashed var(--tb-paper-fold);font-size:.72rem;}
   .tb-metric-row:first-of-type{border-top:none;}
   .tb-metric-label{color:var(--tb-ink-mid);}
@@ -87,11 +85,9 @@
   .tb-metric-val.measured{color:var(--tb-ink-full);}
   .tb-metric-val.derived{color:var(--tb-ink-mid);}
   .tb-metric-val.assumed{color:var(--tb-ink-faint);font-style:italic;}
-
   .tb-review-form{display:flex;gap:5px;align-items:center;}
   .tb-review-form input{width:52px;padding:3px 5px;font-size:.72rem;font-family:inherit;border:1px solid var(--tb-paper-fold);border-radius:4px;}
   .tb-review-form button{font-size:.62rem;font-weight:700;padding:3px 7px;border:1px solid var(--tb-rail);background:#fff;color:var(--tb-rail);border-radius:4px;cursor:pointer;}
-
   .tb-ticket-tasks{margin-top:10px;padding-top:10px;border-top:1px solid var(--tb-paper-fold);}
   .tb-tasks-label{font-size:.58rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--tb-ink-mid);margin-bottom:7px;display:block;}
   .tb-task{margin-bottom:8px;}
@@ -109,7 +105,6 @@
 </style>
 
 <div class="tb-wrap">
-
   {% if error %}<div class="tb-error">{{ error }}</div>{% endif %}
 
   <div class="tb-legend">
@@ -119,13 +114,22 @@
   </div>
 
   <div class="tb-rail">
+    <div class="tb-fitness-banner {{ 'short' if finance.is_short else 'ahead' }}">
+      {% if finance.contribution_pct is not none %}
+        {{ 'Short by' if finance.is_short else 'Ahead by' }} ₹{{ "{:,.0f}".format(finance.shortfall_today_abs) }} today
+      {% else %}
+        Today's contribution is not available yet.
+      {% endif %}
+    </div>
+
     <div class="tb-rail-top">
       <div>
-        <span class="tb-rail-label">{{ reporting_date.strftime('%A · %d %b %Y') }} · {{ summary.data_status }}</span>
+        <span class="tb-rail-label">Money taken · {{ reporting_date.strftime('%A · %d %b %Y') }}</span>
         <div class="tb-rail-figure">₹{{ "{:,.2f}".format(summary.latest_day_sales) }}</div>
         <span class="tb-rail-sub">
+          Numbers trustworthy? {{ 'Yes' if summary.numbers_trustworthy else 'No' }} ·
           {% if summary.pct_vs_prior_day is not none %}{{ "%+.1f"|format(summary.pct_vs_prior_day) }}%{% else %}—{% endif %} vs prior day ·
-          {% if summary.pct_vs_same_weekday is not none %}{{ "%+.1f"|format(summary.pct_vs_same_weekday) }}%{% else %}—{% endif %} vs same weekday
+          {% if summary.pct_vs_same_weekday is not none %}{{ "%+.1f"|format(summary.pct_vs_same_weekday) }}%{% else %}—{% endif %} vs last {{ summary.weekday_name }}
         </span>
       </div>
       <div class="tb-date-tools">
@@ -136,31 +140,46 @@
             {% endfor %}
           </select>
         </form>
-        <span class="tb-rail-status">
-          {%- if summary.data_status == 'DATA TRUSTED' %}✓ {% elif summary.data_status == 'DATA PENDING' %}⏳ {% else %}⚠ {% endif -%}
-          {{ summary.data_status }}
-        </span>
+        <span class="tb-rail-status {{ 'ok' if summary.numbers_trustworthy else 'bad' }}">{{ 'Yes' if summary.numbers_trustworthy else 'No' }}</span>
       </div>
     </div>
+
     <div class="tb-rail-channels">
-      <div><span class="tb-rail-ch-label">Counter</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.counter_sales or 0) }}</span></div>
-      <div><span class="tb-rail-ch-label">Zomato</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.zomato_sales or 0) }}</span></div>
-      <div><span class="tb-rail-ch-label">Swiggy</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.swiggy_sales or 0) }}</span></div>
-      <div><span class="tb-rail-ch-label">Current month daily avg</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(month_daily_average) }}</span><small class="tb-rail-sub">{{ month_recorded_days }} recorded days</small></div>
+      <div><span class="tb-rail-ch-label">Walk-in</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.counter_sales or 0) }}</span></div>
+      <div><span class="tb-rail-ch-label">Zomato (after their cut)</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.zomato_sales or 0) }}</span></div>
+      <div><span class="tb-rail-ch-label">Swiggy (after their cut)</span><span class="tb-rail-ch-val">₹{{ "{:,.0f}".format(summary.swiggy_sales or 0) }}</span></div>
+      <div>
+        <span class="tb-rail-ch-label">Average bill</span>
+        <span class="tb-rail-ch-val">Walk-in ₹{{ "{:,.0f}".format(summary.counter_aov or 0) }} · Delivery ₹{{ "{:,.0f}".format(summary.delivery_aov or 0) }}</span>
+        <small class="tb-rail-sub">{{ month_recorded_days }} recorded days · current month daily avg ₹{{ "{:,.0f}".format(month_daily_average) }}</small>
+      </div>
     </div>
+
+    <div class="tb-fitness-sub">
+      Bills you pay whether you sell or not: ₹{{ "{:,.0f}".format(finance.fixed_monthly or 0) }}/month ·
+      Cost of stuff you bought: ₹{{ "{:,.0f}".format(finance.cogs_month or 0) }} this month ·
+      {% if finance.contribution_pct is not none %}
+      ₹ left after ingredients, gas & packaging: {{ "%.2f"|format(finance.contribution_pct) }}% · ₹{{ "{:,.0f}".format(finance.contribution_today or 0) }}/day
+      {% else %}
+      ₹ left after ingredients, gas & packaging: —
+      {% endif %}
+    </div>
+
     <div class="tb-target-strip">
       <div class="tb-target-nums">
         {% if target.computable %}
-        <span>Break-even<b>₹{{ "{:,.0f}".format(target.break_even) }}</b></span>
+        <span>Today's must-hit number<b>₹{{ "{:,.0f}".format(finance.daily_floor or 0) }}</b></span>
         <span>Operating<b>₹{{ "{:,.0f}".format(target.operating) }}</b></span>
         <span>Stretch<b>₹{{ "{:,.0f}".format(target.stretch) }}</b></span>
-        <span>Margin used<b>{{ "%g"|format(target.margin_pct) }}%</b></span>
+        <span>₹ left after ingredients, gas & packaging<b>
+          {% if finance.contribution_pct is not none %}{{ "%.2f"|format(finance.contribution_pct) }}%{% else %}—{% endif %}
+        </b><small>₹{{ "{:,.0f}".format(finance.contribution_today or 0) }}/day</small></span>
         {% else %}
         <span>Set fixed expenses in <a href="/business-settings" style="color:#fff">Business Settings</a> to compute targets.</span>
         {% endif %}
       </div>
-      {% if target.margin_stale %}<span class="tb-stale-flag">⚠ {{ target.margin_stale_reason }}</span>{% endif %}
     </div>
+
     {% if target.computable %}
     <div class="tb-pace-row">
       <span class="tb-pace-nums">
@@ -168,7 +187,7 @@
         · at current pace, projected month-end <b>₹{{ "{:,.0f}".format(target.projected_month_end) }}</b>
       </span>
       <div class="tb-achieve-row">
-        {% for key, tlabel in [('break_even', 'Break-even'), ('operating', 'Operating'), ('stretch', 'Stretch')] %}
+        {% for key, tlabel in [('operating', 'Operating'), ('stretch', 'Stretch')] %}
         {% set v = target.vs[key] %}
         {% if v %}
         <span class="tb-achieve-chip {{ 'on' if v.on_track else 'off' }}">
@@ -239,7 +258,6 @@
     </div>
     {% endfor %}
   </div>
-
 </div>
 {% endif %}
 {% endblock %}

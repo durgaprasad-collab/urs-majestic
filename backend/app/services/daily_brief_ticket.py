@@ -34,6 +34,7 @@ from app.services import target_engine
 from app.services.ceo_brief import get_summary as get_revenue_strip  # re-exported
 
 D = decimal.Decimal
+_ZOMATO_REMITTANCE = D("0.6407")
 
 # Gas moved from a per-piece variable cost to a flat kitchen fixed-cost line
 # on this date (see business_settings 'tandoor_fuel_cost_per_piece' RETIRED
@@ -201,9 +202,102 @@ def get_bi_panel(db: Session) -> dict:
             {"label": "Reliable cost", "value": str(counts.get("reliable", 0)), "confidence": "measured"},
             {"label": "Building cost", "value": str(counts.get("building", 0)), "confidence": "derived"},
             {"label": "No cost data", "value": str(counts.get("none", 0)), "confidence": "assumed"},
-            {"label": "Unexplained mismatches", "value": str(summary.get("unexplained_mismatches", 0)),
+            {"label": "Bills that don't match", "value": str(summary.get("unexplained_mismatches", 0)),
              "confidence": "measured"},
         ],
+    }
+
+
+def _brief_finance(db: Session, as_of: datetime.date) -> dict:
+    """Live cash-received contribution and daily floor snapshot for the brief."""
+    month_start = as_of.replace(day=1)
+
+    month_sales = db.execute(
+        text(
+            """
+            SELECT
+              COALESCE(SUM(CASE WHEN channel = 'petpooja' THEN net_sales ELSE 0 END), 0) AS petpooja_sales,
+              COALESCE(SUM(CASE WHEN channel = 'zomato' THEN net_sales ELSE 0 END), 0) AS zomato_sales,
+              COALESCE(SUM(CASE WHEN channel = 'swiggy' THEN net_sales ELSE 0 END), 0) AS swiggy_sales
+            FROM daily_channel_sales
+            WHERE business_date >= :month_start
+              AND business_date <= :as_of
+            """
+        ),
+        {"month_start": month_start, "as_of": as_of},
+    ).mappings().first() or {}
+
+    today_sales = db.execute(
+        text(
+            """
+            SELECT
+              COALESCE(SUM(CASE WHEN channel = 'petpooja' THEN net_sales ELSE 0 END), 0) AS petpooja_sales,
+              COALESCE(SUM(CASE WHEN channel = 'zomato' THEN net_sales ELSE 0 END), 0) AS zomato_sales,
+              COALESCE(SUM(CASE WHEN channel = 'swiggy' THEN net_sales ELSE 0 END), 0) AS swiggy_sales
+            FROM daily_channel_sales
+            WHERE business_date = :as_of
+            """
+        ),
+        {"as_of": as_of},
+    ).mappings().first() or {}
+
+    month_cogs = D(str(db.execute(
+        text(
+            """
+            SELECT COALESCE(SUM(total_price), 0)
+            FROM purchases
+            WHERE usage_type = 'menu'::usage_type
+              AND deleted_at IS NULL
+              AND purchase_date >= :month_start
+              AND purchase_date <= :as_of
+            """
+        ),
+        {"month_start": month_start, "as_of": as_of},
+    ).scalar() or 0))
+    today_cogs = D(str(db.execute(
+        text(
+            """
+            SELECT COALESCE(SUM(total_price), 0)
+            FROM purchases
+            WHERE usage_type = 'menu'::usage_type
+              AND deleted_at IS NULL
+              AND purchase_date = :as_of
+            """
+        ),
+        {"as_of": as_of},
+    ).scalar() or 0))
+
+    petpooja_month = D(str(month_sales.get("petpooja_sales") or 0))
+    zomato_month = D(str(month_sales.get("zomato_sales") or 0))
+    swiggy_month = D(str(month_sales.get("swiggy_sales") or 0))
+    petpooja_today = D(str(today_sales.get("petpooja_sales") or 0))
+    zomato_today = D(str(today_sales.get("zomato_sales") or 0))
+    swiggy_today = D(str(today_sales.get("swiggy_sales") or 0))
+
+    cash_month = petpooja_month + (zomato_month * _ZOMATO_REMITTANCE) + (swiggy_month * _ZOMATO_REMITTANCE)
+    cash_today = petpooja_today + (zomato_today * _ZOMATO_REMITTANCE) + (swiggy_today * _ZOMATO_REMITTANCE)
+
+    contribution_month = cash_month - month_cogs
+    contribution_today = cash_today - today_cogs
+    contribution_pct = (contribution_month / cash_month * 100) if cash_month else None
+
+    fixed_monthly = bs.monthly_fixed_total(db, as_of)
+    daily_floor = (fixed_monthly / D("30")).quantize(D("0.01")) if fixed_monthly else D("0.00")
+    shortfall_today = (contribution_today - daily_floor).quantize(D("0.01"))
+
+    return {
+        "cash_received_month": cash_month.quantize(D("0.01")),
+        "cash_received_today": cash_today.quantize(D("0.01")),
+        "cogs_month": month_cogs.quantize(D("0.01")),
+        "cogs_today": today_cogs.quantize(D("0.01")),
+        "contribution_month": contribution_month.quantize(D("0.01")),
+        "contribution_today": contribution_today.quantize(D("0.01")),
+        "contribution_pct": round(float(contribution_pct), 2) if contribution_pct is not None else None,
+        "fixed_monthly": fixed_monthly.quantize(D("0.01")),
+        "daily_floor": daily_floor,
+        "shortfall_today": shortfall_today,
+        "shortfall_today_abs": abs(shortfall_today),
+        "is_short": shortfall_today < 0,
     }
 
 
@@ -510,6 +604,9 @@ def build_ticket_brief(db: Session, reporting_date: datetime.date | None = None)
     )
 
     target = get_target_line(db, reporting_date=rep, mtd=mtd, days_elapsed=rep.day)
+    finance = _brief_finance(db, rep)
+    summary["numbers_trustworthy"] = status_row == "DATA TRUSTED"
+    summary["weekday_name"] = rep.strftime("%A")
 
     roles = {}
     for slug, label in ROLE_LABELS.items():
@@ -522,6 +619,7 @@ def build_ticket_brief(db: Session, reporting_date: datetime.date | None = None)
     return {
         "has_data": True,
         "summary": summary,
+        "finance": finance,
         "target": target,
         "roles": roles,
         "reporting_date": rep,
