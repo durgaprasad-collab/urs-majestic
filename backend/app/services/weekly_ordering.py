@@ -22,19 +22,19 @@ from app.services.sales_stock import calculate_ingredient_usage
 
 
 MODEL_VERSION = "weekly-v1"
-DEFAULT_WEEKLY_CATEGORY = "Vegetables"
+CONSOLIDATED_WEEKLY_CATEGORY = "All categories"
+DEFAULT_WEEKLY_CATEGORY = CONSOLIDATED_WEEKLY_CATEGORY
 
 
 _CATEGORIES_SQL = text("""
-    SELECT i.category AS category,
+    SELECT COALESCE(i.category, 'Other') AS category,
            COUNT(*) AS total_ingredients,
            COUNT(*) FILTER (WHERE m.ingredient_id IS NOT NULL) AS mapped_ingredients
       FROM ingredients i
       LEFT JOIN ingredient_dish_map m ON m.ingredient_id = i.id
      WHERE i.is_active
-       AND i.category IS NOT NULL
-     GROUP BY i.category
-     ORDER BY mapped_ingredients DESC, total_ingredients DESC, i.category
+     GROUP BY COALESCE(i.category, 'Other')
+     ORDER BY mapped_ingredients DESC, total_ingredients DESC, category
 """)
 
 
@@ -239,12 +239,34 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
     horizon_start = horizon_start or (business_today() + timedelta(days=1))
     future = [horizon_start + timedelta(days=i) for i in range(7)]
 
-    ingredients = db.execute(text("""
-        SELECT id, name, unit::text AS unit, pack_size_g, order_increment_qty
-        FROM ingredients
-        WHERE is_active AND category = :category
-         ORDER BY name
-    """), {"category": category}).mappings().all()
+    consolidated = category in {None, "", CONSOLIDATED_WEEKLY_CATEGORY, "all"}
+    other_category = category == "Other"
+
+    ingredient_sql = """
+        SELECT id, name, unit::text AS unit, pack_size_g, order_increment_qty,
+               COALESCE(category, 'Other') AS category
+          FROM ingredients
+         WHERE is_active
+    """
+    purchase_sql = """
+        SELECT p.ingredient_id, p.qty, p.unit::text AS source_unit, p.total_price,
+               p.purchase_date
+          FROM purchases p JOIN ingredients i ON i.id = p.ingredient_id
+         WHERE p.deleted_at IS NULL AND p.usage_type = 'menu'
+           AND i.is_active
+    """
+    params = {}
+    if not consolidated:
+        if other_category:
+            ingredient_sql += " AND category IS NULL"
+            purchase_sql += " AND i.category IS NULL"
+        else:
+            ingredient_sql += " AND category = :category"
+            purchase_sql += " AND i.category = :category"
+            params["category"] = category
+    ingredient_sql += " ORDER BY COALESCE(category, 'Other'), name" if consolidated else " ORDER BY name"
+
+    ingredients = db.execute(text(ingredient_sql), params).mappings().all()
     if not ingredients:
         raise ValueError(f"No active ingredients found for category {category!r}.")
     ingredient_by_id = {r["id"]: r for r in ingredients}
@@ -254,13 +276,7 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
     usage, unresolved = calculate_ingredient_usage(db, sales)
     mapped_ids = {r[0] for r in db.execute(text("SELECT DISTINCT ingredient_id FROM ingredient_dish_map"))}
 
-    purchase_rows = db.execute(text("""
-        SELECT p.ingredient_id, p.qty, p.unit::text AS source_unit, p.total_price,
-               p.purchase_date
-          FROM purchases p JOIN ingredients i ON i.id = p.ingredient_id
-         WHERE p.deleted_at IS NULL AND p.usage_type = 'menu'
-           AND i.is_active AND i.category = :category
-    """), {"category": category}).mappings().all()
+    purchase_rows = db.execute(text(purchase_sql), params).mappings().all()
     recent_cutoff = business_today() - timedelta(days=30)
     purchase_stats = defaultdict(lambda: {
         "qty": 0.0, "spend": 0.0, "priced_qty": 0.0,
@@ -335,7 +351,7 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
         if not stock_compatible:
             reasons.append("compatible stock count missing")
         row = {
-            "ingredient_id": ing["id"], "name": ing["name"], "unit": ing["unit"],
+            "ingredient_id": ing["id"], "name": ing["name"], "category": ing["category"] or "Other", "unit": ing["unit"],
             "historical_qty": stat["qty"], "historical_spend": stat["spend"],
             "spend_contribution_pct": (stat["spend"] / total_spend * 100) if total_spend else None,
             "forecast_qty": result["total"] if result else None,
@@ -362,13 +378,22 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
         row["forecast_value_contribution_pct"] = (
             row["forecast_value"] / total_forecast_value * 100 if total_forecast_value else None
         )
-    rows.sort(key=lambda r: (r["needs_input"], -(r["suggested_qty"] or 0), r["name"]))
+    if consolidated:
+        rows.sort(key=lambda r: (
+            str(r["category"] or "Other").lower(),
+            r["needs_input"],
+            -(r["suggested_qty"] or 0),
+            r["name"],
+        ))
+    else:
+        rows.sort(key=lambda r: (r["needs_input"], -(r["suggested_qty"] or 0), r["name"]))
     return {
         "category": category, "horizon_start": future[0], "horizon_end": future[-1],
         "future_dates": future, "rows": rows, "model_version": MODEL_VERSION,
         "sales_start": sale_dates[0] if sale_dates else None,
         "sales_end": sale_dates[-1] if sale_dates else None,
         "sales_days": len(sale_dates),
+        "category_count": len({r["category"] for r in rows}),
         "purchase_start": min((p["purchase_date"] for p in purchase_rows), default=None),
         "purchase_end": max((p["purchase_date"] for p in purchase_rows), default=None),
         "estimated_cost": sum((r["suggested_qty"] or 0) * (r["recent_unit_cost"] or 0) for r in rows),

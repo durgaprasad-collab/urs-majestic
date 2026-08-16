@@ -15,7 +15,7 @@ from app.core.clock import business_today
 from app.core.database import get_db
 from app.models.purchase import Purchase
 from app.services.weekly_ordering import (
-    DEFAULT_WEEKLY_CATEGORY, build_category_forecast, round_to_increment,
+    CONSOLIDATED_WEEKLY_CATEGORY, build_category_forecast, round_to_increment,
     split_delivery_quantities, weekly_forecast_categories,
 )
 from app.services.weekly_order_pdf import build_supplier_delivery_pdf
@@ -32,19 +32,22 @@ def weekly_order(request: Request, db: Session = Depends(get_db)):
         return redir
     categories = weekly_forecast_categories(db)
     selected_category = request.query_params.get("category")
-    if selected_category not in categories:
-        selected_category = DEFAULT_WEEKLY_CATEGORY if DEFAULT_WEEKLY_CATEGORY in categories else (categories[0] if categories else DEFAULT_WEEKLY_CATEGORY)
+    if selected_category in (None, "", "all", CONSOLIDATED_WEEKLY_CATEGORY):
+        selected_category = CONSOLIDATED_WEEKLY_CATEGORY
+    elif selected_category not in categories:
+        selected_category = CONSOLIDATED_WEEKLY_CATEGORY
     forecast = build_category_forecast(db, category=selected_category)
     recent = db.execute(text("""
         SELECT id, category, horizon_start, horizon_end, status, created_at
           FROM weekly_inventory_orders
-         WHERE category = :category
          ORDER BY created_at DESC
          LIMIT 8
-    """), {"category": selected_category}).mappings().all()
+    """)).mappings().all()
     return _tmpl(request, "weekly_order.html", {
         **forecast, "user": user, "recent_orders": recent,
         "categories": categories, "selected_category": selected_category,
+        "selected_category_param": "all" if selected_category == CONSOLIDATED_WEEKLY_CATEGORY else selected_category,
+        "consolidated_category": CONSOLIDATED_WEEKLY_CATEGORY,
         "error": request.query_params.get("error"),
     })
 
@@ -56,9 +59,11 @@ async def create_draft(request: Request, db: Session = Depends(get_db)):
         return redir
     form = await request.form()
     categories = weekly_forecast_categories(db)
-    selected_category = form.get("category") or request.query_params.get("category") or DEFAULT_WEEKLY_CATEGORY
-    if selected_category not in categories:
-        selected_category = DEFAULT_WEEKLY_CATEGORY if DEFAULT_WEEKLY_CATEGORY in categories else (categories[0] if categories else selected_category)
+    selected_category = form.get("category") or request.query_params.get("category") or CONSOLIDATED_WEEKLY_CATEGORY
+    if selected_category in ("all", CONSOLIDATED_WEEKLY_CATEGORY, ""):
+        selected_category = CONSOLIDATED_WEEKLY_CATEGORY
+    elif selected_category not in categories:
+        selected_category = CONSOLIDATED_WEEKLY_CATEGORY
     forecast = build_category_forecast(db, category=selected_category)
     order_id = db.execute(text("""
         INSERT INTO weekly_inventory_orders
@@ -116,7 +121,7 @@ def _order_context(db: Session, order_id: int):
     if not order:
         return None
     lines = db.execute(text("""
-        SELECT l.*, i.name, i.order_increment_qty AS configured_increment
+        SELECT l.*, i.name, COALESCE(i.category, 'Other') AS category, i.order_increment_qty AS configured_increment
           FROM weekly_inventory_order_lines l
           JOIN ingredients i ON i.id = l.ingredient_id
          WHERE l.order_id = :id
