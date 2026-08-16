@@ -48,6 +48,52 @@ def _mean(values):
     return sum(values) / len(values) if values else 0.0
 
 
+def _shift_months(month_start: date, months: int) -> date:
+    month_index = month_start.year * 12 + month_start.month - 1 + months
+    year, month = divmod(month_index, 12)
+    return date(year, month + 1, 1)
+
+
+def _cadence_forecast(records: list[tuple[date, float]], future: list[date]) -> dict | None:
+    """Fallback forecast from purchase cadence when no recipe mapping exists."""
+    records = [(d, q) for d, q in records if q is not None and q > 0]
+    if len(records) < 2:
+        return None
+    records.sort(key=lambda row: row[0])
+    dates = [d for d, _ in records]
+    qtys = [q for _, q in records]
+    gaps = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
+    avg_days = _mean(gaps) if gaps else None
+    avg_qty = _mean(qtys)
+    if avg_qty <= 0:
+        return None
+    cadence_days = max(avg_days or 0.0, 1.0)
+    daily = avg_qty / cadence_days
+    total = daily * len(future)
+    gap_spread = statistics.pstdev(gaps) / cadence_days if len(gaps) > 1 else 0.0
+    qty_spread = statistics.pstdev(qtys) / avg_qty if len(qtys) > 1 else 0.0
+    wape = min(1.0, 0.35 + 0.35 * gap_spread + 0.30 * qty_spread)
+    interval_error = total * min(wape, 1.0)
+    if len(records) >= 7 and wape <= 0.25:
+        confidence = "high"
+    elif len(records) >= 4 and wape <= 0.55:
+        confidence = "medium"
+    else:
+        confidence = "low"
+    return {
+        "daily": [daily] * len(future),
+        "total": total,
+        "low": max(0.0, total - interval_error),
+        "high": total + interval_error,
+        "safety": daily * (1.0 + min(wape, 1.0)),
+        "model_key": "cadence",
+        "model_name": "Purchase cadence",
+        "wape": wape,
+        "confidence": confidence,
+        "scores": {"cadence": 1.0},
+    }
+
+
 def _features(history: list[float], target_date: date, index: int) -> list[float]:
     def lag(n):
         return history[-n] if len(history) >= n else _mean(history)
@@ -236,11 +282,13 @@ def split_delivery_quantities(approved_qty: float, daily: list[float], increment
 
 
 def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon_start: date | None = None) -> dict:
-    horizon_start = horizon_start or (business_today() + timedelta(days=1))
+    today = business_today()
+    horizon_start = horizon_start or (today + timedelta(days=1))
     future = [horizon_start + timedelta(days=i) for i in range(7)]
 
     consolidated = category in {None, "", CONSOLIDATED_WEEKLY_CATEGORY, "all"}
     other_category = category == "Other"
+    cadence_window_start = _shift_months(date(today.year, today.month, 1), -2)
 
     ingredient_sql = """
         SELECT id, name, unit::text AS unit, pack_size_g, order_increment_qty,
@@ -282,6 +330,7 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
         "qty": 0.0, "spend": 0.0, "priced_qty": 0.0,
         "recent_spend": 0.0, "recent_qty": 0.0,
     })
+    cadence_history = defaultdict(list)
     for p in purchase_rows:
         ing = ingredient_by_id.get(p["ingredient_id"])
         if not ing:
@@ -294,6 +343,8 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
             if p["purchase_date"] >= recent_cutoff:
                 purchase_stats[p["ingredient_id"]]["recent_qty"] += normalized
                 purchase_stats[p["ingredient_id"]]["recent_spend"] += float(p["total_price"])
+            if p["purchase_date"] >= cadence_window_start:
+                cadence_history[p["ingredient_id"]].append((p["purchase_date"], normalized))
 
     latest_stock = {
         r["ingredient_id"]: r for r in db.execute(text("""
@@ -322,6 +373,8 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
         stock = latest_stock.get(ing["id"])
         stock_compatible = bool(stock and stock["unit"] == ing["unit"])
         result = forecast_series(values, sale_dates, future) if has_mapping and sale_dates else None
+        if result is None and not has_mapping:
+            result = _cadence_forecast(cadence_history.get(ing["id"], []), future)
         stat = purchase_stats[ing["id"]]
         unit_cost = (
             stat["recent_spend"] / stat["recent_qty"] if stat["recent_qty"] > 0
@@ -346,8 +399,8 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
             suggested_increment = 1.0
         rounded = round_to_increment(suggested, suggested_increment) if suggested is not None else None
         reasons = []
-        if not has_mapping:
-            reasons.append("recipe mapping missing")
+        if result is None and not has_mapping:
+            reasons.append("purchase cadence missing")
         if not stock_compatible:
             reasons.append("compatible stock count missing")
         row = {
