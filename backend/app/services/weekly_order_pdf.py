@@ -140,3 +140,69 @@ def build_supplier_delivery_pdf(order: dict, deliveries: list[dict]) -> bytes:
     pdf.showPage()
     pdf.save()
     return output.getvalue()
+
+
+def build_weekly_summary_pdf(forecast: dict, rows: list[dict]) -> bytes:
+    """Return a one-page summary PDF for the weekly forecast."""
+    output = BytesIO()
+    width, height = landscape(A4)
+    pdf = canvas.Canvas(output, pagesize=(width, height), pageCompression=1)
+    pdf.setTitle(f"URS Majestic weekly forecast summary - {forecast['category']}")
+    pdf.setAuthor("URS Majestic")
+
+    margin = 24
+    pdf.setFillColor(GREEN)
+    pdf.rect(0, height - 86, width, 86, fill=1, stroke=0)
+    pdf.setFillColor(white)
+    pdf.setFont("Helvetica-Bold", 19)
+    pdf.drawString(margin, height - 35, "Weekly Forecast Summary")
+    pdf.setFont("Helvetica", 8.5)
+    pdf.setFillColor(HexColor("#CFE3DB"))
+    pdf.drawString(margin, height - 52, f"URS Majestic · {forecast['category']}")
+
+    pdf.setFillColor(white)
+    pdf.setFont("Helvetica-Bold", 9)
+    pdf.drawRightString(width - margin, height - 31, f"{forecast['horizon_start']:%d %b} - {forecast['horizon_end']:%d %b %Y}")
+    pdf.drawRightString(width - margin, height - 46, f"{len(rows)} items")
+    pdf.drawRightString(width - margin, height - 60, "AUTO-APPROVED")
+
+    start_y = height - 112
+    pdf.setFillColor(INK)
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(margin, start_y, "Summary")
+    pdf.setFont("Helvetica", 8.2)
+    pdf.drawString(margin, start_y - 14, f"Estimated order value: ₹{forecast['estimated_cost']:.0f}")
+    pdf.drawString(margin, start_y - 27, f"Items analysed: {len(rows)}")
+    pdf.drawString(margin, start_y - 40, f"Categories: {forecast['category_count']}")
+
+    top = sorted(rows, key=lambda r: float(r.get("suggested_qty") or 0), reverse=True)[:14]
+    y = start_y - 64
+    pdf.setFont("Helvetica-Bold", 8.2)
+    pdf.drawString(margin, y, "Item")
+    pdf.drawRightString(width - margin - 100, y, "Model")
+    pdf.drawRightString(width - margin - 50, y, "Qty")
+    pdf.drawRightString(width - margin, y, "Cover/notes")
+    y -= 10
+    pdf.setLineWidth(.6)
+    pdf.setStrokeColor(BORDER)
+    pdf.line(margin, y, width - margin, y)
+    y -= 12
+    pdf.setFont("Helvetica", 7.2)
+    for row in top:
+        pdf.drawString(margin, y, _shorten(str(row.get("name", "")), "Helvetica", 7.2, width - 250))
+        pdf.drawRightString(width - margin - 100, y, str(row.get("model_name") or "—"))
+        qty = f"{float(row.get('suggested_qty') or 0):g} {row.get('unit') or ''}".strip()
+        pdf.drawRightString(width - margin - 50, y, qty)
+        note = row.get("input_reason") or f"{float(row.get('backtest_wape') or 0)*100:.0f}% WAPE"
+        pdf.drawRightString(width - margin, y, _shorten(str(note), "Helvetica", 7.2, 100))
+        y -= 13
+        if y < 40:
+            break
+
+    generated = datetime.now(business_tz()).strftime("Generated %d %b %Y, %I:%M %p IST")
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Helvetica", 7)
+    pdf.drawRightString(width - margin, 20, generated)
+    pdf.showPage()
+    pdf.save()
+    return output.getvalue()
