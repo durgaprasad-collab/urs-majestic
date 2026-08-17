@@ -40,12 +40,7 @@
   </div>
   {% endfor %}
 </div>
-<details class="show-more wk-history">
-  <summary>Recent weekly orders</summary>
-  <div class="show-more-body">
-    <div class="wk-history-list">
-      {% for o in recent_orders %}<a href="/weekly-order/{{ o.id }}">#{{ o.id }} · {{ o.category }} · {{ o.horizon_start.strftime('%d %b') }} · {{ o.status|replace('_',' ') }}</a>{% else %}<span class="wk-sub">No saved orders yet.</span>{% endfor %}
-    </div>
-  </div>
-</details>
+<div class="wk-history">
+  <div class="wk-sub">This page is summary-only. Export the PDF for sharing.</div>
+</div>
 {% endblock %}
