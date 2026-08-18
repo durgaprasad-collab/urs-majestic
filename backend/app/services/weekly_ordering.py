@@ -28,8 +28,8 @@ DEFAULT_WEEKLY_CATEGORY = CONSOLIDATED_WEEKLY_CATEGORY
 
 _CATEGORIES_SQL = text("""
     SELECT COALESCE(i.category, 'Other') AS category,
-           COUNT(*) AS total_ingredients,
-           COUNT(*) FILTER (WHERE m.ingredient_id IS NOT NULL) AS mapped_ingredients
+           COUNT(DISTINCT i.id) AS total_ingredients,
+           COUNT(DISTINCT m.ingredient_id) AS mapped_ingredients
       FROM ingredients i
       LEFT JOIN ingredient_dish_map m ON m.ingredient_id = i.id
      WHERE i.is_active
@@ -39,9 +39,13 @@ _CATEGORIES_SQL = text("""
 
 
 def weekly_forecast_categories(db) -> list[str]:
-    """Return forecastable categories in a stable, useful order."""
+    """Return every category with at least one active ingredient, in a stable,
+    useful order (recipe-mapped-heavy categories first). Categories with no
+    recipe mapping (packaging, apparel, overhead, ...) still get a tab -- those
+    ingredients forecast via the purchase-cadence fallback, same as Order
+    Forecast, so they should be just as reachable here."""
     rows = db.execute(_CATEGORIES_SQL).mappings().all()
-    return [r["category"] for r in rows if int(r["mapped_ingredients"] or 0) > 0]
+    return [r["category"] for r in rows if int(r["total_ingredients"] or 0) > 0]
 
 
 def _mean(values):
@@ -386,6 +390,9 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
         suggested = None
         if result and stock_qty is not None:
             suggested = max(0.0, result["total"] + result["safety"] - stock_qty - inbound_qty)
+        daily_rate = (result["total"] / len(future)) if result and future else None
+        cover_days = (stock_qty / daily_rate) if (daily_rate and daily_rate > 0 and stock_qty is not None) else None
+        is_urgent = cover_days is not None and cover_days < 3
         configured_increment = float(ing["order_increment_qty"]) if ing["order_increment_qty"] else None
         if configured_increment:
             suggested_increment = configured_increment
@@ -414,6 +421,7 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
             "daily_forecast": result["daily"] if result else [],
             "stock_qty": stock_qty, "stock_counted_at": stock["counted_at"] if stock_compatible else None,
             "inbound_qty": inbound_qty, "suggested_qty": rounded,
+            "daily_rate": daily_rate, "cover_days": cover_days, "is_urgent": is_urgent,
             "order_increment_qty": configured_increment,
             "suggested_increment": suggested_increment,
             "recent_unit_cost": unit_cost,

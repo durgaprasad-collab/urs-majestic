@@ -1,13 +1,83 @@
 {% extends "base.html" %}
 {% block title %}Weekly Forecast — URS Majestic{% endblock %}
+
+{% macro row(r) %}
+<tr{% if r.is_urgent %} class="wk-urgent-row"{% endif %}>
+  <td>
+    <span class="wk-name">{{ r.name }}{% if r.is_urgent %}<span class="wk-urgent-badge" title="Under 3 days of stock cover at the current usage rate">URGENT</span>{% endif %}</span>
+    <span class="wk-sub">{{ r.category }} · {{ r.unit }}</span>
+  </td>
+  <td class="col-num" data-label="Recommended qty">
+    {% if r.forecast_qty is not none %}
+      {{ '%g'|format(r.forecast_qty) }} {{ r.unit }}
+      <span class="wk-sub">range {{ '%g'|format(r.forecast_low) }}–{{ '%g'|format(r.forecast_high) }}</span>
+    {% else %}—{% endif %}
+  </td>
+  <td data-label="Existing stock">
+    {% if r.stock_qty is not none %}
+      <div class="wk-stock-cur">{{ '%g'|format(r.stock_qty) }} {{ r.unit }}<span class="wk-dim"> · {{ r.stock_counted_at.strftime('%d %b') }}</span></div>
+      {% if r.cover_days is not none %}<span class="wk-sub{% if r.is_urgent %} wk-alert{% endif %}">{{ '%.1f'|format(r.cover_days) }}d cover</span>{% endif %}
+    {% else %}
+      <span class="wk-alert">Count needed</span>
+    {% endif %}
+  </td>
+  <td class="col-num" data-label="Usage">
+    {% if r.forecast_qty is not none %}{{ '%.2f'|format(r.forecast_qty / 7) }} <span class="wk-unit">{{ r.unit }}/day</span>{% else %}—{% endif %}
+  </td>
+  <td class="col-num" data-label="To procure">
+    {% if r.suggested_qty is not none %}<strong>{{ '%g'|format(r.suggested_qty) }} {{ r.unit }}</strong>
+    {% elif r.needs_input %}<span class="wk-alert">{{ r.input_reason }}</span>
+    {% else %}—{% endif %}
+  </td>
+  <td class="wk-model" data-label="Model fit">
+    {% if r.model_name %}
+      <span class="chip chip-{{ 'ok' if r.confidence == 'high' else 'gold' if r.confidence == 'medium' else 'warn' }}">{{ r.confidence }}</span>
+      <span class="wk-sub">{{ r.model_name }}{% if r.backtest_wape is not none %} · {{ '%.0f'|format(r.backtest_wape * 100) }}% WAPE{% endif %}</span>
+    {% else %}<span class="wk-alert">No model</span>{% endif %}
+  </td>
+</tr>
+{% endmacro %}
+
+{% macro head() %}
+<tr>
+  <th>Item</th>
+  <th class="col-num">Recommended qty</th>
+  <th>Existing stock</th>
+  <th class="col-num">Usage</th>
+  <th class="col-num">To procure</th>
+  <th>Model fit</th>
+</tr>
+{% endmacro %}
+
 {% block content %}
 <style>
-  .wk-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;margin-bottom:1rem}.wk-stat{padding:.9rem 1rem;border:1px solid var(--border);border-radius:16px;background:#fff}.wk-stat small{display:block;color:var(--muted);font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.wk-stat b{display:block;margin-top:.2rem;font-size:1.15rem;color:var(--green)}.wk-list{display:grid;gap:.55rem}.wk-card{padding:.85rem 1rem;border:1px solid var(--border);border-radius:14px;background:#fff}.wk-card h3{margin:0;font-size:.95rem}.wk-card p{margin:.25rem 0 0;color:var(--muted);font-size:.8rem}.wk-row{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:.35rem;font-size:.8rem}.wk-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:999px;background:#eaf4fb;color:#1a5276;font-size:.68rem;font-weight:800}.wk-meta{display:flex;flex-wrap:wrap;gap:.45rem;margin:.5rem 0 1rem}.wk-history{margin-top:1.2rem}.wk-history-list{display:flex;flex-wrap:wrap;gap:.45rem}.wk-history-list a{padding:.45rem .7rem;border:1px solid var(--border);border-radius:999px;text-decoration:none;color:var(--green);font-size:.7rem;font-weight:750;background:white}.wk-cats{display:flex;flex-wrap:wrap;gap:.45rem;margin:0 0 .9rem}.wk-cat{padding:.45rem .7rem;border:1px solid var(--border);border-radius:999px;text-decoration:none;color:var(--green);font-size:.72rem;font-weight:800;background:#fff}.wk-cat.active{background:var(--green);border-color:var(--green);color:#fff}@media(max-width:760px){.wk-grid{grid-template-columns:repeat(2,1fr)}}
+  .wk-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;margin-bottom:1rem}.wk-stat{padding:.9rem 1rem;border:1px solid var(--border);border-radius:16px;background:#fff}.wk-stat small{display:block;color:var(--muted);font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.wk-stat b{display:block;margin-top:.2rem;font-size:1.15rem;color:var(--green)}
+  .wk-name{font-weight:850;display:block}.wk-sub{display:block;margin-top:.15rem;color:var(--muted);font-size:.68rem}
+  .wk-urgent-badge{display:inline-block;margin-left:.4rem;padding:.1rem .4rem;border-radius:999px;background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0;font-size:.6rem;font-weight:800;letter-spacing:.03em;vertical-align:middle}
+  .wk-urgent-row td{background:#FFFBF5 !important}
+  .wk-dim{color:var(--muted)}.wk-unit{color:var(--muted);font-weight:600}
+  .wk-stock-cur{font-size:.8rem;color:#1e7e34;white-space:nowrap}
+  .wk-alert{color:#9a3412;font-weight:700;font-size:.76rem}
+  .wk-model{min-width:8.5rem}
+  .wk-cats{display:flex;flex-wrap:wrap;gap:.45rem;margin:0 0 .9rem}.wk-cat{padding:.45rem .7rem;border:1px solid var(--border);border-radius:999px;text-decoration:none;color:var(--green);font-size:.72rem;font-weight:800;background:#fff}.wk-cat.active{background:var(--green);border-color:var(--green);color:#fff}
+  .wk-nohist{font-size:.78rem;color:var(--muted);line-height:1.7}
+  @media(max-width:760px){.wk-grid{grid-template-columns:repeat(2,1fr)}}
+
+  @media (max-width: 720px) {
+    .wk-table thead { display: none; }
+    .wk-table, .wk-table tbody, .wk-table tr, .wk-table td { display: block; width: 100%; }
+    .wk-table tr { border-radius: 14px; border: 1px solid var(--border); margin-bottom: .7rem; padding: .2rem 0; overflow: hidden; }
+    .wk-table td { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .4rem .8rem; border-bottom: 1px dashed #ECE9E0; text-align: right; background: transparent !important; }
+    .wk-table td:last-child { border-bottom: 0; }
+    .wk-table td::before { content: attr(data-label); font-size: .68rem; font-weight: 750; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; text-align: left; }
+    .wk-table td:first-child { text-align: left; }
+    .wk-table td:first-child::before { content: none; }
+  }
 </style>
 <div class="page-header">
   <div>
     <h1 class="page-title">Weekly Forecast</h1>
-    <p class="page-sub">{% if selected_category == consolidated_category %}Summary across all categories.{% else %}Summary for {{ selected_category }}.{% endif %}</p>
+    <p class="page-sub">{% if selected_category == consolidated_category %}Consolidated across all categories.{% else %}{{ selected_category }}.{% endif %}</p>
   </div>
   <a class="btn-primary btn-sm" href="/weekly-order/summary.pdf?category={{ selected_category_param|urlencode }}">Export summary PDF</a>
 </div>
@@ -19,9 +89,9 @@
   {% endfor %}
 </div>
 <div class="hero-band">
-  <span class="hero-label">{% if selected_category == consolidated_category %}Consolidated forecast{% else %}{{ selected_category }}{% endif %}</span>
+  <span class="hero-label">{% if selected_category == consolidated_category %}Consolidated forecast{% else %}{{ selected_category }}{% endif %} · next seven days</span>
   <div class="hero-value">{{ horizon_start.strftime('%d %b') }} — {{ horizon_end.strftime('%d %b') }}</div>
-  <div class="hero-sub">The model auto-selects the best fit per item and uses that quantity for the summary.</div>
+  <div class="hero-sub">Recommended qty is the model's 7-day demand forecast; to procure = recommended + safety buffer − existing stock − inbound.</div>
 </div>
 <div class="wk-grid">
   <div class="wk-stat"><small>Items analysed</small><b>{{ rows|length }}</b></div>
@@ -29,18 +99,85 @@
   <div class="wk-stat"><small>Categories</small><b>{{ category_count }}</b></div>
   <div class="wk-stat"><small>Sales evidence</small><b>{{ sales_days }} days</b></div>
 </div>
-<div class="wk-list">
-  {% for r in rows[:12] %}
-  <div class="wk-card">
-    <div class="wk-row">
-      <h3>{{ r.name }}</h3>
-      <span class="wk-badge">{{ r.model_name or 'No model' }}</span>
-    </div>
-    <p>{{ r.category }} · {{ r.unit }} · auto-approved qty <strong>{{ '%g'|format(r.suggested_qty or 0) }}</strong>{% if r.backtest_wape is not none %} · {{ '%.0f'|format(r.backtest_wape * 100) }}% WAPE{% endif %}</p>
-  </div>
-  {% endfor %}
+
+<div class="prep-head">
+  <h2 class="prep-title">To procure{% if to_procure %} — {{ to_procure|length }} item{{ 's' if to_procure|length != 1 }}{% endif %}</h2>
+  <span class="prep-meta">
+    {% if urgent_count %}{{ urgent_count }} urgent (under 3 days cover), sorted to top · {% endif %}
+    stock count where entered, else no procurement suggestion is made
+  </span>
 </div>
-<div class="wk-history">
-  <div class="wk-sub">This page is summary-only. Export the PDF for sharing.</div>
+{% if to_procure %}
+<div class="card">
+  <div class="recon-table-wrap">
+    <table class="recon-table wk-table">
+      <thead>{{ head() }}</thead>
+      <tbody>{% for r in to_procure %}{{ row(r) }}{% endfor %}</tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card"><p>Nothing needs procuring right now for this view.</p></div>
+{% endif %}
+
+{% if no_action or needs_input_rows %}
+<details class="show-more" style="margin-top:1.4rem">
+  <summary>Skipped items</summary>
+  <div class="show-more-body">
+    {% if no_action %}
+    <div>
+      <div class="prep-head" style="margin-top:0">
+        <h2 class="prep-title">Well stocked — skipped</h2>
+        <span class="prep-meta">forecast + buffer already covered by stock on hand</span>
+      </div>
+      <p class="wk-nohist">
+        {% for r in no_action %}<span>{{ r.name }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+      </p>
+    </div>
+    {% endif %}
+    {% if needs_input_rows %}
+    <div>
+      <div class="prep-head" style="margin-top:0">
+        <h2 class="prep-title">Needs input</h2>
+        <span class="prep-meta">no compatible stock count or not enough purchase history for a model</span>
+      </div>
+      <p class="wk-nohist">
+        {% for r in needs_input_rows %}<span>{{ r.name }} <span class="wk-dim">({{ r.input_reason }})</span></span>{% if not loop.last %} · {% endif %}{% endfor %}
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</details>
+{% endif %}
+
+<div style="margin-top:1rem; display:flex; align-items:center; gap:.3rem; font-size:.78rem; color:#6b6b6b">
+  How these numbers are computed
+  <details class="info-tip">
+    <summary>ⓘ</summary>
+    <div class="info-tip-panel">
+      <p>
+        <strong>Recommended qty</strong> — the model's raw forecast of demand over the next 7 days
+        (the best of four models, picked by lowest backtested error: weekday-seasonal, recent-trend
+        EWMA, or one of two ML models; unmapped items fall back to purchase cadence).
+      </p>
+      <p style="margin-top:.4rem">
+        <strong>Usage</strong> — recommended qty spread evenly across the 7 days, as a daily rate.
+      </p>
+      <p style="margin-top:.4rem">
+        <strong>Existing stock</strong> — your latest Stock Log count, only used if it was counted in
+        the same unit as the ingredient. Otherwise you'll see "Count needed".
+      </p>
+      <p style="margin-top:.4rem">
+        <strong>To procure</strong> = recommended qty + a one-day safety buffer (bigger when the model's
+        error rate is higher) − existing stock − anything already inbound from an approved order,
+        rounded up to the ingredient's order increment.
+      </p>
+      <p style="margin-top:.4rem">
+        <strong>URGENT</strong> — existing stock ÷ usage rate is under 3 days, the same cutoff Order
+        Forecast uses. These items are pinned to the top so nothing that's genuinely close to running
+        out gets buried in the full week's list.
+      </p>
+    </div>
+  </details>
 </div>
 {% endblock %}

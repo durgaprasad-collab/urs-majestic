@@ -38,14 +38,18 @@ def weekly_order(request: Request, db: Session = Depends(get_db)):
     elif selected_category not in categories:
         selected_category = CONSOLIDATED_WEEKLY_CATEGORY
     forecast = build_category_forecast(db, category=selected_category)
-    recent = db.execute(text("""
-        SELECT id, category, horizon_start, horizon_end, status, created_at
-          FROM weekly_inventory_orders
-         ORDER BY created_at DESC
-         LIMIT 8
-    """)).mappings().all()
+    rows = forecast["rows"]
+    to_procure = sorted(
+        (r for r in rows if not r["needs_input"] and (r["suggested_qty"] or 0) > 0),
+        key=lambda r: (not r["is_urgent"], -(r["suggested_qty"] or 0), r["name"]),
+    )
+    no_action = [r for r in rows if not r["needs_input"] and not (r["suggested_qty"] or 0) > 0]
+    needs_input_rows = [r for r in rows if r["needs_input"]]
+    urgent_count = sum(1 for r in to_procure if r["is_urgent"])
     return _tmpl(request, "weekly_order.html", {
-        **forecast, "user": user, "recent_orders": recent,
+        **forecast, "user": user,
+        "to_procure": to_procure, "no_action": no_action, "needs_input_rows": needs_input_rows,
+        "urgent_count": urgent_count,
         "categories": categories, "selected_category": selected_category,
         "selected_category_param": "all" if selected_category == CONSOLIDATED_WEEKLY_CATEGORY else selected_category,
         "consolidated_category": CONSOLIDATED_WEEKLY_CATEGORY,
