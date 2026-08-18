@@ -111,6 +111,29 @@ async def create_draft(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(f"/weekly-order/{order_id}", status_code=303)
 
 
+@router.get("/weekly-order/summary.pdf")
+def weekly_summary_pdf(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    categories = weekly_forecast_categories(db)
+    selected_category = request.query_params.get("category")
+    if selected_category in (None, "", "all", CONSOLIDATED_WEEKLY_CATEGORY):
+        selected_category = CONSOLIDATED_WEEKLY_CATEGORY
+    elif selected_category not in categories:
+        selected_category = CONSOLIDATED_WEEKLY_CATEGORY
+    forecast = build_category_forecast(db, category=selected_category)
+    try:
+        payload = build_weekly_summary_pdf(forecast, forecast["rows"])
+    except ValueError as exc:
+        return RedirectResponse(f"/weekly-order?error={quote(str(exc))}", status_code=303)
+    filename = f"URS-Majestic-weekly-forecast-{selected_category.replace(' ', '-')}.pdf"
+    return StreamingResponse(
+        iter([payload]), media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 def _order_context(db: Session, order_id: int):
     order = db.execute(text("""
         SELECT o.*, u.name AS created_by_name, a.name AS approved_by_name
@@ -170,29 +193,6 @@ def supplier_pdf(order_id: int, request: Request, db: Session = Depends(get_db))
     except ValueError as exc:
         return RedirectResponse(f"/weekly-order/{order_id}?error={quote(str(exc))}", status_code=303)
     filename = f"URS-Majestic-order-{order_id}-{order['horizon_start'].isoformat()}.pdf"
-    return StreamingResponse(
-        iter([payload]), media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
-@router.get("/weekly-order/summary.pdf")
-def weekly_summary_pdf(request: Request, db: Session = Depends(get_db)):
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-    categories = weekly_forecast_categories(db)
-    selected_category = request.query_params.get("category")
-    if selected_category in (None, "", "all", CONSOLIDATED_WEEKLY_CATEGORY):
-        selected_category = CONSOLIDATED_WEEKLY_CATEGORY
-    elif selected_category not in categories:
-        selected_category = CONSOLIDATED_WEEKLY_CATEGORY
-    forecast = build_category_forecast(db, category=selected_category)
-    try:
-        payload = build_weekly_summary_pdf(forecast, forecast["rows"])
-    except ValueError as exc:
-        return RedirectResponse(f"/weekly-order?error={quote(str(exc))}", status_code=303)
-    filename = f"URS-Majestic-weekly-forecast-{selected_category.replace(' ', '-')}.pdf"
     return StreamingResponse(
         iter([payload]), media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},

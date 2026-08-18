@@ -127,13 +127,14 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
         .all()
     )
 
-    # ingredient_id -> [spend, base_qty (g/ml), name, category, pack_size_g]
+    # ingredient_id -> [spend, base_qty (g/ml), name, category, pack_size_g, has_direct_unit_row]
     acc: dict[int, list] = {}
     for ing_id, name, category, pack_size_g, qty, unit, price in rows:
         if qty is None or price is None:
             continue
         qty = decimal.Decimal(str(qty))
         unit = getattr(unit, "value", unit)  # ORM enum -> plain string
+        direct_unit_row = unit in ("kg", "l", "g", "ml")
         if unit in ("kg", "l"):
             base = qty * 1000
         elif unit in ("g", "ml"):
@@ -142,22 +143,27 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
             base = qty * decimal.Decimal(str(pack_size_g))
         else:  # pcs with no pack weight, or an unknown unit -- not portionable by grams
             continue
-        e = acc.setdefault(ing_id, [decimal.Decimal("0"), decimal.Decimal("0"), name, category, pack_size_g])
+        e = acc.setdefault(ing_id, [decimal.Decimal("0"), decimal.Decimal("0"), name, category, pack_size_g, False])
         e[0] += decimal.Decimal(str(price))
         e[1] += base
+        e[5] = e[5] or direct_unit_row
 
     cost: dict[int, decimal.Decimal] = {}
     anomalies: list[UnitAnomaly] = []
 
-    for ing_id, (spend, base, name, category, pack_size_g) in acc.items():
+    for ing_id, (spend, base, name, category, pack_size_g, has_direct_unit_row) in acc.items():
         if base <= 0:
             continue
         per_g = spend / base
-        # Implausibility guard catches a genuine 1000x data error. SKIP it for
-        # spices: they are amortized by total spend (not portion-costed), and some
-        # (cardamom, saffron) are legitimately > IMPLAUSIBLE_PER_G, so applying it
-        # would false-flag them and wrongly divide the cost down.
-        if category != _SPICE_CATEGORY and per_g > IMPLAUSIBLE_PER_G:
+        # Implausibility guard catches a genuine 1000x data error: a litre bought
+        # but logged as ml (or kg as g). That mixup can only happen on a row
+        # logged directly in kg/l/g/ml -- a 'pcs' row converted via pack_size_g
+        # (e.g. a small concentrated-essence bottle) has no such ambiguity, so it
+        # is exempt even at a high per-g cost. Also SKIP for spices: they are
+        # amortized by total spend (not portion-costed), and some (cardamom,
+        # saffron) are legitimately > IMPLAUSIBLE_PER_G, so applying it would
+        # false-flag them and wrongly divide the cost down.
+        if category != _SPICE_CATEGORY and has_direct_unit_row and per_g > IMPLAUSIBLE_PER_G:
             corrected = per_g / 1000
             anomalies.append(UnitAnomaly(ing_id, name, float(per_g), float(corrected)))
             per_g = corrected
@@ -212,20 +218,29 @@ def _container_cost_per_pc(db: Session) -> dict[int, decimal.Decimal]:
 
 
 def _dish_packaging_cost(db: Session) -> dict[int, decimal.Decimal]:
-    """{menu_item_id: packaging cost}, real container cost weighted by the
-    parcel rate — see the module docstring's OVERHEAD SEPARATION note. A dish
-    with no dish_packaging_map row (or an unpriced container) simply gets 0."""
+    """{menu_item_id: packaging cost}, real container/disposable cost weighted
+    per-row by charge_on — see the module docstring's OVERHEAD SEPARATION note
+    and DishPackagingMap.charge_on. A dish with no dish_packaging_map row (or
+    an unpriced item) simply gets 0."""
     cost_per_pc = _container_cost_per_pc(db)
-    rate = _parcel_rate(db)
-    full_cost: dict[int, decimal.Decimal] = {}
-    for menu_item_id, ingredient_id, qty in db.query(
-        DishPackagingMap.menu_item_id, DishPackagingMap.ingredient_id, DishPackagingMap.qty
+    parcel_rate = _parcel_rate(db)
+    dine_in_rate = decimal.Decimal("1") - parcel_rate
+    result: dict[int, decimal.Decimal] = {}
+    for menu_item_id, ingredient_id, qty, charge_on in db.query(
+        DishPackagingMap.menu_item_id, DishPackagingMap.ingredient_id,
+        DishPackagingMap.qty, DishPackagingMap.charge_on
     ).all():
         per_pc = cost_per_pc.get(ingredient_id)
         if per_pc is None:
             continue
-        full_cost[menu_item_id] = full_cost.get(menu_item_id, decimal.Decimal("0")) + decimal.Decimal(str(qty)) * per_pc
-    return {mid: cost * rate for mid, cost in full_cost.items()}
+        if charge_on == "always":
+            rate = decimal.Decimal("1")
+        elif charge_on == "dine_in":
+            rate = dine_in_rate
+        else:
+            rate = parcel_rate
+        result[menu_item_id] = result.get(menu_item_id, decimal.Decimal("0")) + decimal.Decimal(str(qty)) * per_pc * rate
+    return result
 
 
 def _spice_per_dish(db: Session) -> decimal.Decimal:
