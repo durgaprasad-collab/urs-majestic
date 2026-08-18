@@ -9,7 +9,8 @@ lower, which matters more than calling every forecast "AI".
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, timedelta
+import json
+from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_CEILING
 import math
 import statistics
@@ -22,6 +23,7 @@ from app.services.sales_stock import calculate_ingredient_usage
 
 
 MODEL_VERSION = "weekly-v1"
+CACHE_VERSION = "weekly-cache-v1"
 CONSOLIDATED_WEEKLY_CATEGORY = "All categories"
 DEFAULT_WEEKLY_CATEGORY = CONSOLIDATED_WEEKLY_CATEGORY
 
@@ -285,10 +287,89 @@ def split_delivery_quantities(approved_qty: float, daily: list[float], increment
     return [first, second, third]
 
 
+def _jsonify(value):
+    if isinstance(value, dict):
+        return {k: _jsonify(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_jsonify(v) for v in value]
+    if isinstance(value, tuple):
+        return [_jsonify(v) for v in value]
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (date,)):
+        return value.isoformat()
+    return value
+
+
+def _maybe_parse_iso(value):
+    if not isinstance(value, str):
+        return value
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        pass
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return value
+
+
+def _dejsonify(value):
+    if isinstance(value, dict):
+        return {k: _dejsonify(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_dejsonify(v) for v in value]
+    return _maybe_parse_iso(value)
+
+
+def _weekly_cache_key(db, category: str, horizon_start: date, horizon_end: date) -> str:
+    markers = db.execute(text("""
+        SELECT
+            COALESCE((SELECT MAX(uploaded_at) FROM daily_channel_sales), TIMESTAMP 'epoch') AS sales_marker,
+            COALESCE((SELECT MAX(created_at) FROM purchases WHERE deleted_at IS NULL), TIMESTAMP 'epoch') AS purchase_marker,
+            COALESCE((SELECT MAX(counted_at) FROM ingredient_stock), TIMESTAMP 'epoch') AS stock_marker
+    """)).mappings().one()
+    return "|".join([
+        CACHE_VERSION,
+        MODEL_VERSION,
+        str(category or ""),
+        horizon_start.isoformat(),
+        horizon_end.isoformat(),
+        str(markers["sales_marker"]),
+        str(markers["purchase_marker"]),
+        str(markers["stock_marker"]),
+    ])
+
+
+def _read_weekly_cache(db, cache_key: str) -> dict | None:
+    row = db.execute(text("""
+        SELECT payload
+          FROM weekly_forecast_cache
+         WHERE cache_key = :cache_key
+    """), {"cache_key": cache_key}).mappings().first()
+    if not row:
+        return None
+    return _dejsonify(row["payload"])
+
+
+def _write_weekly_cache(db, cache_key: str, payload: dict) -> None:
+    db.execute(text("""
+        INSERT INTO weekly_forecast_cache (cache_key, payload, cached_at)
+        VALUES (:cache_key, CAST(:payload AS jsonb), now())
+        ON CONFLICT (cache_key)
+        DO UPDATE SET payload = EXCLUDED.payload, cached_at = EXCLUDED.cached_at
+    """), {"cache_key": cache_key, "payload": json.dumps(_jsonify(payload), ensure_ascii=False)})
+    db.commit()
+
+
 def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon_start: date | None = None) -> dict:
     today = business_today()
     horizon_start = horizon_start or (today + timedelta(days=1))
     future = [horizon_start + timedelta(days=i) for i in range(7)]
+    cache_key = _weekly_cache_key(db, category, future[0], future[-1])
+    cached = _read_weekly_cache(db, cache_key)
+    if cached:
+        return cached
 
     consolidated = category in {None, "", CONSOLIDATED_WEEKLY_CATEGORY, "all"}
     other_category = category == "Other"
@@ -449,7 +530,7 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
         ))
     else:
         rows.sort(key=lambda r: (r["needs_input"], -(r["suggested_qty"] or 0), r["name"]))
-    return {
+    payload = {
         "category": category, "horizon_start": future[0], "horizon_end": future[-1],
         "future_dates": future, "rows": rows, "model_version": MODEL_VERSION,
         "sales_start": sale_dates[0] if sale_dates else None,
@@ -460,3 +541,5 @@ def build_category_forecast(db, category: str = DEFAULT_WEEKLY_CATEGORY, horizon
         "purchase_end": max((p["purchase_date"] for p in purchase_rows), default=None),
         "estimated_cost": sum((r["suggested_qty"] or 0) * (r["recent_unit_cost"] or 0) for r in rows),
     }
+    _write_weekly_cache(db, cache_key, payload)
+    return payload

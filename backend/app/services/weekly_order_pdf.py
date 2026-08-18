@@ -142,8 +142,20 @@ def build_supplier_delivery_pdf(order: dict, deliveries: list[dict]) -> bytes:
     return output.getvalue()
 
 
-def build_weekly_summary_pdf(forecast: dict, rows: list[dict]) -> bytes:
-    """Return a one-page summary PDF for the weekly forecast."""
+URGENT_RED = HexColor("#B52B1E")
+STOCK_GREEN = HexColor("#1E7E34")
+
+
+def build_weekly_summary_pdf(
+    forecast: dict, to_procure: list[dict], no_action: list[dict],
+    needs_input_rows: list[dict], urgent_count: int = 0,
+) -> bytes:
+    """One-page PDF mirroring the on-screen Weekly Forecast table: Item,
+    Recommended qty, Existing stock, Usage, To procure, Model fit — urgent
+    (cover < 3 days) items first, same as the page. Well-stocked / needs-input
+    items are summarized by count+name at the bottom rather than filling a
+    second table, to keep this a one-page "for sharing" export."""
+    total_items = len(to_procure) + len(no_action) + len(needs_input_rows)
     output = BytesIO()
     width, height = landscape(A4)
     pdf = canvas.Canvas(output, pagesize=(width, height), pageCompression=1)
@@ -163,41 +175,123 @@ def build_weekly_summary_pdf(forecast: dict, rows: list[dict]) -> bytes:
     pdf.setFillColor(white)
     pdf.setFont("Helvetica-Bold", 9)
     pdf.drawRightString(width - margin, height - 31, f"{forecast['horizon_start']:%d %b} - {forecast['horizon_end']:%d %b %Y}")
-    pdf.drawRightString(width - margin, height - 46, f"{len(rows)} items")
-    pdf.drawRightString(width - margin, height - 60, "AUTO-APPROVED")
+    pdf.drawRightString(width - margin, height - 46, f"{total_items} items analysed")
+    pdf.drawRightString(width - margin, height - 60, f"Rs {forecast['estimated_cost']:.0f} estimated order")
 
-    start_y = height - 112
+    start_y = height - 108
     pdf.setFillColor(INK)
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(margin, start_y, "Summary")
-    pdf.setFont("Helvetica", 8.2)
-    pdf.drawString(margin, start_y - 14, f"Estimated order value: ₹{forecast['estimated_cost']:.0f}")
-    pdf.drawString(margin, start_y - 27, f"Items analysed: {len(rows)}")
-    pdf.drawString(margin, start_y - 40, f"Categories: {forecast['category_count']}")
+    pdf.setFont("Helvetica-Bold", 11)
+    title = f"To procure — {len(to_procure)} item{'s' if len(to_procure) != 1 else ''}"
+    pdf.drawString(margin, start_y, title)
+    if urgent_count:
+        pdf.setFillColor(URGENT_RED)
+        pdf.setFont("Helvetica-Bold", 8.5)
+        pdf.drawString(margin + stringWidth(title, "Helvetica-Bold", 11) + 10, start_y + 1, f"{urgent_count} URGENT (under 3 days cover)")
 
-    top = sorted(rows, key=lambda r: float(r.get("suggested_qty") or 0), reverse=True)[:14]
-    y = start_y - 64
-    pdf.setFont("Helvetica-Bold", 8.2)
-    pdf.drawString(margin, y, "Item")
-    pdf.drawRightString(width - margin - 100, y, "Model")
-    pdf.drawRightString(width - margin - 50, y, "Qty")
-    pdf.drawRightString(width - margin, y, "Cover/notes")
-    y -= 10
+    col_item = margin
+    col_recommended = margin + 220
+    col_stock = margin + 340
+    col_usage = margin + 470
+    col_procure = margin + 570
+    col_model = margin + 660
+    header_y = start_y - 20
+
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Helvetica-Bold", 7.3)
+    pdf.drawString(col_item, header_y, "ITEM")
+    pdf.drawString(col_recommended, header_y, "RECOMMENDED QTY")
+    pdf.drawString(col_stock, header_y, "EXISTING STOCK")
+    pdf.drawString(col_usage, header_y, "USAGE")
+    pdf.drawString(col_procure, header_y, "TO PROCURE")
+    pdf.drawString(col_model, header_y, "MODEL FIT")
     pdf.setLineWidth(.6)
     pdf.setStrokeColor(BORDER)
-    pdf.line(margin, y, width - margin, y)
-    y -= 12
-    pdf.setFont("Helvetica", 7.2)
-    for row in top:
-        pdf.drawString(margin, y, _shorten(str(row.get("name", "")), "Helvetica", 7.2, width - 250))
-        pdf.drawRightString(width - margin - 100, y, str(row.get("model_name") or "—"))
-        qty = f"{float(row.get('suggested_qty') or 0):g} {row.get('unit') or ''}".strip()
-        pdf.drawRightString(width - margin - 50, y, qty)
-        note = row.get("input_reason") or f"{float(row.get('backtest_wape') or 0)*100:.0f}% WAPE"
-        pdf.drawRightString(width - margin, y, _shorten(str(note), "Helvetica", 7.2, 100))
-        y -= 13
-        if y < 40:
-            break
+    pdf.line(margin, header_y - 5, width - margin, header_y - 5)
+
+    footer_reserved = 46
+    available = (header_y - 5) - footer_reserved
+    row_height = 19.5
+    sub_offset = 9
+    max_rows = max(1, int(available // row_height))
+    shown = to_procure[:max_rows]
+    overflow = len(to_procure) - len(shown)
+
+    if not shown:
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Helvetica", 8.5)
+        pdf.drawString(margin, header_y - 25, "Nothing needs procuring right now for this view.")
+
+    y = header_y - 5 - 14
+    pdf.setFont("Helvetica", 7.4)
+    for row in shown:
+        is_urgent = bool(row.get("is_urgent"))
+        if is_urgent:
+            pdf.setFillColor(HexColor("#FFFBF5"))
+            pdf.rect(margin - 4, y - row_height + 8, width - 2 * margin + 8, row_height, fill=1, stroke=0)
+
+        pdf.setFillColor(INK)
+        pdf.setFont("Helvetica-Bold", 7.6)
+        name = _shorten(str(row.get("name", "")), "Helvetica-Bold", 7.6, col_recommended - col_item - 14)
+        pdf.drawString(col_item, y, name)
+        if is_urgent:
+            pdf.setFillColor(URGENT_RED)
+            pdf.setFont("Helvetica-Bold", 6)
+            pdf.drawString(col_item + stringWidth(name, "Helvetica-Bold", 7.6) + 4, y + 1.5, "URGENT")
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Helvetica", 6.3)
+        pdf.drawString(col_item, y - sub_offset, f"{row.get('category') or ''} · {row.get('unit') or ''}")
+
+        pdf.setFillColor(INK)
+        pdf.setFont("Helvetica", 7.4)
+        recommended = row.get("forecast_qty")
+        pdf.drawString(col_recommended, y, f"{recommended:g} {row.get('unit') or ''}" if recommended is not None else "—")
+
+        if row.get("stock_qty") is not None:
+            pdf.setFillColor(STOCK_GREEN)
+            pdf.drawString(col_stock, y, f"{row['stock_qty']:g} {row.get('unit') or ''}")
+            pdf.setFillColor(URGENT_RED if is_urgent else MUTED)
+            pdf.setFont("Helvetica", 6.3)
+            cover = row.get("cover_days")
+            pdf.drawString(col_stock, y - sub_offset, f"{cover:.1f}d cover" if cover is not None else "")
+        else:
+            pdf.setFillColor(URGENT_RED)
+            pdf.drawString(col_stock, y, "Count needed")
+
+        daily_rate = row.get("daily_rate")
+        pdf.setFillColor(INK)
+        pdf.setFont("Helvetica", 7.4)
+        pdf.drawString(col_usage, y, f"{daily_rate:.2f}/day" if daily_rate is not None else "—")
+
+        pdf.setFillColor(GREEN)
+        pdf.setFont("Helvetica-Bold", 7.6)
+        suggested = row.get("suggested_qty")
+        pdf.drawString(col_procure, y, f"{suggested:g} {row.get('unit') or ''}" if suggested is not None else "—")
+
+        pdf.setFillColor(INK)
+        pdf.setFont("Helvetica", 6.8)
+        pdf.drawString(col_model, y, _shorten(str(row.get("model_name") or "No model"), "Helvetica", 6.8, width - col_model - margin))
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Helvetica", 6.3)
+        wape = row.get("backtest_wape")
+        conf = row.get("confidence")
+        note = f"{conf} · {wape*100:.0f}% WAPE" if conf and wape is not None else (conf or "")
+        pdf.drawString(col_model, y - sub_offset, note)
+
+        y -= row_height
+
+    footer_top = footer_reserved - 10
+    pdf.setStrokeColor(GOLD)
+    pdf.setLineWidth(1)
+    pdf.line(margin, footer_top, width - margin, footer_top)
+    pdf.setFillColor(INK)
+    pdf.setFont("Helvetica-Bold", 7.6)
+    skip_line = f"Well stocked (no action needed): {len(no_action)} items · Needs input (no stock count or model): {len(needs_input_rows)} items"
+    if overflow > 0:
+        skip_line = f"+ {overflow} more to-procure item{'s' if overflow != 1 else ''} not shown here · " + skip_line
+    pdf.drawString(margin, footer_top - 13, _shorten(skip_line, "Helvetica-Bold", 7.6, width - 2 * margin - 140))
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Helvetica", 6.8)
+    pdf.drawString(margin, footer_top - 25, "Full detail, including well-stocked and needs-input items by name, is on the Weekly Forecast page.")
 
     generated = datetime.now(business_tz()).strftime("Generated %d %b %Y, %I:%M %p IST")
     pdf.setFillColor(MUTED)

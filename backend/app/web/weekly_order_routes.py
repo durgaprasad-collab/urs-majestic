@@ -26,6 +26,19 @@ from app.web.deps import _tmpl, require_user
 router = APIRouter(tags=["weekly-ordering"])
 
 
+def _bucket_forecast_rows(rows: list[dict]):
+    """Split forecast rows the same way everywhere they're shown (page + PDF):
+    to_procure (urgent-first), no_action (well stocked), needs_input_rows."""
+    to_procure = sorted(
+        (r for r in rows if not r["needs_input"] and (r["suggested_qty"] or 0) > 0),
+        key=lambda r: (not r["is_urgent"], -(r["suggested_qty"] or 0), r["name"]),
+    )
+    no_action = [r for r in rows if not r["needs_input"] and not (r["suggested_qty"] or 0) > 0]
+    needs_input_rows = [r for r in rows if r["needs_input"]]
+    urgent_count = sum(1 for r in to_procure if r["is_urgent"])
+    return to_procure, no_action, needs_input_rows, urgent_count
+
+
 @router.get("/weekly-order", response_class=HTMLResponse)
 def weekly_order(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
@@ -38,14 +51,7 @@ def weekly_order(request: Request, db: Session = Depends(get_db)):
     elif selected_category not in categories:
         selected_category = CONSOLIDATED_WEEKLY_CATEGORY
     forecast = build_category_forecast(db, category=selected_category)
-    rows = forecast["rows"]
-    to_procure = sorted(
-        (r for r in rows if not r["needs_input"] and (r["suggested_qty"] or 0) > 0),
-        key=lambda r: (not r["is_urgent"], -(r["suggested_qty"] or 0), r["name"]),
-    )
-    no_action = [r for r in rows if not r["needs_input"] and not (r["suggested_qty"] or 0) > 0]
-    needs_input_rows = [r for r in rows if r["needs_input"]]
-    urgent_count = sum(1 for r in to_procure if r["is_urgent"])
+    to_procure, no_action, needs_input_rows, urgent_count = _bucket_forecast_rows(forecast["rows"])
     return _tmpl(request, "weekly_order.html", {
         **forecast, "user": user,
         "to_procure": to_procure, "no_action": no_action, "needs_input_rows": needs_input_rows,
@@ -127,8 +133,9 @@ def weekly_summary_pdf(request: Request, db: Session = Depends(get_db)):
     elif selected_category not in categories:
         selected_category = CONSOLIDATED_WEEKLY_CATEGORY
     forecast = build_category_forecast(db, category=selected_category)
+    to_procure, no_action, needs_input_rows, urgent_count = _bucket_forecast_rows(forecast["rows"])
     try:
-        payload = build_weekly_summary_pdf(forecast, forecast["rows"])
+        payload = build_weekly_summary_pdf(forecast, to_procure, no_action, needs_input_rows, urgent_count)
     except ValueError as exc:
         return RedirectResponse(f"/weekly-order?error={quote(str(exc))}", status_code=303)
     filename = f"URS-Majestic-weekly-forecast-{selected_category.replace(' ', '-')}.pdf"
