@@ -82,6 +82,8 @@
                   <span class="sl-cover sl-cover-{{ r.cover_colour }}" title="{{ '%g'|format(r.cover_qty) }} {{ r.unit }} ÷ {{ '%g'|format(r.daily_consumption) }} {{ r.unit }}/day · {{ r.cover_source }}">
                     {{ '%.1f'|format(r.cover_days) }} days
                   </span>
+                {% elif r.stock_stale %}
+                  <span class="sl-cover sl-cover-neutral" title="A purchase was logged after the last count on {{ r.counted_at.strftime('%d %b') if r.counted_at else '?' }} — the on-hand figure no longer reflects what's on the shelf">Recount needed</span>
                 {% else %}
                   <span class="sl-cover sl-cover-neutral" title="A compatible stock count and consumption rate are required">No data</span>
                 {% endif %}

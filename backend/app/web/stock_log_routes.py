@@ -25,17 +25,39 @@ _CATEGORY_ORDER = [
 ]
 
 _LIST_SQL = text("""
+    with purchase_edits as (
+        select target_id, max(repaired_at) as edited_at
+          from cost_base_repair_log
+         where target_table = 'purchases'
+         group by target_id
+    ), purchase_events as (
+        select p.ingredient_id,
+               max(greatest(p.created_at, coalesce(e.edited_at, p.created_at))) as event_at
+          from purchases p
+          left join purchase_edits e on e.target_id = p.id
+         where p.deleted_at is null
+         group by p.ingredient_id
+    )
     select i.id as ingredient_id, i.name, i.unit, i.category, i.pack_size_g,
            s.on_hand_qty, s.counted_at, s.note,
            v.daily_consumption,
+           -- A stock count goes stale the moment a purchase lands after it --
+           -- the shelf now holds more than the count says. Same rule Order
+           -- Forecast uses (reorder_routes.py::_enrich) so the two pages
+           -- can't disagree about whether a count is still trustworthy.
            case
              when s.on_hand_qty is not null
               and v.daily_consumption is not null
               and v.daily_consumption > 0
               and s.stock_unit = v.unit::text
+              and (pe.event_at is null or s.counted_at > pe.event_at
+                   or coalesce(s.note, '') like 'purchase_auto:%')
              then s.on_hand_qty / v.daily_consumption
              else null
-           end as cover_days
+           end as cover_days,
+           (pe.event_at is not null and s.counted_at is not null
+            and s.counted_at <= pe.event_at
+            and coalesce(s.note, '') not like 'purchase_auto:%') as stock_stale
     from ingredients i
     left join lateral (
         select on_hand_qty, unit::text as stock_unit, counted_at, note
@@ -45,6 +67,7 @@ _LIST_SQL = text("""
         limit 1
     ) s on true
     left join v_ingredient_reorder_forecast v on v.ingredient_id = i.id
+    left join purchase_events pe on pe.ingredient_id = i.id
     where i.is_active
     order by i.category nulls last, i.name
 """)
