@@ -57,7 +57,12 @@ _LIST_SQL = text("""
            end as cover_days,
            (pe.event_at is not null and s.counted_at is not null
             and s.counted_at <= pe.event_at
-            and coalesce(s.note, '') not like 'purchase_auto:%') as stock_stale
+            and coalesce(s.note, '') not like 'purchase_auto:%') as stock_stale,
+           -- Order-derived qty comparison (v_stock_model_comparison, pre-existing
+           -- view, not modified here). LEFT JOIN so a miss (e.g. non-'recipe'
+           -- cost_role ingredients, which that view excludes) yields NULL, not 0 --
+           -- the template renders NULL as "no data", never as a real zero count.
+           smc.order_derived_qty, smc.order_derived_unit, smc.pct_diff
     from ingredients i
     left join lateral (
         select on_hand_qty, unit::text as stock_unit, counted_at, note
@@ -68,6 +73,7 @@ _LIST_SQL = text("""
     ) s on true
     left join v_ingredient_reorder_forecast v on v.ingredient_id = i.id
     left join purchase_events pe on pe.ingredient_id = i.id
+    left join v_stock_model_comparison smc on smc.ingredient_id = i.id
     where i.is_active
     order by i.category nulls last, i.name
 """)
@@ -112,6 +118,14 @@ def _stock_rows(db: Session) -> list[dict]:
             else "orange" if cover is not None and cover < 7
             else "green" if cover is not None
             else "neutral"
+        )
+        pct_diff = float(r["pct_diff"]) if r["pct_diff"] is not None else None
+        r["pct_diff"] = pct_diff
+        r["pct_diff_colour"] = (
+            None if pct_diff is None
+            else "green" if pct_diff < 10
+            else "yellow" if pct_diff <= 25
+            else "red"
         )
         decorated.append(r)
     return decorated

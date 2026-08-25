@@ -15,6 +15,13 @@
   .sl-cover-orange{background:#FFF2DE;color:#A85C08;border:1px solid #F0CF9D}
   .sl-cover-green{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
   .sl-cover-neutral{background:#F2F1EA;color:#777;border:1px solid #DDD8CC}
+  .sl-derived{font-size:.8rem;white-space:nowrap}
+  .sl-derived-nodata{font-size:.78rem;color:#888;font-style:italic}
+  .sl-delta{display:inline-flex;align-items:center;padding:.18rem .5rem;border-radius:999px;font-size:.7rem;font-weight:850;white-space:nowrap;margin-left:.4rem}
+  .sl-delta-green{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
+  .sl-delta-yellow{background:#FFF7DE;color:#8A6D00;border:1px solid #F0E19D}
+  .sl-delta-red{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
+  .sl-delta-none{background:#F2F1EA;color:#777;border:1px solid #DDD8CC}
   .sl-input-cell{display:flex;align-items:center;gap:.3rem;white-space:nowrap}
   .sl-qty{width:5.5rem;padding:.3rem .45rem;font-size:.85rem;border:1px solid #d3d3cf;border-radius:4px}
   .sl-unit-select{padding:.3rem;font-size:.8rem;border:1px solid #d3d3cf;border-radius:4px}
@@ -58,6 +65,7 @@
               <th>Item</th>
               <th>Last count</th>
               <th>Cover</th>
+              <th>Order-Derived Qty</th>
               <th>Today's count</th>
             </tr>
           </thead>
@@ -86,6 +94,18 @@
                   <span class="sl-cover sl-cover-neutral" title="A purchase was logged after the last count on {{ r.counted_at.strftime('%d %b') if r.counted_at else '?' }} — the on-hand figure no longer reflects what's on the shelf">Recount needed</span>
                 {% else %}
                   <span class="sl-cover sl-cover-neutral" title="A compatible stock count and consumption rate are required">No data</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if r.order_derived_qty is not none %}
+                  <span class="sl-derived">{{ "%g"|format(r.order_derived_qty) }} {{ r.order_derived_unit }}</span>
+                  {% if r.pct_diff is not none %}
+                    <span class="sl-delta sl-delta-{{ r.pct_diff_colour }}" title="{{ '%.1f'|format(r.pct_diff) }}% difference vs on-hand count">{{ '%.1f'|format(r.pct_diff) }}%</span>
+                  {% else %}
+                    <span class="sl-delta sl-delta-none">—</span>
+                  {% endif %}
+                {% else %}
+                  <span class="sl-derived-nodata">no data</span>
                 {% endif %}
               </td>
               <td>
