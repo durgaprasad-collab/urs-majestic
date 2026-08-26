@@ -1,8 +1,13 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.order import Order, OrderItem
 from app.schemas import OrderCreate, OrderRead
+from app.services.order_derived_stock import apply_order_derived_deductions
+
+logger = logging.getLogger("orders")
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -26,6 +31,13 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
     for item_data in payload.items:
         order_item = OrderItem(order_id=order.id, **item_data.model_dump())
         db.add(order_item)
+
+    try:
+        with db.begin_nested():
+            apply_order_derived_deductions(db)
+    except Exception:
+        # Experimental comparison model -- must never block order placement.
+        logger.exception("order-derived deduction pass failed")
 
     db.commit()
     db.refresh(order)

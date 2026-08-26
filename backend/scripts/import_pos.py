@@ -52,6 +52,7 @@ from app.models.item_sale import ItemSale
 from app.models.daily_channel_sales import DailyChannelSales
 from app.models.upload_log import UploadLog
 from app.services.sales_stock import adjust_stock_for_sales
+from app.services.order_derived_stock import apply_order_derived_deductions
 
 SEED_JSON = os.path.join(os.path.dirname(__file__), "..", "data", "menu_seed.json")
 DEFAULT_XLSX = os.path.join(os.path.dirname(__file__), "..", "data", "pos_export.xlsx")
@@ -383,6 +384,14 @@ def main(xlsx_path: str):
             print(f"  {stock_result['initialized_zero']} ingredient(s) initialized at zero: no compatible prior count")
         if stock_result["unresolved"]:
             print(f"  {len(stock_result['unresolved'])} recipe input(s) could not be calculated")
+
+        try:
+            with db.begin_nested():
+                derived_result = apply_order_derived_deductions(db)
+            print(f"  order-derived model: {derived_result['deductions_applied']} deduction(s) applied "
+                  f"({derived_result['skipped_no_baseline']} skipped, no baseline yet)")
+        except Exception as exc:
+            print(f"  order-derived model pass failed (experimental, non-blocking): {exc}")
 
         print("\n-- Step 5: Upsert daily_channel_sales --------------------------------")
         days = upsert_daily_channel_sales(db, raw_rows, os.path.basename(xlsx_path))

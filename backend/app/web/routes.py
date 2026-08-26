@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import tempfile
 import decimal
 from fastapi import APIRouter, Request, Form, UploadFile, File, Depends
@@ -20,7 +21,10 @@ from app.services.uploads.petpooja_order_listing import (
 from app.models.item_sale import ItemSale
 from app.models.upload_log import UploadLog
 from app.services.sales_stock import adjust_stock_for_sales
+from app.services.order_derived_stock import apply_order_derived_deductions
 from app.web.deps import _tmpl, require_user
+
+logger = logging.getLogger("stock_upload")
 
 _SEED = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "menu_seed.json")
@@ -108,6 +112,13 @@ async def upload_post(
         resolver = build_resolver(seed, menu_map)
         imported_sales, _unmatched = load_sales(db, raw_rows, resolver)
         adjust_stock_for_sales(db, imported_sales)
+        try:
+            with db.begin_nested():
+                apply_order_derived_deductions(db)
+        except Exception:
+            # Experimental comparison model -- must never block the primary
+            # (control-model) upload it's piggybacking on.
+            logger.exception("order-derived deduction pass failed")
         upsert_daily_channel_sales(db, raw_rows, file.filename)
         write_upload_log(
             db,
