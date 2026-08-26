@@ -13,6 +13,7 @@ from app.models.recon_exception import ReconException
 from app.models.business import FixedExpense, BusinessSetting
 from app.models.packaging import DishPackagingMap
 from app.models.gas_reading import GasReading
+from app.models.catering_order import CateringOrder, CateringOrderItem, CateringPaymentStatus, CateringOrderStatus
 
 __all__ = [
     "User",
@@ -35,4 +36,8 @@ __all__ = [
     "BusinessSetting",
     "DishPackagingMap",
     "GasReading",
+    "CateringOrder",
+    "CateringOrderItem",
+    "CateringPaymentStatus",
+    "CateringOrderStatus",
 ]

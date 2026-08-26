@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Catering Orders — URS Majestic{% endblock %}
+
+{% block content %}
+<style>
+  .cat-card{margin-bottom:1.1rem}
+  .cat-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.6rem;margin-bottom:.6rem}
+  .cat-customer{font-size:1.05rem;font-weight:700;color:var(--text)}
+  .cat-phone{font-size:.8rem;color:var(--muted);margin-left:.4rem}
+  .cat-delivery{font-size:.85rem;color:var(--muted)}
+  .cat-badges{display:flex;gap:.4rem;flex-wrap:wrap}
+  .cat-badge{display:inline-flex;align-items:center;padding:.22rem .6rem;border-radius:999px;font-size:.72rem;font-weight:800;white-space:nowrap}
+  .cat-status-confirmed{background:#E8F0FD;color:#1A4FA0;border:1px solid #C6D9F5}
+  .cat-status-in_prep{background:#FFF2DE;color:#A85C08;border:1px solid #F0CF9D}
+  .cat-status-delivered{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
+  .cat-status-cancelled{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
+  .cat-pay-pending{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
+  .cat-pay-partial{background:#FFF7DE;color:#8A6D00;border:1px solid #F0E19D}
+  .cat-pay-paid{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
+  .cat-money-row{display:flex;gap:1.4rem;flex-wrap:wrap;margin-top:.7rem;font-size:.85rem}
+  .cat-money-row b{font-variant-numeric:tabular-nums}
+  .cat-address{font-size:.82rem;color:var(--muted);margin-top:.4rem}
+</style>
+
+<div class="page-header">
+  <h1 class="page-title">Catering Orders</h1>
+</div>
+
+{% if not orders %}
+<p class="prep-meta">No catering orders yet.</p>
+{% endif %}
+
+{% for o in orders %}
+<div class="card cat-card">
+  <div class="cat-head">
+    <div>
+      <span class="cat-customer">{{ o.customer_name }}</span><span class="cat-phone">{{ o.customer_phone }}</span>
+      <div class="cat-delivery">
+        Delivery {{ o.delivery_date.strftime('%d %b %Y') }} at {{ o.delivery_time.strftime('%I:%M %p') }}
+        {% if o.delivery_address %} — {{ o.delivery_address }}{% else %} — Pickup{% endif %}
+      </div>
+    </div>
+    <div class="cat-badges">
+      <span class="cat-badge cat-status-{{ o.status.value }}">{{ o.status.value.replace('_', ' ')|title }}</span>
+      <span class="cat-badge cat-pay-{{ o.payment_status.value }}">{{ o.payment_status.value|title }}</span>
+    </div>
+  </div>
+
+  <div class="recon-table-wrap">
+    <table class="recon-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Qty</th>
+          <th>Unit</th>
+          <th class="col-num">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in o.items %}
+        <tr>
+          <td>{{ item.item_name }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>{{ item.unit }}</td>
+          <td class="col-num">₹{{ "{:,.2f}".format(item.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cat-money-row">
+    <span>Subtotal <b>₹{{ "{:,.2f}".format(o.subtotal) }}</b></span>
+    <span>Discount <b>₹{{ "{:,.2f}".format(o.discount) }}</b></span>
+    <span>Total <b>₹{{ "{:,.2f}".format(o.total_amount) }}</b></span>
+    <span>Advance paid <b>₹{{ "{:,.2f}".format(o.advance_paid) }}</b></span>
+    <span>Balance due <b>₹{{ "{:,.2f}".format(o.balance_due) }}</b></span>
+  </div>
+  <div class="cat-address">Order taken {{ o.order_taken_date.strftime('%d %b %Y') }}</div>
+</div>
+{% endfor %}
+{% endblock %}
