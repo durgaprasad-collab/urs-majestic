@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from decimal import Decimal
+from datetime import timedelta
 
 from app.core.database import get_db
 from app.core.clock import business_today, business_tz
@@ -28,6 +29,34 @@ from app.web.deps import _tmpl, require_user
 router = APIRouter(tags=["reorder"])
 
 _ACTION = {"overdue", "due", "soon"}
+_EXCLUDED_CATEGORIES = {
+    "Overhead", "packaging", "Beverage - Resale",
+}
+_EXCLUDED_NAMES = {
+    "Vendor delivery charge",
+    "Oil for lamp",
+    "Camphor/Puja oil",
+    "Coconut (puja)",
+    "Cup sambrani",
+    "Matchbox",
+    "Broom / cleaning tools",
+    "Kitchen small tools",
+    "Hair net",
+    "Apron",
+    "Non-Woven Spring Caps",
+    "KOT/Billing Printer Roll 78mm",
+    "Water Bottle (1L) - resale",
+}
+_MANUAL_ONLY_PREFIXES = (
+    "Disposable ",
+    "Round Container ",
+    "Rectangle Container ",
+    "Hinged Round Container",
+    "Butter Paper",
+    "Carry Bags",
+    "Garbage bag",
+    "Aluminium Foil",
+)
 
 _SQL = text("""
     select *
@@ -122,6 +151,25 @@ _GAS_AVERAGE_SQL = text("""
                 THEN SUM(kg_used) / (SUM(elapsed_seconds) / 86400)
                 ELSE NULL END AS avg_kg_per_day
       FROM intervals
+""")
+
+_RECENT_PURCHASE_SQL = text("""
+    WITH purchase_edits AS (
+        SELECT target_id, MAX(repaired_at) AS edited_at
+          FROM cost_base_repair_log
+         WHERE target_table = 'purchases'
+         GROUP BY target_id
+    )
+    SELECT p.ingredient_id,
+           GREATEST(p.created_at, COALESCE(e.edited_at, p.created_at)) AS event_at,
+           p.purchase_date,
+           p.qty,
+           p.unit::text AS unit
+      FROM purchases p
+      LEFT JOIN purchase_edits e ON e.target_id = p.id
+     WHERE p.deleted_at IS NULL
+       AND p.usage_type::text = 'menu'
+     ORDER BY p.ingredient_id, p.purchase_date DESC, event_at DESC, p.id DESC
 """)
 
 _LATEST_GAS_PURCHASE_SQL = text("""
@@ -226,6 +274,60 @@ def _apply_gas_log(d: dict, gas_reading, gas_purchase=None, gas_avg_per_day=None
     return d
 
 
+def _purchase_cross_check(rows: list[dict], db: Session, freshness_days: int = 2) -> list[dict]:
+    """If a recent purchase is newer than the latest physical count, trust it
+    as the starting point for forecast urgency.
+
+    This does not invent stock. It only prevents an older physical count from
+    outranking a newer purchase event when the bill date says the ingredient
+    has already been refilled.
+    """
+    cutoff = business_today() - timedelta(days=freshness_days)
+    recent = {}
+    for row in db.execute(_RECENT_PURCHASE_SQL).mappings():
+        if row["purchase_date"] < cutoff:
+            continue
+        if row["ingredient_id"] not in recent:
+            recent[row["ingredient_id"]] = row
+
+    adjusted = []
+    for r in rows:
+        rp = recent.get(r["ingredient_id"])
+        d = dict(r)
+        d["recent_purchase_event_at"] = rp["event_at"].astimezone(business_tz()) if rp else None
+        d["recent_purchase_date"] = rp["purchase_date"] if rp else None
+        d["recent_purchase_qty"] = rp["qty"] if rp else None
+        d["recent_purchase_unit"] = rp["unit"] if rp else None
+        # Purchase is only allowed to override when it is newer than the count
+        # and the stock count is stale enough that it would otherwise suppress
+        # a legit refill.
+        if (
+            rp
+            and d.get("stock_counted_at") is not None
+            and rp["event_at"] > d["stock_counted_at"]
+        ):
+            d["purchase_trust_override"] = True
+            d["recently_purchased"] = True
+            if d.get("eff_status") == "due":
+                d["eff_status"] = "soon"
+        else:
+            d["purchase_trust_override"] = False
+        adjusted.append(d)
+    return adjusted
+
+
+def _is_excluded_forecast_row(r: dict) -> bool:
+    name = r.get("name") or ""
+    category = r.get("category") or ""
+    if category in _EXCLUDED_CATEGORIES:
+        return True
+    if name in _EXCLUDED_NAMES:
+        return True
+    if any(name.startswith(prefix) for prefix in _MANUAL_ONLY_PREFIXES):
+        return True
+    return False
+
+
 def _needs_order(r: dict) -> bool:
     if r.get("manual_reorder"):
         return True
@@ -263,6 +365,17 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         )
         for r in db.execute(_SQL, {"include_inactive": include_inactive}).mappings().all()
     ]
+    rows = _purchase_cross_check(rows, db)
+
+    excluded, active_rows = [], []
+    for row in rows:
+        if _is_excluded_forecast_row(row):
+            row["forecast_excluded"] = True
+            excluded.append(row)
+        else:
+            row["forecast_excluded"] = False
+            active_rows.append(row)
+    rows = active_rows
 
     # A Stock Log "Reorder" tick is an explicit instruction and must work even
     # without purchase history (Salt is the current example). The forecast view
@@ -339,6 +452,7 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         "upcoming": upcoming,
         "no_history": no_history,
         "recently_bought": recently_bought,
+        "excluded_rows": excluded,
         "est_action_cost": est_action_cost,
         "include_inactive": include_inactive,
         "generated_on": rows[0]["today"] if rows else None,

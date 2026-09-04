@@ -1,9 +1,8 @@
 """Apply every menu purchase change to the append-only stock balance.
 
-A purchase is inventory arriving. Keeping purchases and Stock Log independent
-made a newly entered purchase lose to an older physical count until somebody
-counted the shelf again. This trigger appends a new balance in the same
-transaction for inserts, edits, soft deletes, and restores.
+A purchase is inventory arriving. The stock log should treat the latest
+dated purchase as the new baseline for that ingredient, not the most recently
+entered row. Sales deductions then continue to reduce that new baseline.
 """
 
 from alembic import op
@@ -35,51 +34,47 @@ def upgrade() -> None:
     op.execute(sa.text("""
         CREATE OR REPLACE FUNCTION append_purchase_stock_delta(
             p_ingredient_id integer,
-            p_qty numeric,
-            p_unit text,
-            p_sign integer,
-            p_user_id integer,
-            p_purchase_id integer
+            p_user_id integer
         ) RETURNS void
         LANGUAGE plpgsql AS $$
         DECLARE
             v_target_unit text;
             v_pack_size_g numeric;
-            v_previous_qty numeric := 0;
-            v_previous_unit text;
-            v_delta numeric;
+            v_qty numeric;
+            v_purchase_id integer;
+            v_purchase_qty numeric;
+            v_purchase_unit text;
         BEGIN
-            SELECT COALESCE(v.unit::text, i.unit::text), i.pack_size_g
-              INTO v_target_unit, v_pack_size_g
-              FROM ingredients i
+            SELECT p.id, p.qty, p.unit::text,
+                   COALESCE(v.unit::text, i.unit::text), i.pack_size_g
+              INTO v_purchase_id, v_purchase_qty, v_purchase_unit, v_target_unit, v_pack_size_g
+              FROM purchases p
+              JOIN ingredients i ON i.id = p.ingredient_id
               LEFT JOIN v_ingredient_reorder_forecast v ON v.ingredient_id = i.id
-             WHERE i.id = p_ingredient_id;
+             WHERE p.deleted_at IS NULL
+               AND p.usage_type::text = 'menu'
+               AND p.ingredient_id = p_ingredient_id
+            ORDER BY p.purchase_date DESC, GREATEST(p.created_at, p.purchase_date::timestamp) DESC, p.id DESC
+             LIMIT 1;
 
-            SELECT on_hand_qty, unit::text
-              INTO v_previous_qty, v_previous_unit
-              FROM ingredient_stock
-             WHERE ingredient_id = p_ingredient_id
-             ORDER BY counted_at DESC, id DESC
-             LIMIT 1
-             FOR UPDATE;
+            IF v_purchase_id IS NULL THEN
+                RETURN;
+            END IF;
 
-            v_previous_qty := COALESCE(
-                inventory_convert_qty(v_previous_qty, v_previous_unit, v_target_unit), 0
-            );
-            v_delta := CASE
-                WHEN v_target_unit = 'pcs' AND v_pack_size_g IS NOT NULL AND p_unit = 'kg'
-                    THEN (p_qty * 1000 / v_pack_size_g) * p_sign
-                WHEN v_target_unit = 'pcs' AND v_pack_size_g IS NOT NULL AND p_unit = 'g'
-                    THEN (p_qty / v_pack_size_g) * p_sign
-                ELSE inventory_convert_qty(p_qty, p_unit, v_target_unit) * p_sign
+            v_qty := CASE
+                WHEN v_target_unit = 'pcs' AND v_pack_size_g IS NOT NULL AND v_purchase_unit = 'kg'
+                    THEN (v_purchase_qty * 1000 / v_pack_size_g)
+                WHEN v_target_unit = 'pcs' AND v_pack_size_g IS NOT NULL AND v_purchase_unit = 'g'
+                    THEN (v_purchase_qty / v_pack_size_g)
+                ELSE inventory_convert_qty(v_purchase_qty, v_purchase_unit, v_target_unit)
             END;
 
             INSERT INTO ingredient_stock
                 (ingredient_id, on_hand_qty, unit, counted_by, note)
             VALUES
-                (p_ingredient_id, GREATEST(0, v_previous_qty + v_delta),
+                (p_ingredient_id, GREATEST(0, v_qty),
                  v_target_unit::unit_type, p_user_id,
-                 'purchase_auto:' || p_purchase_id::text);
+                 'purchase_auto:' || v_purchase_id::text);
         END
         $$
     """))
@@ -91,23 +86,31 @@ def upgrade() -> None:
             IF TG_OP = 'INSERT' THEN
                 IF NEW.deleted_at IS NULL AND NEW.usage_type::text = 'menu' THEN
                     PERFORM append_purchase_stock_delta(
-                        NEW.ingredient_id, NEW.qty, NEW.unit::text, 1,
-                        NEW.entered_by_user_id, NEW.id
+                        NEW.ingredient_id, NEW.entered_by_user_id
                     );
                 END IF;
                 RETURN NEW;
             END IF;
 
-            IF OLD.deleted_at IS NULL AND OLD.usage_type::text = 'menu' THEN
+            IF OLD.ingredient_id IS DISTINCT FROM NEW.ingredient_id THEN
+                IF OLD.deleted_at IS NULL AND OLD.usage_type::text = 'menu' THEN
+                    PERFORM append_purchase_stock_delta(
+                        OLD.ingredient_id, COALESCE(NEW.entered_by_user_id, OLD.entered_by_user_id)
+                    );
+                END IF;
+                IF NEW.deleted_at IS NULL AND NEW.usage_type::text = 'menu' THEN
+                    PERFORM append_purchase_stock_delta(
+                        NEW.ingredient_id, NEW.entered_by_user_id
+                    );
+                END IF;
+            ELSIF OLD.deleted_at IS DISTINCT FROM NEW.deleted_at
+               OR OLD.qty IS DISTINCT FROM NEW.qty
+               OR OLD.unit IS DISTINCT FROM NEW.unit
+               OR OLD.usage_type IS DISTINCT FROM NEW.usage_type
+               OR OLD.ingredient_id IS NOT NULL THEN
                 PERFORM append_purchase_stock_delta(
-                    OLD.ingredient_id, OLD.qty, OLD.unit::text, -1,
-                    COALESCE(NEW.entered_by_user_id, OLD.entered_by_user_id), OLD.id
-                );
-            END IF;
-            IF NEW.deleted_at IS NULL AND NEW.usage_type::text = 'menu' THEN
-                PERFORM append_purchase_stock_delta(
-                    NEW.ingredient_id, NEW.qty, NEW.unit::text, 1,
-                    NEW.entered_by_user_id, NEW.id
+                    COALESCE(NEW.ingredient_id, OLD.ingredient_id),
+                    COALESCE(NEW.entered_by_user_id, OLD.entered_by_user_id)
                 );
             END IF;
             RETURN NEW;

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.order import Order, OrderItem
 from app.schemas import OrderCreate, OrderRead
-from app.services.order_derived_stock import apply_order_derived_deductions
+from app.services.order_derived_stock import sync_order_derived_stock
 
 logger = logging.getLogger("orders")
 
@@ -34,7 +34,7 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
 
     try:
         with db.begin_nested():
-            apply_order_derived_deductions(db)
+            sync_order_derived_stock(db)
     except Exception:
         # Experimental comparison model -- must never block order placement.
         logger.exception("order-derived deduction pass failed")

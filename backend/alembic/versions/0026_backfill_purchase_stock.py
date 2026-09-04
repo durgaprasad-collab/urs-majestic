@@ -1,8 +1,8 @@
 """Reconcile purchases entered after the latest manual stock count.
 
 Migration 0025 handles every purchase event going forward. This one-time
-backfill applies already-entered purchases that occurred after each item's
-latest non-automatic count, so deployment starts from the same rule.
+backfill applies already-entered purchases in bill-date order after each
+item's latest non-automatic count, so deployment starts from the same rule.
 """
 
 from alembic import op
@@ -40,8 +40,7 @@ def upgrade() -> None:
                  ORDER BY p.created_at, p.id
             LOOP
                 PERFORM append_purchase_stock_delta(
-                    r.ingredient_id, r.qty, r.unit, 1,
-                    r.entered_by_user_id, r.id
+                    r.ingredient_id, r.entered_by_user_id
                 );
             END LOOP;
         END
@@ -53,4 +52,3 @@ def downgrade() -> None:
     # Append-only operational balances cannot be safely unwound after staff may
     # have added later counts. The audit note identifies every generated row.
     pass
-

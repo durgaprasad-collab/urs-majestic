@@ -264,6 +264,25 @@
 </details>
 {% endif %}
 
+{% if excluded_rows %}
+<details class="show-more print-hide" style="margin-top:1.4rem">
+  <summary>Excluded from forecast</summary>
+  <div class="show-more-body">
+    <div>
+      <div class="prep-head" style="margin-top:0">
+        <h2 class="prep-title">Manual / non-inventory items</h2>
+        <span class="prep-meta">kept out of automatic ordering</span>
+      </div>
+      <p class="ord-nohist">
+        {% for r in excluded_rows %}
+          <span>{{ r.name }}{% if r.category %}<span class="ord-dim">({{ r.category }})</span>{% endif %}</span>{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </p>
+    </div>
+  </div>
+</details>
+{% endif %}
+
 <div class="print-hide" style="margin-top:1rem; display:flex; align-items:center; gap:.3rem; font-size:.78rem; color:#6b6b6b">
   How "Remaining now" and "Cover" work
   <details class="info-tip">

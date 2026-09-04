@@ -21,9 +21,13 @@ from app.core.clock import business_today
 from app.models.ingredient import Ingredient
 from app.models.purchase import Purchase
 from app.services import gdrive
+from app.services.order_derived_stock import sync_order_derived_stock
 from app.services.receipt_parse import ocr_image, parse_receipt_text
 from app.web.audit import log_change, log_field_diffs, resync_derived_costs
 from app.web.deps import _tmpl, require_user
+import logging
+
+logger = logging.getLogger("purchases")
 
 # Reject non-images and oversized uploads before OCR.
 _MAX_RECEIPT_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -314,6 +318,12 @@ async def purchases_new_post(
         # A new purchase moves ingredient cost, so the menu snapshot is stale
         # from this moment until it is repointed.
         resync_derived_costs(db)
+        try:
+            with db.begin_nested():
+                sync_order_derived_stock(db)
+        except Exception:
+            # Experimental comparison model -- must never block a purchase save.
+            logger.exception("order-derived sync failed")
         db.commit()
     except Exception as exc:
         db.rollback()
@@ -672,6 +682,11 @@ async def receipt_confirm(request: Request, db: Session = Depends(get_db)):
     if created:
         db.flush()
         resync_derived_costs(db)  # single cost engine; caller commits
+        try:
+            with db.begin_nested():
+                sync_order_derived_stock(db)
+        except Exception:
+            logger.exception("order-derived sync failed")
         db.commit()
     msg = f"Created+{created}+purchase(s)+from+the+receipt."
     if skipped:
