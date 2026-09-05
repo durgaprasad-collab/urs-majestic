@@ -39,6 +39,18 @@ def _three_calendar_month_window_start(today):
         month_start = (month_start - timedelta(days=1)).replace(day=1)
     return month_start
 
+
+def _next_month_start(month_start):
+    return (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+
+def _three_calendar_month_starts(today):
+    first = _three_calendar_month_window_start(today)
+    months = [first]
+    for _ in range(2):
+        months.append(_next_month_start(months[-1]))
+    return months
+
 _READINGS_SQL = text("""
     select gr.id, gr.recorded_at, gr.cylinder_role, gr.gross_kg, gr.tare_kg,
            (gr.gross_kg - gr.tare_kg) as net_kg, gr.is_new_cylinder, gr.note,
@@ -60,8 +72,20 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
 
     tz = business_tz()
     today = datetime.now(tz).date()
-    window_start_date = _three_calendar_month_window_start(today)
-    metric_window_start = datetime.combine(window_start_date, time.min, tzinfo=tz)
+    month_starts = _three_calendar_month_starts(today)
+    monthly_metrics = []
+    for month_start in month_starts:
+        monthly_metrics.append({
+            "month_start": month_start,
+            "label": month_start.strftime("%B %Y"),
+            "window_start": datetime.combine(month_start, time.min, tzinfo=tz),
+            "window_end": datetime.combine(
+                _next_month_start(month_start), time.min, tzinfo=tz
+            ),
+            "seconds": 0.0,
+            "kg_used": decimal.Decimal("0"),
+            "reading_count": 0,
+        })
 
     # Chronological order to compute consumption deltas, then re-reverse for display.
     # recorded_at is stored UTC (DB default now()); convert to IST for both display
@@ -70,9 +94,6 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
     chrono = list(reversed(rows))
     last_in_use = None
     enriched = []
-    delta_seconds_total = 0.0
-    total_kg_used = decimal.Decimal("0")
-    reading_count = 0
     for r in chrono:
         d = dict(r)
         d["recorded_at"] = d["recorded_at"].astimezone(tz)
@@ -93,15 +114,21 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
                 interval_end = d["recorded_at"]
                 elapsed = (interval_end - interval_start).total_seconds()
                 d["kg_used"] = kg_used
-                # Metrics use the current calendar month plus the preceding two.
-                # If the boundary cuts through an interval, allocate consumption
-                # proportionally to the part of the interval inside the window.
-                overlap_start = max(interval_start, metric_window_start)
-                overlap_seconds = max((interval_end - overlap_start).total_seconds(), 0.0)
-                if elapsed > 0 and overlap_seconds > 0:
-                    delta_seconds_total += overlap_seconds
-                    total_kg_used += kg_used * decimal.Decimal(str(overlap_seconds / elapsed))
-                    reading_count += 1
+                # Split any interval crossing a month boundary proportionally so
+                # each calendar month's usage stands on its own.
+                if elapsed > 0:
+                    for metric in monthly_metrics:
+                        overlap_start = max(interval_start, metric["window_start"])
+                        overlap_end = min(interval_end, metric["window_end"])
+                        overlap_seconds = max(
+                            (overlap_end - overlap_start).total_seconds(), 0.0
+                        )
+                        if overlap_seconds > 0:
+                            metric["seconds"] += overlap_seconds
+                            metric["kg_used"] += kg_used * decimal.Decimal(
+                                str(overlap_seconds / elapsed)
+                            )
+                            metric["reading_count"] += 1
             else:
                 d["kg_used"] = None
             last_in_use = d
@@ -110,32 +137,51 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
         enriched.append(d)
     enriched.reverse()
 
-    span_days = (delta_seconds_total / 86400) if delta_seconds_total > 0 else None
-    avg_kg_per_day = (
-        total_kg_used / decimal.Decimal(str(span_days))
-        if span_days and total_kg_used > 0 else None
-    )
-
-    average_cylinder_price = db.execute(text(
-        "select avg(total_price) from purchases p join ingredients i on i.id = p.ingredient_id "
+    price_rows = db.execute(text(
+        "select date_trunc('month', p.purchase_date)::date as month_start, "
+        "avg(p.total_price) as average_cylinder_price "
+        "from purchases p join ingredients i on i.id = p.ingredient_id "
         "where i.name = 'Cooking Gas' and p.deleted_at is null "
         "and p.purchase_date >= :window_start and p.purchase_date <= :today"
-    ), {"window_start": metric_window_start.date(), "today": today}).scalar()
-    full_kg = _NOMINAL_FULL_KG
-    cost_per_kg = (
-        decimal.Decimal(str(average_cylinder_price)) / full_kg
-        if average_cylinder_price else None
-    )
+        " group by 1"
+    ), {"window_start": month_starts[0], "today": today}).mappings().all()
+    prices_by_month = {
+        row["month_start"]: row["average_cylinder_price"] for row in price_rows
+    }
 
-    cost_per_day = (cost_per_kg * avg_kg_per_day) if (cost_per_kg and avg_kg_per_day) else None
+    dish_rows = db.execute(text(
+        "select month_start, avg(daily) as average_dishes_per_day from ("
+        "select date_trunc('month', sale_date)::date as month_start, sale_date, "
+        "sum(qty) as daily from item_sales "
+        "where sale_date >= :window_start and sale_date <= :today "
+        "group by 1, 2) daily_sales group by month_start"
+    ), {"window_start": month_starts[0], "today": today}).mappings().all()
+    dishes_by_month = {
+        row["month_start"]: row["average_dishes_per_day"] for row in dish_rows
+    }
 
-    avg_dishes_per_day = db.execute(text(
-        "select avg(daily) from (select sale_date, sum(qty) as daily from item_sales "
-        "where sale_date >= :window_start and sale_date <= :today group by sale_date) t"
-    ), {"window_start": metric_window_start.date(), "today": today}).scalar()
-    cost_per_dish = None
-    if cost_per_day and avg_dishes_per_day and float(avg_dishes_per_day) > 0:
-        cost_per_dish = cost_per_day / decimal.Decimal(str(avg_dishes_per_day))
+    for metric in monthly_metrics:
+        span_days = metric["seconds"] / 86400 if metric["seconds"] > 0 else None
+        metric["span_days"] = span_days
+        metric["avg_kg_per_day"] = (
+            metric["kg_used"] / decimal.Decimal(str(span_days))
+            if span_days and metric["kg_used"] > 0 else None
+        )
+        cylinder_price = prices_by_month.get(metric["month_start"])
+        metric["cost_per_kg"] = (
+            decimal.Decimal(str(cylinder_price)) / _NOMINAL_FULL_KG
+            if cylinder_price else None
+        )
+        dishes_per_day = dishes_by_month.get(metric["month_start"])
+        metric["cost_per_dish"] = None
+        if (
+            metric["avg_kg_per_day"] and metric["cost_per_kg"]
+            and dishes_per_day and float(dishes_per_day) > 0
+        ):
+            metric["cost_per_dish"] = (
+                metric["avg_kg_per_day"] * metric["cost_per_kg"]
+                / decimal.Decimal(str(dishes_per_day))
+            )
 
     # `enriched` is newest-first for display, so the first matching role is the
     # current reading. Reversing here previously made the summary show the
@@ -148,17 +194,7 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
         "readings": enriched,
         "latest_in_use": latest_in_use,
         "latest_spare": latest_spare,
-        "total_kg_used": total_kg_used,
-        "span_days": span_days,
-        "avg_kg_per_day": avg_kg_per_day,
-        "cost_per_kg": cost_per_kg,
-        "full_kg": full_kg,
-        "cost_per_day": cost_per_day,
-        "cost_per_dish": cost_per_dish,
-        "reading_count": reading_count,
-        "metric_window_label": (
-            f"{metric_window_start.strftime('%b')}\u2013{today.strftime('%b %Y')}"
-        ),
+        "monthly_metrics": list(reversed(monthly_metrics)),
     })
 
 

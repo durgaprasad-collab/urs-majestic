@@ -44,26 +44,35 @@
   </div>
 </div>
 
-<div class="chip-row gl-log-summary">
-  <span class="chip chip-info">
-    <span class="chip-dot"></span>
-    Avg used/day (3 calendar months):
-    {% if avg_kg_per_day %}
-      {{ "%.2f"|format(avg_kg_per_day) }} kg
-      ({{ metric_window_label }} · {{ "%.1f"|format(span_days) }} measured days, {{ reading_count }} reading{{ 's' if reading_count != 1 }}{% if span_days < 1 %}, extrapolated{% endif %})
-    {% else %}
-      not enough data (need 2+ same-cylinder readings)
-    {% endif %}
-  </span>
-  <span class="chip chip-info">
-    <span class="chip-dot"></span>
-    Implied cost/dish (3 calendar months):
-    {% if cost_per_dish %}
-      ₹{{ "%.2f"|format(cost_per_dish) }} (₹{{ "%.1f"|format(cost_per_kg) }}/kg · vs ₹3.00 flat today)
-    {% else %}
-      not enough data yet
-    {% endif %}
-  </span>
+<div class="card gl-log-summary">
+  <div class="prep-head" style="margin-top:0">
+    <h2 class="prep-title">Monthly gas performance</h2>
+    <span class="prep-meta">latest 3 calendar months</span>
+  </div>
+  <div class="recon-table-wrap">
+    <table class="recon-table">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th class="col-num">Avg used/day</th>
+          <th class="col-num">Implied cost/dish</th>
+          <th class="col-num">Avg LPG cost</th>
+          <th class="col-num">Measured</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for metric in monthly_metrics %}
+        <tr>
+          <td><strong>{{ metric.label }}</strong></td>
+          <td class="col-num">{% if metric.avg_kg_per_day %}{{ "%.2f"|format(metric.avg_kg_per_day) }} kg{% else %}—{% endif %}</td>
+          <td class="col-num">{% if metric.cost_per_dish %}₹{{ "%.2f"|format(metric.cost_per_dish) }}{% else %}—{% endif %}</td>
+          <td class="col-num">{% if metric.cost_per_kg %}₹{{ "%.1f"|format(metric.cost_per_kg) }}/kg{% else %}—{% endif %}</td>
+          <td class="col-num">{% if metric.span_days %}{{ "%.1f"|format(metric.span_days) }}d · {{ metric.reading_count }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <details class="gl-log-toggle">

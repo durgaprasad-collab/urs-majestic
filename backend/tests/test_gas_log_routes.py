@@ -1,7 +1,10 @@
 import unittest
 from datetime import date
 
-from app.web.gas_log_routes import _three_calendar_month_window_start
+from app.web.gas_log_routes import (
+    _three_calendar_month_starts,
+    _three_calendar_month_window_start,
+)
 
 
 class GasLogWindowTests(unittest.TestCase):
@@ -15,6 +18,12 @@ class GasLogWindowTests(unittest.TestCase):
         self.assertEqual(
             _three_calendar_month_window_start(date(2027, 1, 20)),
             date(2026, 11, 1),
+        )
+
+    def test_returns_each_month_separately(self):
+        self.assertEqual(
+            _three_calendar_month_starts(date(2026, 9, 5)),
+            [date(2026, 7, 1), date(2026, 8, 1), date(2026, 9, 1)],
         )
 
 
