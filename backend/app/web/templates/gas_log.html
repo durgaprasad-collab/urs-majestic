@@ -47,17 +47,17 @@
 <div class="chip-row gl-log-summary">
   <span class="chip chip-info">
     <span class="chip-dot"></span>
-    Avg used/day:
+    Avg used/day (3 calendar months):
     {% if avg_kg_per_day %}
       {{ "%.2f"|format(avg_kg_per_day) }} kg
-      ({{ "%.1f"|format(span_days) }}d, {{ reading_count }} reading{{ 's' if reading_count != 1 }}{% if span_days < 1 %}, extrapolated{% endif %})
+      ({{ metric_window_label }} · {{ "%.1f"|format(span_days) }} measured days, {{ reading_count }} reading{{ 's' if reading_count != 1 }}{% if span_days < 1 %}, extrapolated{% endif %})
     {% else %}
       not enough data (need 2+ same-cylinder readings)
     {% endif %}
   </span>
   <span class="chip chip-info">
     <span class="chip-dot"></span>
-    Implied cost/dish:
+    Implied cost/dish (3 calendar months):
     {% if cost_per_dish %}
       ₹{{ "%.2f"|format(cost_per_dish) }} (₹{{ "%.1f"|format(cost_per_kg) }}/kg · vs ₹3.00 flat today)
     {% else %}

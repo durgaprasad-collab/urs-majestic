@@ -13,6 +13,7 @@ per dish from it, the same way cost_engine._parcel_rate() replaced a flat
 packaging average with a measured one.
 """
 import decimal
+from datetime import datetime, time, timedelta
 
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -29,6 +30,14 @@ router = APIRouter(tags=["gas-log"])
 # capacity of the commercial cylinders in use, before any of them have been
 # weighed full.
 _NOMINAL_FULL_KG = decimal.Decimal("19.2")
+
+
+def _three_calendar_month_window_start(today):
+    """Return the first day of the current month and its two predecessors."""
+    month_start = today.replace(day=1)
+    for _ in range(2):
+        month_start = (month_start - timedelta(days=1)).replace(day=1)
+    return month_start
 
 _READINGS_SQL = text("""
     select gr.id, gr.recorded_at, gr.cylinder_role, gr.gross_kg, gr.tare_kg,
@@ -49,6 +58,11 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
 
     rows = list(db.execute(_READINGS_SQL).mappings().all())
 
+    tz = business_tz()
+    today = datetime.now(tz).date()
+    window_start_date = _three_calendar_month_window_start(today)
+    metric_window_start = datetime.combine(window_start_date, time.min, tzinfo=tz)
+
     # Chronological order to compute consumption deltas, then re-reverse for display.
     # recorded_at is stored UTC (DB default now()); convert to IST for both display
     # and the elapsed-time math below (elapsed-seconds between two aware instants
@@ -61,7 +75,7 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
     reading_count = 0
     for r in chrono:
         d = dict(r)
-        d["recorded_at"] = d["recorded_at"].astimezone(business_tz())
+        d["recorded_at"] = d["recorded_at"].astimezone(tz)
         if d["cylinder_role"] == "in_use":
             if last_in_use is not None:
                 if d["is_new_cylinder"]:
@@ -75,11 +89,18 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
                     kg_used = max(
                         last_in_use["net_kg"] - d["net_kg"], decimal.Decimal("0")
                     )
-                elapsed = (d["recorded_at"] - last_in_use["recorded_at"]).total_seconds()
+                interval_start = last_in_use["recorded_at"]
+                interval_end = d["recorded_at"]
+                elapsed = (interval_end - interval_start).total_seconds()
                 d["kg_used"] = kg_used
-                if elapsed > 0:
-                    delta_seconds_total += elapsed
-                    total_kg_used += kg_used
+                # Metrics use the current calendar month plus the preceding two.
+                # If the boundary cuts through an interval, allocate consumption
+                # proportionally to the part of the interval inside the window.
+                overlap_start = max(interval_start, metric_window_start)
+                overlap_seconds = max((interval_end - overlap_start).total_seconds(), 0.0)
+                if elapsed > 0 and overlap_seconds > 0:
+                    delta_seconds_total += overlap_seconds
+                    total_kg_used += kg_used * decimal.Decimal(str(overlap_seconds / elapsed))
                     reading_count += 1
             else:
                 d["kg_used"] = None
@@ -95,20 +116,23 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
         if span_days and total_kg_used > 0 else None
     )
 
-    latest_price = db.execute(text(
-        "select total_price from purchases p join ingredients i on i.id = p.ingredient_id "
+    average_cylinder_price = db.execute(text(
+        "select avg(total_price) from purchases p join ingredients i on i.id = p.ingredient_id "
         "where i.name = 'Cooking Gas' and p.deleted_at is null "
-        "order by p.purchase_date desc limit 1"
-    )).scalar()
+        "and p.purchase_date >= :window_start and p.purchase_date <= :today"
+    ), {"window_start": metric_window_start.date(), "today": today}).scalar()
     full_kg = _NOMINAL_FULL_KG
-    cost_per_kg = (decimal.Decimal(str(latest_price)) / full_kg) if latest_price else None
+    cost_per_kg = (
+        decimal.Decimal(str(average_cylinder_price)) / full_kg
+        if average_cylinder_price else None
+    )
 
     cost_per_day = (cost_per_kg * avg_kg_per_day) if (cost_per_kg and avg_kg_per_day) else None
 
     avg_dishes_per_day = db.execute(text(
         "select avg(daily) from (select sale_date, sum(qty) as daily from item_sales "
-        "where sale_date >= current_date - interval '30 days' group by sale_date) t"
-    )).scalar()
+        "where sale_date >= :window_start and sale_date <= :today group by sale_date) t"
+    ), {"window_start": metric_window_start.date(), "today": today}).scalar()
     cost_per_dish = None
     if cost_per_day and avg_dishes_per_day and float(avg_dishes_per_day) > 0:
         cost_per_dish = cost_per_day / decimal.Decimal(str(avg_dishes_per_day))
@@ -132,6 +156,9 @@ def gas_log(request: Request, db: Session = Depends(get_db)):
         "cost_per_day": cost_per_day,
         "cost_per_dish": cost_per_dish,
         "reading_count": reading_count,
+        "metric_window_label": (
+            f"{metric_window_start.strftime('%b')}\u2013{today.strftime('%b %Y')}"
+        ),
     })
 
 
