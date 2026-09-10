@@ -1,0 +1,10 @@
+{
+  "appId": "com.ursmajestic.admin",
+  "appName": "URS Majestic Admin",
+  "webDir": "www",
+  "server": {
+    "url": "https://admin.ursmajestic.com",
+    "androidScheme": "https",
+    "cleartext": false
+  }
+}

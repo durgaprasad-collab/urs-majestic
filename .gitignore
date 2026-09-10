@@ -50,3 +50,8 @@ mobile/android/local.properties
 mobile/android/.gradle/
 mobile/android/**/build/
 mobile/dist-web/
+
+# Admin app (Capacitor/Android) — same as above
+admin-app/android/local.properties
+admin-app/android/.gradle/
+admin-app/android/**/build/
