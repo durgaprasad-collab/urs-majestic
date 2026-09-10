@@ -30,6 +30,7 @@ export const L = {
   loading: "Loading...",
   under3Days: "Under 3 days cover / ৩ দিনের কম মজুত / 3 दिन से कम स्टॉक",
   daysLeft: "days left / দিন বাকি / दिन बचे",
+  overdue: "Overdue / মেয়াদ পেরিয়েছে / समय निकल गया",
   noCountYet: "No stock count yet / এখনো গণনা হয়নি / अभी तक गिनती नहीं",
   updateCount: "Update count / মজুত হালনাগাদ করুন / मात्रा दर्ज करें",
   requestBtn: "Request / অনুরোধ পাঠান / अनुरोध भेजें",

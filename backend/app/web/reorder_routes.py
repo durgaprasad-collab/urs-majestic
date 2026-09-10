@@ -342,13 +342,12 @@ def _needs_order(r: dict) -> bool:
     return cover is not None and cover < 3
 
 
-@router.get("/order-forecast", response_class=HTMLResponse)
-def order_forecast(request: Request, db: Session = Depends(get_db)):
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-
-    include_inactive = request.query_params.get("inactive") == "1"
+def compute_forecast_buckets(db: Session, include_inactive: bool = False) -> dict:
+    """Everything /order-forecast needs to render: action/upcoming/no_history/
+    recently_bought/excluded rows plus the cost total. Pulled out of the route
+    so the mobile app's low-stock list (app/api/routes/stock.py) can use the
+    exact same "needs action" determination -- cadence-only ingredients
+    included -- instead of a narrower stock-count-only view."""
     gas_reading = db.execute(_LATEST_GAS_SQL).mappings().first()
     gas_avg_per_day = db.execute(_GAS_AVERAGE_SQL).scalar()
     gas_purchase = db.execute(_LATEST_GAS_PURCHASE_SQL).mappings().first()
@@ -446,8 +445,7 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         float(r["est_order_cost"]) for r in action if r["est_order_cost"] is not None
     )
 
-    return _tmpl(request, "order_forecast.html", {
-        "user": user,
+    return {
         "action": action,
         "upcoming": upcoming,
         "no_history": no_history,
@@ -456,7 +454,18 @@ def order_forecast(request: Request, db: Session = Depends(get_db)):
         "est_action_cost": est_action_cost,
         "include_inactive": include_inactive,
         "generated_on": rows[0]["today"] if rows else None,
-    })
+    }
+
+
+@router.get("/order-forecast", response_class=HTMLResponse)
+def order_forecast(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+
+    include_inactive = request.query_params.get("inactive") == "1"
+    ctx = compute_forecast_buckets(db, include_inactive)
+    return _tmpl(request, "order_forecast.html", {"user": user, **ctx})
 
 
 def record_stock(

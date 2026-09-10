@@ -45,9 +45,11 @@ function StockCard({ item, onSaved }) {
       <h3>{item.name}</h3>
       <div className="muted">{item.category || "Other"}</div>
       <div className="cover-days" style={{ marginTop: 6 }}>
-        {item.cover_days != null
-          ? `${item.cover_days.toFixed(1)} ${L.daysLeft}`
-          : L.noCountYet}
+        {item.cover_days == null
+          ? L.noCountYet
+          : item.cover_days < 0
+          ? L.overdue
+          : `${item.cover_days.toFixed(1)} ${L.daysLeft}`}
       </div>
 
       {!editing ? (
