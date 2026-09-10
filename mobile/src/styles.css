@@ -94,6 +94,7 @@ button.primary:disabled { opacity: 0.5; }
 button.secondary {
   padding: 10px 16px;
   background: #f1f1ec;
+  color: #1c1c1c;
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -102,7 +103,7 @@ button.secondary {
 button.approve { background: #1f6f43; color: #fff; }
 button.reject { background: #a3271f; color: #fff; }
 .btn-row { display: flex; gap: 10px; margin-top: 10px; }
-.btn-row button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 600; color: #fff; }
+.btn-row button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 600; }
 
 label { display: block; font-size: 14px; font-weight: 600; margin: 14px 0 6px; }
 input, select, textarea {
@@ -163,3 +164,19 @@ input, select, textarea {
 .error-text { color: #a3271f; font-size: 14px; margin-top: 10px; }
 .empty-state { text-align: center; color: #888; padding: 40px 10px; }
 .cover-days { font-size: 13px; font-weight: 700; color: #a3271f; }
+.toast {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: 84px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: fit-content;
+  background: #1c1c1c;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  z-index: 30;
+}

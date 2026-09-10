@@ -14,7 +14,7 @@ function StockCard({ item, onSaved }) {
     setError(null);
     try {
       await api.submitStockCount({ ingredient_id: item.ingredient_id, qty: Number(qty), unit: item.unit });
-      onSaved();
+      onSaved("count");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -32,7 +32,7 @@ function StockCard({ item, onSaved }) {
         urgency: "urgent",
         note: "Auto-suggested from low stock",
       });
-      onSaved();
+      onSaved("request");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -52,7 +52,7 @@ function StockCard({ item, onSaved }) {
 
       {!editing ? (
         <div className="btn-row">
-          <button className="secondary" style={{ color: "#1c1c1c" }} onClick={() => setEditing(true)}>
+          <button className="secondary" onClick={() => setEditing(true)}>
             {L.updateCount}
           </button>
           <button className="approve" onClick={requestNow} disabled={busy}>
@@ -84,6 +84,7 @@ function StockCard({ item, onSaved }) {
 export default function LowStock() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
 
   async function load() {
     try {
@@ -95,6 +96,14 @@ export default function LowStock() {
 
   useEffect(() => { load(); }, []);
 
+  async function handleSaved(kind) {
+    await load();
+    if (kind === "count") {
+      setToast(L.savedToast);
+      setTimeout(() => setToast(null), 2000);
+    }
+  }
+
   return (
     <div>
       <h3 style={{ marginTop: 0 }}>{L.under3Days}</h3>
@@ -104,8 +113,9 @@ export default function LowStock() {
         <div className="empty-state">{L.nothingLow}</div>
       )}
       {rows && rows.map((item) => (
-        <StockCard key={item.ingredient_id} item={item} onSaved={load} />
+        <StockCard key={item.ingredient_id} item={item} onSaved={handleSaved} />
       ))}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
 }

@@ -35,5 +35,6 @@ export const L = {
   requestBtn: "Request / অনুরোধ পাঠান / अनुरोध भेजें",
   save: "Save / সংরক্ষণ করুন / सेव करें",
   nothingLow: "Nothing running low / কিছুই কম নেই / कुछ भी कम नहीं",
+  savedToast: "Stock updated / স্টক আপডেট হয়েছে / स्टॉक अपडेट हो गया",
   by: "By",
 };
