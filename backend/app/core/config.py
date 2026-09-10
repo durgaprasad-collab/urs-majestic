@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # Public site origin (for feedback CORS)
     SITE_ORIGIN: str = "https://ursmajestic.com"
 
+    # Capacitor's default WebView origin on Android for the staff mobile app.
+    # Bearer-token auth (no cookies), so this is safe to allow broadly.
+    MOBILE_APP_ORIGIN: str = "https://localhost"
+
     # Feedback rate-limit: max submissions per IP per minute
     FEEDBACK_RATE_LIMIT: int = 5
     FEEDBACK_WINDOW_SECONDS: int = 60
@@ -99,6 +103,13 @@ class Settings(BaseSettings):
     # (25k req/mo). "helloworld" is the public demo key -- works but is shared and
     # rate-limited, so register your own for reliability.
     OCR_SPACE_API_KEY: str = "helloworld"
+
+    # Push notifications — Firebase Cloud Messaging (staff mobile app). Needs a
+    # Firebase project (free) with a service-account key. Both empty -> pushes
+    # log to console only (dry-run), same degrade-gracefully pattern as the
+    # WhatsApp/Telegram integrations above -- nothing blocks on this being set up.
+    FCM_PROJECT_ID: str = ""
+    FCM_SERVICE_ACCOUNT_JSON: str = ""   # the service-account key file's contents
 
     # Notion — internal integration secret for the Daily Brief's live task
     # panels (read) and task-complete write-through (PATCH). Empty = the

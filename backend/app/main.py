@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import menu, orders, customers, menu_engineering, feedback, kpi, recon, ceo_brief, whatsapp_webhooks
+from app.api.routes import menu, orders, customers, menu_engineering, feedback, kpi, recon, ceo_brief, whatsapp_webhooks, auth as mobile_auth, requisitions, stock as mobile_stock, ingredients as mobile_ingredients
 from app.core.config import settings
 from app.core.middleware import (
     HTTPSRedirectMiddleware,
@@ -28,14 +28,19 @@ app.add_middleware(ProductionErrorMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(HTTPSRedirectMiddleware)
 
-# CORS: admin origin + public site origin (for /api/feedback)
-_cors_origins = [o for o in [settings.ADMIN_ORIGIN, settings.SITE_ORIGIN] if o]
+# CORS: admin origin + public site origin (for /api/feedback) + the staff
+# mobile app's WebView origin (Bearer-token auth there, not cookies).
+_cors_origins = [o for o in [settings.ADMIN_ORIGIN, settings.SITE_ORIGIN, settings.MOBILE_APP_ORIGIN] if o]
+if not settings.is_production:
+    # `npm run dev` for the mobile app serves from a Vite port, not the
+    # Capacitor WebView's https://localhost -- allow it only outside prod.
+    _cors_origins.append("http://localhost:5174")
 if _cors_origins:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PATCH"],
         allow_headers=["*"],
     )
 
@@ -76,6 +81,10 @@ app.include_router(kpi.router)
 app.include_router(recon.router)
 app.include_router(ceo_brief.router)
 app.include_router(whatsapp_webhooks.router)
+app.include_router(mobile_auth.router)
+app.include_router(requisitions.router)
+app.include_router(mobile_stock.router)
+app.include_router(mobile_ingredients.router)
 
 
 @app.get("/health", tags=["system"])
