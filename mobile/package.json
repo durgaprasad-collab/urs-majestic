@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:web": "cross-env VITE_BASE_PATH=/staff/ VITE_OUT_DIR=dist-web vite build",
     "preview": "vite preview --port 4174"
   },
   "dependencies": {
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@capacitor/cli": "^6.1.2",
     "@vitejs/plugin-react": "^4.3.1",
+    "cross-env": "^7.0.3",
     "vite": "^5.4.10"
   }
 }

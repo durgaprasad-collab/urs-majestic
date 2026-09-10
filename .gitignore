@@ -49,3 +49,4 @@ frontend/dist/
 mobile/android/local.properties
 mobile/android/.gradle/
 mobile/android/**/build/
+mobile/dist-web/

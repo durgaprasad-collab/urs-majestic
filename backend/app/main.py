@@ -56,6 +56,17 @@ app.add_middleware(
 _STATIC = os.path.join(os.path.dirname(__file__), "web", "static")
 app.mount("/static", StaticFiles(directory=_STATIC), name="static")
 
+# Staff mobile app, served as a plain web page for the one owner on iPhone
+# (no Xcode/Mac available to build a native iOS app). Same React source as
+# the Android app -- built separately with base path "/staff/" via
+# `npm run build:web` in mobile/, output checked in here. Same-origin, so
+# none of the mobile-app CORS handling in main.py applies to this path.
+app.mount(
+    "/staff",
+    StaticFiles(directory=os.path.join(_STATIC, "staff_app"), html=True),
+    name="staff-app",
+)
+
 # ── Routers ────────────────────────────────────────────────────────────────────
 app.include_router(auth_routes.router)
 app.include_router(web_routes.router)
