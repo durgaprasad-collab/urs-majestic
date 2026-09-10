@@ -1,28 +1,36 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { L } from "../labels";
 
 const UNITS = ["kg", "g", "l", "ml", "pcs"];
+const MAX_SUGGESTIONS = 8;
 
 export default function NewRequest({ onDone, onCancel }) {
   const [ingredients, setIngredients] = useState([]);
   const [itemName, setItemName] = useState("");
-  const [customItem, setCustomItem] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("kg");
   const [urgent, setUrgent] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const blurTimer = useRef(null);
 
   useEffect(() => {
     api.listIngredients().then(setIngredients).catch(() => {});
+    return () => clearTimeout(blurTimer.current);
   }, []);
 
-  function pickIngredient(name) {
-    setItemName(name);
-    const match = ingredients.find((i) => i.name === name);
-    if (match) setUnit(match.unit);
+  const query = itemName.trim().toLowerCase();
+  const suggestions = (
+    query ? ingredients.filter((i) => i.name.toLowerCase().includes(query)) : ingredients
+  ).slice(0, MAX_SUGGESTIONS);
+
+  function pickIngredient(ingredient) {
+    setItemName(ingredient.name);
+    setUnit(ingredient.unit);
+    setSuggestionsOpen(false);
   }
 
   async function submit(e) {
@@ -54,24 +62,32 @@ export default function NewRequest({ onDone, onCancel }) {
       <h3 style={{ marginTop: 0 }}>{L.newRequest}</h3>
       <form onSubmit={submit}>
         <label>{L.item}</label>
-        {!customItem ? (
-          <select value={itemName} onChange={(e) => pickIngredient(e.target.value)} required>
-            <option value="">{L.selectPrompt}</option>
-            {ingredients.map((i) => (
-              <option key={i.id} value={i.name}>{i.name}</option>
-            ))}
-          </select>
-        ) : (
-          <input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. AC repair" />
-        )}
-        <button
-          type="button"
-          className="secondary"
-          style={{ marginTop: 8 }}
-          onClick={() => { setCustomItem((v) => !v); setItemName(""); }}
-        >
-          {customItem ? L.chooseFromList : L.notInList}
-        </button>
+        <div className="autocomplete">
+          <input
+            value={itemName}
+            onChange={(e) => { setItemName(e.target.value); setSuggestionsOpen(true); }}
+            onFocus={() => setSuggestionsOpen(true)}
+            onBlur={() => { blurTimer.current = setTimeout(() => setSuggestionsOpen(false), 150); }}
+            placeholder={L.pickOrType}
+            autoComplete="off"
+            required
+          />
+          {suggestionsOpen && suggestions.length > 0 && (
+            <div className="autocomplete-list">
+              {suggestions.map((i) => (
+                <div
+                  key={i.id}
+                  className="autocomplete-item"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pickIngredient(i)}
+                >
+                  <span>{i.name}</span>
+                  <span className="muted">{i.category}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <label>{L.quantityOptional}</label>
         <div style={{ display: "flex", gap: 8 }}>

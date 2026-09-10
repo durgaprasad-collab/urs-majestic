@@ -112,6 +112,30 @@ input, select, textarea {
   border-radius: 8px;
   font-size: 16px;
 }
+.autocomplete { position: relative; }
+.autocomplete-list {
+  position: absolute;
+  left: 0; right: 0;
+  top: calc(100% + 4px);
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+.autocomplete-item {
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid #f0f0ec;
+  font-size: 15px;
+}
+.autocomplete-item:last-child { border-bottom: none; }
+.autocomplete-item:active { background: #f1f1ec; }
+
 .fab {
   position: fixed;
   bottom: 84px;
