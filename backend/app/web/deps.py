@@ -15,7 +15,12 @@ def _tmpl(request: Request, name: str, ctx: dict | None = None, status_code: int
 
 
 def require_user(request: Request, db: Session):
-    """Return (user, None) if logged in and cleared, else (None, redirect_response)."""
+    """Require an active owner for the Jinja admin panel.
+
+    Staff accounts authenticate separately through the ``/staff`` app and its
+    bearer-token API. A valid staff session must never grant access to owner
+    pages merely because the account is active.
+    """
     user_id = request.session.get("user_id")
     if not user_id:
         return None, RedirectResponse("/login", status_code=302)
@@ -23,6 +28,9 @@ def require_user(request: Request, db: Session):
     if not user:
         request.session.clear()
         return None, RedirectResponse("/login", status_code=302)
+    if not user.is_admin:
+        request.session.clear()
+        return None, RedirectResponse("/login?owner_required=1", status_code=302)
     # Force password change before any other action
     if user.must_change_password and request.url.path != "/change-password":
         return None, RedirectResponse("/change-password?required=1", status_code=302)

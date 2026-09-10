@@ -15,7 +15,10 @@ router = APIRouter(tags=["auth"])
 def login_get(request: Request):
     if request.session.get("user_id"):
         return RedirectResponse("/upload", status_code=302)
-    return _tmpl(request, "login.html", {"error": None})
+    error = None
+    if request.query_params.get("owner_required") == "1":
+        error = "Owner access is required. Staff should use the Staff App."
+    return _tmpl(request, "login.html", {"error": error})
 
 
 @router.post("/login")
@@ -39,6 +42,16 @@ async def login_post(
     if not user or not verify_password(password, user.password_hash):
         record_failure(ip)
         return _tmpl(request, "login.html", {"error": "Invalid username or password."}, status_code=401)
+
+    if not user.is_admin:
+        clear_failures(ip)
+        request.session.clear()
+        return _tmpl(
+            request,
+            "login.html",
+            {"error": "Owner access is required. Staff should use the Staff App."},
+            status_code=403,
+        )
 
     clear_failures(ip)
     request.session["user_id"] = user.id
