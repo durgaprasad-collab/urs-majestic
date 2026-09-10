@@ -66,6 +66,21 @@ def _sync_fulfillment(db: Session, requisitions: list[Requisition]) -> bool:
     return changed
 
 
+def notify_decision(db: Session, req: Requisition, approved: bool) -> None:
+    """Best-effort push to the requester once an owner decides -- shared by
+    the mobile API route below and the admin-panel route in
+    app/web/requisition_routes.py so both decision surfaces notify the same way."""
+    try:
+        push_notifications.send_to_users(
+            db, [req.requested_by_user_id],
+            title="Requisition " + ("approved" if approved else "rejected"),
+            body=req.item_name + (f" -- {req.decision_note}" if req.decision_note else ""),
+            data={"requisition_id": req.id},
+        )
+    except Exception:
+        logger.exception("Failed to notify staff of decision on requisition %s", req.id)
+
+
 @router.post("/", response_model=RequisitionRead, status_code=status.HTTP_201_CREATED)
 def create_requisition(
     payload: RequisitionCreate,
@@ -145,15 +160,6 @@ def decide_requisition(
     req.decided_at = datetime.now(timezone.utc)
     req.decision_note = payload.decision_note
     db.commit()
-
-    try:
-        push_notifications.send_to_users(
-            db, [req.requested_by_user_id],
-            title="Requisition " + ("approved" if payload.approve else "rejected"),
-            body=req.item_name + (f" -- {payload.decision_note}" if payload.decision_note else ""),
-            data={"requisition_id": req.id},
-        )
-    except Exception:
-        logger.exception("Failed to notify staff of decision on requisition %s", req.id)
+    notify_decision(db, req, payload.approve)
 
     return db.query(Requisition).options(*_WITH_USERS).filter(Requisition.id == req.id).first()

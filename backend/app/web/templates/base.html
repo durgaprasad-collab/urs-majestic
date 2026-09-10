@@ -28,6 +28,7 @@
           <a href="/order-forecast" class="nav-link {% if path == '/order-forecast' %}active{% endif %}"><span>↗</span> Order Forecast</a>
           <a href="/weekly-order" class="nav-link {% if path.startswith('/weekly-order') %}active{% endif %}"><span>7</span> Weekly Ordering</a>
           <a href="/stock-log" class="nav-link {% if path.startswith('/stock-log') %}active{% endif %}"><span>▦</span> Stock Log</a>
+          <a href="/requisitions" class="nav-link {% if path.startswith('/requisitions') %}active{% endif %}"><span>✓</span> Requisitions</a>
           <a href="/gas-log" class="nav-link {% if path.startswith('/gas-log') %}active{% endif %}"><span>◉</span> Gas Log</a>
           <a href="/purchases" class="nav-link {% if path.startswith('/purchases') %}active{% endif %}"><span>₹</span> Purchases</a>
           <a href="/catering-orders" class="nav-link {% if path.startswith('/catering-orders') %}active{% endif %}"><span>▣</span> Catering Orders</a>
@@ -78,6 +79,7 @@
       <div class="command-results" data-command-results>
         <a href="/purchases/new" data-command-item data-keywords="add create log expense bill receipt purchase"><b>＋ Purchase</b><small>Log an expense</small></a>
         <a href="/stock-log" data-command-item data-keywords="stock inventory count update"><b>▦ Stock count</b><small>Update inventory</small></a>
+        <a href="/requisitions" data-command-item data-keywords="requisition approve reject staff request"><b>✓ Requisitions</b><small>Approve or reject staff requests</small></a>
         <a href="/gas-log" data-command-item data-keywords="gas cylinder weight reading"><b>◉ Gas reading</b><small>Record LPG usage</small></a>
         <a href="/upload" data-command-item data-keywords="upload report petpooja zomato swiggy sales"><b>⇧ Upload sales report</b><small>Refresh channel data</small></a>
         <a href="/daily-brief" data-command-item data-keywords="today home daily brief dashboard"><b>✦ Today</b><small>Open the daily brief</small></a>

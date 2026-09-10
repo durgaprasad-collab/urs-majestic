@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Requisitions — URS Majestic{% endblock %}
+
+{% block content %}
+<style>
+  .req-card{margin-bottom:1rem}
+  .req-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.6rem;margin-bottom:.4rem}
+  .req-item{font-size:1.05rem;font-weight:700;color:var(--text)}
+  .req-meta{font-size:.8rem;color:var(--muted);margin-top:.15rem}
+  .req-note{font-size:.85rem;color:var(--text);margin-top:.5rem;font-style:italic}
+  .req-badges{display:flex;gap:.4rem;flex-wrap:wrap}
+  .req-badge{display:inline-flex;align-items:center;padding:.22rem .6rem;border-radius:999px;font-size:.72rem;font-weight:800;white-space:nowrap}
+  .req-badge-pending{background:#FFF7DE;color:#8A6D00;border:1px solid #F0E19D}
+  .req-badge-approved{background:#E8F0FD;color:#1A4FA0;border:1px solid #C6D9F5}
+  .req-badge-rejected{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
+  .req-badge-fulfilled{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
+  .req-badge-urgent{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
+  .req-decide-row{display:flex;gap:.6rem;margin-top:.7rem;flex-wrap:wrap}
+  .req-decide-row input[type=text]{flex:1;min-width:180px}
+  .req-decide-row button{white-space:nowrap}
+  .req-section-title{margin:1.6rem 0 .6rem;font-size:1.1rem;font-weight:750;color:var(--text)}
+</style>
+
+<div class="page-header">
+  <h1 class="page-title">Requisitions</h1>
+  <p class="page-sub">Item requests raised by staff from the mobile app.</p>
+</div>
+
+<div class="req-section-title">Pending ({{ pending|length }})</div>
+{% if not pending %}
+<p class="prep-meta">Nothing waiting on a decision.</p>
+{% endif %}
+{% for r in pending %}
+<div class="card req-card">
+  <div class="req-head">
+    <div>
+      <span class="req-item">{{ r.item_name }}{% if r.quantity %} — {{ r.quantity }} {{ r.unit }}{% endif %}</span>
+      <div class="req-meta">By {{ r.requested_by.name }} · {{ r.created_at.strftime('%d %b %Y, %I:%M %p') }}</div>
+    </div>
+    <div class="req-badges">
+      {% if r.urgency.value == 'urgent' %}<span class="req-badge req-badge-urgent">Urgent</span>{% endif %}
+    </div>
+  </div>
+  {% if r.note %}<div class="req-note">"{{ r.note }}"</div>{% endif %}
+  <form method="post" action="/requisitions/{{ r.id }}/decide" class="req-decide-row">
+    <input type="text" name="decision_note" placeholder="Note (optional)" />
+    <button type="submit" name="decision" value="reject" class="btn-secondary btn-sm">Reject</button>
+    <button type="submit" name="decision" value="approve" class="btn-primary btn-sm">Approve</button>
+  </form>
+</div>
+{% endfor %}
+
+<div class="req-section-title">Recent decisions</div>
+{% if not history %}
+<p class="prep-meta">No decisions yet.</p>
+{% endif %}
+{% for r in history %}
+<div class="card req-card">
+  <div class="req-head">
+    <div>
+      <span class="req-item">{{ r.item_name }}{% if r.quantity %} — {{ r.quantity }} {{ r.unit }}{% endif %}</span>
+      <div class="req-meta">
+        By {{ r.requested_by.name }} · {{ r.created_at.strftime('%d %b %Y, %I:%M %p') }}
+        {% if r.decided_by %} · decided by {{ r.decided_by.name }} {{ r.decided_at.strftime('%d %b %Y, %I:%M %p') }}{% endif %}
+      </div>
+    </div>
+    <div class="req-badges">
+      <span class="req-badge req-badge-{{ r.status.value }}">{{ r.status.value|title }}</span>
+    </div>
+  </div>
+  {% if r.note %}<div class="req-note">Staff note: "{{ r.note }}"</div>{% endif %}
+  {% if r.decision_note %}<div class="req-note">Owner note: "{{ r.decision_note }}"</div>{% endif %}
+</div>
+{% endfor %}
+{% endblock %}
