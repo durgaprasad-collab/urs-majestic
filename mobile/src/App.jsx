@@ -1,13 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Login from "./pages/Login";
 import Requisitions from "./pages/Requisitions";
 import LowStock from "./pages/LowStock";
-import { getSession, clearSession } from "./api";
+import { api, getSession, saveSession, clearSession } from "./api";
 import { L } from "./labels";
 
 export default function App() {
   const [session, setSession] = useState(getSession());
   const [tab, setTab] = useState("requests");
+
+  useEffect(() => {
+    if (!session) return;
+    api.me().then((fresh) => {
+      saveSession(fresh);
+      setSession({ user_id: fresh.user_id, name: fresh.name, is_owner: fresh.is_owner });
+    }).catch(() => {
+      // The request helper clears expired sessions and reloads on 401. For a
+      // temporary network error, retain the current session and retry next open.
+    });
+  }, []);
 
   if (!session) {
     return <Login onLoggedIn={setSession} />;

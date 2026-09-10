@@ -12,7 +12,7 @@ export function getSession() {
 }
 
 export function saveSession({ access_token, user_id, name, is_owner }) {
-  localStorage.setItem(TOKEN_KEY, access_token);
+  if (access_token) localStorage.setItem(TOKEN_KEY, access_token);
   localStorage.setItem(SESSION_KEY, JSON.stringify({ user_id, name, is_owner }));
 }
 
@@ -46,6 +46,7 @@ async function request(path, { method = "GET", body } = {}) {
 
 export const api = {
   login: (username, password) => request("/api/auth/login", { method: "POST", body: { username, password } }),
+  me: () => request("/api/auth/me"),
   listRequisitions: (status) => request(`/api/requisitions/${status ? `?status_filter=${status}` : ""}`),
   createRequisition: (payload) => request("/api/requisitions/", { method: "POST", body: payload }),
   decideRequisition: (id, approve, decision_note) =>

@@ -4,11 +4,12 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.ratelimit import _get_ip, is_rate_limited, record_failure, clear_failures
 from app.core.security import verify_password, create_access_token
 from app.models.user import User
-from app.schemas import LoginRequest, LoginResponse
+from app.schemas import CurrentUserResponse, LoginRequest, LoginResponse
 
 router = APIRouter(prefix="/api/auth", tags=["mobile-auth"])
 
@@ -17,6 +18,21 @@ router = APIRouter(prefix="/api/auth", tags=["mobile-auth"])
 # ACCESS_TOKEN_EXPIRE_MINUTES (30 min), which is right for the web admin's
 # short-lived tokens but wrong for a phone in someone's apron pocket all day.
 _MOBILE_TOKEN_TTL = timedelta(days=30)
+
+
+@router.get("/me", response_model=CurrentUserResponse)
+def me(user: User = Depends(get_current_user)):
+    """Refresh the locally cached mobile session from the database.
+
+    The staff app keeps its token for 30 days, but roles can change during that
+    window. Returning the current database role prevents a stale ``is_owner``
+    value in local storage from granting owner UI after a role correction.
+    """
+    return CurrentUserResponse(
+        user_id=user.id,
+        name=user.name,
+        is_owner=user.is_admin,
+    )
 
 
 @router.post("/login", response_model=LoginResponse)

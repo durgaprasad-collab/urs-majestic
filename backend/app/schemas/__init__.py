@@ -114,6 +114,12 @@ class LoginResponse(BaseModel):
     is_owner: bool
 
 
+class CurrentUserResponse(BaseModel):
+    user_id: int
+    name: str
+    is_owner: bool
+
+
 # ── Requisition ───────────────────────────────────────────────────────────────
 
 class RequisitionCreate(BaseModel):
