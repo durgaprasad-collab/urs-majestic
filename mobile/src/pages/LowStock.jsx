@@ -81,7 +81,7 @@ function StockCard({ item, onSaved }) {
   );
 }
 
-export default function LowStock() {
+export default function LowStock({ onRequested }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
@@ -97,11 +97,16 @@ export default function LowStock() {
   useEffect(() => { load(); }, []);
 
   async function handleSaved(kind) {
-    await load();
-    if (kind === "count") {
-      setToast(L.savedToast);
-      setTimeout(() => setToast(null), 2000);
+    if (kind === "request") {
+      // Jump straight to Requests so the staff member sees it landed --
+      // no visible confirmation here was why people were tapping it
+      // repeatedly, each tap creating a duplicate request.
+      onRequested?.();
+      return;
     }
+    await load();
+    setToast(L.savedToast);
+    setTimeout(() => setToast(null), 2000);
   }
 
   return (

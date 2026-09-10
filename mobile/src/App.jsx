@@ -30,7 +30,7 @@ export default function App() {
 
       <div className="content">
         {tab === "requests" && <Requisitions session={session} />}
-        {tab === "stock" && <LowStock />}
+        {tab === "stock" && <LowStock onRequested={() => setTab("requests")} />}
       </div>
 
       <div className="tabbar">
