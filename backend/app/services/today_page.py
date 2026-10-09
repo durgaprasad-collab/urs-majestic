@@ -148,17 +148,44 @@ def build_today(db: Session, reporting_date: datetime.date | None = None) -> dic
         avg = sum(vals) / len(vals) if vals else 0
         rhythm.append({"dow": calendar.day_abbr[dow - 1], "avg": avg, "ok": avg >= be})
 
-    # ── Dishes ──
+    # ── Dishes: walk-in (Petpooja item report) + Zomato (order items) ──
+    # Zomato order lines carry no per-dish price, so revenue is walk-in only.
     dishes = db.execute(text("""
-        SELECT s.item_name, sum(s.qty) q, sum(s.revenue) rev
-        FROM item_sales s JOIN menu_items m ON m.name = s.item_name
-        WHERE m.is_food AND s.sale_date = :day GROUP BY 1 ORDER BY 3 DESC LIMIT 7
+        WITH w AS (
+            SELECT s.item_name n,
+                   sum(s.qty) FILTER (WHERE s.sale_date = :day) wq,
+                   sum(s.revenue) FILTER (WHERE s.sale_date = :day) wr,
+                   sum(s.qty) FILTER (WHERE s.sale_date = :day - 7) wq_lw,
+                   sum(s.qty) FILTER (WHERE s.sale_date > :day - 7) w7
+            FROM item_sales s JOIN menu_items m ON m.name = s.item_name
+            WHERE m.is_food AND s.sale_date BETWEEN :day - 7 AND :day
+            GROUP BY 1
+        ), z AS (
+            SELECT m.name n,
+                   sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date = :day) zq,
+                   sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date = :day - 7) zq_lw,
+                   sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date > :day - 7) z7
+            FROM orders o JOIN order_items oi ON oi.order_id = o.id JOIN menu_items m ON m.id = oi.menu_item_id
+            WHERE o.channel = 'zomato' AND m.is_food
+              AND (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date BETWEEN :day - 7 AND :day
+            GROUP BY 1
+        )
+        SELECT coalesce(w.n, z.n) AS name,
+               coalesce(wq, 0)::int AS walk_q, coalesce(zq, 0)::int AS zomato_q, coalesce(wr, 0) AS walk_rev,
+               (coalesce(wq_lw, 0) + coalesce(zq_lw, 0))::int AS last_week_q,
+               (coalesce(w7, 0) + coalesce(z7, 0))::int AS week_q
+        FROM w FULL JOIN z ON w.n = z.n
+        WHERE coalesce(wq, 0) + coalesce(zq, 0) > 0
+        ORDER BY coalesce(wq, 0) + coalesce(zq, 0) DESC, coalesce(wr, 0) DESC
     """), {"day": day}).mappings().all()
-    week_top = db.execute(text("""
-        SELECT s.item_name, sum(s.qty) q
-        FROM item_sales s JOIN menu_items m ON m.name = s.item_name
-        WHERE m.is_food AND s.sale_date > :day - 7 AND s.sale_date <= :day GROUP BY 1 ORDER BY 2 DESC LIMIT 3
-    """), {"day": day}).mappings().all()
+    dishes = [dict(r, total_q=r["walk_q"] + r["zomato_q"]) for r in dishes]
+    dish_summary = {
+        "count": len(dishes),
+        "walk_q": sum(d["walk_q"] for d in dishes),
+        "zomato_q": sum(d["zomato_q"] for d in dishes),
+        "walk_rev": sum(_f(d["walk_rev"]) for d in dishes),
+        "max_q": max((d["total_q"] for d in dishes), default=1),
+    }
 
     # ── Running out (current stock, negative lines excluded) ──
     runout = db.execute(text("""
@@ -173,7 +200,7 @@ def build_today(db: Session, reporting_date: datetime.date | None = None) -> dic
     return {
         "has_data": True, "day": day, "latest": latest, "available": available,
         "verdict": verdict, "bars": bars, "pattern": pattern, "month": month, "rhythm": rhythm,
-        "dishes": [dict(r) for r in dishes], "week_top": [dict(r) for r in week_top],
+        "dishes": dishes, "dish_summary": dish_summary,
         "runout": [dict(r) for r in runout], "negative_stock": negative,
         "tasks": tasks, "tasks_shown": _pick_tasks(tasks["open"]),
         "role_labels": task_engine.ROLE_LABELS,

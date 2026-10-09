@@ -68,6 +68,15 @@
     if (btn) btn.addEventListener('click', () => { tbl.hidden = !tbl.hidden; btn.textContent = tbl.hidden ? 'Show as table' : 'Hide table'; });
   })();
 
+  // ── Items sold: top 10 by default, "Show all" reveals the rest
+  const moreBtn = document.querySelector('[data-td-more]');
+  if (moreBtn) moreBtn.addEventListener('click', () => {
+    const extra = document.querySelectorAll('[data-td-dishes] .td-extra');
+    const showing = !extra[0].hidden;
+    extra.forEach((r) => { r.hidden = showing; });
+    moreBtn.textContent = showing ? `Show all ${moreBtn.dataset.total} dishes` : 'Show top 10';
+  });
+
   // ── Month cumulative vs pace
   (function () {
     const svg = document.getElementById('td-pace');

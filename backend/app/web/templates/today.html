@@ -69,18 +69,40 @@
     </div>
   </section>
 
-  <section class="td-card td-c4" aria-labelledby="td-dish-h">
-    <h2 id="td-dish-h">Sold on {{ day.strftime('%A') }} <small>by revenue</small><a class="td-more" href="/results">Menu Analysis →</a></h2>
-    <div class="td-list">
-      {% set top = dishes[0].rev if dishes else 1 %}
-      {% for d in dishes %}
-      <div class="td-row"><span class="n">{{ d.item_name }}</span><span class="td-barwrap"><i style="width:{{ (d.rev / top * 100)|round }}%"></i></span><span class="q">×{{ d.q|int }}</span><span class="r">{{ inr(d.rev) }}</span></div>
-      {% else %}<p class="td-empty">No item sales for this day.</p>{% endfor %}
+  <section class="td-card td-c7" aria-labelledby="td-dish-h">
+    {% set ds = dish_summary %}
+    <h2 id="td-dish-h">Items sold on {{ day.strftime('%A') }} <small>walk-in + Zomato, by quantity</small><a class="td-more" href="/results">Menu Analysis →</a></h2>
+    {% if dishes %}
+    <div class="td-dsum">
+      <span><b>{{ ds.count }}</b>dishes</span>
+      <span><b>{{ ds.walk_q }}</b><i style="background:var(--td-walk)"></i>walk-in plates</span>
+      <span><b>{{ ds.zomato_q }}</b><i style="background:var(--td-zom)"></i>Zomato plates</span>
+      <span><b>{{ inr(ds.walk_rev) }}</b>walk-in food revenue</span>
     </div>
-    {% if week_top %}<p class="td-insight">Last 7 days: {% for d in week_top %}<b>{{ d.item_name }} {{ d.q|int }}</b>{{ ', ' if not loop.last }}{% endfor %}.</p>{% endif %}
+    <div class="td-dish-wrap">
+      <table class="td-dishes" data-td-dishes>
+        <thead><tr><th>Dish</th><th>Walk-in · Zomato</th><th>Sold</th><th>Walk-in ₹</th><th>vs last {{ day.strftime('%a') }}</th><th>7 days</th></tr></thead>
+        <tbody>
+        {% for d in dishes %}
+        {% set combo = d.name.split(' - ', 1) if d.name.startswith('Combo ') and ' - ' in d.name else none %}
+        {% set delta = d.total_q - d.last_week_q %}
+        <tr{% if loop.index > 10 %} class="td-extra" hidden{% endif %}>
+          <td class="td-dish">{% if combo %}{{ combo[1] }}<small>{{ combo[0] }}</small>{% else %}{{ d.name }}{% endif %}</td>
+          <td><span class="td-split" style="width:{{ [18, (d.total_q / ds.max_q * 64)|round]|max }}px" aria-hidden="true"><span style="width:{{ (d.walk_q / d.total_q * 100)|round }}%;background:var(--td-walk)"></span><span style="width:{{ (d.zomato_q / d.total_q * 100)|round }}%;background:var(--td-zom)"></span></span><span class="td-muted">{{ d.walk_q }} · {{ d.zomato_q }}</span></td>
+          <td class="td-q">{{ d.total_q }}</td>
+          <td>{% if d.walk_rev %}{{ inr(d.walk_rev) }}{% else %}<span class="td-muted">—</span>{% endif %}</td>
+          <td class="{{ 'up' if delta > 0 else ('dn' if delta < 0 else 'td-muted') }}">{{ '+' if delta > 0 }}{{ delta if delta else '=' }}</td>
+          <td class="td-muted">{{ d.week_q }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if dishes|length > 10 %}<button class="td-tt" type="button" data-td-more data-total="{{ dishes|length }}">Show all {{ dishes|length }} dishes</button>{% endif %}
+    {% else %}<p class="td-empty">No item sales recorded for this day.</p>{% endif %}
   </section>
 
-  <section class="td-card td-c4" aria-labelledby="td-stock-h">
+  <section class="td-card td-c5" aria-labelledby="td-stock-h">
     <h2 id="td-stock-h">Running out <small>from the latest stock count</small><a class="td-more" href="/order-forecast">Order Forecast →</a></h2>
     <div class="td-list">
       {% for r in runout %}
@@ -91,7 +113,7 @@
     {% if negative_stock %}<p class="td-stale">⚠ {{ negative_stock }} ingredients show negative stock and are left out here until their recipes are fixed.</p>{% endif %}
   </section>
 
-  <section class="td-card td-c4" id="tasks" aria-labelledby="td-task-h">
+  <section class="td-card td-c12" id="tasks" aria-labelledby="td-task-h">
     <h2 id="td-task-h">Today's tasks <small>{{ tasks.open|length }} open across {{ tasks.open|map(attribute='role')|unique|list|length }} roles</small>
       <form method="post" action="/daily-brief/tasks/refresh" class="td-more"><button type="submit" title="Re-run the task engine on the latest data">↻ Refresh</button></form></h2>
     {% if tasks.business_date %}
@@ -131,6 +153,6 @@
 
 </div>
 <script type="application/json" id="td-data">{{ {"bars": bars, "month": month}|tojson }}</script>
-<script src="/static/today.js?v=1" defer></script>
+<script src="/static/today.js?v=2" defer></script>
 {% endif %}
 {% endblock %}
