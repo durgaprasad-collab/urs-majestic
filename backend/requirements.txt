@@ -1,6 +1,8 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
-sqlalchemy>=2.0.0
+# Stay on 2.0.x: SQLAlchemy 2.1 makes psycopg (v3) the default "postgresql://"
+# driver, but only psycopg2-binary is installed, so the app crashed on boot.
+sqlalchemy>=2.0.0,<2.1
 alembic>=1.13.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
