@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 02 · ursmajestic.com</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#062013; --ground-2:#0D3220; --ground-3:#14432C;
+    --gold:#D4A62A; --gold-2:#E9C55A; --gold-soft:#F6EBC8; --leaf:#7FA32A;
+    --cream:#FBF7EE; --cream-2:#F3ECDC; --ink:#1B1A16; --ink-2:#5E5A50; --ink-3:#9A9486; --line:#E7DFCB;
+    --veg:#1E8A3C; --r:18px; --max:1180px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--cream);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  img{display:block;max-width:100%}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+  .cinzel{font-family:Cinzel,Georgia,serif}
+  .eyebrow{font:600 11px/1 Inter;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
+  .veg{display:inline-grid;place-items:center;width:14px;height:14px;border:1.5px solid var(--veg);border-radius:3px;flex:0 0 14px}
+  .veg::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--veg)}
+
+  /* mockup banner */
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:9px 20px;text-align:center}
+  .mk b{color:#fff}
+
+  /* ── Header ── */
+  .hdr{position:sticky;top:0;z-index:30;background:rgba(6,32,19,.94);backdrop-filter:blur(10px);border-bottom:1px solid rgba(212,166,42,.25)}
+  .hdr .wrap{display:flex;align-items:center;gap:22px;height:68px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand img{width:46px;height:46px;border-radius:50%;-webkit-mask-image:radial-gradient(circle,#000 62%,transparent 71%);mask-image:radial-gradient(circle,#000 62%,transparent 71%)}
+  .brand b{font:700 17px Cinzel,serif;letter-spacing:.06em;color:var(--gold-2);line-height:1}
+  .brand small{display:block;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#9FB8A8;margin-top:4px}
+  .nav{display:flex;gap:4px;margin-left:auto}
+  .nav a{color:#D5E0D9;font-size:14px;font-weight:500;padding:8px 12px;border-radius:8px}
+  .nav a:hover{color:#fff;background:rgba(255,255,255,.06)}
+  .open-pill{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:12.5px;font-weight:600;color:#CFE6D6;padding:6px 11px;border:1px solid rgba(255,255,255,.14);border-radius:999px}
+  .open-pill i{width:8px;height:8px;border-radius:50%;background:#4ADE80;box-shadow:0 0 0 3px rgba(74,222,128,.2)}
+  .open-pill.closed i{background:#F87171;box-shadow:0 0 0 3px rgba(248,113,113,.2)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font:600 14.5px Inter;border-radius:12px;padding:13px 20px;border:0;cursor:pointer;white-space:nowrap;transition:transform .15s,box-shadow .15s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-gold{background:linear-gradient(180deg,var(--gold-2),var(--gold));color:var(--ground);box-shadow:0 8px 22px rgba(212,166,42,.35)}
+  .btn-sm{padding:9px 15px;font-size:13.5px;border-radius:10px}
+  .btn img{width:18px;height:18px;border-radius:4px}
+
+  /* ── Hero ── */
+  .hero{position:relative;background:radial-gradient(90% 120% at 15% 0%,var(--ground-3) 0%,var(--ground) 60%);color:#fff;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 30%,rgba(212,166,42,.16),transparent 45%)}
+  .hero .wrap{position:relative;display:grid;grid-template-columns:1.05fr 1fr;gap:40px;align-items:center;padding-top:64px;padding-bottom:72px}
+  .hero h1{font:700 clamp(36px,5vw,60px)/1.06 Cinzel,serif;letter-spacing:.01em;margin:16px 0 18px}
+  .hero h1 em{font-style:normal;color:var(--gold-2)}
+  .hero p.lead{font-size:18px;color:#C9D8CF;max-width:30em}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 28px}
+  .chip{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#E3ECE6;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);padding:7px 12px;border-radius:999px}
+  .chip .veg{border-color:#5BD07A}.chip .veg::after{background:#5BD07A}
+  .cta{display:flex;flex-wrap:wrap;gap:10px}
+  .btn-swiggy{background:#FC8019;color:#fff}
+  .btn-zomato{background:#E23744;color:#fff}
+  .btn-ghost{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.2)}
+  .btn-wa{background:#25D366;color:#06301A}
+  .cta .btn-ghost,.cta .btn-wa{padding:13px 16px}
+  .hero-art{position:relative;justify-self:center;width:min(500px,100%);aspect-ratio:1/1.08}
+  .arch{position:absolute;inset:0;border-radius:260px 260px 28px 28px;overflow:hidden;border:2px solid rgba(212,166,42,.55);box-shadow:0 40px 80px rgba(0,0,0,.45)}
+  .arch img{width:100%;height:100%;object-fit:cover}
+  .ring{position:absolute;inset:-16px;border-radius:276px 276px 40px 40px;border:1px solid rgba(212,166,42,.25)}
+  .tag{position:absolute;left:-22px;bottom:46px;background:var(--cream);color:var(--ink);border-radius:16px;padding:12px 16px;box-shadow:0 18px 40px rgba(0,0,0,.35);display:flex;gap:12px;align-items:center}
+  .tag b{display:block;font-size:14px}.tag small{color:var(--ink-2);font-size:12px}
+  .tag .p{font:700 20px Cinzel,serif;color:var(--ground)}
+  .stamp{position:absolute;right:-12px;top:30px;width:104px;height:104px;border-radius:50%;background:var(--gold);color:var(--ground);display:grid;place-items:center;text-align:center;font:700 12px/1.15 Cinzel,serif;letter-spacing:.06em;box-shadow:0 14px 30px rgba(0,0,0,.35);transform:rotate(-10deg)}
+  .stamp span{display:block;font-size:24px}
+
+  /* ── Promise strip ── */
+  .promise{background:var(--ground-2);color:#DCE6DF;border-top:1px solid rgba(212,166,42,.2)}
+  .promise .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+  .promise div{padding:20px 18px;display:flex;gap:12px;align-items:center;border-right:1px solid rgba(255,255,255,.08)}
+  .promise div:last-child{border-right:0}
+  .promise svg{width:28px;height:28px;flex:0 0 28px;stroke:var(--gold-2);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .promise b{display:block;color:#fff;font-size:14.5px}.promise small{font-size:12.5px;color:#9FB8A8}
+
+  /* ── Section heads ── */
+  section.s{padding:80px 0}
+  .sh{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:30px;flex-wrap:wrap}
+  .sh h2{font:700 clamp(28px,3.4vw,40px)/1.1 Cinzel,serif;color:var(--ground);margin-top:10px}
+  .sh p{color:var(--ink-2);max-width:34em}
+  .orn{display:flex;align-items:center;gap:10px;color:var(--gold)}
+  .orn::before,.orn::after{content:"";height:1px;width:36px;background:currentColor;opacity:.6}
+
+  /* ── Signature dishes ── */
+  .dishes{display:grid;grid-template-columns:1.3fr 1fr 1fr;grid-template-rows:auto auto;gap:18px}
+  .dish{position:relative;border-radius:var(--r);overflow:hidden;background:#000;min-height:260px;box-shadow:0 14px 34px rgba(6,32,19,.15)}
+  .dish.big{grid-row:span 2;min-height:540px}
+  .dish img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .6s}
+  .dish:hover img{transform:scale(1.04)}
+  .dish::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(4,20,12,.88))}
+  .dish .cap{position:absolute;left:18px;right:18px;bottom:16px;z-index:2;color:#fff;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+  .dish .cap b{display:block;font:700 19px/1.2 Cinzel,serif}
+  .dish.big .cap b{font-size:26px}
+  .dish .cap small{color:#D3DED7;font-size:13px}
+  .dish .price{font:700 18px Cinzel,serif;color:var(--gold-2);white-space:nowrap}
+  .badge{position:absolute;top:14px;left:14px;z-index:2;background:var(--gold);color:var(--ground);font:700 10.5px Inter;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;border-radius:999px}
+  .confirm{outline:2px dashed #F59E0B;outline-offset:-6px}
+  .confirm .q{position:absolute;top:14px;right:14px;z-index:3;background:#F59E0B;color:#111;font:700 10.5px Inter;padding:4px 8px;border-radius:6px}
+
+  /* ── Combos ── */
+  .combos{background:linear-gradient(180deg,var(--cream-2),var(--cream))}
+  .cgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .combo{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:22px 20px 20px;position:relative;display:flex;flex-direction:column;gap:8px}
+  .combo.hot{background:var(--ground);color:#fff;border-color:var(--ground);box-shadow:0 20px 40px rgba(6,32,19,.25)}
+  .combo h3{font:700 18px/1.25 Cinzel,serif;color:var(--ground)}
+  .combo.hot h3{color:var(--gold-2)}
+  .combo p{font-size:13.5px;color:var(--ink-2);flex:1}
+  .combo.hot p{color:#C9D8CF}
+  .combo .pr{display:flex;align-items:baseline;justify-content:space-between;margin-top:6px}
+  .combo .pr b{font:700 26px Cinzel,serif;color:var(--ground)}
+  .combo.hot .pr b{color:#fff}
+  .combo .pr span{font-size:12px;color:var(--ink-3)}
+  .combo .badge{position:static;align-self:flex-start}
+
+  /* ── Menu ── */
+  .menu-top{position:sticky;top:68px;z-index:20;background:rgba(251,247,238,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin:0 -20px 26px;padding:12px 20px}
+  .menu-tools{display:flex;gap:12px;align-items:center}
+  .search{flex:0 0 240px;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 12px;color:var(--ink-3)}
+  .search input{border:0;outline:0;font:500 14px Inter;width:100%;background:none;color:var(--ink)}
+  .pills{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1}
+  .pills::-webkit-scrollbar{display:none}
+  .pills a{flex:0 0 auto;font-size:13.5px;font-weight:600;color:var(--ink-2);padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:#fff}
+  .pills a.on{background:var(--ground);border-color:var(--ground);color:var(--gold-2)}
+  .mgrid{columns:2;column-gap:40px}
+  .cat{break-inside:avoid;margin-bottom:34px}
+  .cat h3{font:700 22px Cinzel,serif;color:var(--ground);display:flex;align-items:baseline;gap:12px;padding-bottom:8px;border-bottom:2px solid var(--gold);margin-bottom:6px}
+  .cat h3 small{font:500 12.5px Inter;color:var(--ink-3);letter-spacing:0}
+  .item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)}
+  .item .nm{font-size:15px;font-weight:500;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .item .lead{flex:1;border-bottom:1px dotted #CFC6B0;transform:translateY(-4px);min-width:16px}
+  .item .pz{font-weight:700;font-size:15px;color:var(--ground)}
+  .t{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--gold-soft);color:#8A6A10}
+  .t.best{background:var(--ground);color:var(--gold-2)}
+  .empty{display:none;color:var(--ink-2);padding:20px 0}
+  .tax{font-size:12.5px;color:var(--ink-3);margin-top:6px}
+
+  /* ── Visit ── */
+  .visit{background:var(--ground);color:#fff}
+  .visit .sh h2{color:#fff}.visit .sh p{color:#B9CBBF}
+  .vgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:20px}
+  .map{border-radius:var(--r);overflow:hidden;min-height:360px;background:linear-gradient(135deg,#123B27,#0A2A1A);position:relative;border:1px solid rgba(212,166,42,.25)}
+  .map::before{content:"";position:absolute;inset:0;background:
+    repeating-linear-gradient(0deg,transparent 0 46px,rgba(255,255,255,.04) 46px 47px),
+    repeating-linear-gradient(90deg,transparent 0 46px,rgba(255,255,255,.04) 46px 47px)}
+  .map .pin{position:absolute;left:50%;top:44%;transform:translate(-50%,-100%);text-align:center}
+  .map .pin i{display:block;width:44px;height:44px;margin:0 auto;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--gold);box-shadow:0 10px 20px rgba(0,0,0,.4)}
+  .map .pin span{display:inline-block;margin-top:14px;background:#fff;color:var(--ink);font-size:13px;font-weight:600;padding:6px 10px;border-radius:8px}
+  .map .note{position:absolute;left:16px;bottom:14px;font-size:11.5px;color:#9FB8A8}
+  .vcard{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:var(--r);padding:24px;display:flex;flex-direction:column;gap:18px}
+  .vrow{display:flex;gap:14px}
+  .vrow svg{width:22px;height:22px;flex:0 0 22px;stroke:var(--gold-2);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+  .vrow b{display:block;font-size:15px}.vrow span{color:#B9CBBF;font-size:14px}
+  .vcard .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto}
+
+  /* ── Footer ── */
+  footer{background:#03140C;color:#8EA898;padding:36px 0 110px;font-size:13px}
+  footer .wrap{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+  footer .brand b{font-size:15px}
+
+  /* ── Mobile action bar ── */
+  .mbar{display:none}
+
+  @media (max-width:980px){
+    .nav{display:none}
+    .hero .wrap{grid-template-columns:1fr;gap:34px;padding-top:36px;padding-bottom:56px}
+    .hero-art{width:min(420px,88%)}
+    .promise .wrap{grid-template-columns:1fr 1fr}
+    .promise div:nth-child(2){border-right:0}
+    .promise div:nth-child(-n+2){border-bottom:1px solid rgba(255,255,255,.08)}
+    .dishes{grid-template-columns:1fr 1fr}
+    .dish.big{grid-column:span 2;grid-row:auto;min-height:340px}
+    .cgrid{grid-template-columns:1fr 1fr}
+    .vgrid{grid-template-columns:1fr}
+  }
+  @media (max-width:640px){
+    .hdr .wrap{height:60px;gap:10px}
+    .brand img{width:40px;height:40px}
+    .brand b{font-size:15px}
+    .hdr .brand small{display:none}
+    .open-pill{font-size:12px;padding:5px 10px}
+    .open-pill .long{display:none}
+    .hero-art{order:-1;width:min(300px,78%)}
+    .hero .wrap{padding-top:28px;gap:26px}
+    .hdr .btn-gold{display:none}
+    .open-pill{margin-left:auto}
+    section.s{padding:56px 0}
+    .hero p.lead{font-size:16px}
+    .cta .btn{flex:1 1 calc(50% - 5px)}
+    .tag{left:-6px;bottom:22px;padding:9px 12px}
+    .stamp{width:84px;height:84px;font-size:10px;right:-4px}.stamp span{font-size:19px}
+    .promise div{padding:16px 12px}
+    .dishes{grid-template-columns:1fr}
+    .dish.big{grid-column:auto;min-height:300px}
+    .dish{min-height:230px}
+    .cgrid{grid-template-columns:1fr}
+    .menu-top{top:60px}
+    .menu-tools{flex-direction:column;align-items:stretch}
+    .search{flex:auto}
+    .mgrid{columns:1}
+    .mbar{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;position:fixed;left:0;right:0;bottom:0;z-index:40;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(6,32,19,.97);border-top:1px solid rgba(212,166,42,.3)}
+    .mbar .btn{padding:12px 8px;font-size:13.5px}
+  }
+</style>
+</head>
+<body>
+
+<div class="mk"><b>Mockup 02: ursmajestic.com redesign.</b> Real menu, prices and photos. Dishes with an orange dashed outline need their names confirmed.</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 6-14 15-14 0 9-6 15-14 15"/><path d="M5 19 14 10"/></symbol>
+  <symbol id="fire" viewBox="0 0 24 24"><path d="M12 3s5 4.5 5 9a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3 1-5.5 1-7.5z"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="bike" viewBox="0 0 24 24"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17h5l3-7h3M9 10h4M14 10l4 7"/></symbol>
+  <symbol id="pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+</svg>
+
+<header class="hdr">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="{{IMG:logo}}" alt="URS Majestic"><span><b>URS MAJESTIC</b><small>Pure Veg · Pallavaram</small></span></a>
+    <nav class="nav"><a href="#signature">Signature</a><a href="#combos">Combos</a><a href="#menu">Menu</a><a href="#visit">Visit</a></nav>
+    <span class="open-pill" data-open><i></i><span data-open-short>Open now</span><span class="long" data-open-long> · till 1 AM</span></span>
+    <a class="btn btn-gold btn-sm" href="#order">Order online</a>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Pure vegetarian · Pallavaram, Chennai</span>
+      <h1>Freshly made.<br><em>Every single day.</em></h1>
+      <p class="lead">Biryanis, tandoor breads, rich paneer gravies and Indo-Chinese, cooked fresh in a 100% vegetarian kitchen. Dine in, take away, or order to your door.</p>
+      <div class="chips">
+        <span class="chip"><span class="veg"></span>100% pure veg</span>
+        <span class="chip">Open daily · 1 PM – 1 AM</span>
+        <span class="chip">French Village Food Court</span>
+      </div>
+      <div class="cta" id="order">
+        <a class="btn btn-swiggy" href="https://www.swiggy.com/city/chennai/urs-majestic-pallavaram-rest1389673" target="_blank" rel="noopener"><img src="{{IMG:swiggy}}" alt="">Order on Swiggy</a>
+        <a class="btn btn-zomato" href="http://zoma.to/r/22783970" target="_blank" rel="noopener"><img src="{{IMG:zomato}}" alt="">Order on Zomato</a>
+        <a class="btn btn-ghost" href="tel:+919150102001"><svg width="17" height="17" style="stroke:currentColor;fill:none;stroke-width:1.8"><use href="#phone"/></svg>Call</a>
+        <a class="btn btn-wa" href="https://wa.me/919150102001" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="ring"></div>
+      <div class="arch"><img src="{{IMG:hero-mushroom-biryani}}" alt="Mushroom biryani with raita and a crisp starter"></div>
+      <div class="stamp"><div><span>100%</span>PURE<br>VEG</div></div>
+      <div class="tag"><span class="veg"></span><span><b>Mushroom Biryani</b><small>with raita</small></span><span class="p">₹199</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="promise">
+  <div class="wrap">
+    <div><svg><use href="#leaf"/></svg><span><b>100% vegetarian</b><small>A pure-veg kitchen, always</small></span></div>
+    <div><svg><use href="#fire"/></svg><span><b>Cooked fresh</b><small>Made to order, every day</small></span></div>
+    <div><svg><use href="#moon"/></svg><span><b>Open late</b><small>1 PM to 1 AM, all week</small></span></div>
+    <div><svg><use href="#bike"/></svg><span><b>Delivered</b><small>On Swiggy &amp; Zomato</small></span></div>
+  </div>
+</div>
+
+<section class="s" id="signature">
+  <div class="wrap">
+    <div class="sh">
+      <div><span class="orn eyebrow">Signature plates</span><h2>Made in our kitchen</h2></div>
+      <p>Real photos from our kitchen. Every dish is cooked to order and plated the way it reaches your table.</p>
+    </div>
+    <div class="dishes">
+      <a class="dish big" href="#menu"><span class="badge">Most loved</span><img src="{{IMG:mushroom-biryani}}" alt=""><span class="cap"><span><b>Mushroom Biryani</b><small>Fragrant basmati, mushrooms, raita</small></span><span class="price">₹199</span></span></a>
+      <a class="dish" href="#menu"><img src="{{IMG:paneer-biryani}}" alt=""><span class="cap"><span><b>Paneer Biryani</b><small>With raita</small></span><span class="price">₹189</span></span></a>
+      <a class="dish confirm" href="#menu"><span class="q">Confirm name</span><img src="{{IMG:gobi-manchurian}}" alt=""><span class="cap"><span><b>Gobi Manchurian</b><small>Indo-Chinese starter</small></span><span class="price">₹129</span></span></a>
+      <a class="dish confirm" href="#menu"><span class="q">Confirm name</span><img src="{{IMG:fried-rice-chilli-gobi}}" alt=""><span class="cap"><span><b>Mixed Fried Rice &amp; Chilli Gobi</b><small>Indo-Chinese</small></span><span class="price">₹199</span></span></a>
+      <a class="dish confirm" href="#menu"><span class="q">Confirm name</span><img src="{{IMG:platter}}" alt=""><span class="cap"><span><b>Chinese Mega Box</b><small>A feast for one</small></span><span class="price">₹249</span></span></a>
+    </div>
+  </div>
+</section>
+
+<section class="s combos" id="combos">
+  <div class="wrap">
+    <div class="sh">
+      <div><span class="orn eyebrow">Best value</span><h2>Combos</h2></div>
+      <p>A full meal on one plate, priced to keep coming back.</p>
+    </div>
+    <div class="cgrid">
+      <div class="combo hot"><span class="badge">Best seller</span><h3>Paneer Power Combo</h3><p>Butter Naan, Butter Masala and Paneer 65.</p><div class="pr"><b>₹169</b><span>per combo</span></div></div>
+      <div class="combo"><h3>Mini North Indian Meal</h3><p>Our everyday North Indian plate.</p><div class="pr"><b>₹149</b><span>per combo</span></div></div>
+      <div class="combo"><h3>Biryani Express</h3><p>Veg ₹219 · Mushroom ₹259 · Paneer ₹279</p><div class="pr"><b><small style="font:600 13px Inter;color:var(--ink-3)">from </small>₹219</b><span>3 choices</span></div></div>
+      <div class="combo"><h3>Chinese Mega Box</h3><p>The big Indo-Chinese box.</p><div class="pr"><b>₹249</b><span>per box</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="s" id="menu" style="padding-top:60px">
+  <div class="wrap">
+    <div class="sh">
+      <div><span class="orn eyebrow">Full menu</span><h2>Our menu</h2></div>
+      <p>Everything is vegetarian. Prices exclude taxes.</p>
+    </div>
+    <div class="menu-top">
+      <div class="menu-tools">
+        <label class="search"><svg width="17" height="17" style="stroke:currentColor;fill:none;stroke-width:1.8;flex:0 0 17px"><use href="#search"/></svg><input type="search" placeholder="Search dishes…" data-q></label>
+        <div class="pills" data-pills></div>
+      </div>
+    </div>
+    <div class="mgrid" data-menu></div>
+    <p class="empty" data-empty>No dish matches that. Try “paneer” or “biryani”.</p>
+    <p class="tax">All prices are exclusive of taxes. Schezwan fried rice or noodles +₹10.</p>
+  </div>
+</section>
+
+<section class="s visit" id="visit">
+  <div class="wrap">
+    <div class="sh">
+      <div><span class="orn eyebrow">Visit us</span><h2>Find us in Pallavaram</h2></div>
+      <p>Inside French Village Food Court on 200 Feet Road.</p>
+    </div>
+    <div class="vgrid">
+      <div class="map"><div class="pin"><i></i><span>URS Majestic</span></div><span class="note">Live Google Map goes here (same embed as today)</span></div>
+      <div class="vcard">
+        <div class="vrow"><svg><use href="#pin"/></svg><span><b>French Village Food Court</b><span>Thiruthani Nagar, 200 Feet Road,<br>Pallavaram, Chennai, Tamil Nadu</span></span></div>
+        <div class="vrow"><svg><use href="#clock"/></svg><span><b>1:00 PM – 1:00 AM</b><span>Monday to Sunday · <span data-open-text>Open now</span></span></span></div>
+        <div class="vrow"><svg><use href="#phone"/></svg><span><b>+91 91501 02001</b><span>Call or WhatsApp for parcels and bulk orders</span></span></div>
+        <div class="btns">
+          <a class="btn btn-gold" href="https://www.google.com/maps/dir/?api=1&destination=12.951982,80.170999" target="_blank" rel="noopener">Get directions</a>
+          <a class="btn btn-ghost" href="tel:+919150102001">Call us</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="{{IMG:logo}}" alt=""><span><b>URS MAJESTIC</b><small>100% Pure Vegetarian</small></span></a>
+    <span>French Village Food Court, 200 Feet Road, Pallavaram, Chennai · © 2026 URS Majestic</span>
+  </div>
+</footer>
+
+<nav class="mbar" aria-label="Quick actions">
+  <a class="btn btn-ghost" href="tel:+919150102001">Call</a>
+  <a class="btn btn-wa" href="https://wa.me/919150102001">WhatsApp</a>
+  <a class="btn btn-gold" href="#order">Order online</a>
+</nav>
+
+<script>
+const MENU = {{MENU_JSON}};
+const menuEl = document.querySelector('[data-menu]'), pillsEl = document.querySelector('[data-pills]');
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+menuEl.innerHTML = MENU.map(c => `
+  <div class="cat" id="cat-${c.id}">
+    <h3>${esc(c.name)}${c.note ? `<small>${esc(c.note)}</small>` : ''}</h3>
+    ${c.items.map(i => `<div class="item" data-name="${esc(i.name.toLowerCase())}">
+      <span class="nm"><span class="veg"></span>${esc(i.name)}${i.bestseller ? '<span class="t best">Best seller</span>' : ''}${(i.tags||[]).map(t=>`<span class="t">${esc(t)}</span>`).join('')}</span>
+      <span class="lead"></span><span class="pz">₹${i.price}</span></div>`).join('')}
+  </div>`).join('');
+pillsEl.innerHTML = MENU.map((c, n) => `<a href="#cat-${c.id}" class="${n ? '' : 'on'}">${esc(c.name)}</a>`).join('');
+pillsEl.addEventListener('click', e => { const a = e.target.closest('a'); if (!a) return; pillsEl.querySelectorAll('a').forEach(x => x.classList.toggle('on', x === a)); });
+document.querySelector('[data-q]').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase(); let shown = 0;
+  document.querySelectorAll('.cat').forEach(cat => {
+    let n = 0; cat.querySelectorAll('.item').forEach(it => { const ok = !q || it.dataset.name.includes(q); it.style.display = ok ? '' : 'none'; n += ok; });
+    cat.style.display = n ? '' : 'none'; shown += n;
+  });
+  document.querySelector('[data-empty]').style.display = shown ? 'none' : 'block';
+});
+// Open / closed from the real hours (1 PM – 1 AM, IST).
+(function () {
+  const ist = new Date(Date.now() + (330 + new Date().getTimezoneOffset()) * 60000), h = ist.getHours();
+  const open = h >= 13 || h < 1;
+  document.querySelectorAll('[data-open]').forEach(p => {
+    p.classList.toggle('closed', !open);
+    p.querySelector('[data-open-short]').textContent = open ? 'Open now' : 'Closed';
+    p.querySelector('[data-open-long]').textContent = open ? ' · till 1 AM' : ' · opens 1 PM';
+  });
+  document.querySelectorAll('[data-open-text]').forEach(s => s.textContent = open ? 'Open now' : 'Opens at 1 PM');
+})();
+</script>
+</body>
+</html>

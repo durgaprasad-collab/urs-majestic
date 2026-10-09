@@ -1,9 +1,10 @@
 import Header from './components/Header'
 import Hero from './components/Hero'
-import Bestseller from './components/Bestseller'
+import Promise from './components/Promise'
+import Signature from './components/Signature'
+import Combos from './components/Combos'
 import Menu from './components/Menu'
-import Location from './components/Location'
-import Hours from './components/Hours'
+import Visit from './components/Visit'
 import Footer from './components/Footer'
 
 export default function App() {
@@ -12,10 +13,11 @@ export default function App() {
       <Header />
       <main>
         <Hero />
-        <Bestseller />
+        <Promise />
+        <Signature />
+        <Combos />
         <Menu />
-        <Location />
-        <Hours />
+        <Visit />
       </main>
       <Footer />
     </>
