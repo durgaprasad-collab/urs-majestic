@@ -129,7 +129,7 @@ def build_tasks(db: Session) -> tuple[datetime.date | None, list[dict]]:
                   f"Prep for {tomorrow:%A}: expect about {_inr(sum(same) / len(same))}",
                   f"{tomorrow:%A}s averaged {_inr(sum(same) / len(same))} over the last 4 weeks, "
                   f"well above weekdays. Stock and staff for the rush.",
-                  "Prep sheet, stock and staff roster set for the weekend volume.", "/prep-sheet")
+                  "Stock and staff roster set for the weekend volume.", "/buy")
 
     # ── Channels ─────────────────────────────────────────────────────────
     if ch["zomato_disc_pct"] >= 15:

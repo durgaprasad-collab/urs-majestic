@@ -60,3 +60,9 @@ def set_reviews(request: Request, db: Session = Depends(get_db), count: int = Fo
     task_engine.generate_daily_tasks(db)
     shell_pulse.invalidate()
     return RedirectResponse("/daily-brief#tasks", status_code=303)
+
+
+@router.get("/prep-sheet")
+def removed_prep_sheet():
+    """The prep sheet was removed (owner's call, 2026-10-09); old links land on Today."""
+    return RedirectResponse("/daily-brief", status_code=301)
