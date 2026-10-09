@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 10 · Buy, next 7 days</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 110px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .head p{color:var(--ink-2);font-size:13px;margin-top:2px}
+  .btn{font:600 13px Inter;border-radius:10px;padding:9px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+  .btn-p{background:var(--ground);border-color:var(--ground);color:#fff}.btn-p b{color:var(--gold-2)}
+  .btn-wa{color:#128C4A;border-color:#BFE3CD}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px;overflow-x:auto}
+  .tab{padding:10px 14px;font-weight:600;font-size:13.5px;color:var(--ink-2);border:0;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+  .tab.on{color:var(--ground);border-bottom-color:var(--gold)}
+  .tab span{font-size:11px;font-weight:700;background:#ECE9DF;color:var(--ink-2);border-radius:999px;padding:1px 7px;margin-left:5px}
+  .tab .new{background:var(--gold);color:var(--ground)}
+  .week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:14px}
+  .day{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;min-height:120px}
+  .day.today{border-color:#F2C4BA;background:#FFF9F7}
+  .day h4{font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between}
+  .day h4 b{color:var(--ink);font-size:13px}
+  .day .n{font-size:10.5px;color:var(--ink-3);margin:2px 0 6px}
+  .chip{display:block;font-size:11.5px;font-weight:600;padding:3px 7px;border-radius:7px;margin-bottom:4px;background:var(--warn-bg);color:#7A5410;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .day.today .chip{background:var(--bad-bg);color:var(--bad)}
+  .day .more{font-size:11px;color:var(--ink-3)}
+  .day .none{font-size:11.5px;color:var(--ink-3);margin-top:16px;text-align:center}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .k{padding:12px 16px;border-right:1px solid var(--line)}.k:last-child{border-right:0}
+  .k .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .k .v{font-size:22px;font-weight:700;margin-top:2px}.k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{font-size:11.5px;color:var(--ink-2)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card .cap{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .card .cap h3{font-size:14px}.card .cap p{font-size:12px;color:var(--ink-3)}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:600;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:#FBFAF6;white-space:nowrap}
+  th.r,td.r{text-align:right}
+  td{padding:9px 12px;border-bottom:1px solid #F0EEE6;font-size:13px;vertical-align:middle}
+  tr.grp td{background:#F7F6F0;font:700 12px Inter;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase;padding:8px 12px}
+  tr.grp td span{font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-3);margin-left:6px}
+  .nm{font-weight:600}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:6px}
+  .pill.out{background:var(--bad-bg);color:var(--bad)}.pill.today{background:#E8F0FD;color:#1A4FA0}
+  .q input{width:76px;padding:6px 8px;border:1.5px solid transparent;border-radius:8px;font:700 13.5px Inter;text-align:right;background:#F7F6F0}
+  .q input:focus{outline:0;border-color:var(--gold);background:#fff}
+  .q span{font-size:12.5px;color:var(--ink-2);margin-left:5px}
+  .muted{color:var(--ink-3);font-size:12.5px}
+  .run{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .run.r0{background:var(--bad-bg);color:var(--bad)}.run.r1{background:var(--warn-bg);color:var(--warn)}.run.r2{background:#F2F1EA;color:var(--ink-2)}
+  .savebar{position:fixed;left:0;right:0;bottom:0;background:rgba(6,32,19,.97);color:#fff;display:flex;align-items:center;gap:14px;padding:12px 24px;border-top:1px solid rgba(212,166,42,.35)}
+  .savebar small{color:#B9CBBF;font-size:12px;display:block}
+  .savebar .gold{margin-left:auto;font:700 14px Inter;border:0;border-radius:11px;padding:12px 22px;background:linear-gradient(180deg,var(--gold-2),var(--gold));color:var(--ground)}
+  .savebar .ghost{font:600 13px Inter;border:1px solid rgba(255,255,255,.25);border-radius:11px;padding:11px 16px;background:none;color:#fff}
+  .notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+  .note{background:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;color:#3c4440}.note b{display:block;color:var(--ink);margin-bottom:3px}
+  @media (max-width:900px){.week{grid-template-columns:repeat(2,1fr)}.kpis{grid-template-columns:1fr 1fr}.k{border-bottom:1px solid var(--line)}.notes{grid-template-columns:1fr}.hm{display:none}.savebar .ghost{display:none}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 10: Buy · "Next 7 days" tab (replaces Order Forecast and Weekly Ordering).</b> Same Buy page; a new tab shows what runs out on which day this week and one order list that covers the week, grouped by where you buy. Real stock and usage, Fri 9 Oct. Nothing saves.</div>
+<div class="wrap">
+  <div class="head">
+    <div><h1>Buy</h1><p>Staff requests and items running out, with what's left, how fast it's used and what it costs.</p></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-wa">Share week's list on WhatsApp</button><button class="btn">Supplier PDF</button></div>
+  </div>
+  <div class="tabs">
+    <button class="tab">To buy<span>15</span></button>
+    <button class="tab on">Next 7 days<span class="new" id="t-week"></span></button>
+    <button class="tab">Approved · waiting<span>0</span></button>
+    <button class="tab">Bought this week<span>101</span></button>
+  </div>
+
+  <div class="kpis">
+    <div class="k"><div class="l">Run out this week</div><div class="v" id="k-n"></div><div class="s">at the current pace</div></div>
+    <div class="k"><div class="l">Week's order</div><div class="v" id="k-cost"></div><div class="s" id="k-lines"></div></div>
+    <div class="k"><div class="l">Biggest line</div><div class="v" id="k-big"></div><div class="s" id="k-big-s"></div></div>
+    <div class="k"><div class="l">Covered all week</div><div class="v" id="k-ok"></div><div class="s">items with 7+ days of stock</div></div>
+  </div>
+
+  <div class="week" id="week"></div>
+
+  <div class="card">
+    <div class="cap"><div><h3>Order for the week</h3><p>Enough to last 7 days at the current pace, minus what's in stock · edit any quantity</p></div></div>
+    <table><thead><tr><th style="width:34px"></th><th>Item</th><th class="r">In stock</th><th class="r hm">Uses / day</th><th>Runs out</th><th class="r">Order</th><th class="r">Cost</th></tr></thead><tbody id="rows"></tbody></table>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b>One place to buy</b>"To buy" stays for today. This tab looks a week ahead, so a Hyperpure or dairy order can be placed once and cover the week. Order Forecast and Weekly Ordering go away (Weekly Ordering was never used).</div>
+    <div class="note"><b>Quantities</b>Seven days of use at the current pace, minus what's in stock, rounded up to how you buy it (whole kilos, pack sizes). Lines that would be a sliver of a normal purchase are left out.</div>
+    <div class="note"><b>Approve and share</b>Approving the week's order works like "To buy": lines wait on the Approved tab and close by themselves when the purchase is logged. The supplier PDF and WhatsApp list are grouped by where you buy.</div>
+  </div>
+</div>
+<div class="savebar"><div><b id="sb"></b><small>Selected for the week</small></div><button class="ghost">Supplier PDF</button><button class="gold">Approve week's order</button></div>
+
+<script>
+const W = __DATA__;
+const TODAY_LIST = new Set(['Paneer','Green Chilli','Soya Sauce','Spring Onion','Kabuli channa','Green peas','Palak','Cashew gravy','Ladies Finger','Chinese Garlic','Drumstick','Schezwan chutney','Onion','Butter','Carrot']);
+const ORDER = ['Market · vegetables','Dairy','Grocery & Hyperpure','Frozen','Packaging'];
+const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const fmt = (q,u) => u==='g'&&q>=1000 ? (q/1000).toFixed(1)+' kg' : u==='ml'&&q>=1000 ? (q/1000).toFixed(1)+' L' : String(Number((+q).toFixed(u==='pcs'||u==='g'||u==='ml'?0:2)))+' '+u;
+const base = new Date(2026,9,9);
+const days = Array.from({length:7},(_,i)=>{const d=new Date(base);d.setDate(d.getDate()+i);return d;});
+const dayIdx = o => Math.min(6, Math.floor(o.cov));
+W.forEach(o => { o.sel = true; o.q = o.need; });
+
+function render(){
+  // week strip
+  document.getElementById('week').innerHTML = days.map((d,i) => {
+    const items = W.filter(o => dayIdx(o) === i && o.cov < 7);
+    const label = i===0 ? 'Today' : i===1 ? 'Tomorrow' : d.toLocaleDateString('en-IN',{weekday:'short'});
+    return `<div class="day ${i===0?'today':''}"><h4>${label}<b>${d.getDate()}</b></h4><div class="n">${items.length ? items.length+' run'+(items.length>1?'':'s')+' out' : ''}</div>
+      ${items.length ? items.slice(0,5).map(o=>`<span class="chip" title="${o.name}">${o.name.replace(/ \(.*\)/,'')}</span>`).join('') + (items.length>5?`<span class="more">+${items.length-5} more</span>`:'') : '<div class="none">nothing</div>'}</div>`;
+  }).join('');
+  // table
+  let h = '';
+  ORDER.forEach(g => {
+    const list = W.filter(o => o.where === g);
+    if (!list.length) return;
+    const tot = list.filter(o=>o.sel).reduce((s,o)=>s+o.q*o.uc,0);
+    h += `<tr class="grp"><td colspan="7">${g}<span>${list.length} items · ${rs(tot)}</span></td></tr>`;
+    list.forEach((o) => {
+      const di = dayIdx(o), runTxt = o.cov === 0 ? 'Out now' : di===0 ? 'Today' : di===1 ? 'Tomorrow' : days[di].toLocaleDateString('en-IN',{weekday:'short', day:'numeric'});
+      const i = W.indexOf(o);
+      h += `<tr style="${o.sel?'':'opacity:.45'}"><td><input type="checkbox" ${o.sel?'checked':''} onchange="W[${i}].sel=this.checked;render()" style="width:18px;height:18px;accent-color:#062013"></td>
+        <td class="nm">${o.name}${TODAY_LIST.has(o.name)?'<span class="pill today">also on today\'s list</span>':''}</td>
+        <td class="r ${o.oh===0?'':'muted'}" style="${o.oh===0?'color:var(--bad);font-weight:700':''}">${fmt(o.oh,o.unit)}</td>
+        <td class="r hm muted">${fmt(o.dc,o.unit)}</td>
+        <td><span class="run ${o.cov<1?'r0':o.cov<3?'r1':'r2'}">${runTxt}</span></td>
+        <td class="r q"><input value="${o.q}" oninput="W[${i}].q=parseFloat(this.value)||0;totals()"><span>${o.unit}</span></td>
+        <td class="r"><b id="c${i}">${rs(o.q*o.uc)}</b></td></tr>`;
+    });
+  });
+  document.getElementById('rows').innerHTML = h;
+  totals();
+}
+function totals(){
+  const sel = W.filter(o=>o.sel), tot = sel.reduce((s,o)=>s+o.q*o.uc,0);
+  W.forEach((o,i)=>{const c=document.getElementById('c'+i); if(c) c.textContent=rs(o.q*o.uc);});
+  document.getElementById('t-week').textContent = W.length;
+  document.getElementById('k-n').innerHTML = W.filter(o=>o.cov<7).length + ' <small>items</small>';
+  document.getElementById('k-cost').textContent = rs(tot);
+  document.getElementById('k-lines').textContent = sel.length + ' lines selected';
+  const big = sel.slice().sort((a,b)=>b.q*b.uc-a.q*a.uc)[0];
+  document.getElementById('k-big').textContent = big ? rs(big.q*big.uc) : '—';
+  document.getElementById('k-big-s').textContent = big ? `${big.name} · ${fmt(big.q,big.unit)}` : '';
+  document.getElementById('k-ok').innerHTML = '64 <small>items</small>';
+  document.getElementById('sb').textContent = `${sel.length} lines · ${rs(tot)}`;
+}
+render();
+</script>
+</body>
+</html>

@@ -1,4 +1,8 @@
-"""Ingredient reorder forecast.
+"""Ingredient reorder forecast helpers.
+
+The /order-forecast page itself was folded into Buy's "Next 7 days" tab
+(2026-10-09); these helpers stay for the Stock Log (record_stock, gas SQL)
+and the staff app's stock endpoints.
 
 Reads `v_ingredient_reorder_forecast` — a per-ingredient forecast of when each
 menu ingredient is next due to be ordered and roughly how much.
@@ -457,17 +461,6 @@ def compute_forecast_buckets(db: Session, include_inactive: bool = False) -> dic
     }
 
 
-@router.get("/order-forecast", response_class=HTMLResponse)
-def order_forecast(request: Request, db: Session = Depends(get_db)):
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-
-    include_inactive = request.query_params.get("inactive") == "1"
-    ctx = compute_forecast_buckets(db, include_inactive)
-    return _tmpl(request, "order_forecast.html", {"user": user, **ctx})
-
-
 def record_stock(
     db: Session,
     ingredient_id: int,
@@ -517,21 +510,3 @@ def record_stock(
         ),
         {"i": ingredient_id, "q": on_hand, "u": forecast_unit, "by": counted_by, "note": note},
     )
-
-
-@router.post("/order-forecast/stock")
-def save_stock(
-    request: Request,
-    ingredient_id: int = Form(...),
-    qty: float = Form(...),
-    unit: str = Form(...),
-    count_unit: str = Form(None),
-    db: Session = Depends(get_db),
-):
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-
-    record_stock(db, ingredient_id, qty, unit, count_unit, getattr(user, "id", None))
-    db.commit()
-    return RedirectResponse(url="/order-forecast", status_code=303)

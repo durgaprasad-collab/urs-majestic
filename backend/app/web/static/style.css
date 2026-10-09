@@ -1765,3 +1765,24 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
   .gs-check { grid-template-columns: 1fr; }
   .gs-check > div { border-right: 0; border-bottom: 1px solid var(--sl-line); }
 }
+
+/* Buy · Next 7 days */
+.by-wkpis { grid-template-columns: repeat(4, 1fr); }
+.by-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 14px; }
+.by-day { min-height: 120px; padding: 10px; border: 1px solid var(--sl-line); border-radius: 12px; background: #fff; }
+.by-day.today { border-color: #F2C4BA; background: #FFF9F7; }
+.by-day h4 { display: flex; justify-content: space-between; font: 600 12px Inter, sans-serif; color: var(--sl-ink-2); letter-spacing: 0; }
+.by-day h4 b { font-size: 13px; color: var(--sl-ink); }
+.by-day .n { margin: 2px 0 6px; font-size: 10.5px; color: var(--sl-ink-3); }
+.by-chip { display: block; margin-bottom: 4px; padding: 3px 7px; overflow: hidden; border-radius: 7px; background: var(--sl-warn-bg); color: #7A5410; font-size: 11.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.by-day.today .by-chip { background: var(--sl-bad-bg); color: var(--sl-bad); }
+.by-day .more { font-size: 11px; color: var(--sl-ink-3); }
+.by-day .none { margin-top: 16px; text-align: center; font-size: 11.5px; color: var(--sl-ink-3); }
+.by-wcap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.by-zero { color: var(--sl-bad); font-weight: 700; }
+.by-run { padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.by-run.r0 { background: var(--sl-bad-bg); color: var(--sl-bad); } .by-run.r1 { background: var(--sl-warn-bg); color: var(--sl-warn); } .by-run.r2 { background: #F2F1EA; color: var(--sl-ink-2); }
+@media (max-width: 900px) {
+  .by-week { grid-template-columns: repeat(2, 1fr); }
+  .by-wkpis { grid-template-columns: 1fr 1fr; }
+}

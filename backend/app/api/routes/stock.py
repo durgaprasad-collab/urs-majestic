@@ -1,11 +1,8 @@
-"""Mobile stock entry: staff key in on-hand counts, focused on items the
-owner's Order Forecast page says need action. Reuses the exact same
-"action" bucket the web /order-forecast page computes (cadence-only
-ingredients included, not just ones with a physical count) and the same
-insert helper for saving a count -- this is a second front door onto the
-same tables, not a parallel forecast model.
+"""Mobile stock entry: staff key in on-hand counts, focused on the items
+the admin Buy screen lists as out or running out (services/buy_inbox), so
+the app and the admin agree. Saving a count uses the same insert helper as
+the Stock Log -- a second front door onto the same tables.
 """
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -17,7 +14,8 @@ from app.models.device_token import DeviceToken
 from app.models.user import User
 from app.schemas import DeviceTokenRegister, LowStockItem, StockCountCreate
 from app.api.routes.requisitions import _EXCLUDED_ITEM_NAMES
-from app.web.reorder_routes import compute_forecast_buckets, record_stock
+from app.web.reorder_routes import record_stock
+from app.services.buy_inbox import inbox
 from app.services import stock_count
 
 router = APIRouter(prefix="/api/stock", tags=["stock"])
@@ -25,23 +23,19 @@ router = APIRouter(prefix="/api/stock", tags=["stock"])
 
 @router.get("/low", response_model=list[LowStockItem])
 def low_stock(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    action_rows = compute_forecast_buckets(db)["action"]
+    # Buy's "to buy" list minus anything already requested (it would 409 on
+    # Request) and the fresh-daily items that never become a requisition.
+    rows = [i for _, group in inbox(db)["groups"] for i in group
+            if i["ingredient_id"] and not i["requests"] and (i["out"] or i["low"] or i["cadence"])
+            and i["name"].strip().lower() not in _EXCLUDED_ITEM_NAMES]
+    rows.sort(key=lambda i: (i["cover"] if i["cover"] is not None else 99, i["name"].lower()))
     return [
         LowStockItem(
-            ingredient_id=r["ingredient_id"],
-            name=r["name"],
-            category=r["category"],
-            unit=r["unit"],
-            on_hand_qty=r.get("on_hand_qty"),
-            cover_days=float(r["eff_cover_left"]) if r.get("eff_cover_left") is not None else None,
-            counted_at=datetime.combine(r["stock_counted_on"], datetime.min.time()) if r.get("stock_counted_on") else None,
+            ingredient_id=i["ingredient_id"], name=i["name"], category=i["category"], unit=i["unit"],
+            on_hand_qty=i["on_hand"],
+            cover_days=float(i["cover"]) if i["cover"] is not None else None,
         )
-        for r in action_rows
-        # Cooking Gas is entered via the gas log, not a manual count here; the
-        # fresh-daily items never become a requisition, so don't dangle them
-        # in the "tap to request" list either.
-        if r["name"] != "Cooking Gas"
-        and r["name"].strip().lower() not in _EXCLUDED_ITEM_NAMES
+        for i in rows
     ]
 
 

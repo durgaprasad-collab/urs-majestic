@@ -46,7 +46,10 @@
     $$('[data-by-tab]').forEach(b => b.classList.toggle('on', b.dataset.byTab === t));
     $$('[data-by-panel]').forEach(p => (p.hidden = p.dataset.byPanel !== t));
     const bar = root.querySelector('[data-by-bar]');
-    if (bar && rows.length) bar.hidden = t !== 'buy';
+    if (bar) bar.hidden = !(rows.length && t === 'buy');
+    const wbar = root.querySelector('[data-bw-bar]');
+    if (wbar) wbar.hidden = !(wrows.length && t === 'week');
+    history.replaceState(null, '', t === 'buy' ? '/buy' : `/buy?tab=${t}`);
   }
   $$('[data-by-tab]').forEach(b => b.addEventListener('click', () => tab(b.dataset.byTab)));
   $$('[data-by-tab-go]').forEach(b => b.addEventListener('click', () => tab(b.dataset.byTabGo)));
@@ -88,5 +91,65 @@
     window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
   }));
 
+  // ── Next 7 days ────────────────────────────────────────────────────────
+  const wrows = $$('[data-bw-row]');
+  const wsel = () => wrows.filter(tr => { const cb = tr.querySelector('[data-bw-cb]'); return cb && cb.checked; });
+  const wqty = tr => parseFloat(tr.querySelector('[data-bw-qty]').value) || 0;
+  const wcost = tr => (parseFloat(tr.dataset.uc) || 0) * wqty(tr);
+
+  function wrefresh() {
+    const sel = wsel(), total = sel.reduce((s, tr) => s + wcost(tr), 0);
+    wrows.forEach(tr => {
+      const cb = tr.querySelector('[data-bw-cb]');
+      tr.classList.toggle('by-off', !!cb && !cb.checked);
+      const c = wcost(tr);
+      tr.querySelector('[data-bw-cost]').textContent = c ? rs(c) : '—';
+    });
+    $$('[data-bw-group]').forEach(tb => {
+      const r = $$('[data-bw-row]', tb), on = r.filter(tr => { const cb = tr.querySelector('[data-bw-cb]'); return cb && cb.checked; });
+      tb.querySelector('[data-bw-gsum]').textContent = `${r.length} items · ${rs(on.reduce((s, tr) => s + wcost(tr), 0))}`;
+    });
+    $$('[data-bw-total]').forEach(e => (e.textContent = rs(total)));
+    $$('[data-bw-count]').forEach(e => (e.textContent = `${sel.length} lines selected`));
+    $$('[data-bw-bar-n]').forEach(e => (e.textContent = `${sel.length} lines · ${rs(total)}`));
+  }
+  root.addEventListener('change', e => { if (e.target.matches('[data-bw-cb]')) wrefresh(); });
+  root.addEventListener('input', e => { if (e.target.matches('[data-bw-qty]')) wrefresh(); });
+  $$('[data-bw-selall]').forEach(b => b.addEventListener('click', () => {
+    const cbs = $$('[data-bw-cb]', b.closest('tbody'));
+    const all = cbs.every(c => c.checked);
+    cbs.forEach(c => (c.checked = !all));
+    wrefresh();
+  }));
+  $$('[data-bw-approve]').forEach(b => b.addEventListener('click', () => {
+    const sel = wsel();
+    if (!sel.length) { alert('Tick at least one line.'); return; }
+    root.querySelector('[data-by-items]').value = JSON.stringify(sel.map(tr => ({
+      ingredient_id: +tr.dataset.iid, requests: [], qty: wqty(tr) || null, unit: tr.dataset.unit || null,
+    })));
+    b.disabled = true;
+    root.querySelector('[data-by-form]').submit();
+  }));
+  $$('[data-bw-print]').forEach(b => b.addEventListener('click', () => {
+    const sel = wsel();
+    if (!sel.length) { alert('Tick at least one line.'); return; }
+    const ids = sel.map(tr => tr.dataset.iid).join(',');
+    const q = sel.map(tr => `${tr.dataset.iid}:${wqty(tr)}`).join(',');
+    window.open(`/buy/week/print?ids=${ids}&q=${encodeURIComponent(q)}`, '_blank', 'noopener');
+  }));
+  $$('[data-bw-share]').forEach(b => b.addEventListener('click', () => {
+    const groups = {};
+    wsel().forEach(tr => {
+      const q = wqty(tr);
+      (groups[tr.dataset.group] = groups[tr.dataset.group] || []).push(`• ${tr.dataset.name}${q ? ' – ' + show(q, tr.dataset.unit) : ''}`);
+    });
+    const names = Object.keys(groups);
+    if (!names.length) { alert('Nothing selected to share.'); return; }
+    let text = `*URS Majestic · order for the week*\n`;
+    names.forEach(g => { text += `\n*${g}*\n${groups[g].join('\n')}\n`; });
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  }));
+
   refresh();
+  wrefresh();
 })();

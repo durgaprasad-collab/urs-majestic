@@ -145,3 +145,69 @@ def bought_this_week(db: Session) -> list[dict]:
          WHERE p.deleted_at IS NULL AND p.purchase_date >= :since
          ORDER BY p.purchase_date DESC, p.id DESC
     """), {"since": since}).mappings().all()]
+
+
+# ── Next 7 days ──────────────────────────────────────────────────────────────
+WEEK_DAYS = 7
+# A week's top-up smaller than this share of the usual purchase isn't worth
+# a line (26 ml of cream); the item is effectively covered.
+MIN_LINE_SHARE = Decimal("0.25")
+
+
+def _round_up(q: Decimal, unit: str, step) -> Decimal:
+    if step and Decimal(str(step)) > 0:
+        step = Decimal(str(step))
+        return (q / step).to_integral_value(rounding="ROUND_CEILING") * step
+    if unit in ("pcs", "g", "ml"):
+        return Decimal(math.ceil(q))
+    return (q * 10).to_integral_value(rounding="ROUND_CEILING") / 10
+
+
+def week_plan(db: Session, today_keys: set[str] | None = None) -> dict:
+    """What runs out on which day over the next WEEK_DAYS, and one order that
+    covers the week: daily use x 7 - stock, rounded to how it's bought.
+    today_keys = inbox item keys, to mark lines already on today's list."""
+    today = business_now().date()
+    today_keys = today_keys or set()
+    steps = {r[0]: r[1] for r in db.execute(text("SELECT id, order_increment_qty FROM ingredients"))}
+    waiting = {r[0] for r in db.execute(text(
+        "SELECT ingredient_id FROM requisitions WHERE status = 'approved' AND ingredient_id IS NOT NULL"))}
+    lines, covered = [], 0
+    for iid, f in _forecast(db).items():
+        per_day, on_hand = f["daily_consumption"], f["on_hand_qty"]
+        if not per_day or per_day <= 0 or on_hand is None:
+            continue
+        per_day, on_hand = Decimal(str(per_day)), max(Decimal(str(on_hand)), Decimal(0))
+        cover = on_hand / per_day
+        need = per_day * WEEK_DAYS - on_hand
+        if need <= 0:
+            covered += 1
+            continue
+        qty = _round_up(need, f["unit"], steps.get(iid))
+        usual = Decimal(str(f["last_qty"])) if f["last_qty"] and f["last_qty"] > 0 else None
+        if on_hand > 0 and usual and qty < usual * MIN_LINE_SHARE:
+            covered += 1
+            continue
+        day = min(int(cover), WEEK_DAYS - 1)
+        lines.append({
+            "ingredient_id": iid, "name": f["name"], "category": f["category"], "unit": f["unit"],
+            "group": where_bought(f["category"]), "on_hand": on_hand, "per_day": per_day,
+            "cover": cover, "day": day, "runout": today + datetime.timedelta(days=day),
+            "qty": qty, "unit_cost": f["avg_unit_cost"],
+            "cost": (Decimal(str(f["avg_unit_cost"])) * qty) if f["avg_unit_cost"] else None,
+            "on_today": f"i{iid}" in today_keys, "approved": iid in waiting,
+        })
+    lines.sort(key=lambda l: (l["cover"], l["name"].lower()))
+    days = []
+    for n in range(WEEK_DAYS):
+        d = today + datetime.timedelta(days=n)
+        days.append({"date": d, "n": n, "items": [l for l in lines if l["day"] == n and l["cover"] < WEEK_DAYS]})
+    groups = [(g, [l for l in lines if l["group"] == g]) for g in GROUP_ORDER if any(l["group"] == g for l in lines)]
+    open_lines = [l for l in lines if not l["approved"]]
+    biggest = max((l for l in open_lines if l["cost"]), key=lambda l: l["cost"], default=None)
+    return {
+        "days": days, "groups": groups, "lines": lines, "covered": covered,
+        "n_runout": sum(1 for l in lines if l["cover"] < WEEK_DAYS),
+        "total": sum((l["cost"] for l in open_lines if l["cost"]), Decimal(0)),
+        "biggest": biggest,
+    }

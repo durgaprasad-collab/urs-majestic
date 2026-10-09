@@ -13,11 +13,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.api.routes.requisitions import _sync_fulfillment, notify_decision
-from app.core.clock import business_tz
+from app.core.clock import business_now, business_tz
 from app.core.database import get_db
 from app.models.ingredient import Ingredient
 from app.models.requisition import Requisition, RequisitionStatus
-from app.services.buy_inbox import OWNER_NOTE, bought_this_week, inbox
+from app.services.buy_inbox import OWNER_NOTE, bought_this_week, inbox, week_plan
 from app.web.deps import _tmpl, require_user
 
 router = APIRouter(tags=["buy"])
@@ -36,12 +36,48 @@ def buy_page(request: Request, db: Session = Depends(get_db)):
     data = inbox(db)
     for r in data["waiting"]:
         r.decided_local = r.decided_at.astimezone(business_tz()) if r.decided_at else None
-    return _tmpl(request, "buy.html", {"user": user, **data, "bought": bought_this_week(db)})
+    keys = {i["key"] for _, rows in data["groups"] for i in rows}
+    return _tmpl(request, "buy.html", {"user": user, **data, "bought": bought_this_week(db), "week": week_plan(db, keys)})
+
+
+@router.get("/buy/week/print", response_class=HTMLResponse)
+def week_print(request: Request, db: Session = Depends(get_db)):
+    """Supplier sheet for the week's order: grouped by where it's bought,
+    printable / save-as-PDF from the browser. ?ids= limits it to the lines
+    ticked on the page."""
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    plan = week_plan(db)
+    ids = {int(x) for x in request.query_params.get("ids", "").split(",") if x.isdigit()}
+    qty = {}
+    for part in request.query_params.get("q", "").split(","):
+        k, _, v = part.partition(":")
+        if k.isdigit():
+            try:
+                qty[int(k)] = Decimal(v)
+            except InvalidOperation:
+                pass
+    groups = []
+    for g, lines in plan["groups"]:
+        chosen = [dict(l, qty=qty.get(l["ingredient_id"], l["qty"])) for l in lines
+                  if not l["approved"] and (not ids or l["ingredient_id"] in ids)]
+        if chosen:
+            groups.append((g, chosen))
+    return _tmpl(request, "buy_week_print.html", {"user": user, "groups": groups, "printed": business_now()})
 
 
 @router.get("/requisitions")
 def old_requisitions_page():
     return RedirectResponse(url="/buy", status_code=301)
+
+
+# Order Forecast and Weekly Ordering were folded into Buy's "Next 7 days" tab.
+@router.get("/order-forecast")
+@router.get("/weekly-order")
+@router.get("/weekly-order/{rest:path}")
+def old_forecast_pages(rest: str = ""):
+    return RedirectResponse(url="/buy?tab=week", status_code=301)
 
 
 def _qty(value) -> Decimal | None:

@@ -8,7 +8,7 @@
   <link rel="icon" href="/static/img/logo-circle-360.jpg" />
   <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/fonts/fonts.css?v=1" />
-  <link rel="stylesheet" href="/static/style.css?v=48" />
+  <link rel="stylesheet" href="/static/style.css?v=49" />
   <script src="/static/app.js?v=3" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
@@ -21,8 +21,6 @@
     ('/buy', 'Buy', 'req', '/buy', b.requisitions, 'bad'),
     ('/stock-log', 'Stock Log', 'stock', '/stock-log', b.stock, 'bad'),
     ('/gas-log', 'Gas', 'flame', '/gas-log', b.gas, 'bad'),
-    ('/order-forecast', 'Order Forecast', 'trend', '/order-forecast', None, None),
-    ('/weekly-order', 'Weekly Ordering', 'cal', '/weekly-order', None, None),
     ('/purchases', 'Purchases', 'receipt', '/purchases', b.purchases, 'warn'),
     ('/catering-orders', 'Catering', 'cater', '/catering-orders', None, None),
   ] %}
@@ -116,8 +114,7 @@
         <a href="/gas-log" data-command-item data-keywords="gas cylinder weight reading"><b>◉ Gas</b><small>Cylinders weighed nightly</small></a>
         <a href="/upload" data-command-item data-keywords="upload report petpooja zomato swiggy sales"><b>⇧ Upload sales report</b><small>Refresh channel data</small></a>
         <a href="/daily-brief" data-command-item data-keywords="today home daily brief dashboard"><b>✦ Today</b><small>Open the daily brief</small></a>
-        <a href="/order-forecast" data-command-item data-keywords="order forecast purchase stock"><b>↗ Order Forecast</b><small>See what to order</small></a>
-        <a href="/weekly-order" data-command-item data-keywords="weekly order inventory vegetables forecast"><b>7-day ordering</b><small>Plan one week of inventory</small></a>
+        <a href="/buy?tab=week" data-command-item data-keywords="order forecast week weekly plan purchase stock supplier"><b>↗ Next 7 days</b><small>What runs out this week, one order</small></a>
         <a href="/results" data-command-item data-keywords="menu analysis food cost item performance"><b>⌁ Menu Analysis</b><small>Explore performance</small></a>
         <a href="/reconciliation" data-command-item data-keywords="reconcile mismatch channel money"><b>↻ Reconcile</b><small>Resolve mismatches</small></a>
         <a href="/data-reconciliation" data-command-item data-keywords="data trust channel mismatch"><b>✓ Data Trust</b><small>Cross-check channel data</small></a>

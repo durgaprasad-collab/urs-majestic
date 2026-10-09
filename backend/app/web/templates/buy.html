@@ -32,6 +32,7 @@
 
   <div class="sl-tabs" role="tablist">
     <button type="button" class="{{ 'on' if tab == 'buy' }}" data-by-tab="buy">To buy <span>{{ n_items }}</span></button>
+    <button type="button" class="{{ 'on' if tab == 'week' }}" data-by-tab="week">Next 7 days <span>{{ week.lines|length }}</span></button>
     <button type="button" class="{{ 'on' if tab == 'wait' }}" data-by-tab="wait">Approved · waiting <span>{{ waiting|length }}</span></button>
     <button type="button" class="{{ 'on' if tab == 'done' }}" data-by-tab="done">Bought this week <span>{{ bought|length }}</span></button>
   </div>
@@ -86,6 +87,57 @@
     <form method="post" action="/buy/approve" data-by-form hidden><input type="hidden" name="items" data-by-items></form>
   </section>
 
+  {# ── NEXT 7 DAYS: what runs out when, one order for the week ── #}
+  <section data-by-panel="week" data-by-week {{ 'hidden' if tab != 'week' }}>
+    <div class="sl-kpis by-wkpis">
+      <div class="sl-k bad"><span class="l">Run out this week</span><span class="v">{{ week.n_runout }}</span> <span class="v small">items</span><span class="s">at the current pace</span></div>
+      <div class="sl-k good"><span class="l">Week's order</span><span class="v" data-bw-total>{{ rs(week.total) }}</span><span class="s" data-bw-count>{{ week.lines|rejectattr('approved')|list|length }} lines selected</span></div>
+      <div class="sl-k"><span class="l">Biggest line</span>{% if week.biggest %}<span class="v">{{ rs(week.biggest.cost) }}</span><span class="s">{{ week.biggest.name }} · {{ amt(week.biggest.qty, week.biggest.unit) }}</span>{% else %}<span class="v">—</span>{% endif %}</div>
+      <div class="sl-k"><span class="l">Covered all week</span><span class="v">{{ week.covered }}</span> <span class="v small">items</span><span class="s">enough stock for 7 days</span></div>
+    </div>
+
+    <div class="by-week">
+      {% for d in week.days %}
+      <div class="by-day {{ 'today' if d.n == 0 }}">
+        <h4>{{ 'Today' if d.n == 0 else ('Tomorrow' if d.n == 1 else d.date.strftime('%a')) }}<b>{{ d.date.day }}</b></h4>
+        <div class="n">{% if d['items'] %}{{ d['items']|length }} run{{ 's' if d['items']|length == 1 }} out{% endif %}</div>
+        {% for l in d['items'][:5] %}<span class="by-chip" title="{{ l.name }}">{{ l.name }}</span>{% endfor %}
+        {% if d['items']|length > 5 %}<span class="more">+{{ d['items']|length - 5 }} more</span>{% endif %}
+        {% if not d['items'] %}<div class="none">nothing</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="sl-card">
+      <div class="sl-sechead by-wcap"><div><h3>Order for the week</h3><p>Enough to last 7 days at the current pace, minus what's in stock, rounded to how it's bought · edit any quantity</p></div>
+        <div class="sl-btns"><button type="button" class="sl-btn by-wa" data-bw-share>Share on WhatsApp</button><button type="button" class="sl-btn" data-bw-print>Supplier sheet</button></div></div>
+      {% if week.lines %}
+      <table class="sl-table by-table">
+        <thead><tr><th class="by-cbcol"></th><th>Item</th><th class="r">In stock</th><th class="r sl-hide-sm">Uses / day</th><th>Runs out</th><th class="r">Order</th><th class="r">Cost</th></tr></thead>
+        {% for g, lines in week.groups %}
+        <tbody data-bw-group>
+          <tr class="sl-cat"><td colspan="7">{{ g }}<span data-bw-gsum>{{ lines|length }} items</span><button type="button" class="by-selall" data-bw-selall>select all</button></td></tr>
+          {% for l in lines %}
+          <tr data-bw-row data-name="{{ l.name }}" data-group="{{ g }}" data-iid="{{ l.ingredient_id }}" data-unit="{{ l.unit }}" data-uc="{{ l.unit_cost or '' }}" {{ 'data-approved=1' if l.approved }}>
+            <td>{% if not l.approved %}<input type="checkbox" class="by-cb" checked data-bw-cb aria-label="Order {{ l.name }}">{% endif %}</td>
+            <td><span class="sl-item">{{ l.name }}</span>
+              {% if l.approved %}<span class="by-pill req">approved, waiting</span>{% elif l.on_today %}<span class="by-pill req">also on today's list</span>{% endif %}</td>
+            <td class="r {{ '' if l.on_hand > 0 else 'by-zero' }}">{{ amt(l.on_hand, l.unit) }}</td>
+            <td class="r sl-hide-sm sl-muted">{{ amt(l.per_day, l.unit) }}</td>
+            <td><span class="by-run {{ 'r0' if l.cover < 1 else ('r1' if l.cover < 3 else 'r2') }}">{{ 'Out now' if l.on_hand <= 0 else ('Today' if l.day == 0 else ('Tomorrow' if l.day == 1 else l.runout.strftime('%a %d'))) }}</span></td>
+            <td class="r"><span class="sl-qedit"><input inputmode="decimal" data-bw-qty value="{{ '%g'|format(l.qty|float) }}" {{ 'disabled' if l.approved }} aria-label="Order {{ l.name }}"><span class="u">{{ l.unit }}</span></span></td>
+            <td class="r"><b data-bw-cost>{{ rs(l.cost) if l.cost else '—' }}</b></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% endfor %}
+      </table>
+      {% else %}
+      <p class="sl-empty">Everything has at least 7 days of stock at the current pace.</p>
+      {% endif %}
+    </div>
+  </section>
+
   {# ── APPROVED, WAITING FOR THE PURCHASE ── #}
   <section data-by-panel="wait" {{ 'hidden' if tab != 'wait' }}>
     <div class="sl-card">
@@ -128,11 +180,16 @@
     </div>
   </section>
 
-  <div class="by-savebar" data-by-bar {{ 'hidden' if not groups }}>
+  <div class="by-savebar" data-bw-bar {{ 'hidden' if tab != 'week' or not week.lines }}>
+    <div><b data-bw-bar-n></b><small>Selected for the week</small></div>
+    <button type="button" class="by-ghost" data-bw-print>Supplier sheet</button>
+    <button type="button" class="by-gold" data-bw-approve>Approve week's order</button>
+  </div>
+  <div class="by-savebar" data-by-bar {{ 'hidden' if not groups or tab != 'buy' }}>
     <div><b data-by-bar-n></b><small>Selected on the To buy list</small></div>
     <button type="button" class="by-ghost" data-by-share>Share on WhatsApp</button>
     <button type="button" class="by-gold" data-by-approve>Approve selected</button>
   </div>
 </div>
-<script src="/static/buy.js?v=1" defer></script>
+<script src="/static/buy.js?v=3" defer></script>
 {% endblock %}
