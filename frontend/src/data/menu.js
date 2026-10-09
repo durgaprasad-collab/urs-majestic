@@ -96,7 +96,7 @@ export const CATEGORIES = [
       { name: 'Mushroom', price: 169 },
       { name: 'Paneer', price: 159 },
       { name: 'Chilli Garlic', price: 149 },
-      { name: 'Mixed', price: 179 },
+      { name: 'Mixed', price: 199 },
     ],
   },
   {
@@ -118,7 +118,7 @@ export const CATEGORIES = [
       { name: 'Channa Masala', price: 129 },
       { name: 'Kadai Veg', price: 149 },
       { name: 'Mixed Veg', price: 149 },
-      { name: 'Baby Corn Masala', price: 129 },
+      { name: 'Baby Corn Masala', price: 149 },
       { name: 'Baby Corn Manchurian', price: 149 },
       { name: 'Gobi Masala', price: 129 },
       { name: 'Aloo Gobi Masala', price: 129 },
