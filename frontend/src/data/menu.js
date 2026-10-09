@@ -96,7 +96,8 @@ export const CATEGORIES = [
       { name: 'Mushroom', price: 169 },
       { name: 'Paneer', price: 159 },
       { name: 'Chilli Garlic', price: 149 },
-      { name: 'Mixed', price: 199 },
+      { name: 'Mixed Fried Rice', price: 199 },
+      { name: 'Mixed Noodles', price: 179 },
     ],
   },
   {
