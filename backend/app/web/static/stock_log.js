@@ -72,6 +72,15 @@
         const last = row && row.querySelector('[data-sl-last]');
         if (last) last.textContent = `${qty} ${body.unit} · today · ${body.by}`;
       });
+      // Done in "count these first": fade it and move it to the bottom.
+      const firstSec = document.querySelector('[data-sl-section="first"]');
+      const firstRow = firstSec && firstSec.querySelector(`[data-sl-qty="${id}"]`)?.closest('.sl-crow');
+      if (firstRow && !firstRow.classList.contains('sl-done')) {
+        firstRow.classList.add('sl-done');
+        firstSec.appendChild(firstRow);
+        const n = document.querySelector('[data-sl-first-n]');
+        if (n) n.textContent = firstSec.querySelectorAll('.sl-crow:not(.sl-done)').length;
+      }
       if (tonight.has(id) && !savedTonight.has(id)) {
         savedTonight.add(id);
         done += 1;

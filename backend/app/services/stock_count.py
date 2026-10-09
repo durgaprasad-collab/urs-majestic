@@ -112,7 +112,10 @@ def stock_view(db: Session) -> list[dict]:
             ("never counted", item["f_never"]),
             (f"not counted for {item['last_days']} days", item["f_old"]),
         ) if on]
-        item["first"] = item["stockable"] and (item["f_zero"] or item["f_low"] or item["f_recount"])
+        # Counted tonight = done: it leaves "count these first" even if it's
+        # still low (low cover is a Buy problem, not a counting one).
+        item["first"] = (item["stockable"] and not item["counted_tonight"]
+                         and (item["f_zero"] or item["f_low"] or item["f_recount"]))
         item["rank"] = (0 if item["f_zero"] else 1 if item["f_low"] else 2) * 1000 + (cover if cover is not None else 99) * 10
         items.append(item)
     return items

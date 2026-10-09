@@ -113,7 +113,7 @@
   <section data-sl-panel="count" hidden>
     <div class="sl-count">
       <nav class="sl-catnav" aria-label="Count sections">
-        <a class="on first" data-sl-sec="first">Count these first <span>{{ first|length }}</span></a>
+        <a class="on first" data-sl-sec="first">Count these first <span data-sl-first-n>{{ first|length }}</span></a>
         {% for cat, rows in categories %}<a data-sl-sec="{{ loop.index }}">{{ 'Packaging' if cat == 'packaging' else cat }} <span>{{ rows|length }}</span></a>{% endfor %}
       </nav>
       <div>
@@ -139,5 +139,5 @@
   </section>
 </div>
 <script type="application/json" id="sl-data">{{ {"tonight": tonight_ids, "done": s.todo_done, "total": s.todo_total}|tojson }}</script>
-<script src="/static/stock_log.js?v=1" defer></script>
+<script src="/static/stock_log.js?v=2" defer></script>
 {% endblock %}

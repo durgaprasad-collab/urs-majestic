@@ -1938,3 +1938,5 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
   .rc-kpis { grid-template-columns: 1fr 1fr; }
   .rc-grid { grid-template-columns: 1fr; }
 }
+.sl-crow.sl-done { opacity: .5; background: #F6FBF8; }
+.sl-crow.sl-done .nm { text-decoration: line-through; text-decoration-color: rgba(30,138,90,.5); }
