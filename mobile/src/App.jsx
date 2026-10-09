@@ -3,14 +3,15 @@ import Login from "./pages/Login";
 import Requisitions from "./pages/Requisitions";
 import LowStock from "./pages/LowStock";
 import Count from "./pages/Count";
+import Gas from "./pages/Gas";
 import { api, getSession, saveSession, clearSession } from "./api";
 import { L } from "./labels";
 
 export default function App() {
   const [session, setSession] = useState(getSession());
   // The nightly count is the main job, so the app opens on it (and the 10 PM
-  // reminder lands here too).
-  const [tab, setTab] = useState("count");
+  // reminder lands here too). After midnight it's gas weigh-in time (12:30 AM).
+  const [tab, setTab] = useState(new Date().getHours() < 5 ? "gas" : "count");
 
   useEffect(() => {
     if (!session) return;
@@ -44,6 +45,7 @@ export default function App() {
 
       <div className="content">
         {tab === "count" && <Count session={session} />}
+        {tab === "gas" && <Gas />}
         {tab === "requests" && <Requisitions session={session} />}
         {tab === "stock" && <LowStock onRequested={() => setTab("requests")} />}
       </div>
@@ -52,6 +54,10 @@ export default function App() {
         <button className={tab === "count" ? "active" : ""} onClick={() => setTab("count")}>
           <span className="icon">✅</span>
           {L.countTab}
+        </button>
+        <button className={tab === "gas" ? "active" : ""} onClick={() => setTab("gas")}>
+          <span className="icon">🔥</span>
+          {L.gasTab}
         </button>
         <button className={tab === "requests" ? "active" : ""} onClick={() => setTab("requests")}>
           <span className="icon">📋</span>

@@ -50,6 +50,8 @@ export const api = {
   listRequisitions: (status) => request(`/api/requisitions/${status ? `?status_filter=${status}` : ""}`),
   createRequisition: (payload) => request("/api/requisitions/", { method: "POST", body: payload }),
   openRequests: () => request("/api/requisitions/open"),
+  gasTonight: () => request("/api/gas/tonight"),
+  saveGas: (readings) => request("/api/gas/readings", { method: "POST", body: { readings } }),
   withdrawRequisition: (id) => request(`/api/requisitions/${id}`, { method: "DELETE" }),
   decideRequisition: (id, approve, decision_note) =>
     request(`/api/requisitions/${id}/decision`, { method: "PATCH", body: { approve, decision_note } }),

@@ -1,174 +1,128 @@
 {% extends "base.html" %}
-{% block title %}Gas Log — URS Majestic{% endblock %}
+{% block title %}Gas — URS Majestic{% endblock %}
 
 {% block content %}
-<style>
-  .gl-form{display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-end}
-  .gl-field{display:flex;flex-direction:column;gap:.25rem}
-  .gl-field label{font-size:.72rem;color:#6b6b6b}
-  .gl-field input,.gl-field select{padding:.4rem .55rem;border:1px solid #d3d3cf;border-radius:4px;font-size:.85rem}
-  .gl-check{display:flex;align-items:center;gap:.35rem;font-size:.82rem;padding-bottom:.4rem}
-  .gl-role-in_use{color:#1e7e34;font-weight:600}
-  .gl-role-spare{color:#8a8474}
-  .gl-used{color:#b5651d;font-variant-numeric:tabular-nums}
-  .gl-new-tag{font-size:.62rem;text-transform:uppercase;background:#e6f4ea;color:#1e7e34;border-radius:4px;padding:.1rem .35rem;margin-left:.3rem}
-  .gl-log-summary{margin-bottom:1.2rem}
-  .gl-log-toggle{margin-bottom:1.2rem}
-  .gl-log-toggle > summary{list-style:none}
-  .gl-log-toggle > summary::-webkit-details-marker{display:none}
-  .gl-log-toggle[open] .gl-form-card{margin-top:.75rem}
-</style>
-
-<div class="page-header">
-  <h1 class="page-title">Gas Log</h1>
-</div>
-
-<div class="hero-row gl-log-summary">
-  <div class="hero-band">
-    <span class="hero-label">In-use cylinder</span>
-    {% if latest_in_use %}
-      <div class="hero-value">{{ "%.1f"|format(latest_in_use.net_kg) }} kg</div>
-      <div class="hero-sub">as of {{ latest_in_use.recorded_at.strftime('%d %b, %I:%M %p') }}</div>
-    {% else %}
-      <div class="hero-value">—</div>
-    {% endif %}
+{% macro kg(v) %}{% if v is none %}—{% else %}{{ '%.1f'|format(v) }}{% endif %}{% endmacro %}
+{% macro rs(v) %}₹{{ '{:,.0f}'.format(v or 0) }}{% endmacro %}
+{% macro days(d) %}{% if d is none %}—{% elif d < 1 %}{{ (d * 24)|round|int }} hours{% else %}{{ '%.1f'|format(d) }} days{% endif %}{% endmacro %}
+<div class="sl gs">
+  <div class="sl-head">
+    <div>
+      <h1 class="sl-title">Gas</h1>
+      <p class="sl-sub">Staff weigh both cylinders, <b>Tandoor</b> and <b>Kitchen</b>, every night at 12:30 AM in the app. Use is the drop in weight between nights (the {{ TARE|int }} kg empty cylinder is subtracted); a new cylinder is handled automatically.</p>
+    </div>
+    <div class="sl-btns"><button type="button" class="sl-btn sl-btn-p" data-gs-add>+ Add a reading</button></div>
   </div>
-  <div class="hero-band">
-    <span class="hero-label">Spare cylinder</span>
-    {% if latest_spare %}
-      <div class="hero-value">{{ "%.1f"|format(latest_spare.net_kg) }} kg</div>
-      <div class="hero-sub">as of {{ latest_spare.recorded_at.strftime('%d %b, %I:%M %p') }}</div>
-    {% else %}
-      <div class="hero-value">—</div>
-    {% endif %}
-  </div>
-</div>
+  {% if request.query_params.get('added') %}<p class="sl-flash">Reading added.</p>{% endif %}
+  {% if request.query_params.get('error') %}<p class="sl-flash gs-err">That reading wasn't saved: the weight must be between {{ TARE|int }} and {{ (TARE + 22)|int }} kg.</p>{% endif %}
 
-<div class="card gl-log-summary">
-  <div class="prep-head" style="margin-top:0">
-    <h2 class="prep-title">Monthly gas performance</h2>
-    <span class="prep-meta">latest 3 calendar months</span>
+  <form method="post" action="/gas-log/reading" class="gs-addform" data-gs-form hidden>
+    <label>Cylinder<select name="cylinder">{% for c in cylinders %}<option value="{{ c.key }}">{{ c.label }}</option>{% endfor %}</select></label>
+    <label>Scale reading (kg)<input name="gross_kg" inputmode="decimal" required placeholder="e.g. 31.4"></label>
+    <label>When<input type="datetime-local" name="recorded_at"></label>
+    <label class="gs-chk"><input type="checkbox" name="is_new_cylinder" value="1"> New cylinder fitted</label>
+    <button type="submit" class="sl-btn sl-btn-p">Save</button>
+  </form>
+
+  {% set n_logged = logged|length %}
+  <div class="sl-kpis gs-kpis">
+    <div class="sl-k {{ 'good' if n_logged == cylinders|length else ('warn' if n_logged else 'bad') }}">
+      <span class="l">Tonight's weigh-in</span><span class="v">{{ n_logged }}</span> <span class="v small">of {{ cylinders|length }}{{ ' ✓' if n_logged == cylinders|length }}</span>
+      <span class="s">{% if n_logged %}{{ logged[-1].logged_tonight.recorded_at.strftime('%I:%M %p').lstrip('0') }}{% if logged[-1].logged_tonight.by_name %} · {{ logged[-1].logged_tonight.by_name }}{% endif %}{% else %}due at 12:30 AM{% endif %}</span>
+    </div>
+    <div class="sl-k">
+      <span class="l">Used last night</span>
+      {% if last_night and last_night.total is not none %}<span class="v">{{ kg(last_night.total) }}</span> <span class="v small">kg</span>
+      <span class="s">{% if per_kg %}{{ rs(last_night.total * per_kg) }} · {% endif %}{% for c in cylinders %}{{ c.label }} {{ kg(last_night.used.get(c.key)) }}{{ ' · ' if not loop.last }}{% endfor %}</span>
+      {% else %}<span class="v">—</span><span class="s">needs two nights of readings</span>{% endif %}
+    </div>
+    <div class="sl-k">
+      <span class="l">7-day average</span>
+      {% if avg %}<span class="v">{{ kg(avg) }}</span> <span class="v small">kg/day</span><span class="s">{% if per_kg %}{{ rs(avg * per_kg) }}/day at {{ rs(per_kg) }}/kg{% endif %}</span>
+      {% else %}<span class="v">—</span><span class="s">builds up after a few nights</span>{% endif %}
+    </div>
+    <div class="sl-k warn">
+      <span class="l">Gas per dish</span>
+      {% if per_dish %}<span class="v">₹{{ '%.1f'|format(per_dish) }}</span><span class="s">{% if pct_sales %}{{ '%.1f'|format(pct_sales) }}% of sales{% endif %}</span>
+      {% else %}<span class="v">—</span><span class="s">needs a 7-day average</span>{% endif %}
+    </div>
+    <div class="sl-k {{ 'bad' if soonest and soonest.days_left < 1.5 else '' }}">
+      <span class="l">Next cylinder</span>
+      {% if soonest %}<span class="v">{{ 'Today' if soonest.days_left < 1 else ('Tomorrow' if soonest.days_left < 2 else 'In ' ~ (soonest.days_left|int) ~ ' days') }}</span>
+      <span class="s">{{ soonest.label }}: {{ kg(soonest.left) }} kg left</span>
+      {% else %}<span class="v">—</span><span class="s">after a few nights of readings</span>{% endif %}
+    </div>
   </div>
-  <div class="recon-table-wrap">
-    <table class="recon-table">
-      <thead>
-        <tr>
-          <th>Month</th>
-          <th class="col-num">Avg used/day</th>
-          <th class="col-num">Implied cost/dish</th>
-          <th class="col-num">Avg LPG cost</th>
-          <th class="col-num">Measured</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for metric in monthly_metrics %}
-        <tr>
-          <td><strong>{{ metric.label }}</strong></td>
-          <td class="col-num">{% if metric.avg_kg_per_day %}{{ "%.2f"|format(metric.avg_kg_per_day) }} kg{% else %}—{% endif %}</td>
-          <td class="col-num">{% if metric.cost_per_dish %}₹{{ "%.2f"|format(metric.cost_per_dish) }}{% else %}—{% endif %}</td>
-          <td class="col-num">{% if metric.cost_per_kg %}₹{{ "%.1f"|format(metric.cost_per_kg) }}/kg{% else %}—{% endif %}</td>
-          <td class="col-num">{% if metric.span_days %}{{ "%.1f"|format(metric.span_days) }}d · {{ metric.reading_count }}{% else %}—{% endif %}</td>
-        </tr>
+
+  <div class="gs-grid">
+    {% for c in cylinders %}
+    <div class="sl-card gs-cyl gs-{{ c.key }}">
+      <h3><i></i>{{ c.label }}
+        {% if c.days_left is not none %}<span class="gs-pill {{ 'bad' if c.days_left < 1.5 else ('warn' if c.days_left < 3 else 'good') }}">{{ days(c.days_left) }} left</span>{% endif %}</h3>
+      {% if c.last and c.stale %}
+      <div class="gs-big">— <small>waiting for tonight's weigh-in</small></div>
+      <div class="gs-row"><span>Last reading</span><b>{{ kg(c.last.gross_kg) }} kg · {{ c.last.recorded_at.strftime('%d %b') }}</b></div>
+      <p class="sl-muted" style="margin-top:6px">Too old to use. Gas left and days left start from the first nightly weigh-in.</p>
+      {% elif c.last %}
+      <div class="gs-big">{{ kg(c.left) }} <small>kg gas left</small></div>
+      <div class="gs-gauge"><i style="width:{{ c.pct|round|int }}%"></i></div>
+      <div class="gs-row"><span>Scale, last reading</span><b>{{ kg(c.last.gross_kg) }} kg · {{ c.last.recorded_at.strftime('%d %b %I:%M %p') }}</b></div>
+      <div class="gs-row"><span>Uses</span><b>{{ kg(c.rate) }} kg/day</b></div>
+      <div class="gs-row"><span>Fitted</span><b>{{ c.fitted.strftime('%a %d %b') if c.fitted else '—' }}</b></div>
+      <div class="gs-row"><span>Last cylinder lasted</span><b>{{ days(c.lasted) }}</b></div>
+      {% else %}
+      <p class="sl-empty">No readings yet. Staff log it at 12:30 AM in the app's Gas tab.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+    <div class="sl-card gs-chart">
+      <h3>Gas used per night</h3><p class="sl-muted">Last {{ chart|length }} nights · hover a bar</p>
+      <div class="gs-legend">{% for c in cylinders %}<span class="gs-{{ c.key }}"><i></i>{{ c.label }}</span>{% endfor %}</div>
+      {% if chart %}
+      <div class="gs-bars">
+        {% for n in chart %}{% set t = n.total or 0 %}
+        <div class="gs-bar" style="height:{{ (t / chart_max * 100)|round(1) }}%" tabindex="0">
+          {% for c in cylinders|reverse %}{% set u = n.used.get(c.key) %}{% if u and t %}<i class="gs-{{ c.key }}" style="height:{{ (u / t * 100)|round(1) }}%"></i>{% endif %}{% endfor %}
+          <span class="gs-tip">{{ n.night.strftime('%a %d %b') }}: {{ kg(n.total) }} kg{% for c in cylinders %} · {{ c.label }} {{ kg(n.used.get(c.key)) }}{% endfor %}{% if per_kg and n.total %} · {{ rs(n.total * per_kg) }}{% endif %}</span>
+        </div>
         {% endfor %}
+      </div>
+      <div class="gs-x">{% for n in chart %}<span>{{ n.night.strftime('%d') if loop.index is odd }}</span>{% endfor %}</div>
+      {% else %}<p class="sl-empty">The chart fills in after the first two nights.</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="sl-card">
+    <div class="sl-sechead"><h3>Nightly readings</h3><p>Scale weight including the {{ TARE|int }} kg cylinder. Type to correct a reading; it saves on Enter.</p></div>
+    <table class="sl-table">
+      <thead><tr><th>Night of</th>{% for c in cylinders %}<th class="r">{{ c.label }} (scale)</th><th class="r">Used</th>{% endfor %}<th class="r sl-hide-sm">Total</th><th class="r sl-hide-sm">Cost</th><th class="sl-hide-sm">Logged</th></tr></thead>
+      <tbody>
+      {% for n in nights %}
+        <tr>
+          <td>{{ n.night.strftime('%a %d %b') }}</td>
+          {% for c in cylinders %}{% set r = n.rows.get(c.key) %}
+          <td class="r">{% if r %}<span class="sl-qedit"><input inputmode="decimal" value="{{ '%g'|format(r.gross_kg|float) }}" data-orig="{{ '%g'|format(r.gross_kg|float) }}" data-gs-edit="{{ r.id }}" aria-label="{{ c.label }} reading"><span class="sl-ok" data-gs-ok hidden>✓</span></span>{% if r.is_new_cylinder %}<span class="gs-new">new</span>{% endif %}{% else %}<span class="sl-muted">—</span>{% endif %}</td>
+          <td class="r">{{ kg(n.used.get(c.key)) }}{{ ' kg' if n.used.get(c.key) is not none }}</td>
+          {% endfor %}
+          <td class="r sl-hide-sm"><b>{{ kg(n.total) }}{{ ' kg' if n.total is not none }}</b></td>
+          <td class="r sl-hide-sm">{{ rs(n.total * per_kg) if (n.total and per_kg) else '—' }}</td>
+          {% set lr = n.rows.values()|list|sort(attribute='recorded_at')|last %}
+          <td class="sl-hide-sm sl-muted">{{ lr.recorded_at.strftime('%I:%M %p').lstrip('0') }}{% if lr.by_name %} · {{ lr.by_name }}{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="sl-empty">No readings yet.</td></tr>
+      {% endfor %}
       </tbody>
     </table>
+    <div class="gs-check">
+      <div><span class="l">Bills · {{ month_start.strftime('%B') }}</span><b>{{ '%g'|format(bills.cylinders|float|round(1)) }} cylinder{{ 's' if bills.cylinders != 1 }} bought</b><span class="sl-muted">{{ kg(bills_kg) }} kg · {{ rs(bills.spend) }}</span></div>
+      <div><span class="l">Weighed as used</span><b>{{ kg(used_month) }} kg</b><span class="sl-muted">{% if first_night %}nights since {{ first_night.strftime('%d %b') }}{% else %}no readings this month yet{% endif %}</span></div>
+      <div><span class="l">Difference</span>
+        {% set gap = bills_kg - used_month %}
+        <b>{{ kg(gap|abs) }} kg {{ 'more bought' if gap > 0 else 'more used' }}</b>
+        <span class="sl-muted">spares on the shelf and part-used cylinders explain a gap of 1–2 cylinders</span></div>
+    </div>
   </div>
 </div>
-
-<details class="gl-log-toggle">
-  <summary class="fab">+ Log reading</summary>
-  <div class="card gl-form-card">
-    <form method="post" action="/gas-log/reading" class="gl-form">
-      <div class="gl-field">
-        <label>Cylinder</label>
-        <select name="cylinder_role" class="form-input" required>
-          <option value="in_use">In use</option>
-          <option value="spare">Spare</option>
-        </select>
-      </div>
-      <div class="gl-field">
-        <label>Gross weight (kg)</label>
-        <input type="number" step="0.1" min="0" name="gross_kg" placeholder="e.g. 28.4" required>
-      </div>
-      <div class="gl-field">
-        <label>Tare weight (kg)</label>
-        <input type="number" step="0.1" min="0" name="tare_kg" value="20">
-      </div>
-      <div class="gl-check">
-        <input type="checkbox" id="gl-new" name="is_new_cylinder" value="1">
-        <label for="gl-new">Freshly connected / refilled</label>
-      </div>
-      <div class="gl-field" style="flex:1;min-width:10rem">
-        <label>Note (optional)</label>
-        <input type="text" name="note" placeholder="e.g. swapped to spare">
-      </div>
-      <button type="submit" class="btn-primary">Save reading</button>
-    </form>
-  </div>
-</details>
-
-<details class="show-more">
-  <summary>Show history</summary>
-  <div class="show-more-body">
-    <div class="prep-head" style="margin-top:0">
-      <h2 class="prep-title">History</h2>
-      <span class="prep-meta">most recent first</span>
-    </div>
-    <div class="card">
-      <div class="recon-table-wrap">
-        <table class="recon-table">
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Cylinder</th>
-              <th class="col-num">Gross</th>
-              <th class="col-num">Tare</th>
-              <th class="col-num">Net</th>
-              <th class="col-num">Used since last</th>
-              <th>Note</th>
-              <th>By</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in readings %}
-            <tr>
-              <td>{{ r.recorded_at.strftime('%d %b, %I:%M %p') }}</td>
-              <td>
-                <span class="gl-role-{{ r.cylinder_role }}">{{ 'In use' if r.cylinder_role == 'in_use' else 'Spare' }}</span>
-                {% if r.is_new_cylinder %}<span class="gl-new-tag">fresh</span>{% endif %}
-              </td>
-              <td class="col-num">{{ "%.1f"|format(r.gross_kg) }}</td>
-              <td class="col-num">{{ "%.1f"|format(r.tare_kg) }}</td>
-              <td class="col-num">{{ "%.1f"|format(r.net_kg) }}</td>
-              <td class="col-num gl-used">{% if r.kg_used is not none %}{{ "%.2f"|format(r.kg_used) }} kg{% else %}—{% endif %}</td>
-              <td>{{ r.note or '—' }}</td>
-              <td>{{ r.recorded_by_name or '—' }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="8">No readings logged yet.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</details>
-
-<div style="margin-top:1rem; display:flex; align-items:center; gap:.3rem; font-size:.78rem; color:#6b6b6b">
-  How these readings are used
-  <details class="info-tip">
-    <summary>ⓘ</summary>
-    <div class="info-tip-panel">
-      <p>
-        Only <strong>In use</strong> readings feed the consumption trend — the spare's weight doesn't change until it's
-        swapped in. Tick <strong>"Freshly connected / refilled"</strong> whenever you connect a new or refilled cylinder.
-        A swap counts the previous cylinder's remaining gas plus any gas already used from the new 19.2 kg cylinder.
-      </p>
-      <p style="margin-top:.4rem">
-        This page is measurement only for now — the cost engine still uses a flat ₹3/dish gas assumption. Once there's a
-        solid multi-day trend here, that flat number can be replaced with the real one shown above.
-      </p>
-    </div>
-  </details>
-</div>
+<script src="/static/gas.js?v=1" defer></script>
 {% endblock %}

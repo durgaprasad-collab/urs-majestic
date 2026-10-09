@@ -232,6 +232,8 @@ def _build(db: Session) -> dict:
           (SELECT count(*) FROM v_ingredient_reorder_forecast WHERE is_active AND on_hand_qty < 0) neg_stock,
           (SELECT count(*) FROM purchase_ledger_sync_issues WHERE resolved_at IS NULL) ledger_open,
           (SELECT count(*) FROM requisitions WHERE status = 'pending') req_pending,
+          (SELECT 2 - count(DISTINCT cylinder) FROM gas_readings
+             WHERE cylinder_role = 'in_use' AND recorded_at > now() - interval '24 hours') gas_missing,
           (SELECT unexplained_mismatches FROM v_data_trust) recon_open,
           (SELECT max(business_date) FROM daily_channel_sales WHERE channel = 'swiggy') swiggy_last,
           (SELECT max(business_date) FROM daily_channel_sales WHERE channel = 'zomato') zomato_last,
@@ -341,6 +343,7 @@ def _build(db: Session) -> dict:
         },
         "badges": {
             "requisitions": t["req_pending"] or 0,
+            "gas": t["gas_missing"] or 0,
             "stock": t["neg_stock"] or 0,
             "purchases": t["ledger_open"] or 0,
             "reconcile": t["recon_open"] or 0,

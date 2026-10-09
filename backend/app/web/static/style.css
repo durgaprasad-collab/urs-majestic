@@ -1717,3 +1717,51 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
   .by-kpis .sl-k { border-bottom: 1px solid var(--sl-line); }
   .by-kpis .sl-k:last-child { grid-column: span 2; }
 }
+
+/* ── Gas (/gas-log) ───────────────────────────────────────────── */
+.gs { --gs-tan: #C2410C; --gs-kit: #2563A8; }
+.gs-err { border-color: #F2C4BA; background: var(--sl-bad-bg); color: var(--sl-bad); }
+.gs-addform { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--sl-line); border-radius: 14px; background: #fff; }
+.gs-addform[hidden] { display: none; }
+.gs-addform label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--sl-ink-2); }
+.gs-addform input, .gs-addform select { padding: 7px 9px; border: 1px solid var(--sl-line); border-radius: 8px; font: 13px Inter, sans-serif; }
+.gs-addform .gs-chk { flex-direction: row; align-items: center; }
+.gs-kpis { grid-template-columns: 1.2fr repeat(4, 1fr); }
+.gs-grid { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 14px; margin-bottom: 14px; }
+.gs-cyl, .gs-chart { padding: 14px 16px; }
+.gs-cyl h3, .gs-chart h3 { display: flex; align-items: center; gap: 8px; font: 700 14px Inter, sans-serif; color: var(--sl-ink); letter-spacing: 0; }
+.gs-cyl h3 i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.gs-tandoor h3 i, .gs-tandoor .gs-gauge i, .gs-legend .gs-tandoor i, .gs-bar i.gs-tandoor { background: var(--gs-tan); }
+.gs-kitchen h3 i, .gs-kitchen .gs-gauge i, .gs-legend .gs-kitchen i, .gs-bar i.gs-kitchen { background: var(--gs-kit); }
+.gs-pill { margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.gs-pill.bad { background: var(--sl-bad-bg); color: var(--sl-bad); } .gs-pill.warn { background: var(--sl-warn-bg); color: var(--sl-warn); } .gs-pill.good { background: var(--sl-good-bg); color: var(--sl-good); }
+.gs-big { margin: 8px 0 2px; font-size: 30px; font-weight: 700; }
+.gs-big small { font-size: 14px; font-weight: 600; color: var(--sl-ink-2); }
+.gs-gauge { height: 12px; margin: 6px 0 8px; overflow: hidden; border-radius: 6px; background: #ECE9DF; }
+.gs-gauge i { display: block; height: 100%; border-radius: 6px; }
+.gs-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-top: 1px dashed #EEEBE1; font-size: 12.5px; color: var(--sl-ink-2); }
+.gs-row b { color: var(--sl-ink); text-align: right; }
+.gs-legend { display: flex; gap: 14px; margin: 6px 0; font-size: 12px; color: var(--sl-ink-2); }
+.gs-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 3px; vertical-align: -1px; }
+.gs-bars { position: relative; display: flex; align-items: flex-end; gap: 5px; height: 150px; padding-top: 10px; border-bottom: 1px solid var(--sl-line); }
+.gs-bar { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; min-height: 2px; outline: 0; }
+.gs-bar i { display: block; border-radius: 3px 3px 0 0; }
+.gs-bar i + i { border-radius: 0; }
+.gs-tip { display: none; position: absolute; bottom: 100%; left: 50%; z-index: 3; margin-bottom: 4px; padding: 6px 8px; border-radius: 7px; background: #14201B; color: #fff; font-size: 11px; white-space: nowrap; transform: translateX(-50%); }
+.gs-bar:hover .gs-tip, .gs-bar:focus .gs-tip { display: block; }
+.gs-x { display: flex; gap: 5px; margin-top: 4px; font-size: 10px; color: var(--sl-ink-3); }
+.gs-x span { flex: 1; text-align: center; }
+.gs .sl-table th.r, .gs .sl-table td.r { text-align: right; }
+.gs .sl-qedit input { width: 70px; }
+.gs-new { margin-left: 5px; font-size: 10.5px; font-weight: 700; color: var(--sl-good); }
+.gs-check { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--sl-line); }
+.gs-check > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 16px; border-right: 1px solid var(--sl-line); }
+.gs-check > div:last-child { border-right: 0; }
+.gs-check .l { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--sl-ink-3); }
+.gs-check b { font-size: 16px; }
+@media (max-width: 900px) {
+  .gs-kpis { grid-template-columns: 1fr 1fr; }
+  .gs-grid { grid-template-columns: 1fr; }
+  .gs-check { grid-template-columns: 1fr; }
+  .gs-check > div { border-right: 0; border-bottom: 1px solid var(--sl-line); }
+}

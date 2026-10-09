@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 08 · Gas log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@500;700&family=Noto+Sans+Devanagari:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--green:#0B3A2E;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;
+    --tan:#C2410C;--kit:#2563A8}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,"Noto Sans Bengali","Noto Sans Devanagari",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  h2.sec{max-width:1180px;margin:22px auto 10px;padding:0 20px;font:700 18px Cinzel,serif;color:var(--ground)}
+  h2.sec small{font:500 12.5px Inter;color:var(--ink-2);margin-left:8px}
+  /* ── admin ── */
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .head p{color:var(--ink-2);font-size:13px;margin-top:2px;max-width:700px}
+  .btn{font:600 13px Inter;border-radius:10px;padding:9px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+  .kpis{display:grid;grid-template-columns:1.2fr repeat(4,1fr);background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .k{padding:12px 16px;border-right:1px solid var(--line);border-top:3px solid transparent}
+  .k:last-child{border-right:0}
+  .k.good{border-top-color:var(--good)}.k.warn{border-top-color:var(--gold)}.k.bad{border-top-color:var(--bad)}
+  .k .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .k .v{font-size:22px;font-weight:700;margin-top:2px}.k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{font-size:11.5px;color:var(--ink-2)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:14px;margin-bottom:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .cyl h3{font-size:14px;display:flex;align-items:center;gap:8px}
+  .cyl h3 i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .cyl .big{font-size:30px;font-weight:700;margin:8px 0 2px}.cyl .big small{font-size:14px;color:var(--ink-2);font-weight:600}
+  .gauge{height:12px;border-radius:6px;background:#ECE9DF;overflow:hidden;margin:6px 0 8px}.gauge i{display:block;height:100%;border-radius:6px}
+  .cyl .row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-2);padding:3px 0;border-top:1px dashed #EEEBE1}
+  .cyl .row b{color:var(--ink)}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+  .pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.good{background:var(--good-bg);color:var(--good)}
+  .chart h3{font-size:14px}.chart p{font-size:12px;color:var(--ink-3)}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--ink-2);margin:6px 0}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .bars{display:flex;align-items:flex-end;gap:5px;height:150px;border-bottom:1px solid var(--line);padding-top:10px;position:relative}
+  .bar{flex:1;display:flex;flex-direction:column-reverse;gap:2px;cursor:default;position:relative}
+  .bar i{display:block;border-radius:3px 3px 0 0}
+  .bar i.k{background:var(--kit);border-radius:0 0 0 0}.bar i.t{background:var(--tan)}
+  .bar:hover .tip{display:block}
+  .tip{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#14201B;color:#fff;font-size:11px;padding:6px 8px;border-radius:7px;white-space:nowrap;z-index:3;margin-bottom:4px}
+  .xl{display:flex;gap:5px;font-size:10px;color:var(--ink-3);margin-top:4px}.xl span{flex:1;text-align:center}
+  .avg{position:absolute;left:0;right:0;border-top:1.5px dashed var(--ink-3)}
+  .avg span{position:absolute;right:0;top:-16px;font-size:10.5px;color:var(--ink-2);background:#fff;padding:0 4px}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:600;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:#FBFAF6;white-space:nowrap}
+  td{padding:9px 12px;border-bottom:1px solid #F0EEE6;font-size:13px}
+  th.r,td.r{text-align:right}
+  .tbl{padding:0;overflow:hidden}
+  .tbl .cap{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .tbl .cap h3{font-size:14px}.tbl .cap p{font-size:12px;color:var(--ink-3)}
+  .qe{width:70px;padding:5px 7px;border:1.5px solid transparent;border-radius:7px;background:#F7F6F0;font:700 13px Inter;text-align:right}
+  .qe:hover{border-color:var(--line);background:#fff}.qe:focus{outline:0;border-color:var(--gold);background:#fff}
+  .new{font-size:10.5px;font-weight:700;color:var(--good);margin-left:4px}
+  .muted{color:var(--ink-3);font-size:12.5px}
+  .check{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:14px}
+  .check div{padding:10px 16px;border-right:1px solid var(--line)}.check div:last-child{border-right:0}
+  .check .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .check .v{font-size:18px;font-weight:700}
+  /* ── phones ── */
+  .phones{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;padding:0 20px 10px}
+  .ph{width:300px}.ph .capt{font-size:12px;font-weight:700;color:#4b524e;margin-bottom:6px;text-align:center}
+  .screen{width:300px;height:620px;border:9px solid #111;border-radius:34px;overflow:hidden;background:#F7F6F1;display:flex;flex-direction:column;position:relative;box-shadow:0 20px 40px rgba(0,0,0,.2)}
+  .bi{display:block;font-size:10.5px;color:var(--ink-3);font-weight:500;margin-top:1px}
+  .top{background:var(--green);color:#fff;padding:12px 14px 10px}.top b{font-size:15px;display:block}.top .who{font-size:11px;color:#9FC2B2}
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid var(--line);margin-top:auto}
+  .tabs div{padding:7px 2px 9px;text-align:center;font-size:9.5px;font-weight:600;color:var(--ink-3)}.tabs div.on{color:var(--green)}
+  .tabs .ic{display:block;font-size:16px}
+  .body{flex:1;overflow-y:auto;padding:12px}
+  .gc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;border-left:5px solid var(--kit)}
+  .gc.tan{border-left-color:var(--tan)}
+  .gc.done{background:#F6FBF8;border-color:#BFE3CE}
+  .gc .nm{font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+  .gc .last{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+  .gc .entry{display:flex;align-items:center;gap:8px;margin-top:10px}
+  .gc input[type=text]{width:120px;padding:11px;border:1.5px solid var(--line);border-radius:11px;font:700 20px Inter;text-align:right}
+  .gc input[type=text]:focus{outline:0;border-color:var(--gold)}
+  .gc .u{font-weight:600;color:var(--ink-2)}
+  .gc .ok{font-size:12px;font-weight:700;color:var(--good)}
+  .gc label.sw{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--ink-2)}
+  .gc label.sw input{width:18px;height:18px;accent-color:var(--green)}
+  .gc .res{margin-top:8px;font-size:12.5px;color:var(--ink-2)}.gc .res b{color:var(--ink)}
+  .warnbox{background:var(--warn-bg);border:1px solid #F0DDA8;color:#7A5410;border-radius:10px;padding:9px 10px;font-size:12px;margin-top:8px;line-height:1.4}
+  .savebtn{width:100%;border:0;border-radius:12px;padding:14px;background:var(--ground);color:#fff;font:700 15px Inter;margin-top:4px}
+  .lock{background:linear-gradient(160deg,#1d2b44,#0d1424);color:#fff;align-items:center}
+  .lock .time{font:300 58px Inter;margin-top:58px}.lock .date{font-size:13px;color:#c9d2e6}
+  .notif{margin:34px 12px 0;background:rgba(255,255,255,.92);color:#111;border-radius:16px;padding:11px 12px;display:flex;gap:10px;width:calc(100% - 24px)}
+  .notif .app{width:30px;height:30px;border-radius:8px;background:var(--green);color:var(--gold-2);display:grid;place-items:center;font:700 11px Cinzel;flex:0 0 30px}
+  .notif b{font-size:13px;display:block}.notif p{font-size:12px;color:#333;line-height:1.35;margin-top:2px}.notif small{color:#777;font-size:10.5px;margin-left:auto}
+  .donebig{text-align:center;padding:26px 10px 10px}.donebig .tick{width:64px;height:64px;border-radius:50%;background:var(--good-bg);color:var(--good);display:grid;place-items:center;font-size:32px;margin:0 auto 10px}
+  .donebig h3{font-size:17px}
+  .sum{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:12px;text-align:left;font-size:13px}
+  .sum div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line)}.sum div:last-child{border:0}
+  .alert{background:var(--bad-bg);border:1px solid #F2C4BA;color:var(--bad);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:12.5px;text-align:left;line-height:1.4}
+  .notes{max-width:1180px;margin:18px auto 40px;padding:0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .note{background:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;color:#3c4440}.note b{display:block;color:var(--ink);margin-bottom:3px}
+  @media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.k{border-bottom:1px solid var(--line)}.k:first-child{grid-column:span 2}.grid2{grid-template-columns:1fr}.notes{grid-template-columns:1fr}.check{grid-template-columns:1fr}.check div{border-right:0;border-bottom:1px solid var(--line)}.hm{display:none}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 08: Gas, two cylinders weighed nightly at 12:30 AM.</b> Staff weigh the <b>Tandoor</b> and <b>Kitchen</b> cylinders in the app every night; the admin page shows gas left, daily use and cost. Cylinder numbers are <b>examples</b> shaped on your Aug–Sep readings (≈5.2 kg/day); real ones start the first night staff log both. Phone 2 is live. Nothing saves.</div>
+
+<h2 class="sec">Staff app <small>Gas tab · reminder at 12:30 AM</small></h2>
+<div class="phones">
+  <div class="ph"><div class="capt">1 · Reminder at 12:30 AM</div>
+    <div class="screen lock"><div class="time">12:30</div><div class="date">Saturday, 10 October</div>
+      <div class="notif"><div class="app">URS</div><div style="flex:1"><div style="display:flex"><b>Weigh both gas cylinders</b><small>now</small></div><p>Tandoor + Kitchen. Put each on the scale and type the weight. 1 minute.<br>দুটো গ্যাস সিলিন্ডার ওজন করুন / दोनों गैस सिलेंडर तौलें</p></div></div>
+    </div>
+  </div>
+
+  <div class="ph"><div class="capt">2 · Gas tab (try it)</div>
+    <div class="screen">
+      <div class="top"><b>Gas cylinders<span class="bi" style="color:#9FC2B2">গ্যাস সিলিন্ডার / गैस सिलेंडर</span></b><span class="who">Prem · tonight 12:31 AM</span></div>
+      <div class="body" id="app">
+        <div class="gc tan" id="c-t">
+          <div class="nm">Tandoor<span class="bi">তন্দুর / तंदूर</span><span id="okt"></span></div>
+          <div class="last">Last night <b>29.0 kg</b> on the scale</div>
+          <div class="entry"><input type="text" inputmode="decimal" id="in-t" placeholder="kg" oninput="calc('t')"><span class="u">kg</span></div>
+          <label class="sw"><input type="checkbox" id="new-t" onchange="calc('t')">New cylinder fitted today<span class="bi">নতুন সিলিন্ডার / नया सिलेंडर</span></label>
+          <div class="res" id="res-t"></div>
+        </div>
+        <div class="gc" id="c-k">
+          <div class="nm">Kitchen<span class="bi">রান্নাঘর / रसोई</span><span id="okk"></span></div>
+          <div class="last">Last night <b>24.0 kg</b> on the scale</div>
+          <div class="entry"><input type="text" inputmode="decimal" id="in-k" placeholder="kg" oninput="calc('k')"><span class="u">kg</span></div>
+          <label class="sw"><input type="checkbox" id="new-k" onchange="calc('k')">New cylinder fitted today<span class="bi">নতুন সিলিন্ডার / नया सिलेंडर</span></label>
+          <div class="res" id="res-k"></div>
+        </div>
+        <button class="savebtn" onclick="save()">Save both<span class="bi" style="color:#9FC2B2">সংরক্ষণ / सेव करें</span></button>
+        <p style="font-size:11.5px;color:var(--ink-3);margin-top:8px;text-align:center">Weigh the whole cylinder on the scale. The empty cylinder (20 kg) is subtracted for you.</p>
+      </div>
+      <div class="tabs"><div><span class="ic">☑</span>Count</div><div class="on"><span class="ic">🔥</span>Gas</div><div><span class="ic">✓</span>Requests</div><div><span class="ic">⚠</span>Low stock</div></div>
+    </div>
+  </div>
+
+  <div class="ph"><div class="capt">3 · Heavier than last night?</div>
+    <div class="screen">
+      <div class="top"><b>Gas cylinders<span class="bi" style="color:#9FC2B2">গ্যাস সিলিন্ডার / गैस सिलेंडर</span></b><span class="who">Prem · tonight 12:31 AM</span></div>
+      <div class="body">
+        <div class="gc tan">
+          <div class="nm">Tandoor<span class="bi">তন্দুর / तंदूर</span></div>
+          <div class="last">Last night <b>21.9 kg</b> on the scale</div>
+          <div class="entry"><input type="text" value="38.6"><span class="u">kg</span></div>
+          <div class="warnbox">This is <b>16.7 kg heavier</b> than last night. Was a new cylinder fitted?<span class="bi" style="color:#9a7a3a">নতুন সিলিন্ডার লাগানো হয়েছে? / नया सिलेंडर लगाया?</span></div>
+          <label class="sw"><input type="checkbox" checked>New cylinder fitted today</label>
+          <div class="res">Old one finished with <b>1.9 kg</b> left · new one has <b>18.6 kg</b></div>
+        </div>
+        <div class="gc done">
+          <div class="nm">Kitchen<span class="ok">✓ 24.0 kg</span></div>
+          <div class="res">Used <b>4.8 kg</b> since last night · <b>4.0 kg</b> gas left</div>
+        </div>
+      </div>
+      <div class="tabs"><div><span class="ic">☑</span>Count</div><div class="on"><span class="ic">🔥</span>Gas</div><div><span class="ic">✓</span>Requests</div><div><span class="ic">⚠</span>Low stock</div></div>
+    </div>
+  </div>
+
+  <div class="ph"><div class="capt">4 · Done</div>
+    <div class="screen">
+      <div class="top"><b>Gas cylinders<span class="bi" style="color:#9FC2B2">গ্যাস সিলিন্ডার / गैस सिलेंडर</span></b><span class="who">Prem · saved 12:33 AM</span></div>
+      <div class="body"><div class="donebig"><div class="tick">✓</div><h3>Both cylinders logged</h3><span class="bi">দুটোই লেখা হয়েছে / दोनों दर्ज हो गए</span>
+        <div class="sum"><div><span>Tandoor used</span><b>2.4 kg</b></div><div><span>Kitchen used</span><b>4.8 kg</b></div><div><span>Gas left</span><b>Tandoor 9.0 · Kitchen 4.0 kg</b></div></div>
+        <div class="alert"><b>Kitchen cylinder is almost empty</b> (about 1 day left). Keep a full one ready. The owner has been told.<span class="bi" style="color:#a3271f">রান্নাঘরের সিলিন্ডার প্রায় শেষ / रसोई का सिलेंडर लगभग खत्म</span></div>
+      </div></div>
+      <div class="tabs"><div><span class="ic">☑</span>Count</div><div class="on"><span class="ic">🔥</span>Gas</div><div><span class="ic">✓</span>Requests</div><div><span class="ic">⚠</span>Low stock</div></div>
+    </div>
+  </div>
+</div>
+
+<h2 class="sec">Admin <small>Gas page (replaces the old gas log)</small></h2>
+<div class="wrap">
+  <div class="head">
+    <div><h1>Gas</h1><p>Both cylinders are weighed by staff every night at 12:30 AM in the app. Use is the drop in weight between nights; a new cylinder is handled automatically.</p></div>
+    <button class="btn">+ Add a reading</button>
+  </div>
+
+  <div class="kpis">
+    <div class="k good"><div class="l">Tonight's weigh-in</div><div class="v">2 <small>of 2 ✓</small></div><div class="s">12:33 AM · Prem</div></div>
+    <div class="k"><div class="l">Used yesterday</div><div class="v">7.2 <small>kg</small></div><div class="s">₹1,088 · Tandoor 2.4 · Kitchen 4.8</div></div>
+    <div class="k"><div class="l">7-day average</div><div class="v">5.4 <small>kg/day</small></div><div class="s">₹816/day at ₹151/kg</div></div>
+    <div class="k warn"><div class="l">Gas per dish</div><div class="v">₹6.8</div><div class="s">120 dishes/day · 3.9% of sales</div></div>
+    <div class="k bad"><div class="l">Next cylinder</div><div class="v">Tomorrow</div><div class="s">Kitchen: 4.0 kg left</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card cyl">
+      <h3><i style="background:var(--tan)"></i>Tandoor <span class="pill good" style="margin-left:auto">4 days left</span></h3>
+      <div class="big">9.0 <small>kg gas left</small></div>
+      <div class="gauge"><i style="width:47%;background:var(--tan)"></i></div>
+      <div class="row"><span>Scale last night</span><b>29.0 kg</b></div>
+      <div class="row"><span>Uses</span><b>2.3 kg/day</b></div>
+      <div class="row"><span>Fitted</span><b>Tue 6 Oct</b></div>
+      <div class="row"><span>Last cylinder lasted</span><b>8.1 days</b></div>
+    </div>
+    <div class="card cyl">
+      <h3><i style="background:var(--kit)"></i>Kitchen <span class="pill bad" style="margin-left:auto">1 day left</span></h3>
+      <div class="big">4.0 <small>kg gas left</small></div>
+      <div class="gauge"><i style="width:21%;background:var(--kit)"></i></div>
+      <div class="row"><span>Scale last night</span><b>24.0 kg</b></div>
+      <div class="row"><span>Uses</span><b>3.5 kg/day</b></div>
+      <div class="row"><span>Fitted</span><b>Mon 5 Oct</b></div>
+      <div class="row"><span>Last cylinder lasted</span><b>4.0 days</b></div>
+    </div>
+    <div class="card chart">
+      <h3>Gas used per day</h3><p>Last 14 nights · hover a bar</p>
+      <div class="legend"><span><i style="background:var(--tan)"></i>Tandoor</span><span><i style="background:var(--kit)"></i>Kitchen</span></div>
+      <div class="bars" id="bars"></div>
+      <div class="xl" id="xl"></div>
+    </div>
+  </div>
+
+  <div class="card tbl">
+    <div class="cap"><div><h3>Nightly readings</h3><p>Scale weight including the 20 kg cylinder. Type to correct a reading; it saves on Enter.</p></div></div>
+    <table><thead><tr><th>Night of</th><th class="r">Tandoor (scale)</th><th class="r">Used</th><th class="r">Kitchen (scale)</th><th class="r">Used</th><th class="r hm">Total</th><th class="r hm">Cost</th><th class="hm">Logged</th></tr></thead><tbody id="hist"></tbody></table>
+    <div class="check card" style="border:0;border-top:1px solid var(--line);border-radius:0">
+      <div><div class="l">Bills check · October</div><div class="v">5 cylinders bought</div><div class="muted">96 kg · ₹14,650</div></div>
+      <div><div class="l">Weighed as used</div><div class="v">48.6 kg</div><div class="muted">since the first nightly weigh-in</div></div>
+      <div><div class="l">Gap</div><div class="v">matches</div><div class="muted">bills and weigh-ins agree within 5%</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="note"><b>Two cylinders, one moment</b>Weighing both at the same time every night (12:30 AM, after the last orders) makes each day comparable. The old log had one cylinder at random hours, so a day's use was guesswork.</div>
+  <div class="note"><b>Staff only type the scale reading</b>The 20 kg empty weight is subtracted for them. If a cylinder is much heavier than last night, the app asks whether a new one was fitted, so a swap never shows up as "gas appeared".</div>
+  <div class="note"><b>What you get from it</b>Gas left and days left per cylinder (so a swap is never a surprise at lunch), real gas cost per dish, tandoor vs kitchen split, and a check of cylinder bills against what was actually burned.</div>
+</div>
+
+<script>
+// Example nightly data (kg used), shaped on Aug–Sep readings (~5.2 kg/day).
+const D = [['26 Sep',2.1,3.4],['27',2.6,3.9],['28',2.2,2.8],['29',1.9,3.0],['30',2.4,3.6],['1 Oct',2.8,4.1],['2',2.0,3.1],['3',2.5,3.8],['4',3.0,4.4],['5',2.2,3.0],['6',2.3,2.9],['7',2.6,3.5],['8',2.1,3.2],['9',2.4,4.8]];
+const max = 8, b = document.getElementById('bars'), xl = document.getElementById('xl');
+const avg = D.reduce((s,d)=>s+d[1]+d[2],0)/D.length;
+b.innerHTML = D.map(d => `<div class="bar" style="height:${(d[1]+d[2])/max*100}%"><i class="k" style="height:${d[2]/(d[1]+d[2])*100}%"></i><i class="t" style="height:${d[1]/(d[1]+d[2])*100}%"></i><div class="tip">${d[0]}: ${(d[1]+d[2]).toFixed(1)} kg · Tandoor ${d[1]} · Kitchen ${d[2]} · ₹${Math.round((d[1]+d[2])*151)}</div></div>`).join('') +
+  `<div class="avg" style="bottom:${avg/max*100}%"><span>avg ${avg.toFixed(1)} kg</span></div>`;
+xl.innerHTML = D.map((d,i) => `<span>${i%2?'':d[0]}</span>`).join('');
+const H = [['Fri 9 Oct','29.0','2.4','24.0','4.8','12:33 AM · Prem'],['Thu 8 Oct','31.4','2.1','28.8','3.2','12:36 AM · Prem'],['Wed 7 Oct','33.5','2.6','32.0','3.5','12:41 AM · Jhantu'],['Tue 6 Oct','36.1 <span class="new">new</span>','2.3','35.5','2.9','12:30 AM · Prem'],['Mon 5 Oct','21.6','2.2','38.4 <span class="new">new</span>','3.0','12:52 AM · Anil']];
+document.getElementById('hist').innerHTML = H.map(h => `<tr><td>${h[0]}</td><td class="r"><input class="qe" value="${h[1].replace(/ <.*/,'')}">${h[1].includes('new')?'<span class="new">new</span>':''}</td><td class="r">${h[2]} kg</td><td class="r"><input class="qe" value="${h[3].replace(/ <.*/,'')}">${h[3].includes('new')?'<span class="new">new</span>':''}</td><td class="r">${h[4]} kg</td><td class="r hm"><b>${(+h[2]+ +h[4]).toFixed(1)} kg</b></td><td class="r hm">₹${Math.round((+h[2]+ +h[4])*151)}</td><td class="hm muted">${h[5]}</td></tr>`).join('');
+
+// Live phone 2
+const LAST = {t:29.0, k:24.0}, TARE = 20;
+function calc(c){
+  const v = parseFloat(document.getElementById('in-'+c).value), isNew = document.getElementById('new-'+c).checked, r = document.getElementById('res-'+c);
+  if (!v) { r.innerHTML=''; return; }
+  const gas = (v - TARE).toFixed(1);
+  if (v < TARE) { r.innerHTML = `<div class="warnbox">That's less than an empty cylinder (20 kg). Check the scale.</div>`; return; }
+  if (!isNew && v > LAST[c] + 1) { r.innerHTML = `<div class="warnbox">This is <b>${(v-LAST[c]).toFixed(1)} kg heavier</b> than last night. Was a new cylinder fitted? Tick the box below.</div>`; return; }
+  r.innerHTML = isNew ? `New cylinder · <b>${gas} kg</b> gas in it` : `Used <b>${(LAST[c]-v).toFixed(1)} kg</b> since last night · <b>${gas} kg</b> gas left`;
+}
+function save(){
+  const t = parseFloat(document.getElementById('in-t').value), k = parseFloat(document.getElementById('in-k').value);
+  if (!t || !k) { alert('Weigh both cylinders first.\nদুটো সিলিন্ডারই ওজন করুন / दोनों सिलेंडर तौलें'); return; }
+  document.getElementById('app').innerHTML = `<div class="donebig"><div class="tick">✓</div><h3>Both cylinders logged</h3><span class="bi">দুটোই লেখা হয়েছে / दोनों दर्ज हो गए</span><div class="sum"><div><span>Tandoor</span><b>${(t-TARE).toFixed(1)} kg left</b></div><div><span>Kitchen</span><b>${(k-TARE).toFixed(1)} kg left</b></div></div></div>`;
+}
+</script>
+</body>
+</html>

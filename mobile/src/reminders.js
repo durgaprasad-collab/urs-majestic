@@ -42,3 +42,42 @@ export async function scheduleCountReminders({ doneTonight, hour = 22, total }) 
     return { scheduled: 0, supported: true, error: true };
   }
 }
+
+
+// Nightly gas weigh-in at 00:30 (both cylinders), same rolling 14-day window.
+const GAS_BASE_ID = 30000; // ids 30000..30013
+
+export async function scheduleGasReminders({ doneTonight, hour = 0, minute = 30 }) {
+  if (!Capacitor.isNativePlatform()) return { scheduled: 0, supported: false };
+  try {
+    let perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== "granted") perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== "granted") return { scheduled: 0, supported: true, denied: true };
+
+    await LocalNotifications.cancel({
+      notifications: Array.from({ length: DAYS_AHEAD + 1 }, (_, i) => ({ id: GAS_BASE_ID + i })),
+    });
+    const now = new Date();
+    // The weigh-in for the current business night: today 00:30 before 5 AM,
+    // otherwise tomorrow 00:30.
+    const nightSlot = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (now.getHours() < 5 ? 0 : 1), hour, minute, 0);
+    const notifications = [];
+    for (let i = 0; i <= DAYS_AHEAD; i++) {
+      const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, hour, minute, 0);
+      if (at <= now) continue;
+      if (doneTonight && at.getTime() === nightSlot.getTime()) continue;
+      notifications.push({
+        id: GAS_BASE_ID + i,
+        title: L.gasReminderTitle,
+        body: L.gasReminderBody,
+        schedule: { at, allowWhileIdle: true },
+        extra: { open: "gas" },
+      });
+    }
+    if (notifications.length) await LocalNotifications.schedule({ notifications });
+    return { scheduled: notifications.length, supported: true };
+  } catch (err) {
+    console.warn("gas reminder scheduling failed", err);
+    return { scheduled: 0, supported: true, error: true };
+  }
+}

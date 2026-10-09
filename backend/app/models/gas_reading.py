@@ -16,12 +16,15 @@ class GasReading(Base):
     __tablename__ = "gas_readings"
     __table_args__ = (
         CheckConstraint("cylinder_role IN ('in_use', 'spare')", name="ck_gas_readings_role"),
+        CheckConstraint("cylinder IN ('tandoor', 'kitchen')", name="ck_gas_readings_cylinder"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # 'tandoor' | 'kitchen' -- the two cylinders weighed nightly (0043).
+    cylinder: Mapped[str] = mapped_column(Text, nullable=False, default="kitchen", server_default="kitchen")
     cylinder_role: Mapped[str] = mapped_column(Text, nullable=False)
     gross_kg: Mapped[decimal.Decimal] = mapped_column(Numeric(6, 2), nullable=False)
     tare_kg: Mapped[decimal.Decimal] = mapped_column(Numeric(6, 2), nullable=False, default=decimal.Decimal("20"))
