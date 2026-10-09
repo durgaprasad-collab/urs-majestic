@@ -6,13 +6,14 @@ and /stock-log/history is the trace/audit log.
 """
 
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.clock import business_today, business_tz
 from app.core.database import get_db
 from app.services.stock_log_pdf import build_low_cover_stock_pdf
+from app.services import shell_pulse, stock_count
 from app.web.deps import _tmpl, require_user
 from app.web.reorder_routes import record_stock, _LATEST_GAS_SQL, _GAS_AVERAGE_SQL
 
@@ -137,21 +138,64 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
     if redir:
         return redir
 
-    rows = _stock_rows(db)
+    items = stock_count.stock_view(db)
+    stock = [i for i in items if i["stockable"]]
     by_cat: dict[str, list] = {}
-    for r in rows:
-        by_cat.setdefault(r["category"] or "Other", []).append(r)
-
-    ordered = [(c, by_cat[c]) for c in _CATEGORY_ORDER if c in by_cat]
-    ordered += [(c, rs) for c, rs in by_cat.items() if c not in _CATEGORY_ORDER]
-
-    saved = request.query_params.get("saved")
+    for i in sorted(stock, key=lambda i: (stock_count.category_sort_key(i["category"]), i["name"].lower())):
+        by_cat.setdefault(i["category"], []).append(i)
+    kind, tonight = stock_count.tonights_list(items)
     return _tmpl(request, "stock_log.html", {
         "user": user,
-        "categories": ordered,
-        "saved": int(saved) if saved and saved.isdigit() else None,
-        "today": business_today(),
+        "summary": stock_count.summary(db, items),
+        "categories": list(by_cat.items()),
+        "tonight_kind": kind,
+        "tonight_ids": [i["id"] for i in tonight],
+        "first": stock_count.first_list(items),
+        "disabled": stock_count.disabled_items(db),
     })
+
+
+@router.post("/stock-log/item/{ingredient_id}/count")
+async def save_one_count(ingredient_id: int, request: Request, db: Session = Depends(get_db)):
+    """One-step correction from the Stock Log: the quantity box saves on Enter
+    or blur. Recorded as a real count by the signed-in owner."""
+    user, redir = require_user(request, db)
+    if redir:
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    body = await request.json()
+    try:
+        qty = float(body.get("qty"))
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "Enter a number"}, status_code=400)
+    if qty < 0:
+        return JSONResponse({"error": "Quantity can't be negative"}, status_code=400)
+    unit = db.execute(text("SELECT unit::text FROM ingredients WHERE id = :i AND is_active"),
+                      {"i": ingredient_id}).scalar()
+    if unit is None:
+        return JSONResponse({"error": "Item not found"}, status_code=404)
+    record_stock(db, ingredient_id, qty, unit, body.get("count_unit") or unit, user.id, "admin_edit")
+    db.commit()
+    shell_pulse.invalidate()
+    return JSONResponse({"ok": True, "qty": qty, "unit": unit, "by": user.name})
+
+
+@router.post("/stock-log/item/{ingredient_id}/disable")
+async def disable_item(ingredient_id: int, request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)  # owner-only: the admin panel is owner-only
+    if redir:
+        return redir
+    form = await request.form()
+    stock_count.set_active(db, ingredient_id, False, (form.get("reason") or "").strip()[:200], user.id)
+    return RedirectResponse("/stock-log?disabled=1", status_code=303)
+
+
+@router.post("/stock-log/item/{ingredient_id}/enable")
+def enable_item(ingredient_id: int, request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    stock_count.set_active(db, ingredient_id, True, "Re-enabled", user.id)
+    return RedirectResponse("/stock-log?enabled=1", status_code=303)
 
 
 @router.get("/stock-log/low-cover.pdf")

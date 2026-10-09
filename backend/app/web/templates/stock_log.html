@@ -2,174 +2,142 @@
 {% block title %}Stock Log — URS Majestic{% endblock %}
 
 {% block content %}
-<style>
-  .sl-search{margin-bottom:1rem}
-  .sl-cat{margin-top:0}
-  .sl-cat + .sl-cat{margin-top:1.4rem}
-  .sl-row-name{white-space:nowrap}
-  .sl-last{font-size:.74rem;color:#6b6b6b;white-space:nowrap}
-  .sl-last-fresh{color:#1e7e34}
-  .sl-cover{display:inline-flex;align-items:center;gap:.32rem;padding:.28rem .55rem;border-radius:999px;font-size:.72rem;font-weight:850;white-space:nowrap}
-  .sl-cover::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-  .sl-cover-red{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
-  .sl-cover-orange{background:#FFF2DE;color:#A85C08;border:1px solid #F0CF9D}
-  .sl-cover-green{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
-  .sl-cover-neutral{background:#F2F1EA;color:#777;border:1px solid #DDD8CC}
-  .sl-derived{font-size:.8rem;white-space:nowrap}
-  .sl-derived-nodata{font-size:.78rem;color:#888;font-style:italic}
-  .sl-delta{display:inline-flex;align-items:center;padding:.18rem .5rem;border-radius:999px;font-size:.7rem;font-weight:850;white-space:nowrap;margin-left:.4rem}
-  .sl-delta-green{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
-  .sl-delta-yellow{background:#FFF7DE;color:#8A6D00;border:1px solid #F0E19D}
-  .sl-delta-red{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
-  .sl-delta-none{background:#F2F1EA;color:#777;border:1px solid #DDD8CC}
-  .sl-input-cell{display:flex;align-items:center;gap:.3rem;white-space:nowrap}
-  .sl-qty{width:5.5rem;padding:.3rem .45rem;font-size:.85rem;border:1px solid #d3d3cf;border-radius:4px}
-  .sl-unit-select{padding:.3rem;font-size:.8rem;border:1px solid #d3d3cf;border-radius:4px}
-  .sl-unit-lbl{font-size:.8rem;color:#888;min-width:2ch}
-  .sl-save-bar{position:sticky;bottom:0;background:#fbf9f5;border-top:1px solid #e3ddd0;padding:.75rem 0;margin-top:1.4rem;display:flex;align-items:center;gap:.9rem;z-index:2}
-  .sl-banner{background:#e6f4ea;color:#1e7e34;border:1px solid #bfe3ca;border-radius:6px;padding:.6rem .9rem;margin-bottom:1rem;font-size:.85rem}
-</style>
+{% set s = summary %}
+{% macro num(q) %}{% if q is none %}{% elif q == q|int %}{{ q|int }}{% else %}{{ '%g'|format(q|round(3)) }}{% endif %}{% endmacro %}
+{% set SRC = {'counted': 'Counted', 'sales': 'Est. from sales', 'purchase': 'After purchase', 'system': 'System'} %}
+<div class="sl">
 
-<div class="page-header">
-  <h1 class="page-title">Stock Log</h1>
-  <div style="display:flex;gap:.45rem;flex-wrap:wrap">
-    <a href="/stock-log/low-cover.pdf" class="btn-primary btn-sm">Low-cover PDF</a>
-    <a href="/stock-log/history" class="btn-secondary btn-sm">History</a>
+  <div class="sl-head">
+    <div>
+      <h1 class="sl-title">Stock Log</h1>
+      <p class="sl-sub">
+        {% if s.last_day %}Last count <b>{{ s.last_day.strftime('%a %d %b') }}</b> ({{ s.last_n }} items{% if s.last_by %}, mostly {{ s.last_by }}{% endif %}).{% else %}No real count yet.{% endif %}
+        Between counts, stock is <b>estimated</b> from sales and purchases. Staff count {{ 'all items tonight (Monday full count)' if s.kind == 'full' else s.todo_total ~ ' items every night at 10 PM' }} in the app.
+      </p>
+    </div>
+    <div class="sl-btns">
+      <a href="/stock-log/low-cover.pdf" class="sl-btn">Low-cover PDF</a>
+      <a href="/stock-log/history" class="sl-btn">History</a>
+      <button type="button" class="sl-btn sl-btn-p" data-sl-tab-go="count">Count now →</button>
+    </div>
   </div>
-</div>
 
-{% if saved is not none %}
-<div class="sl-banner">Saved {{ saved }} count{{ 's' if saved != 1 }}.</div>
-{% endif %}
+  {% if request.query_params.get('disabled') %}<p class="sl-flash">Item disabled. It's listed under "Disabled items" at the bottom.</p>{% endif %}
+  {% if request.query_params.get('enabled') %}<p class="sl-flash">Item re-enabled.</p>{% endif %}
 
-<input type="text" class="form-input sl-search" placeholder="Search an item…" oninput="slFilter(this.value)">
+  <div class="sl-kpis">
+    <button type="button" class="sl-k {{ 'good' if s.todo_done >= s.todo_total else ('warn' if s.todo_done else 'bad') }}" data-sl-tab-go="count">
+      <span class="l">Tonight's count</span>
+      <span class="v" data-sl-done>{{ s.todo_done }}</span> <span class="v small">of {{ s.todo_total }}</span>
+      <span class="sl-bar"><i data-sl-bar style="width:{{ (s.todo_done / s.todo_total * 100) if s.todo_total else 0 }}%"></i></span>
+      <span class="s">{{ 'Monday: full count' if s.kind == 'full' else 'perishables + anything running low' }}</span>
+    </button>
+    <button type="button" class="sl-k warn" data-sl-filter="old">
+      <span class="l">Last real count</span>
+      <span class="v">{% if s.last_day %}{{ (s.day - s.last_day).days }} <small>day{{ 's' if (s.day - s.last_day).days != 1 }} ago</small>{% else %}—{% endif %}</span>
+      <span class="s">{{ s.old }} items not counted for 7+ days</span>
+    </button>
+    <button type="button" class="sl-k bad" data-sl-filter="low"><span class="l">Running low</span><span class="v">{{ s.low }}</span><span class="s">under 3 days of cover</span></button>
+    <button type="button" class="sl-k bad" data-sl-filter="zero"><span class="l">Estimates at zero</span><span class="v">{{ s.zero }}</span><span class="s">sales estimate says empty: check the shelf</span></button>
+    <button type="button" class="sl-k warn" data-sl-filter="never"><span class="l">Never counted</span><span class="v">{{ s.never }}</span><span class="s">no real count on record</span></button>
+  </div>
 
-<form method="post" action="/stock-log/count" id="sl-form">
-  <div data-tabs>
-    <div class="tabs print-hide">
-      {% for category, items in categories %}
-      <button type="button" class="tab-btn {% if loop.first %}active{% endif %}" data-tab-btn="{{ category }}">{{ category }}</button>
-      {% endfor %}
-    </div>
-    {% for category, items in categories %}
-    <div class="sl-cat" data-sl-cat data-tab-panel="{{ category }}" {% if not loop.first %}hidden{% endif %}>
-    <div class="prep-head">
-      <h2 class="prep-title">{{ category }}</h2>
-      <span class="prep-meta">{{ items|length }} item{{ 's' if items|length != 1 }}</span>
-    </div>
-    <div class="card">
-      <div class="recon-table-wrap">
-        <table class="recon-table">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Last count</th>
-              <th>Cover</th>
-              <th>Order-Derived Qty</th>
-              <th>Today's count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in items %}
-            <tr data-sl-row data-sl-name="{{ r.name|lower }}">
-              <td class="sl-row-name">
-                {{ r.name }}
-                {% if r.note == 'reorder_required' %}<span class="sl-reorder-badge">Reorder</span>{% endif %}
-              </td>
-              <td>
-                {% if r.on_hand_qty is not none %}
-                  <span class="sl-last{% if r.counted_at and r.counted_at.date() == today %} sl-last-fresh{% endif %}">
-                    {{ "%g"|format(r.on_hand_qty) }} {{ r.unit }} · {{ r.counted_at.strftime('%d %b') }}
-                  </span>
-                {% else %}
-                  <span class="sl-last">never counted</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if r.cover_days is not none %}
-                  <span class="sl-cover sl-cover-{{ r.cover_colour }}" title="{{ '%g'|format(r.cover_qty) }} {{ r.unit }} ÷ {{ '%g'|format(r.daily_consumption) }} {{ r.unit }}/day · {{ r.cover_source }}">
-                    {{ '%.1f'|format(r.cover_days) }} days
-                  </span>
-                {% elif r.stock_stale %}
-                  <span class="sl-cover sl-cover-neutral" title="A purchase was logged after the last count on {{ r.counted_at.strftime('%d %b') if r.counted_at else '?' }} — the on-hand figure no longer reflects what's on the shelf">Recount needed</span>
-                {% else %}
-                  <span class="sl-cover sl-cover-neutral" title="A compatible stock count and consumption rate are required">No data</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if r.order_derived_qty is not none %}
-                  <span class="sl-derived">{{ "%g"|format(r.order_derived_qty) }} {{ r.order_derived_unit }}</span>
-                  {% if r.pct_diff is not none %}
-                    <span class="sl-delta sl-delta-{{ r.pct_diff_colour }}" title="{{ '%.1f'|format(r.pct_diff) }}% difference vs on-hand count">{{ '%.1f'|format(r.pct_diff) }}%</span>
-                  {% else %}
-                    <span class="sl-delta sl-delta-none">—</span>
-                  {% endif %}
-                {% else %}
-                  <span class="sl-derived-nodata">no data</span>
-                {% endif %}
-              </td>
-              <td>
-                <div class="sl-input-cell">
-                  <input type="number" step="any" min="0" name="qty_{{ r.ingredient_id }}" class="sl-qty" placeholder="qty">
-                  <input type="hidden" name="unit_{{ r.ingredient_id }}" value="{{ r.unit }}">
-                  {% if r.pack_size_g %}
-                    <select name="count_unit_{{ r.ingredient_id }}" class="sl-unit-select">
-                      <option value="{{ r.unit }}">{{ r.unit }}</option>
-                      <option value="packet">pkt</option>
-                    </select>
-                  {% else %}
-                    <input type="hidden" name="count_unit_{{ r.ingredient_id }}" value="{{ r.unit }}">
-                    <span class="sl-unit-lbl">{{ r.unit }}</span>
-                  {% endif %}
-                  <label class="sl-reorder-check" title="Mark this item for reorder">
-                    <input type="checkbox" name="reorder_{{ r.ingredient_id }}" value="1" {% if r.note == 'reorder_required' %}checked{% endif %}>
-                    Reorder
-                  </label>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <div class="sl-tabs" role="tablist">
+    <button type="button" class="on" data-sl-tab="overview">Overview <span>{{ s.stock_total }}</span></button>
+    <button type="button" data-sl-tab="count">Count <span>{{ first|length }} first</span></button>
+  </div>
+
+  {# ── OVERVIEW: every quantity is directly editable (saves on Enter / blur) ── #}
+  <section data-sl-panel="overview">
+    <div class="sl-toolbar">
+      <label class="sl-search">⌕<input type="search" placeholder="Search an item…" data-sl-q aria-label="Search items"></label>
+      <div class="sl-chips">
+        {% for key, label, n in [('all', 'All', s.stock_total), ('low', 'Running low', s.low), ('zero', 'Zero estimates', s.zero), ('recount', 'Purchase since count', s.recount), ('old', 'Not counted 7+ days', s.old), ('never', 'Never counted', s.never)] %}
+        <button type="button" class="sl-chip {{ 'on' if key == 'all' }}" data-sl-filter="{{ key }}">{{ label }} <b>{{ n }}</b></button>
+        {% endfor %}
       </div>
     </div>
+    <div class="sl-card">
+      <table class="sl-table">
+        <thead><tr><th>Item</th><th>On hand now <small>· type to correct</small></th><th class="sl-hide-sm">Last real count</th><th>Cover</th><th class="sl-hide-sm">Why it's flagged</th><th></th></tr></thead>
+        {% for cat, rows in categories %}
+        <tbody data-sl-cat>
+          <tr class="sl-cat"><td colspan="6">{{ 'Packaging' if cat == 'packaging' else cat }}<span>{{ rows|length }} items{% if cat == 'Other' %} · no category set{% endif %}</span></td></tr>
+          {% for i in rows %}
+          <tr data-sl-row data-name="{{ i.name|lower }}" data-flags="{{ 'low' if i.f_low }} {{ 'zero' if i.f_zero }} {{ 'recount' if i.f_recount }} {{ 'old' if i.f_old }} {{ 'never' if i.f_never }}">
+            <td class="sl-item">{{ i.name }}</td>
+            <td>
+              <span class="sl-qedit">
+                <input inputmode="decimal" data-sl-qty="{{ i.id }}" value="{{ num(i.qty) }}" placeholder="—" data-orig="{{ num(i.qty) }}" aria-label="On hand for {{ i.name }}">
+                <span class="u">{{ i.unit }}</span>
+                {% if i.source %}<span class="sl-src {{ i.source }}" data-sl-src>{{ SRC[i.source] }}</span>{% endif %}
+                <span class="sl-ok" data-sl-ok hidden>✓ saved</span>
+              </span>
+            </td>
+            <td class="sl-hide-sm sl-muted" data-sl-last>{% if i.last_at %}{{ num(i.last_qty) }} {{ i.unit }} · {{ i.last_at.strftime('%d %b') }}{% if i.last_by %} · {{ i.last_by }}{% endif %}{% else %}never{% endif %}</td>
+            <td>
+              {% if i.cover is not none %}<span class="sl-cov {{ 'red' if i.cover < 3 else ('orange' if i.cover < 7 else 'green') }} {{ 'est' if i.estimated }}">{{ '%.1f'|format(i.cover) }} days</span>
+              {% else %}<span class="sl-cov none">{{ 'Recount needed' if i.stale else 'No data' }}</span>{% endif %}
+            </td>
+            <td class="sl-hide-sm sl-why">{{ i.why|join(' · ') }}</td>
+            <td class="sl-menu-cell">
+              <details class="sl-menu">
+                <summary aria-label="Admin options for {{ i.name }}">⋯</summary>
+                <form method="post" action="/stock-log/item/{{ i.id }}/disable" class="sl-menu-pop" data-sl-disable="{{ i.name }}">
+                  <small>Admin only · disable "{{ i.name }}"</small>
+                  <select name="reason" aria-label="Reason">
+                    <option>No longer used in the menu</option><option>Replaced by another item</option><option>Duplicate entry</option><option>Not a stock item</option>
+                  </select>
+                  <button type="submit">⛔ Disable item</button>
+                </form>
+              </details>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% endfor %}
+      </table>
+      <p class="sl-empty" data-sl-empty hidden>No items match.</p>
     </div>
-    {% endfor %}
-  </div>
 
-  <div class="sl-save-bar">
-    <button type="submit" class="btn-primary fab">Save today's count</button>
-    <span class="prep-meta">Leave an item blank to skip it — only filled-in rows are saved.</span>
-  </div>
-</form>
+    <details class="sl-disabled">
+      <summary>Disabled items ({{ disabled|length }}) · admin only</summary>
+      {% for d in disabled %}
+      <div><span><b>{{ d.name }}</b>{% if d.reason %} · {{ d.reason }}{% endif %}</span>
+        <form method="post" action="/stock-log/item/{{ d.id }}/enable"><button type="submit" class="sl-btn">Re-enable</button></form></div>
+      {% else %}<div>None.</div>{% endfor %}
+    </details>
+  </section>
 
-<script>
-// Categories are now tabbed (one panel visible at a time, via the generic
-// [data-tabs] handler in app.js). Search still needs to work across every
-// category, not just the active tab — so while there's a query we flatten
-// the view: every panel is shown and rows/panels are filtered by match.
-// Clearing the box restores whichever tab was last active.
-function slFilter(q) {
-  q = q.trim().toLowerCase();
-  var panels = document.querySelectorAll('[data-tab-panel]');
-  if (q) {
-    panels.forEach(function (p) { p.hidden = false; });
-    document.querySelectorAll('[data-sl-row]').forEach(function (row) {
-      row.style.display = row.dataset.slName.includes(q) ? '' : 'none';
-    });
-    document.querySelectorAll('[data-sl-cat]').forEach(function (cat) {
-      var anyVisible = Array.prototype.some.call(
-        cat.querySelectorAll('[data-sl-row]'),
-        function (row) { return row.style.display !== 'none'; }
-      );
-      cat.style.display = anyVisible ? '' : 'none';
-    });
-  } else {
-    document.querySelectorAll('[data-sl-row]').forEach(function (row) { row.style.display = ''; });
-    document.querySelectorAll('[data-sl-cat]').forEach(function (cat) { cat.style.display = ''; });
-    var activeBtn = document.querySelector('[data-tab-btn].active');
-    panels.forEach(function (p) { p.hidden = activeBtn ? p.dataset.tabPanel !== activeBtn.dataset.tabBtn : false; });
-  }
-}
-</script>
+  {# ── COUNT: same one-step saving, organised for counting ── #}
+  <section data-sl-panel="count" hidden>
+    <div class="sl-count">
+      <nav class="sl-catnav" aria-label="Count sections">
+        <a class="on first" data-sl-sec="first">Count these first <span>{{ first|length }}</span></a>
+        {% for cat, rows in categories %}<a data-sl-sec="{{ loop.index }}">{{ 'Packaging' if cat == 'packaging' else cat }} <span>{{ rows|length }}</span></a>{% endfor %}
+      </nav>
+      <div>
+        <div class="sl-card sl-sec first-sec" data-sl-section="first">
+          <div class="sl-sechead"><h3>Count these first</h3><p>Top {{ first|length }} of {{ s.first_total }}: estimates at zero, low cover, or bought since the last count</p></div>
+          {% for i in first %}
+          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %} · <span class="dn">{{ i.why[0] }}</span></div></div>
+            <div class="sl-entry"><input inputmode="decimal" data-sl-qty="{{ i.id }}" placeholder="{{ num(i.qty) if i.qty is not none else 'qty' }}" aria-label="Count for {{ i.name }}"><span class="u">{{ i.unit }}</span><span class="sl-ok" data-sl-ok hidden>✓</span></div></div>
+          {% endfor %}
+        </div>
+        {% for cat, rows in categories %}
+        <div class="sl-card sl-sec" data-sl-section="{{ loop.index }}" hidden>
+          <div class="sl-sechead"><h3>{{ 'Packaging' if cat == 'packaging' else cat }}</h3><p>{{ rows|length }} items</p></div>
+          {% for i in rows %}
+          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %}</div></div>
+            <div class="sl-entry"><input inputmode="decimal" data-sl-qty="{{ i.id }}" placeholder="{{ num(i.qty) if i.qty is not none else 'qty' }}" aria-label="Count for {{ i.name }}"><span class="u">{{ i.unit }}</span><span class="sl-ok" data-sl-ok hidden>✓</span></div></div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+        <p class="sl-hint">Every number saves the moment you press Enter or move to the next box.</p>
+      </div>
+    </div>
+  </section>
+</div>
+<script type="application/json" id="sl-data">{{ {"tonight": tonight_ids, "done": s.todo_done, "total": s.todo_total}|tojson }}</script>
+<script src="/static/stock_log.js?v=1" defer></script>
 {% endblock %}

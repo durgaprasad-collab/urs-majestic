@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 04 · Stock Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;--est:#6B7FA6;--est-bg:#EEF1F7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px}.mk b{color:#fff}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 120px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .head p{color:var(--ink-2);font-size:13px;margin-top:2px}
+  .head p b{color:var(--ink)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{font:600 13px Inter;border-radius:10px;padding:9px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+  .btn-p{background:var(--ground);border-color:var(--ground);color:#fff}
+  .btn-p b{color:var(--gold-2)}
+
+  /* KPI tiles */
+  .kpis{display:grid;grid-template-columns:1.3fr repeat(4,1fr);background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .k{padding:12px 16px;border-right:1px solid var(--line);border-top:3px solid transparent;cursor:pointer}
+  .k:last-child{border-right:0}
+  .k:hover{background:#FAFAF6}
+  .k.bad{border-top-color:var(--bad)}.k.warn{border-top-color:var(--gold)}.k.good{border-top-color:var(--good)}
+  .k .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .k .v{font-size:22px;font-weight:700;margin-top:2px}
+  .k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{font-size:11.5px;color:var(--ink-2)}
+  .bar{height:6px;border-radius:3px;background:#ECE9DF;margin:7px 0 4px;overflow:hidden}.bar i{display:block;height:100%;background:var(--good)}
+  .dn{color:var(--bad)}.wn{color:var(--warn)}.up{color:var(--good)}
+
+  /* tabs + toolbar */
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  .tab{padding:10px 14px;font-weight:600;font-size:13.5px;color:var(--ink-2);border:0;background:none;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px}
+  .tab.on{color:var(--ground);border-bottom-color:var(--gold)}
+  .tab span{font-size:11px;font-weight:700;background:#ECE9DF;color:var(--ink-2);border-radius:999px;padding:1px 7px;margin-left:5px}
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .search{flex:0 0 240px;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 11px}
+  .search input{border:0;outline:0;font:500 13.5px Inter;width:100%}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font:600 12.5px Inter;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink-2);cursor:pointer}
+  .chip.on{background:var(--ground);border-color:var(--ground);color:var(--gold-2)}
+  .chip b{font-weight:700;margin-left:3px}
+
+  /* overview table */
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:600;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:#FBFAF6;white-space:nowrap}
+  td{padding:9px 12px;border-bottom:1px solid #F0EEE6;vertical-align:middle}
+  tr.cat td{background:#F7F6F0;font:700 12px Inter;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase;padding:7px 12px}
+  tr.cat td span{font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-3);margin-left:6px}
+  .item{font-weight:600}
+  .qty{font-weight:700}
+  .src{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:1px}
+  .src.counted{background:var(--good-bg);color:var(--good)}
+  .src.sales{background:var(--est-bg);color:var(--est)}
+  .src.purchase{background:#EAF4F1;color:#2B7A68}
+  .src.system{background:#F0EEE6;color:var(--ink-2)}
+  .muted{color:var(--ink-3);font-size:12.5px}
+  .age{font-size:12.5px}
+  .cov{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .cov::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .cov.red{background:var(--bad-bg);color:var(--bad)}.cov.orange{background:var(--warn-bg);color:var(--warn)}.cov.green{background:var(--good-bg);color:var(--good)}.cov.none{background:#F2F1EA;color:var(--ink-3)}
+  .cov.est{outline:1px dashed currentColor;outline-offset:-1px}
+  .why{font-size:11.5px;color:var(--ink-3)}
+
+  /* count mode */
+  .count-grid{display:grid;grid-template-columns:260px 1fr;gap:14px;align-items:start}
+  .catnav{background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;position:sticky;top:12px}
+  .catnav a{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;color:var(--ink);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer}
+  .catnav a.on{background:#F3F1E8;font-weight:700}
+  .catnav a .p{margin-left:auto;font-size:11.5px;color:var(--ink-3);font-weight:600}
+  .catnav a.first{color:var(--bad);font-weight:700}
+  .ring{width:22px;height:22px;flex:0 0 22px}
+  .crow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid #F0EEE6}
+  .crow:last-child{border-bottom:0}
+  .crow .nm{font-weight:600}
+  .crow .meta{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .crow .meta b{color:var(--ink-2);font-weight:600}
+  .entry{display:flex;align-items:center;gap:6px}
+  .entry input{width:92px;padding:10px 10px;border:1.5px solid var(--line);border-radius:10px;font:600 16px Inter;text-align:right}
+  .entry input:focus{outline:0;border-color:var(--gold)}
+  .entry input.filled{border-color:var(--good);background:#F6FBF8}
+  .entry .u{font-size:12.5px;color:var(--ink-2);min-width:24px}
+  .same{font:600 11.5px Inter;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 8px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+  .sechead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line);background:#FBFAF6}
+  .sechead h3{font-size:13px}
+  .sechead p{font-size:12px;color:var(--ink-3)}
+  .first-card{border-color:#F2C4BA}
+  .first-card .sechead{background:#FFF6F3}
+  .savebar{position:fixed;left:0;right:0;bottom:0;background:rgba(6,32,19,.97);color:#fff;display:flex;align-items:center;gap:14px;padding:12px 24px;z-index:5;border-top:1px solid rgba(212,166,42,.35)}
+  .savebar .prog{flex:1;max-width:340px}
+  .savebar .prog .bar{background:rgba(255,255,255,.15)}
+  .savebar .prog .bar i{background:var(--gold)}
+  .savebar small{color:#B9CBBF;font-size:12px}
+  .savebar .btn-gold{margin-left:auto;font:700 14px Inter;border:0;border-radius:11px;padding:12px 22px;background:linear-gradient(180deg,var(--gold-2),var(--gold));color:var(--ground);cursor:pointer}
+  .hidden{display:none}
+
+  /* one-step inline edit + admin menu */
+  .qedit{display:inline-flex;align-items:center;gap:6px}
+  .qedit input{width:86px;padding:6px 8px;border:1.5px solid transparent;border-radius:8px;font:700 13.5px Inter;text-align:right;background:#F7F6F0}
+  .qedit input:hover{border-color:var(--line);background:#fff}
+  .qedit input:focus{outline:0;border-color:var(--gold);background:#fff}
+  .qedit .u{font-size:12.5px;color:var(--ink-2)}
+  .qedit .ok{font-size:11px;font-weight:700;color:var(--good)}
+  .more{border:1px solid var(--line);background:#fff;border-radius:8px;width:30px;height:28px;cursor:pointer;color:var(--ink-2);font-weight:700}
+  .menu{position:absolute;right:8px;top:36px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.15);min-width:200px;z-index:5;padding:5px;text-align:left}
+  .menu small{display:block;font-size:11px;color:var(--ink-3);padding:4px 10px 6px}
+  .menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:7px;font:500 13px Inter;cursor:pointer;color:var(--bad)}
+  .menu button:hover{background:#FBEAE6}
+  .modal-bg{position:fixed;inset:0;background:rgba(4,25,19,.5);display:grid;place-items:center;z-index:20}
+  .modal{background:#fff;border-radius:16px;padding:20px 22px;width:min(420px,92vw);box-shadow:0 30px 60px rgba(0,0,0,.3)}
+  .modal h3{font-size:17px}.modal p{font-size:13px;color:var(--ink-2);margin:8px 0 14px;line-height:1.5}
+  .modal label{font-size:12px;font-weight:600;color:var(--ink-2)}
+  .modal select{width:100%;margin:5px 0 14px;padding:8px;border:1px solid var(--line);border-radius:8px;font:13px Inter}
+  .modal .acts{display:flex;justify-content:flex-end;gap:8px}
+  .btn-danger{font:600 13px Inter;border:0;background:var(--bad);color:#fff;border-radius:9px;padding:9px 14px;cursor:pointer}
+  .dis{margin-top:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;font-size:13px}
+  .dis summary{cursor:pointer;font-weight:600;color:#0B3A2E}
+  .dis div{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#14201B;color:#fff;font-size:13px;padding:10px 16px;border-radius:10px;z-index:30}
+  .notes{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
+  .note{background:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;color:#3c4440}.note b{display:block;color:var(--ink);margin-bottom:3px}
+
+  @media (max-width:820px){
+    .kpis{grid-template-columns:1fr 1fr}.k:first-child{grid-column:span 2}.k{border-bottom:1px solid var(--line)}
+    .count-grid{grid-template-columns:1fr}.catnav{position:static;display:flex;overflow-x:auto;gap:4px}.catnav a{flex:0 0 auto}
+    .ov-hide{display:none}
+    .notes{grid-template-columns:1fr}
+    .search{flex:1 1 100%}
+    .savebar{padding:10px 14px}.savebar .prog{display:none}
+    .k{padding:9px 12px}.k .v{font-size:18px}.k .s{display:none}.k:first-child .s{display:block}
+    .sechead{flex-direction:column;align-items:flex-start;gap:2px}
+    .head h1{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 04 v2: Stock Log (admin).</b> Type straight into any quantity to correct it; ⋯ disables an item. Real data, Fri 9 Oct 2026, 131 items. Try both tabs, the filter chips, and typing a count. Nothing saves in the mockup.</div>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Stock Log</h1>
+      <p>Last full count <b>Mon 6 Oct</b> (3 days ago, by Sayee) · since then, stock is <b>estimated</b> from sales and purchases</p>
+    </div>
+    <div class="btns">
+      <button class="btn">Low-cover PDF</button>
+      <button class="btn">History</button>
+      <button class="btn btn-p" data-go="count">Start today's count <b>→</b></button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="overview">Overview<span id="t-all"></span></button>
+    <button class="tab" data-tab="count">Count<span id="t-first"></span></button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section id="overview">
+    <div class="toolbar">
+      <label class="search">⌕<input placeholder="Search an item…" id="q"></label>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="card"><table>
+      <thead><tr><th>Item</th><th>On hand now <span style="text-transform:none;letter-spacing:0;font-weight:500">· type to correct</span></th><th class="ov-hide">Last real count</th><th>Cover</th><th class="ov-hide">Why it's flagged</th><th></th></tr></thead>
+      <tbody id="ov"></tbody>
+    </table></div>
+    <details class="dis"><summary>Disabled items (<span id="dcount"></span>) · admin only</summary><div id="dlist"></div></details>
+  </section>
+
+  <!-- COUNT -->
+  <section id="count" class="hidden">
+    <div class="count-grid">
+      <nav class="catnav" id="catnav"></nav>
+      <div id="countlists"></div>
+    </div>
+  </section>
+
+  <div class="notes">
+    <div class="note"><b>Counted vs estimated, always labelled</b>Every quantity says where it came from: <span class="src counted">Counted</span> by a person, <span class="src sales">Est. from sales</span> (recipes × dishes sold) or <span class="src purchase">After purchase</span>. Cover based on an estimate gets a dashed outline, so "0 days" from a recipe estimate isn't mistaken for an empty shelf.</div>
+    <div class="note"><b>Count what matters first</b>The Count tab opens with "Count these first": the top 20 items at or near zero, low on cover, or bought since the last count. Big inputs for a phone; "= est." fills in the estimate when the shelf matches.</div>
+    <div class="note"><b>Admin edits in one step</b>In Overview, each "On hand now" quantity is the input itself. Type the right number and press Enter (or click away). It saves straight away as a count with your name. The admin-only ⋯ menu disables items no longer in use (with a reason). "Disabled items" at the bottom re-enables them.</div>
+    <div class="note"><b>Eagle eye on top</b>Tiles show how much is counted today, how old the last real count is, and how many items are running low, sitting on zero estimates or have never been counted. Click a tile to filter the list. 13 items have no category: they're grouped under "Other" and flagged.</div>
+  </div>
+</div>
+
+<div class="savebar hidden" id="savebar">
+  <div class="prog"><small id="sb-txt"></small><div class="bar"><i id="sb-bar" style="width:0"></i></div></div>
+  <small id="sb-hint">Leave an item blank to skip it</small>
+  <button class="btn-gold" id="sb-btn">Save 0 counts</button>
+</div>
+
+<script>
+const ITEMS = {{STOCK}};
+const NONSTOCK = ['Apparel', 'Equipment', 'Overhead', 'Staff'];
+const ORDER = ['Vegetables','Dairy','Dry Goods','Frozen','Spices','Condiments','Pulses','Flour','Utilities','packaging','Beverage - Resale','Other'];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = q => q == null ? '—' : (Math.round(q * 1000) / 1000).toLocaleString('en-IN');
+const SRC = { counted: 'Counted', sales: 'Est. from sales', purchase: 'After purchase', system: 'System' };
+
+// Flags drive both the Overview filter chips and the Count-first list.
+ITEMS.forEach(i => {
+  i.stockable = !NONSTOCK.includes(i.cat);
+  i.estimated = i.src && i.src !== 'counted';
+  i.f_low = i.cover != null && i.cover < 3;
+  i.f_zero = i.estimated && i.qty === 0;
+  i.f_old = i.hdays != null && i.hdays > 7;
+  i.f_never = i.hdays == null;
+  i.f_recount = i.stale;
+  i.why = [i.f_zero && 'estimate at zero', i.f_low && !i.f_zero && 'low cover', i.f_recount && 'purchase since last count', i.f_never && 'never counted', i.f_old && `not counted for ${i.hdays} days`].filter(Boolean);
+  i.first = i.stockable && (i.f_zero || i.f_low || i.f_recount);
+  i.rank = (i.f_zero ? 0 : i.f_low ? 1 : i.f_recount ? 2 : 3) * 1000 + (i.cover ?? 99) * 10 - (i.hdays ?? 99);
+});
+const stock = ITEMS.filter(i => i.stockable);
+const FIRST_MAX = 20;
+const firstAll = stock.filter(i => i.first).sort((a, b) => a.rank - b.rank);
+const first = firstAll.slice(0, FIRST_MAX);
+const catOf = i => ORDER.includes(i.cat) ? i.cat : 'Other';
+const counts = {}; // id -> entered value
+
+// ── KPI tiles
+const k = (cls, l, v, s, filter, extra = '') => `<div class="k ${cls}" data-filter="${filter}"><div class="l">${l}</div><div class="v">${v}</div>${extra}<div class="s">${s}</div></div>`;
+function renderKpis() {
+  // Admin corrections in Overview count as counted today too.
+  const done = new Set([...Object.keys(counts).map(Number), ...stock.filter(i => i.saved).map(i => i.id)]).size;
+  document.getElementById('kpis').innerHTML =
+    k(done ? 'warn' : 'bad', "Counted today", `${done} <small>of ${stock.length}</small>`, done ? 'in progress' : 'nobody has counted yet today', 'all',
+      `<div class="bar"><i style="width:${done / stock.length * 100}%"></i></div>`) +
+    k('warn', 'Last real count', '3 days', 'Mon 6 Oct · 54 items · Sayee', 'old') +
+    k('bad', 'Running low', stock.filter(i => i.f_low).length, 'under 3 days of cover', 'low') +
+    k('bad', 'Estimates at zero', stock.filter(i => i.f_zero).length, 'sales estimate says empty, check the shelf', 'zero') +
+    k('warn', 'Never counted', stock.filter(i => i.f_never).length, 'no real count on record', 'never');
+  document.querySelectorAll('.k').forEach(t => t.onclick = () => { setTab('overview'); setFilter(t.dataset.filter); });
+}
+
+// ── Overview
+const FILTERS = [['all', 'All', stock.length], ['low', 'Running low', stock.filter(i => i.f_low).length], ['zero', 'Zero estimates', stock.filter(i => i.f_zero).length],
+  ['recount', 'Purchase since count', stock.filter(i => i.f_recount).length], ['old', 'Not counted 7+ days', stock.filter(i => i.f_old).length], ['never', 'Never counted', stock.filter(i => i.f_never).length]];
+let filter = 'all';
+function setFilter(f) { filter = f; renderChips(); renderOverview(); }
+function renderChips() {
+  document.getElementById('chips').innerHTML = FILTERS.map(([key, label, n]) => `<button class="chip ${key === filter ? 'on' : ''}" data-f="${key}">${label}<b>${n}</b></button>`).join('');
+  document.querySelectorAll('.chip').forEach(c => c.onclick = () => setFilter(c.dataset.f));
+}
+function renderOverview() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const pass = i => (filter === 'all' || i['f_' + filter]) && (!q || i.name.toLowerCase().includes(q));
+  let html = '';
+  ORDER.forEach(cat => {
+    const rows = stock.filter(i => catOf(i) === cat && pass(i));
+    if (!rows.length) return;
+    html += `<tr class="cat"><td colspan="6">${esc(cat === 'packaging' ? 'Packaging' : cat)}<span>${rows.length} item${rows.length > 1 ? 's' : ''}${cat === 'Other' ? ' · no category set' : ''}</span></td></tr>`;
+    rows.forEach(i => {
+      const cov = i.cover == null ? `<span class="cov none">${i.stale ? 'Recount needed' : 'No data'}</span>`
+        : `<span class="cov ${i.cover < 3 ? 'red' : i.cover < 7 ? 'orange' : 'green'} ${i.estimated ? 'est' : ''}">${i.cover.toFixed(1)} days</span>`;
+      html += `<tr><td class="item">${esc(i.name)}</td>
+        <td><span class="qedit"><input inputmode="decimal" data-q="${i.id}" value="${i.qty == null ? '' : i.qty}" placeholder="—" aria-label="On hand for ${esc(i.name)}"><span class="u">${esc(i.unit)}</span>${i.qty == null ? '' : `<span class="src ${i.src}">${SRC[i.src]}</span>`}${i.saved ? '<span class="ok">✓ saved</span>' : ''}</span></td>
+        <td class="ov-hide">${i.hq == null ? '<span class="muted">never</span>' : `<span class="age">${fmt(i.hq)} ${esc(i.unit)} · ${i.hat}${i.hby ? ' · ' + esc(i.hby) : ''}</span>`}</td>
+        <td>${cov}</td><td class="ov-hide why">${i.why.join(' · ')}</td>
+        <td style="position:relative;text-align:right"><button class="more" data-menu="${i.id}" title="Admin options">⋯</button>${menuFor === i.id ? `<div class="menu"><small>Admin only</small><button data-disable="${i.id}">⛔ Disable item…</button></div>` : ''}</td></tr>`;
+    });
+  });
+  document.getElementById('ov').innerHTML = html || '<tr><td colspan="6" class="muted" style="padding:20px">No items match.</td></tr>';
+  bindOverview();
+}
+document.getElementById('q').oninput = renderOverview;
+
+// ── One-step admin edit: the quantity IS the input. Enter or leaving the box saves.
+let menuFor = null;
+let disabled = [{ name: 'Eggless Mayonnaise', reason: 'No longer used' }, { name: 'Tortilla 6in Ambient', reason: 'No longer used' }, { name: 'Round Container 250ml', reason: 'Replaced by another item' }];
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+function saveQty(inp) {
+  const i = ITEMS.find(x => x.id === +inp.dataset.q), v = inp.value.trim();
+  if (v === '' || isNaN(+v) || +v === i.qty) return;
+  Object.assign(i, { qty: +v, src: 'counted', estimated: false, hq: +v, hat: '09 Oct', hby: 'Durga (admin)', hdays: 0, saved: true, f_zero: false, f_never: false, f_old: false, f_recount: false });
+  i.why = i.why.filter(w => w === 'low cover');
+  renderOverview(); renderKpis(); toast(`${i.name}: ${v} ${i.unit} saved as a count by Durga`);
+}
+function bindOverview() {
+  document.querySelectorAll('[data-q]').forEach(inp => {
+    inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.value = ITEMS.find(x => x.id === +inp.dataset.q).qty ?? ''; inp.blur(); } };
+    inp.onchange = () => saveQty(inp);
+  });
+  document.querySelectorAll('[data-menu]').forEach(b => b.onclick = e => { e.stopPropagation(); menuFor = menuFor === +b.dataset.menu ? null : +b.dataset.menu; renderOverview(); });
+  document.querySelectorAll('[data-disable]').forEach(b => b.onclick = e => { e.stopPropagation(); openDisable(ITEMS.find(x => x.id === +b.dataset.disable)); });
+}
+function renderDisabled() {
+  document.getElementById('dcount').textContent = disabled.length;
+  document.getElementById('dlist').innerHTML = disabled.map((d, n) => `<div><span><b>${esc(d.name)}</b> · ${esc(d.reason)}</span><button class="btn" style="padding:5px 10px" data-enable="${n}">Re-enable</button></div>`).join('');
+  document.querySelectorAll('[data-enable]').forEach(b => b.onclick = () => { const d = disabled.splice(+b.dataset.enable, 1)[0]; renderDisabled(); toast(`${d.name} is active again`); });
+}
+function openDisable(i) {
+  menuFor = null; renderOverview();
+  const bg = document.createElement('div'); bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal"><h3>Disable "${esc(i.name)}"?</h3><p>It disappears from the nightly count, order forecast, reorder lists and staff requests. History is kept; re-enable any time from "Disabled items".</p>
+    <label>Reason</label><select id="why"><option>No longer used in the menu</option><option>Replaced by another item</option><option>Duplicate entry</option><option>Not a stock item</option></select>
+    <div class="acts"><button class="btn" id="no">Cancel</button><button class="btn-danger" id="yes">Disable item</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.querySelector('#no').onclick = () => bg.remove();
+  bg.querySelector('#yes').onclick = () => {
+    disabled.unshift({ name: i.name, reason: bg.querySelector('#why').value });
+    const k = stock.indexOf(i); if (k >= 0) stock.splice(k, 1);
+    bg.remove(); renderOverview(); renderKpis(); renderDisabled(); toast(`${i.name} disabled`);
+  };
+}
+document.addEventListener('click', () => { if (menuFor !== null) { menuFor = null; renderOverview(); } });
+
+// ── Count mode
+let activeCat = 'first';
+function ring(done, total) {
+  const r = 9, c = 2 * Math.PI * r, p = total ? done / total : 0;
+  return `<svg class="ring" viewBox="0 0 22 22"><circle cx="11" cy="11" r="${r}" fill="none" stroke="#ECE9DF" stroke-width="3"/><circle cx="11" cy="11" r="${r}" fill="none" stroke="${p >= 1 ? '#1E8A5A' : '#D4A62A'}" stroke-width="3" stroke-dasharray="${c * p} ${c}" transform="rotate(-90 11 11)" stroke-linecap="round"/></svg>`;
+}
+function catList() { return [['first', 'Count these first', first]].concat(ORDER.map(c => [c, c === 'packaging' ? 'Packaging' : c, stock.filter(i => catOf(i) === c)]).filter(x => x[2].length)); }
+function renderCatnav() {
+  document.getElementById('catnav').innerHTML = catList().map(([key, label, rows]) => {
+    const done = rows.filter(i => counts[i.id] != null).length;
+    return `<a class="${key === activeCat ? 'on' : ''} ${key === 'first' ? 'first' : ''}" data-c="${esc(key)}">${ring(done, rows.length)}${esc(label)}<span class="p">${done}/${rows.length}</span></a>`;
+  }).join('');
+  document.querySelectorAll('.catnav a').forEach(a => a.onclick = () => { activeCat = a.dataset.c; renderCount(); });
+}
+function row(i) {
+  const est = i.qty != null && i.estimated;
+  return `<div class="crow"><div><div class="nm">${esc(i.name)}</div>
+      <div class="meta">${i.hq != null ? `Last counted <b>${fmt(i.hq)} ${esc(i.unit)}</b> on ${i.hat}` : '<b>Never counted</b>'}${est ? ` · estimate now <b>${fmt(i.qty)} ${esc(i.unit)}</b>` : ''}${i.why.length && activeCat !== 'first' ? '' : (i.why.length ? ` · <span class="dn">${i.why[0]}</span>` : '')}</div></div>
+    <div class="entry">${est ? `<button class="same" data-same="${i.id}" data-v="${i.qty}" title="Shelf matches the estimate">= est.</button>` : ''}
+      <input inputmode="decimal" data-id="${i.id}" placeholder="${est ? fmt(i.qty) : 'qty'}" value="${counts[i.id] ?? ''}" class="${counts[i.id] != null ? 'filled' : ''}"><span class="u">${esc(i.unit)}</span></div></div>`;
+}
+function renderCount() {
+  const [key, label, rows] = catList().find(c => c[0] === activeCat);
+  document.getElementById('countlists').innerHTML = `<div class="card ${key === 'first' ? 'first-card' : ''}"><div class="sechead"><h3>${esc(label)}</h3>
+    <p>${key === 'first' ? `Top ${first.length} of ${firstAll.length}: estimates at zero, low cover, or bought since the last count` : rows.length + ' items'}</p></div>${rows.map(row).join('')}</div>`;
+  document.querySelectorAll('.entry input').forEach(inp => inp.oninput = () => { const v = inp.value.trim(); if (v === '') delete counts[inp.dataset.id]; else counts[inp.dataset.id] = v; inp.classList.toggle('filled', v !== ''); refresh(false); });
+  document.querySelectorAll('[data-same]').forEach(b => b.onclick = () => { counts[b.dataset.same] = b.dataset.v; refresh(true); });
+  renderCatnav();
+}
+function refresh(rerender) {
+  const n = Object.keys(counts).length;
+  document.getElementById('sb-txt').textContent = `${n} of ${stock.length} counted`;
+  document.getElementById('sb-bar').style.width = (n / stock.length * 100) + '%';
+  document.getElementById('sb-btn').textContent = `Save ${n} count${n === 1 ? '' : 's'}`;
+  renderKpis(); if (rerender) renderCount(); else renderCatnav();
+}
+
+// ── tabs
+function setTab(t) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.getElementById('overview').classList.toggle('hidden', t !== 'overview');
+  document.getElementById('count').classList.toggle('hidden', t !== 'count');
+  document.getElementById('savebar').classList.toggle('hidden', t !== 'count');
+  if (t === 'count') renderCount();
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+document.querySelector('[data-go]').onclick = () => setTab('count');
+document.getElementById('t-all').textContent = stock.length;
+document.getElementById('t-first').textContent = first.length + ' first';
+renderKpis(); renderChips(); renderOverview(); renderDisabled(); refresh(false);
+</script>
+</body>
+</html>
