@@ -22,8 +22,8 @@
       {% if u.is_admin %}<span class="chip chip-gold">Admin</span>{% endif %}
       {% if u.is_active %}<span class="chip chip-ok">Active</span>{% else %}<span class="chip chip-neutral">Inactive</span>{% endif %}
       <form method="post" action="/users/{{ u.id }}/reset-password" class="inline-form">
-        <input name="new_password" type="password" placeholder="new password"
-               class="form-input form-input-sm" required minlength="6" />
+        <input name="new_password" type="password" placeholder="6-digit PIN" inputmode="numeric" pattern="\d{6}" maxlength="6" title="6 digits"
+               class="form-input form-input-sm" required minlength="6" autocomplete="off" />
         <button type="submit" class="btn-secondary btn-sm">Set</button>
       </form>
     </div>
@@ -48,7 +48,7 @@
           </div>
         </div>
         <label class="form-label">Password</label>
-        <input name="password" type="password" class="form-input" required minlength="6" />
+        <input name="password" type="password" class="form-input" required minlength="6" inputmode="numeric" pattern="\d{6}" maxlength="6" title="6 digits" placeholder="6-digit PIN" autocomplete="off" />
         <label class="form-label checkbox-label" style="margin-top:.5rem">
           <input name="is_admin" type="checkbox" value="1" /> Admin access
         </label>

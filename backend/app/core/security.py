@@ -16,14 +16,19 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
+# Owner's rule (2026-10-09): every password is a 6-digit PIN, easy to type in
+# the staff app. Guessing is held off by the login rate limit (5 tries per 15
+# minutes per device, core/ratelimit.py). Existing longer passwords still log
+# in; the rule applies when a password is set or changed.
+_WEAK_PINS = {"123456", "654321", "012345", "123123", "121212"}
+
+
 def check_password_strength(pw: str) -> str | None:
-    """Return an error string if the password is too weak, else None."""
-    if len(pw) < 8:
-        return "Password must be at least 8 characters."
-    if not re.search(r"[A-Za-z]", pw):
-        return "Password must contain at least one letter."
-    if not re.search(r"[0-9!@#$%^&*()\-_=+]", pw):
-        return "Password must contain at least one digit or special character."
+    """Return an error string if the PIN isn't acceptable, else None."""
+    if not re.fullmatch(r"\d{6}", pw or ""):
+        return "Password must be exactly 6 digits."
+    if len(set(pw)) == 1 or pw in _WEAK_PINS:
+        return "That PIN is too easy to guess. Pick 6 digits that aren't all the same or in order."
     return None
 
 
