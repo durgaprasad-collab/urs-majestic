@@ -55,3 +55,6 @@ mobile/dist-web/
 admin-app/android/local.properties
 admin-app/android/.gradle/
 admin-app/android/**/build/
+
+# Built Android packages (share the APK directly; never commit binaries)
+*.apk

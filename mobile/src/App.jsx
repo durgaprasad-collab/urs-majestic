@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import Login from "./pages/Login";
 import Requisitions from "./pages/Requisitions";
 import LowStock from "./pages/LowStock";
+import Count from "./pages/Count";
 import { api, getSession, saveSession, clearSession } from "./api";
 import { L } from "./labels";
 
 export default function App() {
   const [session, setSession] = useState(getSession());
-  const [tab, setTab] = useState("requests");
+  // The nightly count is the main job, so the app opens on it (and the 10 PM
+  // reminder lands here too).
+  const [tab, setTab] = useState("count");
 
   useEffect(() => {
     if (!session) return;
@@ -40,18 +43,23 @@ export default function App() {
       </div>
 
       <div className="content">
+        {tab === "count" && <Count session={session} />}
         {tab === "requests" && <Requisitions session={session} />}
         {tab === "stock" && <LowStock onRequested={() => setTab("requests")} />}
       </div>
 
       <div className="tabbar">
+        <button className={tab === "count" ? "active" : ""} onClick={() => setTab("count")}>
+          <span className="icon">✅</span>
+          {L.countTab}
+        </button>
         <button className={tab === "requests" ? "active" : ""} onClick={() => setTab("requests")}>
           <span className="icon">📋</span>
           {L.requestsTab}
         </button>
         <button className={tab === "stock" ? "active" : ""} onClick={() => setTab("stock")}>
-          <span className="icon">📦</span>
-          {L.stockTab}
+          <span className="icon">⚠️</span>
+          {L.lowTab}
         </button>
       </div>
     </div>

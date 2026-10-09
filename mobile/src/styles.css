@@ -180,3 +180,39 @@ input, select, textarea {
   box-shadow: 0 6px 16px rgba(0,0,0,0.25);
   z-index: 30;
 }
+
+/* ── Nightly stock count (pages/Count.jsx) ── */
+.count-hero { border: 2px solid #c9a227; background: #fffcf2; }
+.count-hero h3 { font-size: 17px; }
+.count-pbar { height: 8px; border-radius: 4px; background: #ecebe4; overflow: hidden; margin: 10px 0 6px; }
+.count-pbar i { display: block; height: 100%; background: #c9a227; transition: width .2s; }
+.count-start { display: block; width: 100%; margin-top: 12px; padding: 16px; border: 0; border-radius: 12px; background: #1f6f43; color: #fff; font-size: 16px; font-weight: 700; }
+.count-meta { display: flex; justify-content: space-between; padding: 10px 2px; border-bottom: 1px dashed #e2e2dc; font-size: 13px; color: #666; }
+.count-meta b { color: #1c1c1c; }
+.count-sticky { position: sticky; top: -16px; z-index: 2; margin: -16px -16px 10px; padding: 12px 16px 4px; background: #fff; border-bottom: 1px solid #e5e5e0; }
+.count-progress-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.count-back { border: 1px solid #ddd; background: #fff; border-radius: 8px; padding: 4px 10px; font-size: 16px; }
+.count-group { margin: 16px 2px 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #8a8a82; }
+.count-item { background: #fff; border: 1px solid #e5e5e0; border-radius: 14px; padding: 12px; margin-bottom: 10px; }
+.count-item.done { border-color: #bfe3ce; background: #f6fbf8; }
+.count-item-head { display: flex; align-items: center; gap: 8px; }
+.count-name { flex: 1; font-weight: 700; font-size: 15px; }
+.count-ok { color: #1e8a5a; font-size: 12px; font-weight: 700; }
+.count-more { border: 0; background: none; font-size: 20px; color: #888; padding: 0 4px; }
+.count-exp { margin-top: 2px; font-size: 12px; color: #888; }
+.count-inrow { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.count-same { padding: 12px 10px; border: 1px solid #ddd; border-radius: 10px; background: #f3f2ec; font-size: 12px; font-weight: 700; color: #555; max-width: 120px; line-height: 1.2; }
+.count-num { flex: 1; min-width: 0; padding: 12px; border: 1.5px solid #ddd; border-radius: 10px; font-size: 20px; font-weight: 700; text-align: right; }
+.count-num:focus { outline: 0; border-color: #c9a227; }
+.count-num.saved { border-color: #1e8a5a; background: #f6fbf8; }
+.count-num.error { border-color: #a3271f; background: #fdeceb; }
+.count-unit { width: 32px; font-size: 14px; font-weight: 700; color: #555; }
+.count-done { text-align: center; padding: 20px 6px; }
+.count-tick { width: 84px; height: 84px; margin: 10px auto 14px; display: grid; place-items: center; border-radius: 50%; background: #e8f5ee; color: #1e8a5a; font-size: 42px; }
+.count-done h2 { margin: 0; font-size: 20px; }
+.count-low { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e5e5e0; font-size: 13px; }
+.sheet-shade { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.35); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { width: 100%; max-width: 480px; background: #fff; border-radius: 18px 18px 0 0; padding: 16px 16px 24px; }
+.sheet h3 { margin: 0; }
+.sheet-opt { display: block; width: 100%; margin-top: 8px; padding: 14px; border: 1px solid #e5e5e0; border-radius: 12px; background: #fff; font-size: 15px; font-weight: 600; text-align: left; }
+.sheet-opt.danger { color: #a3271f; }

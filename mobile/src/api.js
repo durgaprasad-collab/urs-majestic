@@ -55,4 +55,6 @@ export const api = {
   submitStockCount: (payload) => request("/api/stock/count", { method: "POST", body: payload }),
   registerDevice: (token, platform) => request("/api/stock/register-device", { method: "POST", body: { token, platform } }),
   listIngredients: () => request("/api/ingredients/"),
+  tonightCount: () => request("/api/stock/tonight"),
+  disableItem: (id, reason) => request(`/api/stock/items/${id}/disable`, { method: "POST", body: { reason } }),
 };
