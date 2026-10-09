@@ -156,7 +156,8 @@ def undo(requisition_id: int, request: Request, db: Session = Depends(get_db)):
         return redir
     req = db.get(Requisition, requisition_id)
     if req and req.status == RequisitionStatus.approved:
-        if req.note == OWNER_NOTE and req.requested_by_user_id == req.decided_by_user_id:
+        owner_added = req.note == OWNER_NOTE or (req.note or "").startswith("Catering #")
+        if owner_added and req.requested_by_user_id == req.decided_by_user_id:
             db.delete(req)
         else:
             req.status = RequisitionStatus.pending

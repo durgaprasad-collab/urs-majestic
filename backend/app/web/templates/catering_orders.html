@@ -1,82 +1,106 @@
 {% extends "base.html" %}
-{% block title %}Catering Orders — URS Majestic{% endblock %}
+{% block title %}Catering — URS Majestic{% endblock %}
 
 {% block content %}
-<style>
-  .cat-card{margin-bottom:1.1rem}
-  .cat-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.6rem;margin-bottom:.6rem}
-  .cat-customer{font-size:1.05rem;font-weight:700;color:var(--text)}
-  .cat-phone{font-size:.8rem;color:var(--muted);margin-left:.4rem}
-  .cat-delivery{font-size:.85rem;color:var(--muted)}
-  .cat-badges{display:flex;gap:.4rem;flex-wrap:wrap}
-  .cat-badge{display:inline-flex;align-items:center;padding:.22rem .6rem;border-radius:999px;font-size:.72rem;font-weight:800;white-space:nowrap}
-  .cat-status-confirmed{background:#E8F0FD;color:#1A4FA0;border:1px solid #C6D9F5}
-  .cat-status-in_prep{background:#FFF2DE;color:#A85C08;border:1px solid #F0CF9D}
-  .cat-status-delivered{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
-  .cat-status-cancelled{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
-  .cat-pay-pending{background:#FDECEC;color:#B52B1E;border:1px solid #F3C0C0}
-  .cat-pay-partial{background:#FFF7DE;color:#8A6D00;border:1px solid #F0E19D}
-  .cat-pay-paid{background:#E8F5EC;color:#1E7E4C;border:1px solid #C9E7D4}
-  .cat-money-row{display:flex;gap:1.4rem;flex-wrap:wrap;margin-top:.7rem;font-size:.85rem}
-  .cat-money-row b{font-variant-numeric:tabular-nums}
-  .cat-address{font-size:.82rem;color:var(--muted);margin-top:.4rem}
-</style>
+{% macro rs(v) %}₹{{ '{:,.0f}'.format(v or 0) }}{% endmacro %}
+{% macro amt(q, u) %}{% if u == 'kg' and q < 1 %}{{ (q * 1000)|round|int }} g{% elif u == 'g' and q >= 1000 %}{{ '%g'|format((q / 1000)|round(2)) }} kg{% elif u == 'ml' and q >= 1000 %}{{ '%g'|format((q / 1000)|round(2)) }} L{% elif u in ('g', 'ml', 'pcs') %}{{ q|round|int }} {{ u }}{% else %}{{ '%g'|format(q|float|round(2)) }} {{ u }}{% endif %}{% endmacro %}
+{% macro paypill(o) %}{% if o.status.value == 'quote' %}<span class="ct-pill quote">quote</span>{% elif o.payment_status.value == 'paid' %}<span class="ct-pill paid">paid</span>{% elif o.balance_due > 0 %}<span class="ct-pill due">{{ rs(o.balance_due) }} due</span>{% endif %}{% endmacro %}
+<div class="sl ct" data-ct>
+  <div class="sl-head">
+    <div><h1 class="sl-title">Catering</h1><p class="sl-sub">Orders for events and functions, from quote to paid, with food cost, margin and what to buy.</p></div>
+    <div class="sl-btns"><a class="sl-btn sl-btn-p" href="/catering-orders?new=1">+ New order</a></div>
+  </div>
+  {% if notice %}<p class="sl-flash">{{ notice }}</p>{% endif %}
 
-<div class="page-header">
-  <h1 class="page-title">Catering Orders</h1>
-</div>
+  <div class="sl-kpis ct-kpis">
+    <div class="sl-k"><span class="l">Next 14 days</span><span class="v">{{ upcoming|length }}</span> <span class="v small">order{{ 's' if upcoming|length != 1 }}</span>
+      <span class="s">{% if upcoming %}{{ upcoming[0].delivery_date.strftime('%a %d %b') }} · {{ upcoming[0].customer_name }}{% else %}nothing booked{% endif %}</span></div>
+    <div class="sl-k {{ 'warn' if balance > 0 else '' }}"><span class="l">Balance to collect</span><span class="v">{{ rs(balance) }}</span>
+      <span class="s">{{ balance_n ~ ' order' ~ ('s' if balance_n != 1 else '') ~ ' with money due' if balance_n else 'nothing outstanding' }}</span></div>
+    <div class="sl-k"><span class="l">Catering so far</span><span class="v">{{ rs(revenue) }}</span>
+      <span class="s">{{ n_delivered }} delivered order{{ 's' if n_delivered != 1 }}{% if first %} · {{ first.strftime('%b') }}{% if last and last.month != first.month %}–{{ last.strftime('%b') }}{% endif %}{% endif %}</span></div>
+    <div class="sl-k good"><span class="l">Average margin</span><span class="v">{{ (margin_pct|round|int ~ '%') if margin_pct is not none else '—' }}</span><span class="s">{{ 'overstated: some custom items have no cost' if uncosted_any else 'after food cost, before packing & labour' }}</span></div>
+  </div>
 
-{% if not orders %}
-<p class="prep-meta">No catering orders yet.</p>
-{% endif %}
+  <div class="ct-board">
+    {% for key, label, orders in columns %}
+    <div class="ct-col"><h4>{{ label }} <span>{{ orders|length }}</span></h4>
+      {% for o in orders %}
+      <a class="ct-card {{ 'sel' if order and order.id == o.id }}" href="/catering-orders?id={{ o.id }}">
+        <b>{{ o.customer_name }}</b>
+        <span class="m">{{ o.delivery_date.strftime('%a %d %b') }} · {{ o.delivery_time.strftime('%I:%M %p').lstrip('0') }}{% if o.plates %} · {{ o.plates }} plates{% endif %}</span>
+        <span class="row"><span>{{ rs(o.m.total) }}{% if o.m.margin_pct is not none %} · margin {{ o.m.margin_pct|round|int }}%{% if o.m.uncosted %}*{% endif %}{% endif %}</span>{{ paypill(o) }}</span>
+      </a>
+      {% else %}<p class="ct-empty">{{ {'quote': 'New orders start here', 'confirmed': 'Confirmed with an advance', 'in_prep': 'The day before the event', 'delivered': 'Done'}[key] }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% if cancelled %}<details class="ct-cancelled"><summary>Cancelled ({{ cancelled|length }})</summary>{% for o in cancelled %}<a href="/catering-orders?id={{ o.id }}">{{ o.customer_name }} · {{ o.delivery_date.strftime('%d %b') }} · {{ rs(o.m.total) }}</a>{% endfor %}</details>{% endif %}
 
-{% for o in orders %}
-<div class="card cat-card">
-  <div class="cat-head">
-    <div>
-      <span class="cat-customer">{{ o.customer_name }}</span><span class="cat-phone">{{ o.customer_phone }}</span>
-      <div class="cat-delivery">
-        Delivery {{ o.delivery_date.strftime('%d %b %Y') }} at {{ o.delivery_time.strftime('%I:%M %p') }}
-        {% if o.delivery_address %} — {{ o.delivery_address }}{% else %} — Pickup{% endif %}
+  <div class="ct-order">
+    <div class="sl-card">
+      <div class="sl-sechead ct-ohead">
+        <div><h3>{{ order.customer_name if order else 'New order' }}</h3>
+          <p>{% if order %}Order taken {{ order.order_taken_date.strftime('%a %d %b') }} · #{{ order.id }}{% else %}Fill in the event and the dishes; it saves as a quote{% endif %}</p></div>
+        {% if order %}{{ paypill(order) }}{% endif %}
+      </div>
+      {% if order %}
+      {% set st = order.status.value %}
+      <div class="ct-steps">
+        {% for k, label in [('quote', 'Quote'), ('confirmed', 'Confirmed'), ('in_prep', 'In prep'), ('delivered', 'Delivered')] %}
+        {% set order_idx = ['quote', 'confirmed', 'in_prep', 'delivered'].index(st) if st != 'cancelled' else -1 %}
+        <span class="{{ 'on' if k == st else ('done' if loop.index0 < order_idx else '') }}">{{ label }}</span>
+        {% endfor %}
+        <span class="{{ 'done' if order.payment_status.value == 'paid' else '' }}">Paid</span>
+        <span class="ct-acts">
+          {% if st == 'quote' %}<button type="button" class="sl-btn sl-btn-p" data-ct-confirm>Confirm · record advance</button>{% endif %}
+          {% if st == 'confirmed' %}<button type="button" class="sl-btn" data-ct-status="in_prep">Start prep</button>{% endif %}
+          {% if st in ('confirmed', 'in_prep') %}<button type="button" class="sl-btn sl-btn-p" data-ct-status="delivered">Mark delivered</button>{% endif %}
+          {% if st != 'quote' and order.balance_due > 0 %}<button type="button" class="sl-btn" data-ct-pay>Record payment</button>{% endif %}
+          {% if st not in ('delivered', 'cancelled') %}<button type="button" class="sl-btn ct-cancel" data-ct-status="cancelled">Cancel</button>{% endif %}
+          {% if st == 'cancelled' %}<button type="button" class="sl-btn" data-ct-status="quote">Reopen as quote</button>{% endif %}
+        </span>
+      </div>
+      {% endif %}
+      <div class="ct-form">
+        <label class="w2">Customer<input data-f="customer_name" value="{{ order.customer_name if order else '' }}" placeholder="Name or group"></label>
+        <label>Phone<input data-f="customer_phone" inputmode="tel" value="{{ order.customer_phone if order else '' }}"></label>
+        <label>Plates<input data-f="plates" inputmode="numeric" value="{{ order.plates if order and order.plates else '' }}"></label>
+        <label>Date<input type="date" data-f="delivery_date" value="{{ order.delivery_date.isoformat() if order else '' }}" min="{{ today.isoformat() if not order else '' }}"></label>
+        <label>Time<input type="time" data-f="delivery_time" value="{{ order.delivery_time.strftime('%H:%M') if order else '12:30' }}"></label>
+        <label class="w2">Delivery address<input data-f="delivery_address" value="{{ order.delivery_address if order and order.delivery_address else '' }}" placeholder="Leave blank for pickup"></label>
+        {% set extra = (order.items|sum(attribute='amount') - order.total_amount) if order else 0 %}
+        <label>Extra discount ₹<input data-f="extra_discount" inputmode="decimal" value="{{ '%g'|format(extra|float) if extra and extra > 0 else '' }}" placeholder="0"></label>
+        <label class="w4">Notes<input data-f="notes" value="{{ order.notes if order and order.notes else '' }}" placeholder="Spice level, packing, anything to remember"></label>
+      </div>
+      <table class="sl-table ct-lines">
+        <thead><tr><th>Dish</th><th class="r">Qty</th><th class="r sl-hide-sm">Menu price</th><th class="r">Catering rate</th><th class="r">Amount</th><th class="r sl-hide-sm">Food cost</th><th></th></tr></thead>
+        <tbody data-ct-lines></tbody>
+      </table>
+      <datalist id="ct-menu"></datalist>
+      <div class="ct-foot">
+        <span><button type="button" class="sl-btn" data-ct-add>+ Add dish</button> <button type="button" class="sl-btn" data-ct-custom>+ Custom item</button></span>
+        <button type="button" class="sl-btn sl-btn-p" data-ct-save>{{ 'Save changes' if order else 'Save as quote' }}</button>
       </div>
     </div>
-    <div class="cat-badges">
-      <span class="cat-badge cat-status-{{ o.status.value }}">{{ o.status.value.replace('_', ' ')|title }}</span>
-      <span class="cat-badge cat-pay-{{ o.payment_status.value }}">{{ o.payment_status.value|title }}</span>
+
+    <div class="sl-card ct-side">
+      <div class="sl-sechead"><h3>Money</h3><p>Updates as you change quantities or rates</p></div>
+      <div class="ct-money" data-ct-money></div>
+      {% if order %}
+      <div class="sl-sechead ct-buyhead"><div><h3>To buy for this order</h3><p>On top of normal service · from the recipes{% if order.buy_added_at %} · sent to Buy {{ order.buy_added_at.strftime('%d %b') }}{% endif %}</p></div>
+        {% if ingredients|selectattr('short')|list and st not in ('delivered', 'cancelled') %}<form method="post" action="/catering-orders/{{ order.id }}/to-buy"><button type="submit" class="sl-btn sl-btn-p">Add {{ ingredients|selectattr('short')|list|length }} short to Buy</button></form>{% endif %}</div>
+      {% if ingredients %}
+      <table class="sl-table ct-ing"><thead><tr><th>Ingredient</th><th class="r">Needed</th><th class="r">In stock now</th></tr></thead>
+        <tbody>{% for i in ingredients %}<tr><td>{{ i.name }}</td><td class="r"><b>{{ amt(i.qty, i.unit) }}</b></td><td class="r {{ 'ct-short' if i.short else 'sl-muted' }}">{{ amt(i.on_hand, i.unit) if i.on_hand is not none else '—' }}</td></tr>{% endfor %}</tbody></table>
+      {% else %}<p class="sl-empty">Only custom items, so there's no recipe to work from.</p>{% endif %}
+      {% else %}
+      <p class="sl-empty">Save the quote to see the ingredients it needs.</p>
+      {% endif %}
     </div>
   </div>
-
-  <div class="recon-table-wrap">
-    <table class="recon-table">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Qty</th>
-          <th>Unit</th>
-          <th class="col-num">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in o.items %}
-        <tr>
-          <td>{{ item.item_name }}</td>
-          <td>{{ item.quantity }}</td>
-          <td>{{ item.unit }}</td>
-          <td class="col-num">₹{{ "{:,.2f}".format(item.amount) }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="cat-money-row">
-    <span>Subtotal <b>₹{{ "{:,.2f}".format(o.subtotal) }}</b></span>
-    <span>Discount <b>₹{{ "{:,.2f}".format(o.discount) }}</b></span>
-    <span>Total <b>₹{{ "{:,.2f}".format(o.total_amount) }}</b></span>
-    <span>Advance paid <b>₹{{ "{:,.2f}".format(o.advance_paid) }}</b></span>
-    <span>Balance due <b>₹{{ "{:,.2f}".format(o.balance_due) }}</b></span>
-  </div>
-  <div class="cat-address">Order taken {{ o.order_taken_date.strftime('%d %b %Y') }}</div>
 </div>
-{% endfor %}
+<script id="ct-data" type="application/json">{{ {"id": order.id if order else none, "menu": menu, "plates": order.plates if order else none} | tojson }}</script>
+<script id="ct-lines" type="application/json">[{% if order %}{% for i in order.items %}{"menu_item_id": {{ i.menu_item_id or 'null' }}, "item_name": {{ i.item_name|tojson }}, "quantity": {{ i.quantity }}, "unit": {{ i.unit|tojson }}, "rate": {{ (i.rate or (i.amount / i.quantity if i.quantity else 0))|float }}}{{ ',' if not loop.last }}{% endfor %}{% endif %}]</script>
+<script src="/static/catering.js?v=2" defer></script>
 {% endblock %}

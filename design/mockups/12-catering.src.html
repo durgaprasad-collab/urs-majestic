@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 12 · Catering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;--blue:#1A4FA0;--blue-bg:#E8F0FD}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .head p{color:var(--ink-2);font-size:13px;margin-top:2px}
+  .btn{font:600 13px Inter;border-radius:10px;padding:9px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+  .btn-p{background:var(--ground);border-color:var(--ground);color:#fff}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .k{padding:12px 16px;border-right:1px solid var(--line);border-top:3px solid transparent}.k:last-child{border-right:0}
+  .k.good{border-top-color:var(--good)}.k.warn{border-top-color:var(--gold)}
+  .k .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .k .v{font-size:22px;font-weight:700;margin-top:2px}.k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{font-size:11.5px;color:var(--ink-2)}
+  .board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .col{background:#EEECE4;border-radius:12px;padding:8px;min-height:120px}
+  .col h4{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);display:flex;justify-content:space-between;padding:4px 4px 8px}
+  .oc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer}
+  .oc b{font-size:13.5px;display:block}.oc .m{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+  .oc .row{display:flex;justify-content:space-between;margin-top:6px;font-size:12.5px}
+  .oc.sel{border:2px solid var(--gold)}
+  .pill{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap}
+  .pill.paid{background:var(--good-bg);color:var(--good)}.pill.due{background:var(--warn-bg);color:var(--warn)}.pill.quote{background:var(--blue-bg);color:var(--blue)}
+  .empty{font-size:12px;color:var(--ink-3);text-align:center;padding:18px 6px}
+  .order{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card .cap{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .card .cap h3{font-size:14px}.card .cap p{font-size:12px;color:var(--ink-3)}
+  .form{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);background:#FFFCF2}
+  .form label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:var(--ink-2)}
+  .form label.w2{grid-column:span 2}
+  .form input,.form select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:500 13.5px Inter;background:#fff}
+  .steps{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  .steps span{font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;background:#F2F1EA;color:var(--ink-3)}
+  .steps span.done{background:var(--good-bg);color:var(--good)}.steps span.on{background:var(--ground);color:var(--gold-2)}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:600;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);background:#FBFAF6;white-space:nowrap}
+  th.r,td.r{text-align:right}
+  td{padding:8px 12px;border-bottom:1px solid #F0EEE6;font-size:13px}
+  td input{width:80px;padding:6px 8px;border:1.5px solid transparent;border-radius:8px;font:700 13px Inter;text-align:right;background:#F7F6F0}
+  td input:focus{outline:0;border-color:var(--gold);background:#fff}
+  .tot td{font-weight:700;background:#FBFAF6}
+  .side .money{padding:14px 16px;border-bottom:1px solid var(--line)}
+  .side .money div{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+  .side .money .big{font-size:20px;font-weight:700;padding-top:8px;border-top:1px dashed var(--line);margin-top:6px}
+  .side .money .g{color:var(--good);font-weight:700}
+  .bar{height:10px;border-radius:5px;background:#ECE9DF;overflow:hidden;margin:6px 0}.bar i{display:block;height:100%;background:var(--good)}
+  .ing td{padding:6px 12px;font-size:12.5px}
+  .short{color:var(--bad);font-weight:700}
+  .muted{color:var(--ink-3);font-size:12px}
+  .notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+  .note{background:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;color:#3c4440}.note b{display:block;color:var(--ink);margin-bottom:3px}
+  @media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.k{border-bottom:1px solid var(--line)}.board{grid-template-columns:1fr 1fr}.order{grid-template-columns:1fr}.form{grid-template-columns:1fr 1fr}.notes{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 12: Catering.</b> Take an order from quote to paid in the admin: customer, event, dishes from the menu, catering rates, advance and balance. Each order shows its food cost and margin from the recipes and the extra ingredients to buy for the day. The two delivered orders are real; the open quote on the right is an <b>example</b>. Edit any quantity or rate. Nothing saves.</div>
+<div class="wrap">
+  <div class="head">
+    <div><h1>Catering</h1><p>Orders for events and functions, from quote to paid, with cost, margin and what to buy.</p></div>
+    <button class="btn btn-p">+ New order</button>
+  </div>
+
+  <div class="kpis">
+    <div class="k"><div class="l">Next 14 days</div><div class="v">1 <small>order</small></div><div class="s">Sun 18 Oct · 50 plates (quote)</div></div>
+    <div class="k warn"><div class="l">Balance to collect</div><div class="v">₹0</div><div class="s">all delivered orders paid</div></div>
+    <div class="k"><div class="l">Catering so far</div><div class="v">₹13,500</div><div class="s">2 orders · Aug–Sep</div></div>
+    <div class="k good"><div class="l">Average margin</div><div class="v">73%</div><div class="s">after food cost, before packing & labour</div></div>
+  </div>
+
+  <div class="board">
+    <div class="col"><h4>Quote <span>1</span></h4>
+      <div class="oc sel"><b>Ganesh family function</b><div class="m">Sun 18 Oct · 12:30 PM · 50 plates</div><div class="row"><span id="q-total">₹—</span><span class="pill quote">quote sent</span></div></div></div>
+    <div class="col"><h4>Confirmed <span>0</span></h4><div class="empty">Confirmed orders with an advance land here</div></div>
+    <div class="col"><h4>In prep <span>0</span></h4><div class="empty">Moves here the day before</div></div>
+    <div class="col"><h4>Delivered <span>2</span></h4>
+      <div class="oc"><b>Sree Iyappa Seva Sangam</b><div class="m">Sun 6 Sep · Hasthinapuram</div><div class="row"><span>₹8,000 · margin 76%*</span><span class="pill paid">paid</span></div></div>
+      <div class="oc"><b>Deepak</b><div class="m">Fri 28 Aug · 5:00 PM</div><div class="row"><span>₹5,500 · margin 68%</span><span class="pill paid">paid</span></div></div></div>
+  </div>
+
+  <div class="order">
+    <div class="card">
+      <div class="cap"><div><h3>Ganesh family function</h3><p>Order taken Fri 9 Oct by Durga</p></div><span class="pill quote">Quote</span></div>
+      <div class="steps"><span class="on">Quote</span><span>Confirmed · advance</span><span>In prep</span><span>Delivered</span><span>Paid</span></div>
+      <div class="form">
+        <label class="w2">Customer<input value="Ganesh (family function)"></label>
+        <label>Phone<input value="98xxxxxx21"></label>
+        <label>Plates<input value="50"></label>
+        <label>Date<input type="date" value="2026-10-18"></label>
+        <label>Time<input type="time" value="12:30"></label>
+        <label class="w2">Delivery address<input value="Chitlapakkam, near the temple"></label>
+      </div>
+      <table><thead><tr><th>Dish</th><th class="r">Qty</th><th class="r">Menu price</th><th class="r">Catering rate</th><th class="r">Amount</th><th class="r">Food cost</th></tr></thead>
+        <tbody id="lines"></tbody></table>
+      <div style="padding:10px 16px"><button class="btn">+ Add dish</button> <button class="btn">+ Custom item</button> <span class="muted">dishes come from the menu, so cost and ingredients are known</span></div>
+    </div>
+    <div class="card side">
+      <div class="cap"><div><h3>Money</h3><p>Live as you change quantities or rates</p></div></div>
+      <div class="money" id="money"></div>
+      <div class="cap"><div><h3>To buy for this order</h3><p>On top of normal service · goes to Buy on Sat 17 Oct</p></div><button class="btn">Add to Buy</button></div>
+      <table class="ing"><thead><tr><th>Ingredient</th><th class="r">Needed</th><th class="r">In stock now</th></tr></thead><tbody id="ing"></tbody></table>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b>Quote to paid in one place</b>The two catering orders so far were typed into the database by hand. Now an order is created here, moves Quote → Confirmed (advance) → In prep → Delivered → Paid, and the balance due is always visible.</div>
+    <div class="note"><b>Margin before you quote</b>Dishes are picked from the menu, so the food cost comes from the same recipes as the menu. Change a catering rate and the margin updates, so a discount never quietly eats the profit. *Curd Rice isn't on the menu, so it has no cost yet.</div>
+    <div class="note"><b>Nothing runs short on the day</b>The order's ingredients are added to Buy the day before the event, on top of normal service. Paneer, spring onion and soya sauce would be flagged today.</div>
+  </div>
+</div>
+
+<script>
+const ING = __ING__;
+const L = [
+  {n:'Chappati (2) With Channa', q:50, p:89, r:80, c:40.44},
+  {n:'Veg Fried Rice', q:30, p:129, r:115, c:36.15},
+  {n:'Gobi Manchurian (Starter)', q:30, p:129, r:110, c:22.05},
+  {n:'Paneer Butter Masala', q:20, p:199, r:180, c:61.75},
+  {n:'Phulka (2 Nos)', q:20, p:35, r:30, c:6.29},
+];
+const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
+function render(){
+  const amt = L.reduce((s,l)=>s+l.q*l.r,0), cost = L.reduce((s,l)=>s+l.q*l.c,0), menu = L.reduce((s,l)=>s+l.q*l.p,0);
+  document.getElementById('lines').innerHTML = L.map((l,i)=>`<tr><td><b>${l.n}</b></td><td class="r"><input value="${l.q}" onchange="L[${i}].q=+this.value||0;render()"></td><td class="r muted">${rs(l.p)}</td><td class="r"><input value="${l.r}" onchange="L[${i}].r=+this.value||0;render()"></td><td class="r"><b>${rs(l.q*l.r)}</b></td><td class="r muted">${rs(l.q*l.c)}</td></tr>`).join('')
+    + `<tr class="tot"><td>Total</td><td class="r">${L.reduce((s,l)=>s+l.q,0)}</td><td class="r muted">${rs(menu)}</td><td></td><td class="r">${rs(amt)}</td><td class="r">${rs(cost)}</td></tr>`;
+  const disc = menu - amt, advance = 0, m = (amt-cost)/amt*100;
+  document.getElementById('money').innerHTML = `<div><span>At menu prices</span><span>${rs(menu)}</span></div><div><span>Catering discount</span><span>−${rs(disc)} (${Math.round(disc/menu*100)}%)</span></div>
+    <div><span>Order total</span><b>${rs(amt)}</b></div><div><span>Per plate (50)</span><span>${rs(amt/50)}</span></div>
+    <div><span>Food cost</span><span>${rs(cost)}</span></div><div class="bar"><i style="width:${m}%"></i></div>
+    <div><span>Margin after food cost</span><span class="g">${rs(amt-cost)} · ${Math.round(m)}%</span></div>
+    <div class="big"><span>Advance · balance</span><span>${rs(advance)} · ${rs(amt-advance)}</span></div>`;
+  document.getElementById('q-total').textContent = rs(amt);
+}
+const fmt = (q,u) => u==='kg'&&q>0&&q<1 ? Math.round(q*1000)+' g' : u==='g'&&q>=1000 ? (q/1000).toFixed(1)+' kg' : u==='ml'&&q>=1000 ? (q/1000).toFixed(1)+' L' : (u==='g'||u==='ml'?Math.round(q):(+q).toFixed(1))+' '+u;
+document.getElementById('ing').innerHTML = ING.filter(i=>!/Tomato Sauce|Corn flour/.test(i.name)).sort((a,b)=>(b.oh!=null&&b.qty>b.oh)-(a.oh!=null&&a.qty>a.oh)).map(i=>`<tr><td>${i.name}</td><td class="r"><b>${fmt(i.qty,i.unit)}</b></td><td class="r ${i.oh!=null&&i.qty>i.oh?'short':'muted'}">${i.oh==null?'—':fmt(i.oh,i.unit)}</td></tr>`).join('');
+render();
+</script>
+</body>
+</html>

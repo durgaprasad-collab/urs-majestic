@@ -13,6 +13,7 @@ class CateringPaymentStatus(str, enum.Enum):
 
 
 class CateringOrderStatus(str, enum.Enum):
+    quote = "quote"            # 0045: priced and sent, not yet confirmed
     confirmed = "confirmed"
     in_prep = "in_prep"
     delivered = "delivered"
@@ -43,6 +44,11 @@ class CateringOrder(Base):
         SAEnum(CateringOrderStatus, name="catering_order_status", create_type=False),
         nullable=False, default=CateringOrderStatus.confirmed, server_default="confirmed",
     )
+    plates: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # When the order's ingredients were sent to Buy (approved requisitions).
+    buy_added_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
@@ -62,5 +68,9 @@ class CateringOrderItem(Base):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit: Mapped[str] = mapped_column(String(50), nullable=False)
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    # A menu dish (cost + recipe known) or NULL for a custom item (0045).
+    menu_item_id: Mapped[int | None] = mapped_column(ForeignKey("menu_items.id"), nullable=True)
+    menu_price: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    rate: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     catering_order: Mapped["CateringOrder"] = relationship("CateringOrder", back_populates="items")
