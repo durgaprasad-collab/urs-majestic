@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 01 · App Shell v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#0B3A2E; --green-3:#1B5E4B; --gold:#C9A227;
+    --bg:#F3F2EC; --surface:#FFFFFF; --ink:#14201B; --ink-2:#56645D; --ink-3:#98A39D;
+    --line:#E4E1D6; --good:#1E8A5A; --good-bg:#E8F5EE; --warn:#B7791F; --warn-bg:#FDF5E1;
+    --bad:#C2412D; --bad-bg:#FBEAE6; --zom:#E23744; --swg:#FC8019; --walk:#0B3A2E; --r:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:#DCD9CE;color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+
+  .mk-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 20px;background:#1B1F1D;color:#fff}
+  .mk-bar h1{font-size:14px;font-weight:700}
+  .mk-bar p{font-size:12px;color:#A9B2AD;flex:1;min-width:220px}
+  .stage{display:flex;gap:28px;padding:24px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+  .frame-label{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#5d625f;margin-bottom:8px}
+  .desktop{width:1366px;max-width:100%;height:760px;border-radius:14px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.18);background:var(--bg);display:flex}
+  .phone{width:375px;height:780px;border-radius:38px;border:10px solid #111;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(0,0,0,.2)}
+
+  /* Sidebar A */
+  .side{width:236px;flex:0 0 236px;background:var(--green);color:#E8F0EC;display:flex;flex-direction:column;padding:16px 12px;overflow:hidden}
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 14px}
+  .mark{width:34px;height:34px;border-radius:9px;background:var(--gold);color:var(--green);display:grid;place-items:center;font-weight:800;font-size:13px;flex:0 0 auto}
+  .brand b{display:block;font-size:14px;color:#fff}.brand small{font-size:11px;color:#8FB3A5}
+  .grp{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7FA595;padding:12px 10px 5px}
+  .nl{display:flex;align-items:center;gap:10px;padding:6.5px 10px;border-radius:8px;color:#D6E4DD;font-size:13px;font-weight:500;position:relative;cursor:pointer}
+  .nl:hover{background:rgba(255,255,255,.06)}
+  .nl.on{background:rgba(255,255,255,.11);color:#fff;font-weight:600}
+  .nl.on::before{content:"";position:absolute;left:-12px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--gold)}
+  .ic{width:18px;text-align:center;opacity:.85;font-size:13px}
+  .badge{margin-left:auto;font-size:10.5px;font-weight:700;padding:0 7px;border-radius:999px;line-height:18px}
+  .b-bad{background:#E5533D;color:#fff}.b-warn{background:var(--gold);color:var(--green)}.b-mute{background:rgba(255,255,255,.12);color:#CFE0D8}
+  .health{margin-top:auto;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:9px 12px;font-size:11.5px}
+  .health .t{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7FA595;margin-bottom:3px}
+  .health .row{display:flex;justify-content:space-between;padding:2.5px 0;color:#BFD3CA}
+  .health .row b{font-weight:600;color:#fff}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+  .d-good{background:#4ADE80}.d-warn{background:#FBBF24}.d-bad{background:#F87171}
+  .me{display:flex;align-items:center;gap:10px;padding:12px 8px 2px;font-size:12px}
+  .av{width:30px;height:30px;border-radius:50%;background:var(--green-3);display:grid;place-items:center;font-weight:700;font-size:11px;color:#fff;border:1px solid rgba(255,255,255,.2);flex:0 0 auto}
+  .me b{display:block;color:#fff;font-size:12.5px}.me small{color:#8FB3A5}
+  .me .out{margin-left:auto;color:#8FB3A5;font-size:13px}
+
+  /* Workspace */
+  .ws{flex:1;display:flex;flex-direction:column;min-width:0}
+  .top{height:56px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 20px;flex:0 0 auto}
+  .crumb{font-size:13px;color:var(--ink-2)}.crumb b{color:var(--ink);font-weight:700;font-size:15px}
+  .search{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 10px;width:280px;color:var(--ink-3);font-size:12.5px}
+  .search kbd{margin-left:auto;font:600 10.5px Inter;background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--ink-2)}
+  .btn{font:600 12.5px Inter;border-radius:9px;padding:8px 13px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+  .btn-p{background:var(--green);border-color:var(--green);color:#fff}
+
+  /* Pulse strip */
+  .pulse{display:grid;grid-template-columns:1.35fr 1.15fr 1.15fr 1fr 1fr 1fr;background:var(--surface);border-bottom:1px solid var(--line);flex:0 0 auto}
+  .pc{padding:10px 16px 11px;border-right:1px solid var(--line);min-width:0;cursor:pointer;position:relative;border-top:3px solid transparent}
+  .pc:last-child{border-right:0}
+  .pc:hover{background:#FAFAF6}
+  .pc.sel{background:#F7F6F0}
+  .pc.sel::after{content:"";position:absolute;left:50%;bottom:-7px;transform:translateX(-50%) rotate(45deg);width:12px;height:12px;background:#F7F6F0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);z-index:2}
+  .pc.st-good{border-top-color:var(--good)}.pc.st-warn{border-top-color:var(--gold)}.pc.st-bad{border-top-color:var(--bad)}
+  .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0}
+  .lt{overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .chip{flex:0 0 auto}
+  .chip{font-size:9.5px;font-weight:700;letter-spacing:.03em;padding:0 6px;border-radius:5px;line-height:16px;text-transform:uppercase}
+  .c-good{background:var(--good-bg);color:var(--good)}.c-warn{background:var(--warn-bg);color:var(--warn)}.c-bad{background:var(--bad-bg);color:var(--bad)}
+  .v{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-top:2px;white-space:nowrap}
+  .v small{font-size:12px;font-weight:600;color:var(--ink-2);margin-left:3px}
+  .s{font-size:11.5px;line-height:1.4;color:var(--ink-2);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .up{color:var(--good);font-weight:600}.dn{color:var(--bad);font-weight:600}.wn{color:var(--warn);font-weight:600}
+  .bar{height:6px;border-radius:3px;background:#ECE9DF;margin-top:7px;position:relative}
+  .bar i{position:absolute;top:0;bottom:0;left:0;border-radius:3px;background:var(--green)}
+  .mk{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+  .mk.gold{background:var(--gold)}
+  .stack{display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:7px}
+  .stack span{display:block;height:100%}
+  .mini{display:flex;gap:10px;margin-top:6px;font-size:11px;color:var(--ink-2)}
+  .mini b{color:var(--ink);font-weight:700}
+
+  /* Drill-down drawer */
+  .drawer{background:#F7F6F0;border-bottom:1px solid var(--line);padding:14px 20px 16px;flex:0 0 auto;display:none}
+  .drawer.open{display:block}
+  .dr-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+  .dr-head h3{font-size:14px;font-weight:700}
+  .dr-head span{font-size:12px;color:var(--ink-2)}
+  .dr-head a{margin-left:auto;font-size:12px;font-weight:600;color:var(--green);text-decoration:none}
+  .dr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .dc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .dc .k{font-size:11px;color:var(--ink-3);font-weight:600}
+  .dc .n{font-size:16px;font-weight:700;margin-top:1px}
+  .dc .x{font-size:11.5px;color:var(--ink-2)}
+  table.dt{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .dt th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);font-weight:600}
+  .dt td{padding:6px 10px;border-bottom:1px solid #F0EEE6}
+  .dt tr:last-child td{border-bottom:0}
+  .dt .r{text-align:right}
+  .tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px}
+  .t-zom{background:#FDE8EA;color:var(--zom)}
+
+  .content{flex:1;padding:16px 20px;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:96px;gap:14px;overflow:hidden}
+  .ph{border:1.5px dashed #CFCABB;border-radius:var(--r);display:grid;place-items:center;color:#A39E8E;font-size:12px;font-weight:600;text-align:center;padding:10px}
+  .w2{grid-column:span 2}.h2{grid-row:span 2}.w4{grid-column:span 4}
+
+  /* Phone */
+  .p-top{background:var(--green);color:#fff;padding:12px 14px 10px}
+  .p-top .r1{display:flex;align-items:center;gap:10px}
+  .p-top .r1 b{font-size:15px}.p-top .r1 small{display:block;font-size:11px;color:#8FB3A5}
+  .p-top .r1 .av{margin-left:auto}
+  .p-pulse{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+  .p-pulse .pc{border:1px solid var(--line);border-top-width:3px;border-radius:10px;padding:8px 10px}
+  .p-pulse .pc.wide{grid-column:span 2}
+  .p-pulse .v{font-size:17px}
+  .p-pulse .s{white-space:normal}
+  .p-content{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+  .p-content .ph{height:90px}
+  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-top:1px solid var(--line);padding:6px 4px 14px}
+  .tb{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--ink-3);font-weight:600;position:relative}
+  .tb span{font-size:17px}.tb.on{color:var(--green)}
+  .tb .pip{position:absolute;top:-2px;right:16px;background:#E5533D;color:#fff;font-size:9px;border-radius:8px;padding:0 5px;line-height:15px}
+  .tb.add span{width:40px;height:40px;margin-top:-16px;border-radius:50%;background:var(--gold);color:var(--green);display:grid;place-items:center;font-size:22px;box-shadow:0 6px 14px rgba(201,162,39,.45)}
+
+  .notes{max-width:1790px;margin:0 auto 32px;padding:0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+  .note{background:#fff;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.55;color:#3c4440}
+  .note b{display:block;color:var(--ink);margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<div class="mk-bar">
+  <h1>Mockup 01 v2 — App Shell (Sidebar A)</h1>
+  <p>Pulse strip rebuilt around the six eagle-eye numbers. <b style="color:#fff">Click any tile</b> to see its drill-down. Figures are real, from the database as of Thu 08 Oct 2026.</p>
+</div>
+
+<div class="stage">
+  <div>
+    <div class="frame-label">Desktop</div>
+    <div class="desktop">
+      <aside class="side">
+        <div class="brand"><span class="mark">UM</span><span><b>URS Majestic</b><small>Restaurant OS</small></span></div>
+        <a class="nl on"><span class="ic">✦</span>Today</a>
+        <div class="grp">Run the day</div>
+        <a class="nl"><span class="ic">✓</span>Requisitions</a>
+        <a class="nl"><span class="ic">▦</span>Stock Log<span class="badge b-bad">14 ⚠</span></a>
+        <a class="nl"><span class="ic">☑</span>Prep Sheet</a>
+        <a class="nl"><span class="ic">↗</span>Order Forecast</a>
+        <a class="nl"><span class="ic">7</span>Weekly Ordering</a>
+        <a class="nl"><span class="ic">₹</span>Purchases<span class="badge b-warn">27</span></a>
+                <a class="nl"><span class="ic">▣</span>Catering</a>
+        <div class="grp">Manage the business</div>
+        <a class="nl"><span class="ic">↻</span>Reconcile<span class="badge b-mute">✓</span></a>
+        <a class="nl"><span class="ic">⌁</span>Menu Analysis<span class="badge b-warn">8</span></a>
+        <a class="nl"><span class="ic">⇄</span>Ingredient Mapping</a>
+        <a class="nl"><span class="ic">◎</span>Settings<span class="badge b-warn">stale</span></a>
+        <div class="health">
+          <div class="t">Data freshness</div>
+          <div class="row"><span><i class="dot d-good"></i>Petpooja</span><b>Today 09:14</b></div>
+          <div class="row"><span><i class="dot d-good"></i>Zomato</span><b>Today 09:14</b></div>
+          <div class="row"><span><i class="dot d-bad"></i>Swiggy</span><b>6 days old</b></div>
+          <div class="row"><span><i class="dot d-warn"></i>Gas purchase</span><b>12 days ago</b></div>
+        </div>
+        <div class="me"><span class="av">DP</span><span><b>Durga Prasad</b><small>Owner</small></span><span class="out">↗</span></div>
+      </aside>
+
+      <div class="ws">
+        <header class="top">
+          <div class="crumb"><b>Today</b> &nbsp;·&nbsp; Thu 08 Oct 2026</div>
+          <div class="search">⌕ Search pages or actions…<kbd>Ctrl K</kbd></div>
+          <button class="btn">‹ &nbsp;Thu 08 Oct&nbsp; ›</button>
+          <button class="btn btn-p">＋ Quick add</button>
+        </header>
+
+        <div class="pulse">
+          <div class="pc st-warn sel" data-d="d1">
+            <div class="l"><span class="lt">Sales today</span><span class="chip c-warn">Above BE</span></div>
+            <div class="v">₹11,868</div>
+            <div class="bar"><i style="width:74%"></i><span class="mk" style="left:65%" title="Break-even"></span></div>
+            <div class="s">BE ₹10.4k <span class="up">+₹1,468</span> · Target ₹16k <span class="dn">−₹4,132</span></div>
+          </div>
+          <div class="pc st-warn" data-d="d2">
+            <div class="l"><span class="lt">Oct profit · proj.</span><span class="chip c-warn">75%</span></div>
+            <div class="v">+₹75k <small>/ ₹1L</small></div>
+            <div class="bar"><i style="width:75%;background:var(--gold)"></i></div>
+            <div class="s">Pace ₹14.1k/day → ₹4.38L sales</div>
+          </div>
+          <div class="pc" data-d="d3">
+            <div class="l"><span class="lt">Channel mix · Oct</span></div>
+            <div class="stack"><span style="width:69%;background:var(--walk)"></span><span style="width:30.6%;background:var(--zom)"></span><span style="width:.4%;background:var(--swg)"></span></div>
+            <div class="mini"><span>Walk-in <b>69%</b></span><span>Zomato <b>31%</b></span><span>Swiggy <b>0%</b></span></div>
+            <div class="s">Zomato discount you fund <span class="wn">16.1%</span></div>
+          </div>
+          <div class="pc st-bad" data-d="d4">
+            <div class="l"><span class="lt">Margin leaks</span><span class="chip c-bad">8</span></div>
+            <div class="v">₹8.4k<small>/month</small></div>
+            <div class="s">8 dishes &gt;40% food cost · 4 are Zomato hits</div>
+          </div>
+          <div class="pc st-warn" data-d="d5">
+            <div class="l"><span class="lt">Gas + oil</span><span class="chip c-warn">Bill 12d</span></div>
+            <div class="v">15.5%<small>of sales</small></div>
+            <div class="s">Gas 9.8% · Oil 5.8% (Sep) · no gas bill since 27 Sep</div>
+          </div>
+          <div class="pc st-bad" data-d="d6">
+            <div class="l"><span class="lt">Data trust</span><span class="chip c-bad">4</span></div>
+            <div class="v dn">Partial</div>
+            <div class="s">4 issues: stock model · Swiggy · order counts · settings</div>
+          </div>
+        </div>
+
+        <!-- Drill-down drawers -->
+        <div class="drawer open" id="d1">
+          <div class="dr-head"><h3>Today vs break-even</h3><span>Break-even = fixed ₹1.87L/mo ÷ 60% contribution ÷ 30 days</span><a>Open Today →</a></div>
+          <div class="dr-grid">
+            <div class="dc"><div class="k">Walk-in (Petpooja)</div><div class="n">₹6,184</div><div class="x"><span class="dn">−14% vs last Thu</span></div></div>
+            <div class="dc"><div class="k">Zomato (after cut)</div><div class="n">₹5,684</div><div class="x"><span class="up">6× last Thu (₹944)</span></div></div>
+            <div class="dc"><div class="k">Last 7 days</div><div class="n">₹1.06L</div><div class="x">7 of 7 days above break-even</div></div>
+            <div class="dc"><div class="k">Thursday average (90d)</div><div class="n">₹6,080</div><div class="x">Weakest day: Wed ₹4,958</div></div>
+          </div>
+        </div>
+        <div class="drawer" id="d2">
+          <div class="dr-head"><h3>October profit projection</h3><span>Sales pace − purchases (~40%) − fixed costs</span><a>Open Settings →</a></div>
+          <div class="dr-grid">
+            <div class="dc"><div class="k">Projected sales</div><div class="n">₹4.38L</div><div class="x">Last 14 days × 31</div></div>
+            <div class="dc"><div class="k">Purchases (est. 40%)</div><div class="n">−₹1.75L</div><div class="x">MTD actual 36.7%</div></div>
+            <div class="dc"><div class="k">Fixed costs</div><div class="n">−₹1.87L</div><div class="x">Salaries ₹1.11L · Rent+GST ₹53k</div></div>
+            <div class="dc"><div class="k">vs September</div><div class="n up">+₹1.12L</div><div class="x">Sep was −₹37k</div></div>
+          </div>
+        </div>
+        <div class="drawer" id="d3">
+          <div class="dr-head"><h3>Channel mix · October MTD</h3><span>Zomato share: Jul 14% → Aug 10% → Sep 23% → Oct 31%</span><a>Open Reconcile →</a></div>
+          <div class="dr-grid">
+            <div class="dc"><div class="k">Walk-in</div><div class="n">₹78,797</div><div class="x">Avg bill ₹232 (all-time)</div></div>
+            <div class="dc"><div class="k">Zomato</div><div class="n">₹35,066</div><div class="x">126 orders · AOV ₹278</div></div>
+            <div class="dc"><div class="k">Swiggy</div><div class="n">₹414</div><div class="x"><span class="dn">2 orders · no upload since 3 Oct</span></div></div>
+            <div class="dc"><div class="k">Zomato peak window</div><div class="n">11 pm – 1 am</div><div class="x">~33% of Zomato orders</div></div>
+          </div>
+        </div>
+        <div class="drawer" id="d4">
+          <div class="dr-head"><h3>Margin leaks — dishes over 40% food cost (last 30 days)</h3><span>Gap = cost above a 35% target × qty sold</span><a>Open Menu Analysis →</a></div>
+          <table class="dt">
+            <tr><th>Dish</th><th class="r">Price</th><th class="r">Food cost</th><th class="r">Sold / 30d</th><th class="r">Leak / month</th><th></th></tr>
+            <tr><td>Chappati (2) With Channa</td><td class="r">₹79</td><td class="r dn">51.2%</td><td class="r">184</td><td class="r">₹2,355</td><td></td></tr>
+            <tr><td>Combo 02 · Paneer Power</td><td class="r">₹149</td><td class="r dn">43.1%</td><td class="r">220</td><td class="r">₹2,655</td><td><span class="tag t-zom">Zomato hit</span></td></tr>
+            <tr><td>Combo 01 · Mini North Indian</td><td class="r">₹149</td><td class="r dn">40.2%</td><td class="r">235</td><td class="r">₹1,821</td><td><span class="tag t-zom">Zomato hit</span></td></tr>
+            <tr><td>Mushroom Biryani / Pulav</td><td class="r">₹169</td><td class="r dn">53.4%</td><td class="r">16</td><td class="r">₹497</td><td><span class="tag t-zom">Zomato hit</span></td></tr>
+            <tr><td colspan="6" style="color:var(--ink-3)">+ Paneer Biryani 48.0% (Zomato hit) ₹286 · Veg Biryani 47.4% ₹443 · Channa Batura 41.8% ₹276 · Mushroom Masala 40.3% ₹82 &nbsp;→&nbsp; <b style="color:var(--ink)">total ₹8,415/month</b></td></tr>
+          </table>
+        </div>
+        <div class="drawer" id="d5">
+          <div class="dr-head"><h3>Gas &amp; oil</h3><span>Measured from purchases. Gas is the largest purchase line, more than paneer and onion combined</span><a>Open Purchases →</a></div>
+          <div class="dr-grid">
+            <div class="dc"><div class="k">Gas · September</div><div class="n">₹27,000</div><div class="x">10 cylinders · 9.8% of sales</div></div>
+            <div class="dc"><div class="k">Oil · 90-day avg</div><div class="n">₹15.9k/mo</div><div class="x">5.8% of Sep sales</div></div>
+            <div class="dc"><div class="k">Cylinder rhythm · Sep</div><div class="n">1 per 3 days</div><div class="x">₹2,700 each</div></div>
+            <div class="dc" style="border-color:#EBD59A;background:var(--warn-bg)"><div class="k">Last gas purchase entered</div><div class="n wn">27 Sep</div><div class="x">~4 cylinders likely missing in Oct</div></div>
+          </div>
+        </div>
+        <div class="drawer" id="d6">
+          <div class="dr-head"><h3>Data trust — 4 open issues</h3><span>Fix these before trusting stock and target numbers</span><a>Open Data Trust →</a></div>
+          <div class="dr-grid">
+            <div class="dc" style="border-color:#F2C4BA"><div class="k">Stock model</div><div class="n dn">14 negative</div><div class="x">Coriander −2,351 kg — likely g/kg mix-up</div></div>
+            <div class="dc" style="border-color:#F2C4BA"><div class="k">Swiggy upload</div><div class="n dn">6 days old</div><div class="x">Last period ends 3 Oct</div></div>
+            <div class="dc"><div class="k">Petpooja order counts</div><div class="n wn">2 days broken</div><div class="x">29 Sep: 12 bills for ₹10.9k</div></div>
+            <div class="dc"><div class="k">Business Settings</div><div class="n wn">Stale since Jul</div><div class="x">Rev/day ₹4,677 vs actual ₹14k</div></div>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="ph w2 h2">Today dashboard body — step 2</div>
+          <div class="ph">Panel</div><div class="ph">Panel</div>
+          <div class="ph w2">Panel</div>
+          <div class="ph w4">Panel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="frame-label">Phone · admin app</div>
+    <div class="phone">
+      <div class="p-top"><div class="r1"><span class="mark" style="width:30px;height:30px;font-size:11px">UM</span><span><b>Today</b><small>Thu 08 Oct · synced 09:14</small></span><span class="av">DP</span></div></div>
+      <div class="p-pulse">
+        <div class="pc wide st-warn">
+          <div class="l"><span class="lt">Sales today</span><span class="chip c-warn">Above BE</span></div>
+          <div class="v">₹11,868</div>
+          <div class="bar"><i style="width:74%"></i><span class="mk" style="left:65%"></span></div>
+          <div class="s">BE ₹10.4k <span class="up">+₹1.5k</span> · Target ₹16k <span class="dn">−₹4.1k</span></div>
+        </div>
+        <div class="pc st-warn"><div class="l"><span class="lt">Oct profit</span></div><div class="v">+₹75k</div><div class="s">75% of ₹1L</div></div>
+        <div class="pc"><div class="l"><span class="lt">Zomato</span></div><div class="v">31%</div><div class="s">disc <span class="wn">16.1%</span></div></div>
+        <div class="pc st-bad"><div class="l"><span class="lt">Margin leaks</span></div><div class="v">8</div><div class="s">dishes &gt;40%</div></div>
+        <div class="pc st-warn"><div class="l"><span class="lt">Gas + oil</span></div><div class="v">15.5%</div><div class="s wn">no gas bill 12d</div></div>
+        <div class="pc wide st-bad"><div class="l"><span class="lt">Data trust</span><span class="chip c-bad">4 issues</span></div><div class="s">Stock model · Swiggy 6d · order counts · settings</div></div>
+      </div>
+      <div class="p-content"><div class="ph">Today body (step 2)</div><div class="ph">Panel</div></div>
+      <nav class="tabbar">
+        <div class="tb on"><span>✦</span>Today</div>
+        <div class="tb"><span>✓</span>Approve</div>
+        <div class="tb add"><span>＋</span></div>
+        <div class="tb"><span>▦</span>Stock<i class="pip">!</i></div>
+        <div class="tb"><span>☰</span>More</div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="note"><b>Six tiles, each with a coloured status bar on top</b>Green = fine, gold = watch, red = act. The small chip in each tile says why in 2–3 words.</div>
+  <div class="note"><b>Click a tile to drill down</b>A drawer opens under the strip with the breakdown and a link to the page that fixes it. Only one drawer is open at a time; clicking the open tile closes it.</div>
+  <div class="note"><b>Break-even replaces "must-hit"</b>The sales bar shows the break-even marker (black line) and runs to the ₹16k profit target. The profit tile uses the last 14 days' pace.</div>
+  <div class="note"><b>Sidebar badges now use real signals</b>Stock Log 14 ⚠ (negative stock), Purchases 27 (ledger issues), Menu Analysis 8 leaks, Settings stale. Reconcile shows ✓ because it's clean.</div>
+  <div class="note"><b>Phone</b>Same six numbers in a 2-column grid. Sales and Data trust span the full width because they carry the most text.</div>
+</div>
+
+<script>
+document.querySelectorAll('.desktop .pc').forEach(t=>t.onclick=()=>{
+  const open=t.classList.contains('sel');
+  document.querySelectorAll('.desktop .pc').forEach(x=>x.classList.remove('sel'));
+  document.querySelectorAll('.drawer').forEach(d=>d.classList.remove('open'));
+  if(!open){t.classList.add('sel');document.getElementById(t.dataset.d).classList.add('open');}
+});
+</script>
+</body>
+</html>

@@ -15,7 +15,7 @@
 
   quickToggles.forEach((button) => button.addEventListener('click', (event) => {
     event.stopPropagation();
-    if (button.closest('.mobile-actions')) {
+    if (button.closest('.rs-tabbar')) {
       body.classList.remove('nav-open');
       setQuick(true);
       return;
@@ -50,9 +50,22 @@
   document.querySelectorAll('[data-nav-toggle]').forEach((button) => button.addEventListener('click', () => body.classList.toggle('nav-open')));
   if (input) input.addEventListener('input', filterCommands);
 
+  // Pulse strip: each tile opens its drill-down drawer; one open at a time.
+  const tiles = Array.from(document.querySelectorAll('[data-pulse-tile]'));
+  const drawers = Array.from(document.querySelectorAll('[data-pulse-drawer]'));
+  function setPulse(key) {
+    tiles.forEach((t) => {
+      const on = t.dataset.pulseTile === key;
+      t.classList.toggle('sel', on);
+      t.setAttribute('aria-expanded', String(on));
+    });
+    drawers.forEach((d) => { d.hidden = d.dataset.pulseDrawer !== key; });
+  }
+  tiles.forEach((t) => t.addEventListener('click', () => setPulse(t.classList.contains('sel') ? null : t.dataset.pulseTile)));
+
   document.addEventListener('click', (event) => {
     if (quickMenu && !quickMenu.hidden && !event.target.closest('.quick-wrap')) setQuick(false);
-    if (body.classList.contains('nav-open') && !event.target.closest('.app-nav') && !event.target.closest('[data-nav-toggle]')) body.classList.remove('nav-open');
+    if (body.classList.contains('nav-open') && !event.target.closest('.rs-side') && !event.target.closest('[data-nav-toggle]')) body.classList.remove('nav-open');
   });
 
   // Generic tabs / segmented control: [data-tabs] wraps buttons with
@@ -75,6 +88,7 @@
       setPalette(true);
     }
     if (event.key === 'Escape') {
+      setPulse(null);
       setPalette(false);
       setQuick(false);
       body.classList.remove('nav-open');

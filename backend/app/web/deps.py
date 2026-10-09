@@ -11,7 +11,12 @@ templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 
 
 def _tmpl(request: Request, name: str, ctx: dict | None = None, status_code: int = 200):
-    return templates.TemplateResponse(request, name, ctx or {}, status_code=status_code)
+    ctx = dict(ctx or {})
+    # Signed-in pages get the eagle-eye shell (pulse strip, nav badges, freshness).
+    if request.session.get("user_id") and "shell" not in ctx:
+        from app.services.shell_pulse import get_shell_context
+        ctx["shell"] = get_shell_context()
+    return templates.TemplateResponse(request, name, ctx, status_code=status_code)
 
 
 def require_user(request: Request, db: Session):

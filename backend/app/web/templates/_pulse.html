@@ -1,0 +1,119 @@
+{# Eagle-eye pulse strip: six tiles + one drill-down drawer each. Data comes from
+   app/services/shell_pulse.py via the `shell` context added in deps._tmpl. #}
+{% macro inr(x) %}₹{{ "{:,.0f}".format(x or 0) }}{% endmacro %}
+{% macro inrk(x) %}{% set a = (x or 0)|abs %}{% if a >= 100000 %}₹{{ "%.2f"|format(a / 100000) }}L{% elif a >= 1000 %}₹{{ "%.1f"|format(a / 1000) }}k{% else %}₹{{ "{:,.0f}".format(a) }}{% endif %}{% endmacro %}
+{% macro signed(x) %}{{ '+' if (x or 0) >= 0 else '−' }}{{ inr((x or 0)|abs) }}{% endmacro %}
+{% set s = shell.sales %}{% set p = shell.profit %}{% set c = shell.channels %}{% set lk = shell.leaks %}{% set g = shell.gas_oil %}{% set tr = shell.trust %}
+
+<section class="rs-pulse" data-pulse aria-label="Business at a glance">
+  <div class="rs-tiles">
+    <button type="button" class="rs-tile st-{{ s.status }}" data-pulse-tile="sales" aria-expanded="false">
+      <span class="rs-l"><span class="rs-lt">Sales · {{ shell.asof.strftime('%a %d %b') }}</span>
+        <span class="rs-chip c-{{ s.status }}">{% if s.status == 'good' %}On target{% elif s.status == 'warn' %}Above BE{% else %}Below BE{% endif %}</span></span>
+      <span class="rs-v">{{ inr(s.total) }}</span>
+      <span class="rs-bar"><i style="width:{{ s.fill_pct }}%"></i><u style="left:{{ s.be_pct }}%" title="Break-even"></u></span>
+      <span class="rs-s">BE {{ inrk(s.be) }} <b class="{{ 'up' if s.vs_be >= 0 else 'dn' }}">{{ signed(s.vs_be) }}</b> · Target {{ inrk(s.target) }} <b class="{{ 'up' if s.vs_target >= 0 else 'dn' }}">{{ signed(s.vs_target) }}</b></span>
+    </button>
+
+    <button type="button" class="rs-tile st-{{ p.status }}" data-pulse-tile="profit" aria-expanded="false">
+      <span class="rs-l"><span class="rs-lt">{{ shell.asof.strftime('%b') }} profit · proj.</span><span class="rs-chip c-{{ p.status }}">{{ '%.0f'|format(p.pct) }}%</span></span>
+      {% if p.value is not none %}
+      <span class="rs-v">{{ '+' if p.value >= 0 else '−' }}{{ inrk(p.value) }} <small>/ {{ inrk(p.goal) }}</small></span>
+      <span class="rs-bar"><i class="ghost" style="width:{{ [[p.pct, 0]|max, 100]|min }}%"></i><i class="gold" style="width:{{ p.achieved_pct }}%"></i></span>
+      <span class="rs-s">Achieved <b class="{{ 'up' if p.achieved >= 0 else 'dn' }}">{{ '−' if p.achieved < 0 }}{{ inrk(p.achieved) }}</b> · To go <b>{{ inrk(p.to_go) }}</b></span>
+      {% else %}
+      <span class="rs-v">—</span><span class="rs-s">Set fixed expenses and margin in Settings</span>
+      {% endif %}
+    </button>
+
+    <button type="button" class="rs-tile" data-pulse-tile="channels" aria-expanded="false">
+      <span class="rs-l"><span class="rs-lt">Channel mix · {{ c.month.strftime('%b') }}</span></span>
+      <span class="rs-stack"><span style="width:{{ c.walkin_pct }}%" class="ch-walk"></span><span style="width:{{ c.zomato_pct }}%" class="ch-zom"></span><span style="width:{{ c.swiggy_pct }}%" class="ch-swg"></span></span>
+      <span class="rs-s">Walk-in <b>{{ '%.0f'|format(c.walkin_pct) }}%</b> · Zomato <b>{{ '%.0f'|format(c.zomato_pct) }}%</b> · Swiggy <b>{{ '%.0f'|format(c.swiggy_pct) }}%</b></span>
+      <span class="rs-s">Zomato discount you fund <b class="wn">{{ c.zomato_disc_pct }}%</b></span>
+    </button>
+
+    <button type="button" class="rs-tile st-{{ lk.status }}" data-pulse-tile="leaks" aria-expanded="false">
+      <span class="rs-l"><span class="rs-lt">Margin leaks</span><span class="rs-chip c-{{ lk.status }}">{{ lk.count }}</span></span>
+      <span class="rs-v">{{ inrk(lk.total) }}<small>/month</small></span>
+      <span class="rs-s">{{ lk.count }} dishes over 40% food cost{% if lk.zomato_hits %} · {{ lk.zomato_hits }} Zomato hits{% endif %}</span>
+    </button>
+
+    <button type="button" class="rs-tile st-{{ g.status }}" data-pulse-tile="gas" aria-expanded="false">
+      <span class="rs-l"><span class="rs-lt">Gas + oil</span>{% if g.gas_age is not none and g.gas_age > 4 %}<span class="rs-chip c-warn">Bill {{ g.gas_age }}d</span>{% endif %}</span>
+      <span class="rs-v">{{ g.pct }}%<small> of sales</small></span>
+      <span class="rs-s">Gas {{ g.gas_pct }}% · Oil {{ g.oil_pct }}% · {{ g.month.strftime('%b') }}</span>
+    </button>
+
+    <button type="button" class="rs-tile st-{{ tr.status }}" data-pulse-tile="trust" aria-expanded="false">
+      <span class="rs-l"><span class="rs-lt">Data trust</span>{% if tr.count %}<span class="rs-chip c-{{ tr.status }}">{{ tr.count }}</span>{% endif %}</span>
+      <span class="rs-v {{ 'dn' if tr.status == 'bad' else ('wn' if tr.status == 'warn' else 'up') }}">{% if tr.status == 'good' %}Trusted{% else %}Partial{% endif %}</span>
+      <span class="rs-s">{% if tr.count %}{{ tr.count }} issue{{ 's' if tr.count != 1 }}: {{ tr.issues|map(attribute='key')|join(' · ') }}{% else %}All sources current{% endif %}</span>
+    </button>
+  </div>
+
+  <div class="rs-drawer" data-pulse-drawer="sales" hidden>
+    <div class="rs-dh"><h3>Sales vs break-even</h3><span>Break-even = fixed costs {{ inrk(s.fixed) }}/month ÷ {{ '%.0f'|format(s.margin_pct) }}% contribution margin (Settings{% if s.margin_set %}, set {{ s.margin_set.strftime('%d %b') }}{% endif %}) ÷ days in month</span><a href="/daily-brief">Open Today →</a></div>
+    <div class="rs-dg">
+      <div class="rs-dc"><span>Walk-in (Petpooja)</span><b>{{ inr(s.walkin) }}</b><small>{% if s.walkin_vs_lw is not none %}<em class="{{ 'up' if s.walkin_vs_lw >= 0 else 'dn' }}">{{ '%+.0f'|format(s.walkin_vs_lw) }}%</em> vs last {{ shell.asof.strftime('%a') }}{% else %}—{% endif %}</small></div>
+      <div class="rs-dc"><span>Zomato (after their cut)</span><b>{{ inr(s.zomato) }}</b><small>Last {{ shell.asof.strftime('%a') }}: {{ inr(s.zomato_lw) }}</small></div>
+      <div class="rs-dc"><span>Last 7 days</span><b>{{ inrk(s.last7) }}</b><small>{{ s.last7_above_be }} of 7 days above break-even</small></div>
+      <div class="rs-dc"><span>Daily targets</span><b>{{ inr(s.be) }} · {{ inr(s.target) }}</b><small>Break-even · profit target</small></div>
+    </div>
+  </div>
+
+  <div class="rs-drawer" data-pulse-drawer="profit" hidden>
+    <div class="rs-dh"><h3>{{ shell.asof.strftime('%B') }} profit projection</h3><span>Projected sales × {{ '%.0f'|format(p.margin_pct) }}% margin − fixed costs. Same model as Business Targets.</span><a href="/business-settings">Open Settings →</a></div>
+    <div class="rs-dg">
+      <div class="rs-dc"><span>Achieved so far</span><b class="{{ 'up' if p.achieved >= 0 else 'dn' }}">{{ '−' if p.achieved < 0 }}{{ inrk(p.achieved) }}</b><small>{{ '%.0f'|format(p.achieved_pct) }}% of the {{ inrk(p.goal) }} goal · after {{ shell.asof.day }} days of fixed costs</small></div>
+      <div class="rs-dc"><span>Yet to go</span><b>{{ inrk(p.to_go) }}</b><small>{% if p.need_per_day %}Needs {{ inr(p.need_per_day) }}/day sales for the last {{ p.remaining_days }} days{% else %}Goal reached{% endif %}</small></div>
+      <div class="rs-dc"><span>Projected month-end</span><b>{{ '+' if p.value >= 0 else '−' }}{{ inrk(p.value) }}</b><small>At current pace {{ inrk(p.daily_avg) }}/day → {{ inrk(p.projected_sales) }} sales</small></div>
+      <div class="rs-dc"><span>Month cost base</span><b>{{ inrk(p.fixed) }} + {{ '%.0f'|format(100 - p.margin_pct) }}%</b><small>Fixed costs + variable share of sales</small></div>
+    </div>
+  </div>
+
+  <div class="rs-drawer" data-pulse-drawer="channels" hidden>
+    <div class="rs-dh"><h3>Channel mix · {{ c.month.strftime('%B') }} to date</h3><span>Net sales after platform commission</span><a href="/reconciliation">Open Reconcile →</a></div>
+    <div class="rs-dg">
+      <div class="rs-dc"><span>Walk-in</span><b>{{ inr(c.walkin) }}</b><small>{{ c.walkin_pct }}% of sales</small></div>
+      <div class="rs-dc"><span>Zomato</span><b>{{ inr(c.zomato) }}</b><small>{{ c.zomato_orders }} orders · avg {{ inr(c.zomato_aov) }}</small></div>
+      <div class="rs-dc"><span>Swiggy</span><b>{{ inr(c.swiggy) }}</b><small>{{ c.swiggy_pct }}% of sales</small></div>
+      <div class="rs-dc"><span>Zomato discount you fund</span><b>{{ c.zomato_disc_pct }}%</b><small>of Zomato order value</small></div>
+    </div>
+  </div>
+
+  <div class="rs-drawer" data-pulse-drawer="leaks" hidden>
+    <div class="rs-dh"><h3>Margin leaks: dishes over 40% food cost (last 30 days)</h3><span>Leak = cost above a 35% target × quantity sold</span><a href="/results">Open Menu Analysis →</a></div>
+    {% if lk.rows %}
+    <div class="rs-tablewrap"><table class="rs-table">
+      <thead><tr><th>Dish</th><th>Price</th><th>Food cost</th><th>Sold</th><th>Leak / month</th><th></th></tr></thead>
+      <tbody>
+      {% for r in lk.rows %}
+      <tr><td>{{ r.name }}</td><td>{{ inr(r.price) }}</td><td class="dn">{{ r.pct }}%</td><td>{{ r.qty }}</td><td>{{ inr(r.leak) }}</td><td>{% if r.zomato_hit %}<span class="rs-tag">Zomato hit</span>{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<p class="rs-empty">No dish is over 40% food cost. Nice.</p>{% endif %}
+  </div>
+
+  <div class="rs-drawer" data-pulse-drawer="gas" hidden>
+    <div class="rs-dh"><h3>Gas &amp; oil · {{ g.month.strftime('%B') }}</h3><span>From purchase bills, as a share of that month's sales</span><a href="/purchases">Open Purchases →</a></div>
+    <div class="rs-dg">
+      <div class="rs-dc"><span>Cooking gas</span><b>{{ inr(g.gas) }}</b><small>{{ g.gas_n }} bills · {{ g.gas_pct }}% of sales</small></div>
+      <div class="rs-dc"><span>Oil</span><b>{{ inr(g.oil) }}</b><small>{{ g.oil_pct }}% of sales</small></div>
+      <div class="rs-dc"><span>Combined</span><b>{{ g.pct }}%</b><small>of sales</small></div>
+      <div class="rs-dc {{ 'warn' if g.gas_age is not none and g.gas_age > 4 }}"><span>Last gas bill entered</span><b>{{ g.last_gas.strftime('%d %b') if g.last_gas else '—' }}</b><small>{% if g.gas_age is not none %}{{ g.gas_age }} days ago{% endif %}</small></div>
+    </div>
+  </div>
+
+  <div class="rs-drawer" data-pulse-drawer="trust" hidden>
+    <div class="rs-dh"><h3>Data trust{% if tr.count %}: {{ tr.count }} open issue{{ 's' if tr.count != 1 }}{% endif %}</h3><span>Fix these before relying on stock and target numbers</span><a href="/data-reconciliation">Open Data Trust →</a></div>
+    {% if tr.issues %}
+    <div class="rs-dg">
+      {% for i in tr.issues %}
+      <a class="rs-dc {{ i.level }}" href="{{ i.href }}"><span>{{ i.title }}</span><b>{{ i.value }}</b><small>{{ i.note }}</small></a>
+      {% endfor %}
+    </div>
+    {% else %}<p class="rs-empty">Every source is current and reconciled.</p>{% endif %}
+  </div>
+</section>

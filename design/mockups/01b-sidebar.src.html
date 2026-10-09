@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 01b · Sidebar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --logo-bg:#062013; --logo-bg-2:#0A2A1A; --gold:#D4A62A; --gold-2:#E9C55A; --leaf:#7FA32A; --leaf-2:#9BC23C;
+    --green:#0B3A2E; --bg:#F3F2EC; --surface:#fff; --ink:#14201B; --ink-2:#56645D; --ink-3:#98A39D; --line:#E4E1D6;
+    --good:#1E8A5A; --warn:#B7791F; --bad:#C2412D; --good-bg:#E8F5EE; --warn-bg:#FDF5E1; --bad-bg:#FBEAE6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:#DCD9CE;color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  svg.i{width:17px;height:17px;flex:0 0 17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .cinzel{font-family:Cinzel,serif}
+
+  .mk-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 20px;background:#1B1F1D;color:#fff}
+  .mk-bar h1{font-size:14px;font-weight:700}
+  .mk-bar p{font-size:12px;color:#A9B2AD;flex:1;min-width:220px}
+  .mk-tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .mk-tabs button{font:600 12px Inter;padding:7px 12px;border-radius:8px;border:1px solid #3a403d;background:#262b29;color:#cfd6d2;cursor:pointer}
+  .mk-tabs button.on{background:var(--gold);color:#1b1b1b;border-color:var(--gold)}
+  .stage{padding:24px;display:flex;justify-content:center;overflow-x:auto}
+  .desktop{width:1366px;flex:0 0 1366px;height:768px;border-radius:14px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.18);background:var(--bg);display:flex}
+  .opt{display:none;width:100%}
+  body[data-v="1"] .o1, body[data-v="2"] .o2, body[data-v="3"] .o3{display:flex}
+
+  /* shared nav bits */
+  .badge{margin-left:auto;font-size:10.5px;font-weight:700;padding:0 7px;border-radius:999px;line-height:18px}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px}
+  .d-good{background:#4ADE80}.d-warn{background:#FBBF24}.d-bad{background:#F87171}
+
+  /* ═════ Option 1 · Royal (logo-matched dark) ═════ */
+  .s1{width:248px;flex:0 0 248px;background:radial-gradient(120% 60% at 50% 0%,#0D3220 0%,var(--logo-bg) 55%);color:#DCE6DF;display:flex;flex-direction:column;border-right:1px solid rgba(212,166,42,.25)}
+  .s1 .logo{padding:14px 0 8px;text-align:center;border-bottom:1px solid rgba(212,166,42,.18);margin:0 18px}
+  .s1 .logo img{width:112px;height:112px;display:block;margin:0 auto;-webkit-mask-image:radial-gradient(circle,#000 60%,transparent 71%);mask-image:radial-gradient(circle,#000 60%,transparent 71%)}
+  .s1 nav{padding:6px 12px;flex:1;overflow-y:auto;scrollbar-width:none}
+  .s1 .grp{font-family:Cinzel,serif;font-size:10.5px;font-weight:600;letter-spacing:.16em;color:var(--gold);padding:14px 10px 6px;display:flex;align-items:center;gap:8px}
+  .s1 .grp::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(212,166,42,.35),transparent)}
+  .s1 a{display:flex;align-items:center;gap:11px;padding:7px 10px;border-radius:8px;color:#C9D6CE;font-size:13px;font-weight:500;position:relative;cursor:pointer;text-decoration:none}
+  .s1 a:hover{background:rgba(255,255,255,.05);color:#fff}
+  .s1 a.on{color:var(--gold-2);background:linear-gradient(90deg,rgba(212,166,42,.16),rgba(212,166,42,0));font-weight:600}
+  .s1 a.on::before{content:"";position:absolute;left:-12px;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;background:var(--gold);box-shadow:0 0 10px rgba(212,166,42,.7)}
+  .s1 .b-bad{background:#D9472F;color:#fff}.s1 .b-warn{background:rgba(212,166,42,.2);color:var(--gold-2);border:1px solid rgba(212,166,42,.45)}.s1 .b-ok{background:rgba(127,163,42,.22);color:var(--leaf-2)}
+  .s1 .fresh{margin:0 14px 10px;padding:10px 12px;border:1px solid rgba(212,166,42,.2);border-radius:10px;background:rgba(0,0,0,.2);font-size:11.5px}
+  .s1 .fresh .row{display:flex;justify-content:space-between;padding:2px 0;color:#AFC2B6}.s1 .fresh b{color:#fff;font-weight:600}
+  .s1 .me{display:flex;align-items:center;gap:10px;padding:12px 18px 16px;border-top:1px solid rgba(212,166,42,.15);font-size:12px}
+  .s1 .av{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--gold);color:var(--gold-2);display:grid;place-items:center;font-weight:700;font-size:11px}
+  .s1 .me b{display:block;color:#fff}.s1 .me small{color:#8EA898}.s1 .me .out{margin-left:auto;color:#8EA898}
+
+  /* ═════ Option 2 · Ivory (light) ═════ */
+  .s2{width:244px;flex:0 0 244px;background:#FBF8EF;border-right:1px solid #E8E1CC;display:flex;flex-direction:column}
+  .s2 .logo{display:flex;align-items:center;gap:12px;padding:16px 16px 14px}
+  .s2 .logo img{width:52px;height:52px;border-radius:14px;box-shadow:0 4px 12px rgba(6,32,19,.25)}
+  .s2 .logo b{font-family:Cinzel,serif;font-size:16px;font-weight:700;color:var(--logo-bg);letter-spacing:.04em;display:block;line-height:1.1}
+  .s2 .logo small{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--leaf)}
+  .s2 nav{padding:4px 12px;flex:1;overflow-y:auto;scrollbar-width:none}
+  .s2 .grp{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#A89A6E;padding:14px 10px 5px}
+  .s2 a{display:flex;align-items:center;gap:11px;padding:7px 10px;border-radius:9px;color:#3E4A44;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none}
+  .s2 a svg{color:#8A958F}
+  .s2 a:hover{background:#F2ECDB}
+  .s2 a.on{background:var(--logo-bg);color:#fff;font-weight:600;box-shadow:0 4px 10px rgba(6,32,19,.22)}
+  .s2 a.on svg{color:var(--gold-2)}
+  .s2 .b-bad{background:var(--bad-bg);color:var(--bad)}.s2 .b-warn{background:var(--warn-bg);color:var(--warn)}.s2 .b-ok{background:var(--good-bg);color:var(--good)}
+  .s2 .fresh{margin:0 14px 10px;padding:10px 12px;border:1px solid #E8E1CC;border-radius:10px;background:#fff;font-size:11.5px}
+  .s2 .fresh .row{display:flex;justify-content:space-between;padding:2px 0;color:var(--ink-2)}.s2 .fresh b{color:var(--ink);font-weight:600}
+  .s2 .me{display:flex;align-items:center;gap:10px;padding:12px 16px 16px;border-top:1px solid #E8E1CC;font-size:12px}
+  .s2 .av{width:32px;height:32px;border-radius:50%;background:var(--logo-bg);color:var(--gold-2);display:grid;place-items:center;font-weight:700;font-size:11px}
+  .s2 .me b{display:block}.s2 .me small{color:var(--ink-3)}.s2 .me .out{margin-left:auto;color:var(--ink-3)}
+
+  /* ═════ Option 3 · Top bar (no sidebar) ═════ */
+  .o3{flex-direction:column}
+  .t3{height:64px;background:radial-gradient(80% 140% at 0% 50%,#0D3220,var(--logo-bg) 60%);display:flex;align-items:center;gap:6px;padding:0 18px;border-bottom:2px solid var(--gold);position:relative;flex:0 0 auto}
+  .t3 .logo{display:flex;align-items:center;gap:10px;margin-right:18px}
+  .t3 .logo img{width:48px;height:48px;-webkit-mask-image:radial-gradient(circle,#000 60%,transparent 71%);mask-image:radial-gradient(circle,#000 60%,transparent 71%)}
+  .t3 .logo b{font-family:Cinzel,serif;color:var(--gold-2);font-size:16px;letter-spacing:.06em;font-weight:700}
+  .t3 .tab{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:9px;color:#CFDCD4;font-size:13px;font-weight:600;cursor:pointer;position:relative}
+  .t3 .tab:hover{background:rgba(255,255,255,.06)}
+  .t3 .tab.on{color:var(--gold-2);background:rgba(212,166,42,.14)}
+  .t3 .tab .pip{background:#D9472F;color:#fff;font-size:10px;border-radius:8px;padding:0 6px;line-height:16px}
+  .t3 .search{margin-left:auto;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:7px 10px;width:250px;color:#9FB3A7;font-size:12.5px}
+  .t3 .search kbd{margin-left:auto;font:600 10.5px Inter;border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:1px 6px}
+  .t3 .add{font:600 12.5px Inter;border-radius:9px;padding:8px 13px;background:var(--gold);color:var(--logo-bg);border:0;margin-left:8px;display:flex;gap:6px;align-items:center}
+  .t3 .av{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--gold);color:var(--gold-2);display:grid;place-items:center;font-weight:700;font-size:11px;margin-left:10px}
+  .mega{position:absolute;top:58px;left:196px;width:560px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,.18);padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:4px;z-index:5}
+  .mega a{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:9px;color:var(--ink);text-decoration:none}
+  .mega a:hover{background:#F6F4EC}
+  .mega a svg{color:var(--green);margin-top:2px}
+  .mega a b{font-size:13px;display:flex;gap:6px;align-items:center}.mega a small{display:block;font-size:11.5px;color:var(--ink-2)}
+  .mega .badge{margin-left:0}
+  .mega .b-bad{background:var(--bad-bg);color:var(--bad)}.mega .b-warn{background:var(--warn-bg);color:var(--warn)}
+  .sub3{display:flex;align-items:center;gap:10px;height:40px;padding:0 20px;background:#fff;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-2);flex:0 0 auto}
+  .sub3 b{color:var(--ink);font-size:14px}
+  .sub3 .fr{margin-left:auto;display:flex;gap:14px}
+
+  /* workspace (opt 1 & 2) */
+  .ws{flex:1;display:flex;flex-direction:column;min-width:0}
+  .top{height:56px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 20px;flex:0 0 auto}
+  .crumb{font-size:13px;color:var(--ink-2)}.crumb b{color:var(--ink);font-weight:700;font-size:15px}
+  .search{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 10px;width:280px;color:var(--ink-3);font-size:12.5px}
+  .search kbd{margin-left:auto;font:600 10.5px Inter;background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--ink-2)}
+  .btn{font:600 12.5px Inter;border-radius:9px;padding:8px 13px;border:1px solid var(--line);background:#fff;color:var(--ink);display:flex;gap:6px;align-items:center;white-space:nowrap}
+  .btn-p{background:var(--logo-bg);border-color:var(--logo-bg);color:#fff}
+
+  /* pulse strip (approved, static here) */
+  .pulse{display:grid;grid-template-columns:1.35fr 1.15fr 1.15fr 1fr 1fr 1fr;background:var(--surface);border-bottom:1px solid var(--line);flex:0 0 auto}
+  .pc{padding:10px 16px 11px;border-right:1px solid var(--line);min-width:0;border-top:3px solid transparent}
+  .pc:last-child{border-right:0}
+  .st-warn{border-top-color:var(--gold)}.st-bad{border-top-color:var(--bad)}
+  .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);display:flex;justify-content:space-between;gap:6px;white-space:nowrap}
+  .chip{font-size:9.5px;font-weight:700;padding:0 6px;border-radius:5px;line-height:16px}
+  .c-warn{background:var(--warn-bg);color:var(--warn)}.c-bad{background:var(--bad-bg);color:var(--bad)}
+  .v{font-size:20px;font-weight:700;margin-top:2px;white-space:nowrap}.v small{font-size:12px;color:var(--ink-2);font-weight:600}
+  .s{font-size:11.5px;color:var(--ink-2);margin-top:2px;line-height:1.4}
+  .up{color:var(--good);font-weight:600}.dn{color:var(--bad);font-weight:600}.wn{color:var(--warn);font-weight:600}
+  .bar{height:6px;border-radius:3px;background:#ECE9DF;margin-top:7px;position:relative}
+  .bar i{position:absolute;top:0;bottom:0;left:0;border-radius:3px;background:var(--green)}
+  .mk{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+  .stack{display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:7px}
+  .content{flex:1;padding:16px 20px;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:100px;gap:14px;overflow:hidden}
+  .ph{border:1.5px dashed #CFCABB;border-radius:12px;display:grid;place-items:center;color:#A39E8E;font-size:12px;font-weight:600}
+  .w2{grid-column:span 2}.h2{grid-row:span 2}.w4{grid-column:span 4}
+
+  .notes{max-width:1414px;margin:0 auto 32px;padding:0 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .note{background:#fff;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.55;color:#3c4440;border:2px solid transparent;cursor:pointer}
+  .note b{display:block;color:var(--ink);margin-bottom:4px}
+  body[data-v="1"] .n1, body[data-v="2"] .n2, body[data-v="3"] .n3{border-color:var(--gold)}
+  @media (max-width:900px){.notes{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-v="1">
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="req" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="stock" viewBox="0 0 24 24"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></symbol>
+  <symbol id="prep" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol>
+  <symbol id="trend" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+  <symbol id="cater" viewBox="0 0 24 24"><path d="M4 17h16M12 7a7 7 0 0 1 7 7H5a7 7 0 0 1 7-7zM12 7V5M10 5h4M3 20h18"/></symbol>
+  <symbol id="recon" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L3 9M4 13a8 8 0 0 0 14.5 4.5L21 15"/><path d="M3 4v5h5M21 20v-5h-5"/></symbol>
+  <symbol id="chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="map" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H14a4 4 0 0 1 4 4v5.5M6 8.5V20"/></symbol>
+  <symbol id="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+</svg>
+
+<div class="mk-bar">
+  <h1>Mockup 01b: Sidebar with logo</h1>
+  <p>Three directions, all using the real URS Majestic logo and proper line icons. The pulse strip is unchanged from the approved version.</p>
+  <div class="mk-tabs">
+    <button class="on" data-v="1">1 · Royal (dark)</button>
+    <button data-v="2">2 · Ivory (light)</button>
+    <button data-v="3">3 · Top bar (no sidebar)</button>
+  </div>
+</div>
+
+<div class="stage"><div class="desktop">
+
+  <!-- ═════ Option 1 ═════ -->
+  <div class="opt o1">
+    <aside class="s1">
+      <div class="logo"><img src="{{LOGO}}" alt="URS Majestic · Pure Veg"></div>
+      <nav>
+        <a class="on"><svg class="i"><use href="#home"/></svg>Today</a>
+        <div class="grp">Run the day</div>
+        <a><svg class="i"><use href="#req"/></svg>Requisitions</a>
+        <a><svg class="i"><use href="#stock"/></svg>Stock Log<span class="badge b-bad">14</span></a>
+        <a><svg class="i"><use href="#prep"/></svg>Prep Sheet</a>
+        <a><svg class="i"><use href="#trend"/></svg>Order Forecast</a>
+        <a><svg class="i"><use href="#cal"/></svg>Weekly Ordering</a>
+        <a><svg class="i"><use href="#receipt"/></svg>Purchases<span class="badge b-warn">27</span></a>
+        <a><svg class="i"><use href="#cater"/></svg>Catering</a>
+        <div class="grp">Manage</div>
+        <a><svg class="i"><use href="#recon"/></svg>Reconcile<span class="badge b-ok">✓</span></a>
+        <a><svg class="i"><use href="#chart"/></svg>Menu Analysis<span class="badge b-warn">8</span></a>
+        <a><svg class="i"><use href="#map"/></svg>Ingredient Mapping</a>
+        <a><svg class="i"><use href="#cog"/></svg>Settings<span class="badge b-warn">!</span></a>
+      </nav>
+      <div class="fresh">
+        <div class="row"><span><i class="dot d-good"></i>Petpooja</span><b>Today 09:14</b></div>
+        <div class="row"><span><i class="dot d-good"></i>Zomato</span><b>Today 09:14</b></div>
+        <div class="row"><span><i class="dot d-bad"></i>Swiggy</span><b>6 days</b></div>
+        <div class="row"><span><i class="dot d-warn"></i>Gas bill</span><b>12 days</b></div>
+      </div>
+      <div class="me"><span class="av">DP</span><span><b>Durga Prasad</b><small>Owner</small></span><svg class="i out"><use href="#out"/></svg></div>
+    </aside>
+    <div class="ws">
+      <header class="top">
+        <div class="crumb"><b>Today</b> &nbsp;·&nbsp; Thu 08 Oct 2026</div>
+        <div class="search"><svg class="i"><use href="#search"/></svg>Search pages or actions…<kbd>Ctrl K</kbd></div>
+        <button class="btn">‹ &nbsp;Thu 08 Oct&nbsp; ›</button>
+        <button class="btn btn-p"><svg class="i"><use href="#plus"/></svg>Quick add</button>
+      </header>
+      {{PULSE}}
+      <div class="content"><div class="ph w2 h2">Today dashboard (step 2)</div><div class="ph">Panel</div><div class="ph">Panel</div><div class="ph w2">Panel</div><div class="ph w4">Panel</div></div>
+    </div>
+  </div>
+
+  <!-- ═════ Option 2 ═════ -->
+  <div class="opt o2">
+    <aside class="s2">
+      <div class="logo"><img src="{{LOGO}}" alt=""><span><b>URS Majestic</b><small>Pure Veg · Admin</small></span></div>
+      <nav>
+        <a class="on"><svg class="i"><use href="#home"/></svg>Today</a>
+        <div class="grp">Run the day</div>
+        <a><svg class="i"><use href="#req"/></svg>Requisitions</a>
+        <a><svg class="i"><use href="#stock"/></svg>Stock Log<span class="badge b-bad">14</span></a>
+        <a><svg class="i"><use href="#prep"/></svg>Prep Sheet</a>
+        <a><svg class="i"><use href="#trend"/></svg>Order Forecast</a>
+        <a><svg class="i"><use href="#cal"/></svg>Weekly Ordering</a>
+        <a><svg class="i"><use href="#receipt"/></svg>Purchases<span class="badge b-warn">27</span></a>
+        <a><svg class="i"><use href="#cater"/></svg>Catering</a>
+        <div class="grp">Manage</div>
+        <a><svg class="i"><use href="#recon"/></svg>Reconcile<span class="badge b-ok">✓</span></a>
+        <a><svg class="i"><use href="#chart"/></svg>Menu Analysis<span class="badge b-warn">8</span></a>
+        <a><svg class="i"><use href="#map"/></svg>Ingredient Mapping</a>
+        <a><svg class="i"><use href="#cog"/></svg>Settings<span class="badge b-warn">!</span></a>
+      </nav>
+      <div class="fresh">
+        <div class="row"><span><i class="dot d-good"></i>Petpooja</span><b>Today 09:14</b></div>
+        <div class="row"><span><i class="dot d-good"></i>Zomato</span><b>Today 09:14</b></div>
+        <div class="row"><span><i class="dot d-bad"></i>Swiggy</span><b>6 days</b></div>
+        <div class="row"><span><i class="dot d-warn"></i>Gas bill</span><b>12 days</b></div>
+      </div>
+      <div class="me"><span class="av">DP</span><span><b>Durga Prasad</b><small>Owner</small></span><svg class="i out"><use href="#out"/></svg></div>
+    </aside>
+    <div class="ws">
+      <header class="top">
+        <div class="crumb"><b>Today</b> &nbsp;·&nbsp; Thu 08 Oct 2026</div>
+        <div class="search"><svg class="i"><use href="#search"/></svg>Search pages or actions…<kbd>Ctrl K</kbd></div>
+        <button class="btn">‹ &nbsp;Thu 08 Oct&nbsp; ›</button>
+        <button class="btn btn-p"><svg class="i"><use href="#plus"/></svg>Quick add</button>
+      </header>
+      {{PULSE}}
+      <div class="content"><div class="ph w2 h2">Today dashboard (step 2)</div><div class="ph">Panel</div><div class="ph">Panel</div><div class="ph w2">Panel</div><div class="ph w4">Panel</div></div>
+    </div>
+  </div>
+
+  <!-- ═════ Option 3 ═════ -->
+  <div class="opt o3">
+    <header class="t3">
+      <div class="logo"><img src="{{LOGO}}" alt=""><b>URS MAJESTIC</b></div>
+      <div class="tab on"><svg class="i"><use href="#home"/></svg>Today</div>
+      <div class="tab">Run the day <span class="pip">2</span><svg class="i" style="width:14px;height:14px"><use href="#down"/></svg></div>
+      <div class="tab">Manage<svg class="i" style="width:14px;height:14px"><use href="#down"/></svg></div>
+      <div class="search"><svg class="i"><use href="#search"/></svg>Search…<kbd>Ctrl K</kbd></div>
+      <button class="add"><svg class="i"><use href="#plus"/></svg>Quick add</button>
+      <span class="av">DP</span>
+      <div class="mega">
+        <a><svg class="i"><use href="#req"/></svg><span><b>Requisitions</b><small>Approve staff requests</small></span></a>
+        <a><svg class="i"><use href="#stock"/></svg><span><b>Stock Log <span class="badge b-bad">14</span></b><small>Daily closing count</small></span></a>
+        <a><svg class="i"><use href="#prep"/></svg><span><b>Prep Sheet</b><small>Plan the next service</small></span></a>
+        <a><svg class="i"><use href="#trend"/></svg><span><b>Order Forecast</b><small>What to buy and when</small></span></a>
+        <a><svg class="i"><use href="#cal"/></svg><span><b>Weekly Ordering</b><small>One week of inventory</small></span></a>
+        <a><svg class="i"><use href="#receipt"/></svg><span><b>Purchases <span class="badge b-warn">27</span></b><small>Bills and receipts</small></span></a>
+        <a><svg class="i"><use href="#cater"/></svg><span><b>Catering</b><small>Bulk orders and advances</small></span></a>
+      </div>
+    </header>
+    <div class="sub3"><b>Today</b>· Thu 08 Oct 2026
+      <span class="fr"><span><i class="dot d-good"></i>Petpooja 09:14</span><span><i class="dot d-good"></i>Zomato 09:14</span><span><i class="dot d-bad"></i>Swiggy 6d</span><span><i class="dot d-warn"></i>Gas bill 12d</span></span>
+    </div>
+    {{PULSE}}
+    <div class="content" style="grid-template-columns:repeat(5,1fr)"><div class="ph w2 h2">Today dashboard (step 2), full width</div><div class="ph">Panel</div><div class="ph">Panel</div><div class="ph">Panel</div><div class="ph w2">Panel</div><div class="ph">Panel</div><div class="ph" style="grid-column:span 5">Panel</div></div>
+  </div>
+
+</div></div>
+
+<div class="notes">
+  <div class="note n1" data-v="1"><b>1 · Royal (dark)</b>The sidebar uses the logo's own deep green, so the full circular logo sits seamlessly at the top. Section headings are in Cinzel (the same carved serif as "MAJESTIC"), and the active page glows gold. The most on-brand option.</div>
+  <div class="note n2" data-v="2"><b>2 · Ivory (light)</b>A cream sidebar with the logo as a small app-icon tile and the name in Cinzel. The active page is a deep-green pill. Calmer and lighter on the eyes for long sessions, so the numbers stand out more than the chrome.</div>
+  <div class="note n3" data-v="3"><b>3 · Top bar (no sidebar)</b>The logo and name sit in a dark top bar, and pages live in two dropdowns ("Run the day" is shown open). The dashboard gets the full screen width, the most eagle-eye of the three, but pages take one extra click.</div>
+</div>
+
+<script>
+const set=v=>{document.body.dataset.v=v;document.querySelectorAll('.mk-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));};
+document.querySelectorAll('.mk-tabs button,.note').forEach(b=>b.onclick=()=>set(b.dataset.v));
+</script>
+</body>
+</html>
