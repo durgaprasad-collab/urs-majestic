@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 03 · Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#062013; --ground-2:#0D3220; --gold:#D4A62A; --gold-2:#E9C55A;
+    --bg:#F3F2EC; --surface:#fff; --ink:#14201B; --ink-2:#56645D; --ink-3:#98A39D; --line:#E4E1D6; --grid:#EEECE4;
+    --good:#1E8A5A; --good-bg:#E8F5EE; --warn:#B7791F; --warn-bg:#FDF5E1; --bad:#C2412D; --bad-bg:#FBEAE6;
+    --walk:#2F6FB0; --zom:#E23744; --swg:#F59E0B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:#DCD9CE;color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px}
+  .mk b{color:#fff}
+  .stage{padding:24px;display:flex;justify-content:center;overflow-x:auto}
+  .desktop{width:1366px;flex:0 0 1366px;border-radius:14px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.18);background:var(--bg);display:flex;min-height:1500px}
+
+  /* shell (approved, static) */
+  .side{width:248px;flex:0 0 248px;background:radial-gradient(120% 60% at 50% 0%,#0D3220 0%,var(--ground) 55%);color:#DCE6DF;border-right:1px solid rgba(212,166,42,.25)}
+  .side .logo{margin:0 18px;padding:12px 0 8px;border-bottom:1px solid rgba(212,166,42,.18)}
+  .side .logo img{width:96px;height:96px;margin:0 auto;display:block;-webkit-mask-image:radial-gradient(circle,#000 60%,transparent 71%);mask-image:radial-gradient(circle,#000 60%,transparent 71%)}
+  .side nav{padding:6px 12px}
+  .side .grp{font:600 10.5px Cinzel,serif;letter-spacing:.16em;color:var(--gold);padding:11px 10px 5px}
+  .side a{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;color:#C9D6CE;font-size:13px}
+  .side a.on{color:var(--gold-2);font-weight:600;background:linear-gradient(90deg,rgba(212,166,42,.16),transparent);box-shadow:inset 3px 0 0 var(--gold)}
+  .side .b{margin-left:auto;font-size:10.5px;font-weight:700;padding:0 7px;border-radius:999px;line-height:18px;background:#D9472F;color:#fff}
+  .side .b.w{background:rgba(212,166,42,.2);color:var(--gold-2)}
+  .ws{flex:1;min-width:0}
+  .top{height:56px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 20px}
+  .top b{font-size:15px}.top span{color:var(--ink-2);font-size:12.5px}
+  .pulse{height:84px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+
+  /* body */
+  .body{padding:18px 20px 30px;display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .card h2{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .card h2 small{font-weight:500;color:var(--ink-3);font-size:12px}
+  .card .more{margin-left:auto;font-size:12px;font-weight:600;color:#0B3A2E;text-decoration:none}
+  .c12{grid-column:span 12}.c8{grid-column:span 8}.c7{grid-column:span 7}.c5{grid-column:span 5}.c4{grid-column:span 4}.c6{grid-column:span 6}
+
+  /* verdict */
+  .verdict{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:0;padding:0;overflow:hidden}
+  .verdict > div{padding:16px 18px;border-right:1px solid var(--line)}
+  .verdict > div:last-child{border-right:0}
+  .v-main{background:linear-gradient(180deg,#FFF8F6,#fff)}
+  .v-main .k{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .v-main .sent{font:700 22px/1.25 Cinzel,serif;color:var(--ink);margin:6px 0}
+  .v-main .sent em{font-style:normal;color:var(--bad)}
+  .v-main p{color:var(--ink-2);font-size:13px}
+  .vk{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .vv{font-size:20px;font-weight:700;margin-top:3px}
+  .vs{font-size:12px;color:var(--ink-2);margin-top:2px}
+  .up{color:var(--good);font-weight:600}.dn{color:var(--bad);font-weight:600}.wn{color:var(--warn);font-weight:600}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+  .chip.bad{background:var(--bad-bg);color:var(--bad)}.chip.good{background:var(--good-bg);color:var(--good)}.chip.warn{background:var(--warn-bg);color:var(--warn)}
+
+  /* charts */
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin:10px 0 2px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .legend .ln{width:16px;height:0;border-top:2px dashed var(--ink);border-radius:0}
+  .legend .ln.g{border-color:var(--gold)}
+  svg.chart{display:block;width:100%;height:auto;overflow:visible}
+  svg.chart text{font:11px Inter,sans-serif;fill:var(--ink-3)}
+  svg.chart .lbl{fill:var(--ink-2);font-weight:600}
+  svg.chart .val{fill:var(--ink);font-weight:700}
+  .hit{fill:transparent;cursor:pointer}
+  .tip{position:fixed;pointer-events:none;background:#14201B;color:#fff;font-size:12px;line-height:1.5;padding:8px 10px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.25);opacity:0;transition:opacity .1s;z-index:9}
+  .tip b{display:block;margin-bottom:2px}
+  .tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+  .insight{display:flex;gap:10px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:10px;background:#F7F6F0;font-size:12.5px;color:var(--ink-2)}
+  .insight b{color:var(--ink)}
+  .tbl-toggle{font-size:12px;color:#0B3A2E;font-weight:600;background:none;border:0;cursor:pointer;margin-top:8px}
+  table.dt{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+  .dt th{text-align:right;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--line)}
+  .dt th:first-child,.dt td:first-child{text-align:left}
+  .dt td{text-align:right;padding:5px 8px;border-bottom:1px solid #F0EEE6}
+
+  /* lists */
+  .list{margin-top:8px}
+  .row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .row:last-child{border-bottom:0}
+  .row .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .q{color:var(--ink-3);font-size:12px;width:44px;text-align:right}
+  .row .r{font-weight:700;width:64px;text-align:right}
+  .bar{height:6px;border-radius:3px;background:var(--walk);opacity:.85}
+  .barwrap{width:90px;background:#F0EEE6;border-radius:3px}
+  .stockrow .cover{font-weight:700;width:72px;text-align:right}
+  .pri{font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px}
+  .p0{background:var(--bad-bg);color:var(--bad)}.p1{background:var(--warn-bg);color:var(--warn)}.p2{background:#EAF1FB;color:var(--walk)}
+  .stale{margin-top:10px;padding:9px 11px;border:1px dashed #E6C77A;background:#FFFBEF;border-radius:10px;font-size:12px;color:#7A5B10}
+  .role{font-size:11px;color:var(--ink-3);width:64px;flex:0 0 64px}
+
+  /* weekday strip */
+  .wk{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px}
+  .wk div{border-radius:10px;padding:10px 8px;text-align:center;border:1px solid var(--line)}
+  .wk b{display:block;font-size:15px}
+  .wk span{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+  .wk small{display:block;font-size:11px;margin-top:2px}
+  .wk .ok{background:var(--good-bg);border-color:#BFE3CE}
+  .wk .no{background:#fff}
+
+  .notes{max-width:1414px;margin:0 auto 32px;padding:0 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .note{background:#fff;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.55;color:#3c4440}
+  .note b{display:block;color:var(--ink);margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 03: Today page body.</b> The sidebar, top bar and six-tile strip are the live design (shown simplified here). Everything below the strip is new. Real data to Thu 8 Oct 2026. Hover the bars for details.</div>
+
+<div class="stage"><div class="desktop">
+  <aside class="side">
+    <div class="logo"><img src="{{IMG:logo}}" alt=""></div>
+    <nav>
+      <a class="on">✦&nbsp; Today</a>
+      <div class="grp">RUN THE DAY</div>
+      <a>Requisitions</a><a>Stock Log<span class="b">22</span></a><a>Prep Sheet</a><a>Order Forecast</a><a>Weekly Ordering</a><a>Purchases<span class="b w">25</span></a><a>Catering</a>
+      <div class="grp">MANAGE</div>
+      <a>Reconcile</a><a>Menu Analysis<span class="b w">5</span></a><a>Ingredient Mapping</a><a>Settings<span class="b w">!</span></a>
+    </nav>
+  </aside>
+  <div class="ws">
+    <div class="top"><b>Today</b><span>Data to Thu 08 Oct 2026</span></div>
+    <div class="pulse">Six-tile pulse strip (live, unchanged)</div>
+
+    <div class="body">
+
+      <!-- 1. Verdict -->
+      <div class="card c12 verdict">
+        <div class="v-main">
+          <div class="k">Thursday 8 October · the verdict</div>
+          <div class="sent">₹11,868, <em>₹213 short</em> of break-even</div>
+          <p>Zomato had its best Mon–Thu day ever (₹5,684), but walk-in slipped to ₹6,184. Two more Paneer Power Combos would have closed the gap.</p>
+        </div>
+        <div><div class="vk">Break-even / day</div><div class="vv">₹12,081</div><div class="vs">Fixed ₹1.87L ÷ 50% margin ÷ 31 days</div></div>
+        <div><div class="vk">vs last Thursday</div><div class="vv up">+45%</div><div class="vs">Walk-in <span class="dn">−14%</span> · Zomato <span class="up">6×</span></div></div>
+        <div><div class="vk">This week, Mon–Thu</div><div class="vv">1 <small style="font-size:13px;color:var(--ink-2)">of 4 days</small></div><div class="vs">cleared break-even (Tue ₹12,350)</div></div>
+      </div>
+
+      <!-- 2. 21-day bars -->
+      <div class="card c8">
+        <h2>Daily sales, last 21 days <small>stacked by channel</small><a class="more" href="#">Open Reconcile →</a></h2>
+        <div class="legend"><span><i style="background:var(--walk)"></i>Walk-in</span><span><i style="background:var(--zom)"></i>Zomato</span><span><i style="background:var(--swg)"></i>Swiggy</span><span><i class="ln"></i>Break-even</span><span><i class="ln g"></i>Profit target (₹1L/month)</span></div>
+        <svg class="chart" id="bars" viewBox="0 0 760 270" role="img" aria-label="Daily sales by channel for the last 21 days with break-even and profit target lines"></svg>
+        <div class="insight">📌 <span><b>Weekends carry the month.</b> 7 of the last 9 Fri–Sun days cleared break-even; only 1 of 12 Mon–Thu days did. Weekday dinners are where the gap is.</span></div>
+        <button class="tbl-toggle" data-tt="t-bars">Show as table</button>
+        <div id="t-bars" hidden></div>
+      </div>
+
+      <!-- 3. Month pace -->
+      <div class="card c4">
+        <h2>October so far <small>cumulative sales</small></h2>
+        <div class="legend"><span><i style="background:#0B3A2E"></i>Actual</span><span><i class="ln"></i>Break-even pace</span><span><i class="ln g"></i>Target pace</span></div>
+        <svg class="chart" id="pace" viewBox="0 0 360 230" role="img" aria-label="October cumulative sales against break-even and target pace"></svg>
+        <div class="list">
+          <div class="row"><span class="n">Ahead of break-even pace</span><span class="r up">+₹17,629</span></div>
+          <div class="row"><span class="n">Profit achieved (× 50% margin)</span><span class="r">₹8,820</span></div>
+          <div class="row"><span class="n">Needed for ₹1L goal</span><span class="r wn">₹20,005/day</span></div>
+        </div>
+      </div>
+
+      <!-- 4. Weekday rhythm -->
+      <div class="card c12">
+        <h2>Weekday rhythm <small>average sales by day, 11 Sep – 8 Oct · green = above break-even. Only Saturday and Sunday clear it on average</small></h2>
+        <div class="wk" id="wk"></div>
+      </div>
+
+      <!-- 5. Dishes -->
+      <div class="card c4">
+        <h2>Sold on Thursday <small>by revenue</small><a class="more" href="#">Menu Analysis →</a></h2>
+        <div class="list" id="dishes"></div>
+        <div class="insight" style="margin-top:12px">🍽️ <span>Last 7 days: <b>Paneer Power Combo 64</b>, Mini North Indian Meal 61, Chappati with Channa 45.</span></div>
+      </div>
+
+      <!-- 6. Order today -->
+      <div class="card c4">
+        <h2>Running out <small>from today's stock count</small><a class="more" href="#">Order Forecast →</a></h2>
+        <div class="list">
+          <div class="row stockrow"><span class="chip bad">Today</span><span class="n">Gobi</span><span class="q">0.17 kg</span><span class="cover dn">0.2 days</span></div>
+          <div class="row stockrow"><span class="chip bad">Today</span><span class="n">Green Chilli</span><span class="q">0.05 kg</span><span class="cover dn">0.3 days</span></div>
+          <div class="row stockrow"><span class="chip bad">Today</span><span class="n">Paneer</span><span class="q">0.49 kg</span><span class="cover dn">0.4 days</span></div>
+          <div class="row stockrow"><span class="chip bad">Today</span><span class="n">Mushroom</span><span class="q">0.33 kg</span><span class="cover dn">0.8 days</span></div>
+          <div class="row stockrow"><span class="chip warn">3 days</span><span class="n">Butter</span><span class="q">0.68 kg</span><span class="cover wn">3.0 days</span></div>
+          <div class="row stockrow"><span class="chip warn">4 days</span><span class="n">Fresh cream</span><span class="q">578 ml</span><span class="cover wn">3.7 days</span></div>
+        </div>
+        <div class="stale">⚠ 22 ingredients show negative stock and are hidden here until their recipes are fixed (see Data trust).</div>
+      </div>
+
+      <!-- 7. Tasks -->
+      <div class="card c4">
+        <h2>Open tasks <small>8 across 5 roles</small></h2>
+        <div class="list">
+          <div class="row"><span class="role">CRO</span><span class="pri p0">P0</span><span class="n">Install WhatsApp counter card</span></div>
+          <div class="row"><span class="role">BI</span><span class="pri p1">P1</span><span class="n">Monday review: MTD, break-even, Zomato ads</span></div>
+          <div class="row"><span class="role">Creative</span><span class="pri p1">P1</span><span class="n">Board photo session: 4 dishes × 2 angles</span></div>
+          <div class="row"><span class="role">Creative</span><span class="pri p1">P1</span><span class="n">Create and brand Instagram + Facebook</span></div>
+          <div class="row"><span class="role">GM</span><span class="pri p1">P1</span><span class="n">PBM re-weigh: 3 readings this week</span></div>
+          <div class="row"><span class="role">GM</span><span class="pri p2">P2</span><span class="n">Chappati + Channa ratio cross-check</span></div>
+        </div>
+        <div class="stale">⚠ Last synced from Notion on <b>10 Aug</b>, two months ago. Some of these are probably done. Connect Notion to keep this live.</div>
+      </div>
+
+    </div>
+  </div>
+</div></div>
+
+<div class="notes">
+  <div class="note"><b>① One break-even, one verdict</b>The old brief said "Ahead by ₹977" (money left after ingredients vs fixed costs ÷ 30) while the strip said "below break-even". The new page uses the strip's single definition everywhere (sales vs ₹12,081/day) and opens with a one-line verdict in plain words.</div>
+  <div class="note"><b>② Trend, not just today</b>The 21-day stacked bars show each day against break-even and the profit target, so you see the pattern: weekends clear it, weekdays don't. The October chart shows the month heading for profit, and how much per day the ₹1L goal needs.</div>
+  <div class="note"><b>③ What to do next</b>Bottom row is action: best and worst dishes, what runs out today, and open tasks by role. Stale data is labelled, not hidden. The five role "tickets" and confidence legend from the old brief collapse into the tasks card.</div>
+</div>
+
+<div class="tip" id="tip"></div>
+<script>
+const DAYS = [["2026-09-18","Fri",6929,1722,0],["2026-09-19","Sat",13589,3061,0],["2026-09-20","Sun",8731,4154,195],["2026-09-21","Mon",5554,1235,0],["2026-09-22","Tue",7781,2080,468],["2026-09-23","Wed",5021,1194,365],["2026-09-24","Thu",6492,1016,418],["2026-09-25","Fri",9598,1021,0],["2026-09-26","Sat",14519,7129,0],["2026-09-27","Sun",12075,6205,0],["2026-09-28","Mon",8130,2184,195],["2026-09-29","Tue",8893,1847,170],["2026-09-30","Wed",8910,2469,0],["2026-10-01","Thu",7212,944,0],["2026-10-02","Fri",14126,3193,195],["2026-10-03","Sat",17951,3627,219],["2026-10-04","Sun",13085,7566,0],["2026-10-05","Mon",7410,4314,0],["2026-10-06","Tue",6853,5497,0],["2026-10-07","Wed",5976,4242,0],["2026-10-08","Thu",6184,5684,0]];
+const FIXED = 187369.17, MARGIN = 0.5003, GOAL = 100000;
+const beDay = d => FIXED / MARGIN / (d.startsWith('2026-09') ? 30 : 31);
+const tgDay = d => (FIXED + GOAL) / MARGIN / (d.startsWith('2026-09') ? 30 : 31);
+const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p && p.appendChild(e); return e; };
+const tip = document.getElementById('tip');
+const showTip = (ev, html) => { tip.innerHTML = html; tip.style.opacity = 1; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; };
+const hideTip = () => tip.style.opacity = 0;
+
+// ── 21-day stacked bars with break-even / target step lines
+(function () {
+  const svg = document.getElementById('bars'), W = 760, H = 270, L = 44, R = 70, T = 10, B = 34;
+  const max = 24000, x0 = L, pw = W - L - R, ph = H - T - B, n = DAYS.length, slot = pw / n, bw = Math.min(22, slot - 8);
+  const y = v => T + ph - v / max * ph;
+  [0, 6000, 12000, 18000, 24000].forEach(v => { el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: v ? 'var(--grid)' : '#CFCBBE' }, svg); el('text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end' }, svg).textContent = v ? (v / 1000) + 'k' : '0'; });
+  DAYS.forEach(([d, dow, w, z, s], i) => {
+    const cx = x0 + slot * i + slot / 2, x = cx - bw / 2; let acc = 0;
+    [[w, 'var(--walk)'], [z, 'var(--zom)'], [s, 'var(--swg)']].forEach(([v, c], k, arr) => {
+      if (!v) return; const top = acc + v; const last = arr.slice(k + 1).every(a => !a[0]);
+      const h = y(acc) - y(top) - (acc ? 2 : 0);
+      if (h > 0) el('rect', { x, y: y(top), width: bw, height: h, fill: c, rx: last ? 4 : 0 }, svg);
+      acc = top;
+    });
+    const day = d.slice(8) * 1;
+    el('text', { x: cx, y: H - B + 15, 'text-anchor': 'middle', class: dow === 'Sat' || dow === 'Sun' ? 'lbl' : '' }, svg).textContent = dow[0];
+    if (i % 3 === 0 || i === n - 1) el('text', { x: cx, y: H - B + 28, 'text-anchor': 'middle' }, svg).textContent = day + (d.slice(5, 7) === '09' ? ' Sep' : ' Oct');
+    const tot = w + z + s, be = beDay(d);
+    const hit = el('rect', { x: cx - slot / 2, y: T, width: slot, height: ph, class: 'hit' }, svg);
+    hit.addEventListener('mousemove', ev => showTip(ev, `<b>${dow} ${day} ${d.slice(5,7)==='09'?'Sep':'Oct'} · ${inr(tot)}</b><i style="background:var(--walk)"></i>Walk-in ${inr(w)}<br><i style="background:var(--zom)"></i>Zomato ${inr(z)}<br><i style="background:var(--swg)"></i>Swiggy ${inr(s)}<br>${tot >= be ? '✓ above' : '✗ below'} break-even (${inr(be)}) by ${inr(Math.abs(tot - be))}`));
+    hit.addEventListener('mouseleave', hideTip);
+  });
+  // step lines: September then October values
+  const split = DAYS.findIndex(r => r[0].startsWith('2026-10'));
+  [[beDay, 'var(--ink)', 'Break-even'], [tgDay, 'var(--gold)', 'Target']].forEach(([f, c, name]) => {
+    const xs = x0 + slot * split, sep = f('2026-09-01'), oct = f('2026-10-01');
+    const d = `M${x0},${y(sep)} H${xs} V${y(oct)} H${W - R}`;
+    el('path', { d, fill: 'none', stroke: c, 'stroke-width': 2, 'stroke-dasharray': '6 4' }, svg);
+    el('text', { x: W - R + 6, y: y(oct) - 2, class: 'val' }, svg).textContent = (oct / 1000).toFixed(1) + 'k';
+    el('text', { x: W - R + 6, y: y(oct) + 13 }, svg).textContent = name;
+  });
+  document.getElementById('t-bars').innerHTML = '<table class="dt"><tr><th>Day</th><th>Walk-in</th><th>Zomato</th><th>Swiggy</th><th>Total</th><th>vs break-even</th></tr>' +
+    DAYS.map(([d, dow, w, z, s]) => { const t = w + z + s, be = beDay(d); return `<tr><td>${dow} ${d.slice(8)}/${d.slice(5,7)}</td><td>${inr(w)}</td><td>${inr(z)}</td><td>${inr(s)}</td><td><b>${inr(t)}</b></td><td class="${t >= be ? 'up' : 'dn'}">${t >= be ? '+' : '−'}${inr(Math.abs(t - be))}</td></tr>`; }).join('') + '</table>';
+})();
+
+// ── October cumulative vs pace
+(function () {
+  const svg = document.getElementById('pace'), W = 360, H = 230, L = 40, R = 12, T = 10, B = 26;
+  const oct = DAYS.filter(r => r[0].startsWith('2026-10')); let c = 0; const cum = oct.map(r => c += r[2] + r[3] + r[4]);
+  const be = beDay('2026-10-01'), tg = tgDay('2026-10-01'), dmax = 31, vmax = 600000;
+  const x = d => L + (d / dmax) * (W - L - R), y = v => T + (H - T - B) - v / vmax * (H - T - B);
+  [0, 200000, 400000, 600000].forEach(v => { el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: v ? 'var(--grid)' : '#CFCBBE' }, svg); el('text', { x: L - 6, y: y(v) + 4, 'text-anchor': 'end' }, svg).textContent = v ? (v / 100000) + 'L' : '0'; });
+  [1, 8, 15, 22, 31].forEach(d => el('text', { x: x(d), y: H - 8, 'text-anchor': 'middle' }, svg).textContent = d + (d === 1 ? ' Oct' : ''));
+  el('line', { x1: x(0), y1: y(0), x2: x(31), y2: y(be * 31), stroke: 'var(--ink)', 'stroke-width': 2, 'stroke-dasharray': '6 4' }, svg);
+  el('line', { x1: x(0), y1: y(0), x2: x(31), y2: y(tg * 31), stroke: 'var(--gold)', 'stroke-width': 2, 'stroke-dasharray': '6 4' }, svg);
+  el('path', { d: 'M' + x(0) + ',' + y(0) + ' ' + cum.map((v, i) => `L${x(i + 1)},${y(v)}`).join(' '), fill: 'none', stroke: '#0B3A2E', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, svg);
+  const lx = x(8), ly = y(cum[7]);
+  el('circle', { cx: lx, cy: ly, r: 4.5, fill: '#0B3A2E', stroke: '#fff', 'stroke-width': 2 }, svg);
+  el('text', { x: lx + 8, y: ly - 6, class: 'val' }, svg).textContent = '₹1.14L';
+  el('text', { x: x(31) - 2, y: y(be * 31) + 14, 'text-anchor': 'end' }, svg).textContent = 'BE ₹3.75L';
+  el('text', { x: x(31) - 2, y: y(tg * 31) - 6, 'text-anchor': 'end' }, svg).textContent = 'Target ₹5.74L';
+  cum.forEach((v, i) => { const h = el('circle', { cx: x(i + 1), cy: y(v), r: 10, class: 'hit' }, svg);
+    h.addEventListener('mousemove', ev => showTip(ev, `<b>${i + 1} Oct · ${inr(v)} so far</b>Break-even pace ${inr(be * (i + 1))}<br>Target pace ${inr(tg * (i + 1))}`)); h.addEventListener('mouseleave', hideTip); });
+})();
+
+// ── weekday rhythm (last 28 days)
+(function () {
+  const AVG = { Mon: 9424, Tue: 10141, Wed: 7721, Thu: 8846, Fri: 10773, Sat: 17915, Sun: 15099 };
+  const be = beDay('2026-10-01');
+  document.getElementById('wk').innerHTML = Object.entries(AVG).map(([d, v]) =>
+    `<div class="${v >= be ? 'ok' : 'no'}"><span>${d}</span><b>${inr(v)}</b><small class="${v >= be ? 'up' : 'dn'}">${v >= be ? '+' : '−'}${inr(Math.abs(v - be))}</small></div>`).join('');
+})();
+
+// ── dishes
+(function () {
+  const D = [["Chappati (2) With Channa", 9, 801], ["Combo 01 · Mini North Indian Meal", 5, 745], ["Chilli Parotta", 4, 596], ["Indo Chinese Duo", 2, 498], ["Paneer Fried Rice", 3, 477], ["Paneer Tikka (5 Pcs)", 2, 358], ["Combo 02 · Paneer Power Combo", 2, 338]];
+  const max = D[0][2];
+  document.getElementById('dishes').innerHTML = D.map(([n, q, r]) => `<div class="row"><span class="n">${n}</span><span class="barwrap"><div class="bar" style="width:${r / max * 100}%"></div></span><span class="q">×${q}</span><span class="r">${inr(r)}</span></div>`).join('');
+})();
+
+document.querySelectorAll('[data-tt]').forEach(b => b.onclick = () => { const t = document.getElementById(b.dataset.tt); t.hidden = !t.hidden; b.textContent = t.hidden ? 'Show as table' : 'Hide table'; });
+</script>
+</body>
+</html>

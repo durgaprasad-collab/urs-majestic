@@ -412,6 +412,10 @@ def main(xlsx_path: str):
 
         db.commit()
 
+        # Rebuild today's tasks + eagle-eye strip from the new data.
+        from app.services.task_engine import refresh_after_upload
+        refresh_after_upload(background=False)
+
         # ── Summary ───────────────────────────────────────────────────────────
         dates = [r.sale_date for r in matched]
         total_rev = sum(r.revenue for r in matched)

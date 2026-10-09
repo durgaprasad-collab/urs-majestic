@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.clock import business_today
 from datetime import date
+from app.services.task_engine import refresh_after_upload
 from scripts.import_pos import (
     seed_menu_items, parse_xlsx, build_resolver, load_sales,
     exclude_today, upsert_daily_channel_sales, write_upload_log,
@@ -131,6 +132,7 @@ async def upload_post(
             succeeded=True,
         )
         db.commit()
+        refresh_after_upload()
     except Exception as exc:
         db.rollback()
         db.add(UploadLog(

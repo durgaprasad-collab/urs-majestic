@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Today — URS Majestic{% endblock %}
+
+{% block content %}
+{% macro inr(x) %}₹{{ "{:,.0f}".format(x or 0) }}{% endmacro %}
+{% macro inrk(x) %}{% set a = (x or 0)|abs %}{% if a >= 100000 %}₹{{ "%.2f"|format(a / 100000) }}L{% elif a >= 1000 %}₹{{ "%.1f"|format(a / 1000) }}k{% else %}₹{{ "{:,.0f}".format(a) }}{% endif %}{% endmacro %}
+{% macro signed(x) %}{{ '+' if (x or 0) >= 0 else '−' }}{{ inr((x or 0)|abs) }}{% endmacro %}
+{% macro change(p) %}{% if p >= 100 %}{{ '%.0f'|format(1 + p / 100) }}×{% else %}{{ '%+.0f'|format(p) }}%{% endif %}{% endmacro %}
+
+{% if not has_data %}
+<div class="card"><p class="alert-warning">No sales data has been uploaded yet.</p></div>
+{% else %}
+{% set v = verdict %}{% set m = month %}
+<div class="td">
+
+  <section class="td-card td-verdict" aria-label="Verdict">
+    <div class="td-v-main {{ 'ok' if v.gap >= 0 else 'short' }}">
+      <div class="td-k">
+        {{ day.strftime('%A %d %B') }} · the verdict
+        <form method="get" action="/daily-brief" class="td-date">
+          <select name="date" onchange="this.form.submit()" aria-label="Choose a day">
+            {% for d in available %}<option value="{{ d.isoformat() }}" {% if d == day %}selected{% endif %}>{{ d.strftime('%a %d %b') }}</option>{% endfor %}
+          </select>
+        </form>
+      </div>
+      <p class="td-sent">{{ inr(v.total) }}, <em>{{ inr(v.gap|abs) }} {{ 'ahead of' if v.gap >= 0 else 'short of' }}</em> break-even</p>
+      <p class="td-why">
+        Walk-in {{ inr(v.walk) }}{% if v.walk_vs_lw is not none %} (<span class="{{ 'up' if v.walk_vs_lw >= 0 else 'dn' }}">{{ change(v.walk_vs_lw) }}</span> vs last {{ day.strftime('%a') }}){% endif %},
+        Zomato {{ inr(v.zomato) }}{% if v.zomato_vs_lw is not none %} (<span class="{{ 'up' if v.zomato_vs_lw >= 0 else 'dn' }}">{{ change(v.zomato_vs_lw) }}</span>){% endif %}{% if v.swiggy %}, Swiggy {{ inr(v.swiggy) }}{% endif %}.
+        {% if v.close_gap %}{{ v.close_gap.n }} more {{ v.close_gap.item }} order{{ 's' if v.close_gap.n != 1 }} would have closed the gap.{% endif %}
+      </p>
+    </div>
+    <div><div class="td-k">Break-even / day</div><div class="td-vv">{{ inr(v.be) }}</div><div class="td-vs">Fixed {{ inrk(v.fixed) }} ÷ {{ '%.0f'|format(v.margin_pct) }}% margin ÷ {{ v.days_in_month }} days</div></div>
+    <div><div class="td-k">vs last {{ day.strftime('%A') }}</div>
+      <div class="td-vv {{ 'up' if (v.vs_lw or 0) >= 0 else 'dn' }}">{% if v.vs_lw is not none %}{{ '%+.0f'|format(v.vs_lw) }}%{% else %}—{% endif %}</div>
+      <div class="td-vs">{{ inr(v.walk_lw + v.zomato_lw) }} last week</div></div>
+    <div><div class="td-k">This week, Mon–Thu</div>
+      <div class="td-vv">{{ v.week_ok }} <small>of {{ v.week_n }} days</small></div>
+      <div class="td-vs">cleared break-even{% for d, amt in v.week_ok_days %}{{ ' (' if loop.first else ', ' }}{{ d.strftime('%a') }} {{ inrk(amt) }}{{ ')' if loop.last }}{% endfor %}</div></div>
+  </section>
+
+  <section class="td-card td-c8" aria-labelledby="td-bars-h">
+    <h2 id="td-bars-h">Daily sales, last 21 days <small>stacked by channel</small><a class="td-more" href="/reconciliation">Open Reconcile →</a></h2>
+    <div class="td-legend"><span><i style="background:var(--td-walk)"></i>Walk-in</span><span><i style="background:var(--td-zom)"></i>Zomato</span><span><i style="background:var(--td-swg)"></i>Swiggy</span><span><i class="ln"></i>Break-even</span><span><i class="ln g"></i>Profit target ({{ inrk(m.goal) }}/month)</span></div>
+    <svg class="td-chart" id="td-bars" viewBox="0 0 760 270" role="img" aria-label="Daily sales by channel for the last 21 days with break-even and profit target lines"></svg>
+    <p class="td-insight"><b>{{ pattern.we_ok }} of the last {{ pattern.we_n }} Fri–Sun days cleared break-even; {{ pattern.wd_ok }} of {{ pattern.wd_n }} Mon–Thu days did.</b>
+      {% if pattern.wd_ok * 3 <= pattern.wd_n %}Weekday dinners are where the gap is.{% endif %}</p>
+    <button class="td-tt" type="button" data-td-table>Show as table</button>
+    <div id="td-bars-table" hidden></div>
+  </section>
+
+  <section class="td-card td-c4" aria-labelledby="td-month-h">
+    <h2 id="td-month-h">{{ m.label }} so far <small>cumulative sales</small></h2>
+    <div class="td-legend"><span><i style="background:#0B3A2E"></i>Actual</span><span><i class="ln"></i>Break-even pace</span><span><i class="ln g"></i>Target pace</span></div>
+    <svg class="td-chart" id="td-pace" viewBox="0 0 360 230" role="img" aria-label="Cumulative sales this month against break-even and target pace"></svg>
+    <div class="td-list">
+      <div class="td-row"><span class="n">{{ 'Ahead of' if m.ahead >= 0 else 'Behind' }} break-even pace</span><span class="r {{ 'up' if m.ahead >= 0 else 'dn' }}">{{ signed(m.ahead) }}</span></div>
+      <div class="td-row"><span class="n">Profit achieved (× {{ '%.0f'|format(v.margin_pct) }}% margin)</span><span class="r">{{ signed(m.achieved) }}</span></div>
+      {% if m.need_per_day %}<div class="td-row"><span class="n">Needed for {{ inrk(m.goal) }} goal</span><span class="r wn">{{ inr(m.need_per_day) }}/day</span></div>{% endif %}
+    </div>
+  </section>
+
+  <section class="td-card td-c12" aria-labelledby="td-wk-h">
+    <h2 id="td-wk-h">Weekday rhythm <small>average sales by day, last 4 weeks · green = above break-even</small></h2>
+    <div class="td-wk">
+      {% for r in rhythm %}
+      <div class="{{ 'ok' if r.ok else '' }}"><span>{{ r.dow }}</span><b>{{ inr(r.avg) }}</b><small class="{{ 'up' if r.ok else 'dn' }}">{{ signed(r.avg - v.be) }}</small></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="td-card td-c4" aria-labelledby="td-dish-h">
+    <h2 id="td-dish-h">Sold on {{ day.strftime('%A') }} <small>by revenue</small><a class="td-more" href="/results">Menu Analysis →</a></h2>
+    <div class="td-list">
+      {% set top = dishes[0].rev if dishes else 1 %}
+      {% for d in dishes %}
+      <div class="td-row"><span class="n">{{ d.item_name }}</span><span class="td-barwrap"><i style="width:{{ (d.rev / top * 100)|round }}%"></i></span><span class="q">×{{ d.q|int }}</span><span class="r">{{ inr(d.rev) }}</span></div>
+      {% else %}<p class="td-empty">No item sales for this day.</p>{% endfor %}
+    </div>
+    {% if week_top %}<p class="td-insight">Last 7 days: {% for d in week_top %}<b>{{ d.item_name }} {{ d.q|int }}</b>{{ ', ' if not loop.last }}{% endfor %}.</p>{% endif %}
+  </section>
+
+  <section class="td-card td-c4" aria-labelledby="td-stock-h">
+    <h2 id="td-stock-h">Running out <small>from the latest stock count</small><a class="td-more" href="/order-forecast">Order Forecast →</a></h2>
+    <div class="td-list">
+      {% for r in runout %}
+      {% set c = r.cover|float %}
+      <div class="td-row"><span class="td-chip {{ 'bad' if c < 1 else 'warn' }}">{{ 'Today' if c < 1 else '%d days'|format(c|round(0, 'ceil')) }}</span><span class="n">{{ r.name }}</span><span class="q">{{ '%g'|format(r.on_hand_qty|float|round(2)) }} {{ r.unit }}</span><span class="r {{ 'dn' if c < 1 else 'wn' }}">{{ '%.1f'|format(c) }} d</span></div>
+      {% else %}<p class="td-empty">Nothing runs out in the next 5 days.</p>{% endfor %}
+    </div>
+    {% if negative_stock %}<p class="td-stale">⚠ {{ negative_stock }} ingredients show negative stock and are left out here until their recipes are fixed.</p>{% endif %}
+  </section>
+
+  <section class="td-card td-c4" id="tasks" aria-labelledby="td-task-h">
+    <h2 id="td-task-h">Today's tasks <small>{{ tasks.open|length }} open across {{ tasks.open|map(attribute='role')|unique|list|length }} roles</small>
+      <form method="post" action="/daily-brief/tasks/refresh" class="td-more"><button type="submit" title="Re-run the task engine on the latest data">↻ Refresh</button></form></h2>
+    {% if tasks.business_date %}
+    <div class="td-tasks">
+      {% for t in tasks_shown %}
+      <details class="td-task">
+        <summary>
+          <form method="post" action="/daily-brief/tasks/{{ t.id }}/done"><button class="td-check" type="submit" aria-label="Mark '{{ t.title }}' done" title="Mark done"></button></form>
+          <span class="td-pri p{{ t.priority[1] }}">{{ t.priority }}</span>
+          <span class="td-t-title">{{ t.title }}<small>{{ t.role_label }}</small></span>
+        </summary>
+        <div class="td-t-body">
+          <p>{{ t.detail }}</p>
+          {% if t.done_means %}<p><b>Done when:</b> {{ t.done_means }}</p>{% endif %}
+          {% if t.rule_key == 'google_reviews' %}
+          <form method="post" action="/daily-brief/creative/google-reviews" class="td-inline"><label>Google review count <input type="number" name="count" min="0" required></label><button type="submit">Save</button></form>
+          {% endif %}
+          {% if t.href and t.href != '/daily-brief' %}<a href="{{ t.href }}">Open →</a>{% endif %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+    {% if tasks.open|length > tasks_shown|length %}
+    <details class="td-alltasks"><summary>Show all {{ tasks.open|length }} open tasks</summary>
+      {% for role, label in role_labels.items() %}
+      {% set mine = tasks.open|selectattr('role', 'equalto', role)|list %}
+      {% if mine %}<p class="td-rolehead">{{ label }}</p>
+      {% for t in mine %}<div class="td-row"><span class="td-pri p{{ t.priority[1] }}">{{ t.priority }}</span><span class="n" title="{{ t.detail }}">{{ t.title }}</span><form method="post" action="/daily-brief/tasks/{{ t.id }}/done"><button class="td-check" type="submit" aria-label="Mark '{{ t.title }}' done"></button></form></div>{% endfor %}
+      {% endif %}{% endfor %}
+    </details>
+    {% endif %}
+    <p class="td-meta">Generated from the data for {{ tasks.business_date.strftime('%a %d %b') }}{% if tasks.done %} · {{ tasks.done|length }} done today{% endif %}. Rebuilt automatically after every sales upload.</p>
+    {% else %}
+    <p class="td-empty">No tasks yet. They're generated after the next sales upload, or press Refresh.</p>
+    {% endif %}
+  </section>
+
+</div>
+<script type="application/json" id="td-data">{{ {"bars": bars, "month": month}|tojson }}</script>
+<script src="/static/today.js?v=1" defer></script>
+{% endif %}
+{% endblock %}

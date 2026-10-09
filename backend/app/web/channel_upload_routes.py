@@ -9,6 +9,7 @@ from app.services.uploads.item_matching import MenuIndex
 from app.services.uploads.zomato import parse_zomato_csv, date_range_from_filename
 from app.services.uploads.swiggy import parse_swiggy_csv
 from app.core.clock import business_today
+from app.services.task_engine import refresh_after_upload
 from app.services.uploads.channel_orders import (
     upsert_order, upsert_daily_channel_sales, write_upload_log, exclude_today_orders,
 )
@@ -77,6 +78,7 @@ async def upload_zomato(
             date_range=date_range, succeeded=True, rows_skipped_today=skipped_today,
         )
         db.commit()
+        refresh_after_upload()
     except Exception as exc:
         db.rollback()
         db.add(UploadLog(
@@ -131,6 +133,7 @@ async def upload_swiggy(
             date_range=date_range, succeeded=True, rows_skipped_today=skipped_today,
         )
         db.commit()
+        refresh_after_upload()
     except Exception as exc:
         db.rollback()
         db.add(UploadLog(
