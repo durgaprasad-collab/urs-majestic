@@ -163,25 +163,40 @@ def _build(db: Session) -> dict:
         return round(100 * part / whole, 1) if whole else 0.0
 
     # ── 3. Margin leaks (last 30 days of POS item sales x recipe cost).
+    # Priced at what each dish actually billed for in Petpooja (revenue / qty),
+    # not menu_items.price, which lags behind POS price changes.
     leaks = db.execute(text("""
         WITH s AS (
-            SELECT item_name, sum(qty) q FROM item_sales
+            SELECT item_name, sum(qty) q, sum(revenue) / nullif(sum(qty), 0) AS sold_at FROM item_sales
             WHERE sale_date > :asof - 30 AND sale_date <= :asof GROUP BY 1
         ), z AS (
             SELECT oi.menu_item_id, count(*) n FROM order_items oi JOIN orders o ON o.id = oi.order_id
             WHERE o.channel = 'zomato' AND o.placed_at > now() - interval '60 days' GROUP BY 1
+        ), priced AS (
+            SELECT c.name, c.price AS menu_price, s.sold_at, s.q, coalesce(z.n, 0) zomato_orders,
+                   100 * c.cost_with_fuel / s.sold_at AS pct
+            FROM s JOIN v_menu_item_full_cost c ON c.name = s.item_name
+            LEFT JOIN z ON z.menu_item_id = c.id
+            WHERE c.is_food AND s.sold_at > 0 AND c.cost_with_fuel IS NOT NULL
         )
-        SELECT c.name, c.price, c.cost_with_fuel_pct pct, s.q, coalesce(z.n, 0) zomato_orders,
-               (c.cost_with_fuel_pct - :target) / 100 * c.price * s.q AS leak
-        FROM s JOIN v_menu_item_full_cost c ON c.name = s.item_name
-        LEFT JOIN z ON z.menu_item_id = c.id
-        WHERE c.is_food AND c.cost_with_fuel_pct > :limit AND s.q >= :minq
+        SELECT *, (pct - :target) / 100 * sold_at * q AS leak
+        FROM priced
+        WHERE pct > :limit AND q >= :minq
         ORDER BY leak DESC
     """), {"asof": asof, "target": LEAK_TARGET_PCT, "limit": LEAK_COST_PCT, "minq": LEAK_MIN_QTY}).mappings().all()
     leak_rows = [{
-        "name": r["name"], "price": _f(r["price"]), "pct": round(_f(r["pct"]), 1), "qty": int(r["q"]),
+        "name": r["name"], "price": _f(r["sold_at"]), "menu_price": _f(r["menu_price"]),
+        "pct": round(_f(r["pct"]), 1), "qty": int(r["q"]),
         "leak": _f(r["leak"]), "zomato_hit": int(r["zomato_orders"]) >= ZOMATO_HIT_ORDERS,
     } for r in leaks]
+    stale_prices = db.execute(text("""
+        WITH s AS (
+            SELECT item_name, sum(qty) q, sum(revenue) / nullif(sum(qty), 0) AS sold_at FROM item_sales
+            WHERE sale_date > :asof - 30 AND sale_date <= :asof GROUP BY 1
+        )
+        SELECT count(*) FROM s JOIN menu_items m ON m.name = s.item_name
+        WHERE m.is_active AND m.is_food AND s.q >= :minq AND abs(s.sold_at - m.price) >= 1
+    """), {"asof": asof, "minq": LEAK_MIN_QTY}).scalar() or 0
     leak_total = sum(r["leak"] for r in leak_rows)
 
     # ── 4. Gas + oil vs sales (last complete month), last gas bill.
@@ -239,6 +254,10 @@ def _build(db: Session) -> dict:
         issues.append({"key": "settings", "title": "Contribution margin", "value": f"{targets['margin_pct']:.0f}%, set {margin_row:%d %b}",
                        "note": "Drives every target. Review it in Business Settings", "level": "warn",
                        "href": "/business-settings"})
+    if stale_prices:
+        issues.append({"key": "prices", "title": "Menu prices", "value": f"{stale_prices} out of date",
+                       "note": "Petpooja bills a different price than the menu table, so food cost % there is off",
+                       "level": "warn", "href": "/results"})
     if t["recon_open"]:
         issues.append({"key": "recon", "title": "Reconciliation", "value": f"{t['recon_open']} mismatches",
                        "note": "Channel totals disagree", "level": "bad", "href": "/reconciliation"})

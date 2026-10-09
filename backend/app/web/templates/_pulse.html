@@ -83,13 +83,13 @@
   </div>
 
   <div class="rs-drawer" data-pulse-drawer="leaks" hidden>
-    <div class="rs-dh"><h3>Margin leaks: dishes over 40% food cost (last 30 days)</h3><span>Leak = cost above a 35% target × quantity sold</span><a href="/results">Open Menu Analysis →</a></div>
+    <div class="rs-dh"><h3>Margin leaks: dishes over 40% food cost (last 30 days)</h3><span>At the price each dish actually billed for in Petpooja. Leak = cost above a 35% target × quantity sold</span><a href="/results">Open Menu Analysis →</a></div>
     {% if lk.rows %}
     <div class="rs-tablewrap"><table class="rs-table">
-      <thead><tr><th>Dish</th><th>Price</th><th>Food cost</th><th>Sold</th><th>Leak / month</th><th></th></tr></thead>
+      <thead><tr><th>Dish</th><th>Sold at</th><th>Food cost</th><th>Sold</th><th>Leak / month</th><th></th></tr></thead>
       <tbody>
       {% for r in lk.rows %}
-      <tr><td>{{ r.name }}</td><td>{{ inr(r.price) }}</td><td class="dn">{{ r.pct }}%</td><td>{{ r.qty }}</td><td>{{ inr(r.leak) }}</td><td>{% if r.zomato_hit %}<span class="rs-tag">Zomato hit</span>{% endif %}</td></tr>
+      <tr><td>{{ r.name }}</td><td>{{ inr(r.price) }}{% if (r.price - r.menu_price)|abs >= 1 %} <small class="rs-was" title="Price in the menu table">menu {{ inr(r.menu_price) }}</small>{% endif %}</td><td class="dn">{{ r.pct }}%</td><td>{{ r.qty }}</td><td>{{ inr(r.leak) }}</td><td>{% if r.zomato_hit %}<span class="rs-tag">Zomato hit</span>{% endif %}</td></tr>
       {% endfor %}
       </tbody>
     </table></div>
