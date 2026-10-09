@@ -8,7 +8,7 @@
   <link rel="icon" href="/static/img/logo-circle-360.jpg" />
   <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/fonts/fonts.css?v=1" />
-  <link rel="stylesheet" href="/static/style.css?v=46" />
+  <link rel="stylesheet" href="/static/style.css?v=47" />
   <script src="/static/app.js?v=3" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
@@ -18,7 +18,7 @@
   {% set b = shell.badges if shell and shell.has_data else {} %}
   {# Each nav entry: (href, label, icon, active-prefix, badge value, badge level) #}
   {% set run_items = [
-    ('/requisitions', 'Requisitions', 'req', '/requisitions', b.requisitions, 'bad'),
+    ('/buy', 'Buy', 'req', '/buy', b.requisitions, 'bad'),
     ('/stock-log', 'Stock Log', 'stock', '/stock-log', b.stock, 'bad'),
     ('/prep-sheet', 'Prep Sheet', 'prep', '/prep-sheet', None, None),
     ('/order-forecast', 'Order Forecast', 'trend', '/order-forecast', None, None),
@@ -112,7 +112,7 @@
       <div class="command-results" data-command-results>
         <a href="/purchases/new" data-command-item data-keywords="add create log expense bill receipt purchase"><b>＋ Purchase</b><small>Log an expense</small></a>
         <a href="/stock-log" data-command-item data-keywords="stock inventory count update"><b>▦ Stock count</b><small>Update inventory</small></a>
-        <a href="/requisitions" data-command-item data-keywords="requisition approve reject staff request"><b>✓ Requisitions</b><small>Approve or reject staff requests</small></a>
+        <a href="/buy" data-command-item data-keywords="buy order requisition approve staff request running out shopping list"><b>✓ Buy</b><small>Staff requests and items running out</small></a>
         <a href="/gas-log" data-command-item data-keywords="gas cylinder weight reading"><b>◉ Gas log</b><small>Cylinder weight history</small></a>
         <a href="/upload" data-command-item data-keywords="upload report petpooja zomato swiggy sales"><b>⇧ Upload sales report</b><small>Refresh channel data</small></a>
         <a href="/daily-brief" data-command-item data-keywords="today home daily brief dashboard"><b>✦ Today</b><small>Open the daily brief</small></a>
@@ -131,7 +131,7 @@
 
   <nav class="rs-tabbar" aria-label="Mobile shortcuts">
     <a href="/daily-brief" class="{% if path == '/daily-brief' %}on{% endif %}"><svg class="rs-i"><use href="#i-home"/></svg>Today</a>
-    <a href="/requisitions" class="{% if path.startswith('/requisitions') %}on{% endif %}"><svg class="rs-i"><use href="#i-req"/></svg>Approve{% if b.requisitions %}<i class="rs-pip">{{ b.requisitions }}</i>{% endif %}</a>
+    <a href="/buy" class="{% if path.startswith('/buy') %}on{% endif %}"><svg class="rs-i"><use href="#i-req"/></svg>Buy{% if b.requisitions %}<i class="rs-pip">{{ b.requisitions }}</i>{% endif %}</a>
     <button type="button" class="rs-tab-add" data-quick-toggle aria-label="Quick add"><svg class="rs-i"><use href="#i-plus"/></svg></button>
     <a href="/stock-log" class="{% if path.startswith('/stock-log') %}on{% endif %}"><svg class="rs-i"><use href="#i-stock"/></svg>Stock{% if b.stock %}<i class="rs-pip">!</i>{% endif %}</a>
     <button type="button" data-nav-toggle aria-controls="app-nav"><svg class="rs-i"><use href="#i-menu"/></svg>More</button>

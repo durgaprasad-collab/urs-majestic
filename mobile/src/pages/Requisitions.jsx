@@ -4,9 +4,9 @@ import { L } from "../labels";
 import NewRequest from "./NewRequest";
 
 const STATUS_LABEL = {
-  pending: L.pending,
+  pending: L.statusSent,
   approved: L.approved,
-  rejected: L.rejected,
+  rejected: L.statusNotNeeded,
   fulfilled: L.fulfilled,
 };
 
@@ -34,9 +34,8 @@ function RequisitionCard({ req, isOwner, onDecide }) {
       </div>
       <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
         <span className={`badge ${req.status}`}>{STATUS_LABEL[req.status]}</span>
-        {req.urgency === "urgent" && <span className="badge urgent">{L.urgent}</span>}
       </div>
-      {req.note && <div className="muted" style={{ marginTop: 6 }}>"{req.note}"</div>}
+      {req.status === "pending" && !isOwner && <div className="muted" style={{ marginTop: 6 }}>{L.ownerDeciding}</div>}
       {req.decision_note && (
         <div className="muted" style={{ marginTop: 6 }}>
           {L.ownerNote}: "{req.decision_note}"
@@ -91,11 +90,16 @@ export default function Requisitions({ session }) {
   }
 
   if (creating) {
-    return <NewRequest onDone={() => { setCreating(false); load(); }} onCancel={() => setCreating(false)} />;
+    return <NewRequest onDone={() => { setCreating(false); load(); }} />;
   }
 
   return (
     <div>
+      {!session.is_owner && (
+        <button className="nr-big" onClick={() => setCreating(true)}>
+          <span className="nr-plus">+</span><span>{L.requestItem}</span>
+        </button>
+      )}
       {error && <div className="error-text">{error}</div>}
       {rows === null && <div className="empty-state">{L.loading}</div>}
       {rows && rows.length === 0 && (
@@ -104,9 +108,6 @@ export default function Requisitions({ session }) {
       {rows && rows.map((r) => (
         <RequisitionCard key={r.id} req={r} isOwner={session.is_owner} onDecide={decide} />
       ))}
-      {!session.is_owner && (
-        <button className="fab" onClick={() => setCreating(true)}>+</button>
-      )}
     </div>
   );
 }

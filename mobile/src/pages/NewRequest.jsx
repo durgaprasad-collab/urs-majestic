@@ -2,124 +2,128 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { L } from "../labels";
 
-const UNITS = ["kg", "g", "l", "ml", "pcs"];
-const MAX_SUGGESTIONS = 8;
+const MAX_MATCHES = 8;
+const UNDO_MS = 5000;
+// Bought fresh daily off-system; the server refuses them too.
+const EXCLUDED = new Set(["coriander", "mint"]);
 
-export default function NewRequest({ onDone, onCancel }) {
+// Staff send the item name only, in one tap. The owner sets the quantity on
+// the admin Buy screen. Once an item is requested it disappears from this
+// list for everyone until it's bought or declined.
+export default function NewRequest({ onDone }) {
   const [ingredients, setIngredients] = useState([]);
-  const [itemName, setItemName] = useState("");
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("kg");
-  const [urgent, setUrgent] = useState(false);
-  const [note, setNote] = useState("");
+  const [open, setOpen] = useState({ requested: [], running_out: [] });
+  const [q, setQ] = useState("");
+  const [toast, setToast] = useState(null); // { id, name }
   const [error, setError] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const blurTimer = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const timer = useRef(null);
+
+  async function loadOpen() {
+    try { setOpen(await api.openRequests()); } catch { /* list still works */ }
+  }
 
   useEffect(() => {
     api.listIngredients().then(setIngredients).catch(() => {});
-    return () => clearTimeout(blurTimer.current);
+    loadOpen();
+    return () => clearTimeout(timer.current);
   }, []);
 
-  const query = itemName.trim().toLowerCase();
-  const suggestions = (
-    query ? ingredients.filter((i) => i.name.toLowerCase().includes(query)) : ingredients
-  ).slice(0, MAX_SUGGESTIONS);
+  const taken = new Map(open.requested.map((r) => [r.item_name.toLowerCase(), r]));
+  open.requested.forEach((r) => {
+    const ing = r.ingredient_id && ingredients.find((i) => i.id === r.ingredient_id);
+    if (ing) taken.set(ing.name.toLowerCase(), r);
+  });
+  const isTaken = (name) => taken.has(name.toLowerCase());
 
-  function pickIngredient(ingredient) {
-    setItemName(ingredient.name);
-    setUnit(ingredient.unit);
-    setSuggestionsOpen(false);
-  }
+  const query = q.trim().toLowerCase();
+  const available = ingredients.filter((i) => !isTaken(i.name) && !EXCLUDED.has(i.name.toLowerCase()));
+  const matches = (query ? available.filter((i) => i.name.toLowerCase().includes(query)) : available).slice(0, query ? MAX_MATCHES : 6);
+  const alreadyMatches = query ? [...taken.entries()].filter(([n]) => n.includes(query)).map(([, r]) => r) : [];
+  const exact = ingredients.some((i) => i.name.toLowerCase() === query);
+  const canSendTyped = query && !exact && !matches.length && !alreadyMatches.length && !EXCLUDED.has(query);
+  const chips = open.running_out.filter((c) => !isTaken(c.name));
 
-  async function submit(e) {
-    e.preventDefault();
+  async function send(name) {
+    if (busy || !name || isTaken(name)) return;
+    setBusy(true);
     setError(null);
-    if (!itemName.trim()) {
-      setError(L.pickOrType);
-      return;
-    }
-    setSaving(true);
     try {
-      await api.createRequisition({
-        item_name: itemName.trim(),
-        quantity: quantity ? Number(quantity) : null,
-        unit: quantity ? unit : null,
-        urgency: urgent ? "urgent" : "normal",
-        note: note.trim() || null,
-      });
-      onDone();
+      const req = await api.createRequisition({ item_name: name });
+      setQ("");
+      setToast({ id: req.id, name: req.item_name });
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => setToast(null), UNDO_MS);
+      await loadOpen();
     } catch (err) {
       setError(err.message);
+      await loadOpen();
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
+  }
+
+  async function undo() {
+    if (!toast) return;
+    clearTimeout(timer.current);
+    const { id } = toast;
+    setToast(null);
+    try { await api.withdrawRequisition(id); } catch (err) { setError(err.message); }
+    await loadOpen();
   }
 
   return (
-    <div>
-      <h3 style={{ marginTop: 0 }}>{L.newRequest}</h3>
-      <form onSubmit={submit}>
-        <label>{L.item}</label>
-        <div className="autocomplete">
-          <input
-            value={itemName}
-            onChange={(e) => { setItemName(e.target.value); setSuggestionsOpen(true); }}
-            onFocus={() => setSuggestionsOpen(true)}
-            onBlur={() => { blurTimer.current = setTimeout(() => setSuggestionsOpen(false), 150); }}
-            placeholder={L.pickOrType}
-            autoComplete="off"
-            required
-          />
-          {suggestionsOpen && suggestions.length > 0 && (
-            <div className="autocomplete-list">
-              {suggestions.map((i) => (
-                <div
-                  key={i.id}
-                  className="autocomplete-item"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => pickIngredient(i)}
-                >
-                  <span>{i.name}</span>
-                  <span className="muted">{i.category}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+    <div className="nr">
+      <div className="nr-head">
+        <button type="button" className="nr-back" onClick={onDone} aria-label="Back">←</button>
+        <h3>{L.requestItem}</h3>
+      </div>
 
-        <label>{L.quantityOptional}</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="number" min="0" step="0.01"
-            value={quantity} onChange={(e) => setQuantity(e.target.value)}
-            style={{ flex: 2 }}
-          />
-          <select value={unit} onChange={(e) => setUnit(e.target.value)} style={{ flex: 1 }}>
-            {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-          </select>
-        </div>
+      <div className="nr-search">
+        <span>⌕</span>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L.typeItemName} autoComplete="off" />
+      </div>
+      <p className="nr-hint">{L.nameOnlyHint}</p>
+      {error && <div className="error-text">{error}</div>}
 
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <input type="checkbox" style={{ width: "auto" }} checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
-          {L.urgent}
-        </label>
+      {!query && chips.length > 0 && (
+        <>
+          <h4 className="nr-h">{L.runningOutTap}</h4>
+          <div className="nr-chips">
+            {chips.map((c) => (
+              <button key={c.ingredient_id} className="nr-chip" disabled={busy} onClick={() => send(c.name)}>
+                {c.name}<small>{c.out ? L.out : `${c.days_left} ${L.daysLeft}`}</small>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
-        <label>{L.noteOptional}</label>
-        <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
-
-        {error && <div className="error-text">{error}</div>}
-
-        <div className="btn-row" style={{ marginTop: 16 }}>
-          <button type="button" className="secondary" onClick={onCancel} style={{ flex: 1 }}>
-            {L.cancel}
+      <h4 className="nr-h">{query ? L.matches : L.allItems}</h4>
+      <div className="nr-list">
+        {matches.map((i) => (
+          <button key={i.id} className="nr-it" disabled={busy} onClick={() => send(i.name)}>
+            <span><b>{i.name}</b><small>{i.category}</small></span><span className="nr-go">{L.send}</span>
           </button>
-          <button type="submit" className="primary" disabled={saving} style={{ flex: 2 }}>
-            {saving ? "..." : L.send}
+        ))}
+        {alreadyMatches.map((r) => (
+          <div key={`t${r.item_name}`} className="nr-it nr-taken">
+            <span><b>{r.item_name}</b><small>{L.alreadyRequested} · {r.by}</small></span><span className="badge approved">{L.statusSent}</span>
+          </div>
+        ))}
+        {canSendTyped && (
+          <button className="nr-it nr-typed" disabled={busy} onClick={() => send(q.trim())}>
+            <span><b>"{q.trim()}"</b><small>{L.sendAsTyped}</small></span><span className="nr-go">{L.send}</span>
           </button>
+        )}
+      </div>
+
+      {toast && (
+        <div className="nr-toast">
+          ✓ <span><b>{toast.name}</b> {L.sentToOwner}</span>
+          <button type="button" onClick={undo}>{L.undo}</button>
         </div>
-      </form>
+      )}
     </div>
   );
 }

@@ -196,11 +196,11 @@ def build_tasks(db: Session) -> tuple[datetime.date | None, list[dict]]:
         t.add("runout_today", "gm", "P0",
               f"Buy today: {names}",
               f"{len(runout)} ingredient(s) have less than a day of stock left at the latest count.",
-              "Bought and logged in Purchases before service.", "/order-forecast", impact=5000)
+              "Bought and logged in Purchases before service.", "/buy", impact=5000)
     if b["requisitions"]:
         t.add("requisitions", "gm", "P0",
               f"Approve or reject {b['requisitions']} staff requisition(s)",
-              "Staff are waiting on these to buy or prepare.", "Every pending requisition decided.", "/requisitions",
+              "Staff are waiting on these to buy or prepare.", "Every pending requisition decided.", "/buy",
               impact=3000)
     if go["gas_age"] is not None and go["gas_age"] > 4:
         t.add("gas_bills", "gm", "P1",

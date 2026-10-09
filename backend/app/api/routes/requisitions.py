@@ -69,7 +69,7 @@ def _sync_fulfillment(db: Session, requisitions: list[Requisition]) -> bool:
 def notify_decision(db: Session, req: Requisition, approved: bool) -> None:
     """Best-effort push to the requester once an owner decides -- shared by
     the mobile API route below and the admin-panel route in
-    app/web/requisition_routes.py so both decision surfaces notify the same way."""
+    app/web/buy_routes.py so both decision surfaces notify the same way."""
     try:
         push_notifications.send_to_users(
             db, [req.requested_by_user_id],
@@ -79,6 +79,43 @@ def notify_decision(db: Session, req: Requisition, approved: bool) -> None:
         )
     except Exception:
         logger.exception("Failed to notify staff of decision on requisition %s", req.id)
+
+
+_OPEN = (RequisitionStatus.pending, RequisitionStatus.approved)
+
+
+def _open_request_for(db: Session, name: str, ingredient_id: int | None) -> Requisition | None:
+    q = db.query(Requisition).options(joinedload(Requisition.requested_by)).filter(Requisition.status.in_(_OPEN))
+    if ingredient_id:
+        q = q.filter((Requisition.ingredient_id == ingredient_id) | Requisition.item_name.ilike(name))
+    else:
+        q = q.filter(Requisition.item_name.ilike(name))
+    return q.order_by(Requisition.created_at).first()
+
+
+@router.get("/open")
+def open_items(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """For the New Request screen: what's already requested (hidden from the
+    list for everyone) and what the stock says is running out (one-tap chips)."""
+    from app.services.buy_inbox import inbox
+
+    reqs = (db.query(Requisition).options(joinedload(Requisition.requested_by))
+            .filter(Requisition.status.in_(_OPEN)).order_by(Requisition.created_at).all())
+    if _sync_fulfillment(db, reqs):
+        db.commit()
+        reqs = [r for r in reqs if r.status in _OPEN]
+    requested = [{"item_name": r.item_name, "ingredient_id": r.ingredient_id, "by": r.requested_by.name,
+                  "created_at": r.created_at, "status": r.status.value} for r in reqs]
+    taken = {r.ingredient_id for r in reqs if r.ingredient_id}
+    data = inbox(db)
+    running_out = []
+    for _, rows in data["groups"]:
+        for i in rows:
+            if i["ingredient_id"] and i["ingredient_id"] not in taken and (i["out"] or i["low"])                     and i["name"].lower() not in _EXCLUDED_ITEM_NAMES:
+                running_out.append({"ingredient_id": i["ingredient_id"], "name": i["name"],
+                                    "out": i["out"], "days_left": float(i["cover"]) if i["cover"] is not None else None})
+    running_out.sort(key=lambda r: (not r["out"], r["days_left"] if r["days_left"] is not None else 99))
+    return {"requested": requested, "running_out": running_out[:8]}
 
 
 @router.post("/", response_model=RequisitionRead, status_code=status.HTTP_201_CREATED)
@@ -95,14 +132,20 @@ def create_requisition(
         )
 
     ingredient = _resolve_ingredient(db, name)
+    # One open request per item: until it's bought or declined, nobody can
+    # send it again (the app hides it; this catches two phones at once).
+    existing = _open_request_for(db, name, ingredient.id if ingredient else None)
+    if existing:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{existing.item_name} is already requested by {existing.requested_by.name}.",
+        )
+    # Staff send the item name only; the owner sets the quantity on the Buy
+    # screen. Quantity/unit/urgency/note from older app versions are ignored.
     req = Requisition(
         requested_by_user_id=user.id,
         item_name=name,
         ingredient_id=ingredient.id if ingredient else None,
-        quantity=payload.quantity,
-        unit=payload.unit,
-        urgency=payload.urgency,
-        note=payload.note,
     )
     db.add(req)
     db.commit()
@@ -112,9 +155,8 @@ def create_requisition(
     try:
         push_notifications.send_to_users(
             db, owner_ids,
-            title="New requisition",
-            body=f"{user.name} requested {req.item_name}"
-            + (f" ({payload.quantity} {payload.unit})" if payload.quantity else ""),
+            title=f"New request: {req.item_name}",
+            body=f"{user.name} asked for it. Open Buy to set how many.",
             data={"requisition_id": req.id},
         )
     except Exception:
@@ -163,3 +205,15 @@ def decide_requisition(
     notify_decision(db, req, payload.approve)
 
     return db.query(Requisition).options(*_WITH_USERS).filter(Requisition.id == req.id).first()
+
+
+@router.delete("/{requisition_id}", status_code=status.HTTP_204_NO_CONTENT)
+def withdraw_requisition(requisition_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Undo: the requester takes back a request the owner hasn't decided yet."""
+    req = db.query(Requisition).filter(Requisition.id == requisition_id).first()
+    if req is None or req.requested_by_user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+    if req.status != RequisitionStatus.pending:
+        raise HTTPException(status.HTTP_409_CONFLICT, "The owner has already decided on this request.")
+    db.delete(req)
+    db.commit()

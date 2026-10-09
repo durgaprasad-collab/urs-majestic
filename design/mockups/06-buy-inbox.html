@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 06 · Buy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;--est:#6B7FA6;--est-bg:#EEF1F7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 120px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .head p{color:var(--ink-2);font-size:13px;margin-top:2px}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{font:600 13px Inter;border-radius:10px;padding:9px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+  .btn-p{background:var(--ground);border-color:var(--ground);color:#fff}
+  .btn-p b{color:var(--gold-2)}
+  .btn-wa{color:#128C4A;border-color:#BFE3CD}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .k{padding:12px 16px;border-right:1px solid var(--line);border-top:3px solid transparent;cursor:pointer}
+  .k:last-child{border-right:0}.k:hover{background:#FAFAF6}
+  .k.bad{border-top-color:var(--bad)}.k.warn{border-top-color:var(--gold)}.k.good{border-top-color:var(--good)}.k.est{border-top-color:var(--est)}
+  .k .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .k .v{font-size:22px;font-weight:700;margin-top:2px}
+  .k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{font-size:11.5px;color:var(--ink-2)}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto}
+  .tab{padding:10px 14px;font-weight:600;font-size:13.5px;color:var(--ink-2);border:0;background:none;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px;white-space:nowrap}
+  .tab.on{color:var(--ground);border-bottom-color:var(--gold)}
+  .tab span{font-size:11px;font-weight:700;background:#ECE9DF;color:var(--ink-2);border-radius:999px;padding:1px 7px;margin-left:5px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:600;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:#FBFAF6;white-space:nowrap}
+  th.r,td.r{text-align:right}
+  td{padding:10px 12px;border-bottom:1px solid #F0EEE6;vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  tr.grp td{background:#F7F6F0;font:700 12px Inter;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase;padding:8px 12px}
+  tr.grp td span{font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-3);margin-left:6px}
+  tr.grp td .sel{float:right;font:600 11.5px Inter;text-transform:none;letter-spacing:0;color:#0B3A2E;cursor:pointer;background:none;border:0}
+  tr.off td{opacity:.45}
+  .item{font-weight:600}
+  .why{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .pill.out{background:var(--bad-bg);color:var(--bad)}
+  .pill.low{background:var(--warn-bg);color:var(--warn)}
+  .pill.req{background:#E8F0FD;color:#1A4FA0}
+  .pill.log{background:#F2F1EA;color:var(--ink-2);font-weight:600}
+  .left{font-weight:700}
+  .left small{display:block;font-size:11px;color:var(--ink-3);font-weight:500}
+  .qty{display:inline-flex;align-items:center;gap:6px}
+  .qty input{width:78px;padding:6px 8px;border:1.5px solid transparent;border-radius:8px;font:700 13.5px Inter;text-align:right;background:#F7F6F0}
+  .qty input:hover{border-color:var(--line);background:#fff}
+  .qty input:focus{outline:0;border-color:var(--gold);background:#fff}
+  .qty .u{font-size:12.5px;color:var(--ink-2);min-width:22px}
+  .muted{color:var(--ink-3);font-size:12.5px}
+  .cb{width:18px;height:18px;accent-color:var(--ground);cursor:pointer}
+  .rowbtn{font:600 12px Inter;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 9px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+  .rowbtn.ok{border-color:var(--ground);background:var(--ground);color:#fff}
+  .status{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .status.wait{background:var(--warn-bg);color:var(--warn)}
+  .status.done{background:var(--good-bg);color:var(--good)}
+  .empty{padding:28px;text-align:center;color:var(--ink-3)}
+  .savebar{position:fixed;left:0;right:0;bottom:0;background:rgba(6,32,19,.97);color:#fff;display:flex;align-items:center;gap:14px;padding:12px 24px;z-index:5;border-top:1px solid rgba(212,166,42,.35)}
+  .savebar small{color:#B9CBBF;font-size:12px;display:block}
+  .savebar .btn-gold{margin-left:auto;font:700 14px Inter;border:0;border-radius:11px;padding:12px 22px;background:linear-gradient(180deg,var(--gold-2),var(--gold));color:var(--ground);cursor:pointer}
+  .savebar .btn-ghost{font:600 13px Inter;border:1px solid rgba(255,255,255,.25);border-radius:11px;padding:11px 16px;background:none;color:#fff;cursor:pointer}
+  .hidden{display:none}
+  .toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#14201B;color:#fff;font-size:13px;padding:10px 16px;border-radius:10px;z-index:30}
+  .modal-bg{position:fixed;inset:0;background:rgba(4,25,19,.5);display:grid;place-items:center;z-index:20}
+  .modal{background:#fff;border-radius:16px;padding:20px 22px;width:min(460px,92vw);box-shadow:0 30px 60px rgba(0,0,0,.3)}
+  .modal h3{font-size:17px}.modal p{font-size:13px;color:var(--ink-2);margin:6px 0 12px;line-height:1.5}
+  .modal pre{background:#F4FBF6;border:1px solid #CFE9D8;border-radius:10px;padding:12px 14px;font:13px/1.55 Inter;white-space:pre-wrap;max-height:50vh;overflow:auto}
+  .modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+  .notes{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
+  .note{background:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;color:#3c4440}.note b{display:block;color:var(--ink);margin-bottom:3px}
+  .note.alert{border:1px solid #F2C4BA;background:#FFF6F3}
+  @media (max-width:820px){
+    .kpis{grid-template-columns:1fr 1fr}.k{border-bottom:1px solid var(--line)}.k:last-child{grid-column:span 2}
+    .k{padding:9px 12px}.k .v{font-size:18px}.k .s{display:none}
+    .hide-m{display:none}
+    td{padding:9px 8px}th{padding:8px}
+    .notes{grid-template-columns:1fr}
+    .head h1{font-size:22px}
+    .savebar{padding:10px 14px}.savebar .btn-ghost{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 06: Buy (replaces Requisitions).</b> One inbox for everything that needs buying: staff requests from the app plus items the stock says are running out. Real stock and prices, Fri 9 Oct 2026. Untick, change a quantity, approve, or share the list on WhatsApp. Staff requests carry <b>only the item name</b>; the quantity is yours. One staff request is an <b>example</b> (there are none pending today). Nothing saves.</div>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Buy</h1>
+      <p>Staff requests and items running out, with what's left, how fast it's used and what it costs.</p>
+    </div>
+    <div class="btns">
+      <button class="btn btn-wa" onclick="share()">Share list on WhatsApp</button>
+      <button class="btn btn-p" onclick="approve()">Approve <b id="hbtn"></b></button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="k bad" onclick="tab('buy')"><div class="l">Out now</div><div class="v" id="k-out"></div><div class="s">estimate at zero</div></div>
+    <div class="k warn" onclick="tab('buy')"><div class="l">Runs out ≤ 3 days</div><div class="v" id="k-low"></div><div class="s">at today's pace</div></div>
+    <div class="k est" onclick="tab('buy')"><div class="l">Staff requests</div><div class="v" id="k-req"></div><div class="s">from the staff app</div></div>
+    <div class="k good"><div class="l">Today's list</div><div class="v" id="k-cost"></div><div class="s" id="k-cost-s"></div></div>
+    <div class="k" onclick="tab('wait')"><div class="l">Approved, not bought</div><div class="v" id="k-wait"></div><div class="s">closes when the purchase is logged</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="buy" onclick="tab('buy')">To buy<span id="t-buy"></span></button>
+    <button class="tab" data-t="wait" onclick="tab('wait')">Approved · waiting<span id="t-wait"></span></button>
+    <button class="tab" data-t="done" onclick="tab('done')">Bought this week<span id="t-done"></span></button>
+  </div>
+
+  <div id="p-buy"></div>
+  <div id="p-wait" class="hidden"></div>
+  <div id="p-done" class="hidden"></div>
+
+  <div class="notes">
+    <div class="note"><b>Why one inbox</b>Requisitions had 2 requests ever, but stock runs out every day. Now staff requests and "the stock says buy" sit in the same list, sorted by where you buy them, so one look tells you what to send for.</div>
+    <div class="note"><b>Approve = it's on the list</b>Approving puts an item on the "waiting" tab. When anyone logs a purchase of that item, it moves to "bought" by itself, the same matching requisitions already use. Rejecting a staff request still notifies them.</div>
+    <div class="note"><b>Quantities are the owner's call</b>Staff only send the item name from the app (no quantity, unit or note fields). The suggested quantity comes from what you usually buy and how fast it's used; edit it in place and the cost updates. Prices are your average paid price.</div>
+    <div class="note alert"><b>Fixed while building this</b>The Order Forecast and the staff app's Stock tab were reading stock from an experimental model that had gone negative (e.g. Coriander −2,680 kg). This mockup uses the real stock ledger; the fix ships with this screen.</div>
+  </div>
+</div>
+
+<div class="savebar">
+  <div><b id="sb-n"></b><small id="sb-s"></small></div>
+  <button class="btn-ghost" onclick="share()">Share on WhatsApp</button>
+  <button class="btn-gold" onclick="approve()">Approve selected</button>
+</div>
+
+<script>
+const ITEMS = [{"id": 1, "name": "Paneer", "category": "Dairy", "unit": "kg", "oh": 0.0, "cov": 0.0, "sug": 3.84, "uc": 256.58, "est": 984.7, "dc": 1.269, "last_qty": 5.0, "last": "2026-10-07", "days_since": 2}, {"id": 37, "name": "Palak", "category": "Vegetables", "unit": "pcs", "oh": 0.0, "cov": 0.0, "sug": 1.17, "uc": 22.0, "est": 25.67, "dc": 0.083, "last_qty": 1.0, "last": "2026-09-13", "days_since": 26}, {"id": 38, "name": "Cashew gravy", "category": "Condiments", "unit": "kg", "oh": 0.0, "cov": 0.0, "sug": 1.6, "uc": 379.74, "est": 607.59, "dc": 0.123, "last_qty": 1.0, "last": "2026-08-29", "days_since": 41}, {"id": 59, "name": "Ladies Finger", "category": "Vegetables", "unit": "kg", "oh": 0.0, "cov": 0.0, "sug": 1.0, "uc": 51.25, "est": 51.25, "dc": 0.049, "last_qty": 1.0, "last": "2026-09-18", "days_since": 21}, {"id": 65, "name": "Chinese Garlic", "category": "Vegetables", "unit": "kg", "oh": 0.0, "cov": 0.0, "sug": 0.71, "uc": 312.94, "est": 221.67, "dc": 0.059, "last_qty": 1.0, "last": "2026-09-01", "days_since": 38}, {"id": 106, "name": "Drumstick", "category": "Vegetables", "unit": "kg", "oh": 0.0, "cov": 0.0, "sug": 1.0, "uc": 46.0, "est": 46.0, "dc": 0.038, "last_qty": 1.0, "last": "2026-09-18", "days_since": 21}, {"id": 118, "name": "Schezwan chutney", "category": "Other", "unit": "kg", "oh": 0.0, "cov": 0.0, "sug": 1.0, "uc": 190.05, "est": 190.05, "dc": 0.059, "last_qty": 1.0, "last": "2026-09-08", "days_since": 31}, {"id": 14, "name": "Green Chilli", "category": "Vegetables", "unit": "kg", "oh": 0.0, "cov": 0.0, "sug": 1.23, "uc": 52.49, "est": 64.73, "dc": 0.18, "last_qty": 1.0, "last": "2026-10-04", "days_since": 5}, {"id": 16, "name": "Soya Sauce", "category": "Condiments", "unit": "g", "oh": 0.0, "cov": 0.0, "sug": 1040.0, "uc": 0.07, "est": 76.85, "dc": 61.806, "last_qty": 750.0, "last": "2026-10-08", "days_since": 1}, {"id": 21, "name": "Spring Onion", "category": "Vegetables", "unit": "g", "oh": 0.0, "cov": 0.0, "sug": 246.91, "uc": 0.11, "est": 26.44, "dc": 73.567, "last_qty": 250.0, "last": "2026-10-07", "days_since": 2}, {"id": 24, "name": "Kabuli channa", "category": "Pulses", "unit": "kg", "oh": 0.0, "cov": 0.0, "sug": 10.0, "uc": 103.9, "est": 1039.0, "dc": 0.141, "last_qty": 10.0, "last": "2026-08-27", "days_since": 43}, {"id": 31, "name": "Green peas", "category": "Vegetables", "unit": "kg", "oh": 0.0, "cov": 0.0, "sug": 0.9, "uc": 162.59, "est": 146.33, "dc": 0.049, "last_qty": 1.0, "last": "2026-09-06", "days_since": 33}, {"id": 5, "name": "Onion", "category": "Vegetables", "unit": "kg", "oh": 8.255, "cov": 1.6, "sug": 15.34, "uc": 49.69, "est": 762.42, "dc": 5.071, "last_qty": 15.0, "last": "2026-10-07", "days_since": 2}, {"id": 9, "name": "Butter", "category": "Dairy", "unit": "kg", "oh": 0.601, "cov": 2.7, "sug": 1.26, "uc": 222.74, "est": 280.45, "dc": 0.225, "last_qty": 2.0, "last": "2026-10-07", "days_since": 2}, {"id": 23, "name": "Carrot", "category": "Vegetables", "unit": "kg", "oh": 1.065, "cov": 3.0, "sug": 1.54, "uc": 80.63, "est": 124.04, "dc": 0.352, "last_qty": 2.0, "last": "2026-10-07", "days_since": 2}];
+const BOUGHT = [{"name": "Mint", "qty": 390.0, "unit": "g", "price": 30.0, "d": "Fri 09 Oct", "by": "Durga"}, {"name": "Coriander", "qty": 660.0, "unit": "g", "price": 90.0, "d": "Fri 09 Oct", "by": "Durga"}, {"name": "Vendor delivery charge", "qty": 1.0, "unit": "pcs", "price": 5.0, "d": "Thu 08 Oct", "by": "Durga"}, {"name": "Soya Sauce", "qty": 750.0, "unit": "g", "price": 82.0, "d": "Thu 08 Oct", "by": "Durga"}, {"name": "Curd", "qty": 1.8, "unit": "kg", "price": 116.0, "d": "Thu 08 Oct", "by": "Durga"}, {"name": "Disposable Plates", "qty": 500.0, "unit": "pcs", "price": 1400.0, "d": "Thu 08 Oct", "by": "Durga"}, {"name": "Disposable bowl", "qty": 500.0, "unit": "pcs", "price": 700.0, "d": "Thu 08 Oct", "by": "Durga"}, {"name": "Mushroom", "qty": 1.0, "unit": "kg", "price": 200.0, "d": "Thu 08 Oct", "by": "Durga"}, {"name": "Tissue", "qty": 10.0, "unit": "pcs", "price": 100.0, "d": "Thu 08 Oct", "by": "Usha"}, {"name": "Cooking Gas", "qty": 19.2, "unit": "kg", "price": 3050.0, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Baby Corn", "qty": 0.6, "unit": "kg", "price": 99.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Butter", "qty": 2.0, "unit": "kg", "price": 440.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Paneer", "qty": 5.0, "unit": "kg", "price": 1350.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Al foil cover", "qty": 3.0, "unit": "pcs", "price": 105.0, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Ginger-Garlic", "qty": 1.0, "unit": "kg", "price": 150.0, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Garbage bag (large)", "qty": 1.0, "unit": "pcs", "price": 70.0, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Tomato", "qty": 4.0, "unit": "kg", "price": 144.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Radish/Mullangi", "qty": 1.0, "unit": "kg", "price": 36.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Lemon", "qty": 1.0, "unit": "kg", "price": 290.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Gobi", "qty": 2.5, "unit": "kg", "price": 168.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Carrot", "qty": 2.0, "unit": "kg", "price": 100.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Capsicum", "qty": 2.0, "unit": "kg", "price": 130.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Cabbage", "qty": 3.0, "unit": "kg", "price": 66.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Beans", "qty": 2.0, "unit": "kg", "price": 240.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Baby Corn", "qty": 0.6, "unit": "kg", "price": 105.0, "d": "Wed 07 Oct", "by": "Durga"}, {"name": "Cup sambrani", "qty": 12.0, "unit": "pcs", "price": 68.0, "d": "Wed 07 Oct", "by": "Raghu"}, {"name": "Oil for lamp", "qty": 250.0, "unit": "ml", "price": 50.0, "d": "Wed 07 Oct", "by": "Raghu"}, {"name": "Vendor delivery charge", "qty": 1.0, "unit": "pcs", "price": 57.82, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Fresh cream (Rich's Double Dream)", "qty": 2.0, "unit": "l", "price": 390.6, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Onion", "qty": 15.0, "unit": "kg", "price": 894.0, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Spring Onion", "qty": 250.0, "unit": "g", "price": 27.0, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Hinged Round Container 4oz", "qty": 150.0, "unit": "pcs", "price": 375.24, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Green chilli sauce", "qty": 2.72, "unit": "kg", "price": 218.4, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Noodles (dried)", "qty": 4.0, "unit": "kg", "price": 378.0, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Wooden Fork", "qty": 200.0, "unit": "pcs", "price": 92.4, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Monosodium Glutamate (Ajinomoto)", "qty": 1000.0, "unit": "g", "price": 221.84, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Black Pepper Powder (ground in-house from whole)", "qty": 500.0, "unit": "g", "price": 462.0, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Kashmiri chilli powder", "qty": 500.0, "unit": "g", "price": 334.95, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Hinged Round Container 2oz", "qty": 200.0, "unit": "pcs", "price": 349.28, "d": "Wed 07 Oct", "by": "Usha"}, {"name": "Coriander", "qty": 0.2, "unit": "kg", "price": 30.0, "d": "Wed 07 Oct", "by": "Raghu"}, {"name": "Gobi", "qty": 1.0, "unit": "kg", "price": 110.0, "d": "Wed 07 Oct", "by": "Raghu"}, {"name": "Goli Soda - resale", "qty": 96.0, "unit": "pcs", "price": 2208.0, "d": "Tue 06 Oct", "by": "Durga"}, {"name": "Vendor delivery charge", "qty": 1.0, "unit": "pcs", "price": 57.82, "d": "Tue 06 Oct", "by": "Usha"}, {"name": "Rectangle Container 650ml", "qty": 100.0, "unit": "pcs", "price": 859.04, "d": "Tue 06 Oct", "by": "Usha"}, {"name": "Rectangle Container 500ml", "qty": 100.0, "unit": "pcs", "price": 811.84, "d": "Tue 06 Oct", "by": "Usha"}, {"name": "Round Container 500ml", "qty": 100.0, "unit": "pcs", "price": 644.28, "d": "Tue 06 Oct", "by": "Usha"}, {"name": "Round Container 300ml", "qty": 100.0, "unit": "pcs", "price": 600.62, "d": "Tue 06 Oct", "by": "Usha"}, {"name": "Potato", "qty": 5.0, "unit": "kg", "price": 143.0, "d": "Tue 06 Oct", "by": "Usha"}, {"name": "Onion", "qty": 20.0, "unit": "kg", "price": 1270.0, "d": "Tue 06 Oct", "by": "Usha"}, {"name": "Raw banana", "qty": 1.0, "unit": "kg", "price": 20.0, "d": "Tue 06 Oct", "by": "Raghu"}, {"name": "Brinjal", "qty": 0.5, "unit": "kg", "price": 20.0, "d": "Tue 06 Oct", "by": "Raghu"}, {"name": "Coriander", "qty": 0.2, "unit": "kg", "price": 32.0, "d": "Tue 06 Oct", "by": "Raghu"}, {"name": "Gobi", "qty": 1.0, "unit": "kg", "price": 110.0, "d": "Tue 06 Oct", "by": "Raghu"}, {"name": "Tomato", "qty": 7.285, "unit": "kg", "price": 284.0, "d": "Tue 06 Oct", "by": "Raghu"}];
+const WHERE = {Vegetables:'Market · vegetables', Dairy:'Dairy', Frozen:'Frozen', Utilities:'Packaging', packaging:'Packaging'};
+const ORDER = ['Market · vegetables','Dairy','Grocery & Hyperpure','Frozen','Packaging','Staff requests'];
+const where = c => WHERE[c] || 'Grocery & Hyperpure';
+// Example staff request (none pending today).
+ITEMS.unshift({id:-1,name:'Garbage bag (large)',category:'Utilities',unit:'pcs',oh:null,cov:null,sug:20,uc:9.2,est:184,dc:null,last:'2026-10-07',days_since:2,
+  req:{by:'Anil',when:'today 4:40 PM'}});
+ITEMS.forEach(i => { i.sel = true; i.q = i.sug; i.state = 'buy'; });
+const S = {approved: []};
+const fmt = (n, d=2) => n == null ? '' : (+n).toLocaleString('en-IN', {maximumFractionDigits:d});
+const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const unitShow = (q,u) => u === 'g' && q >= 1000 ? fmt(q/1000,2)+' kg' : u === 'ml' && q >= 1000 ? fmt(q/1000,2)+' L' : fmt(q, u==='pcs'?0:2)+' '+u;
+const cost = i => (i.uc||0) * (i.q||0);
+
+function whyPills(i){
+  const p = [];
+  if (i.req) p.push(`<span class="pill req">Requested by ${i.req.by} · ${i.req.when}</span>`);
+  if (i.oh === 0) p.push('<span class="pill out">Out</span>');
+  else if (i.cov != null && i.cov <= 3) p.push(`<span class="pill low">${fmt(i.cov,1)} days left</span>`);
+  else if (i.cov != null) p.push(`<span class="pill low">${fmt(i.cov,0)} days left</span>`);
+  if (i.days_since != null && i.days_since > 25 && !i.req) p.push(`<span class="pill log">No buy logged for ${i.days_since} days — bought outside the log?</span>`);
+  return p.join('');
+}
+
+function render(){
+  const buy = ITEMS.filter(i => i.state === 'buy');
+  const groups = {};
+  buy.forEach(i => (groups[where(i.category)] = groups[where(i.category)] || []).push(i));
+  let h = '<div class="card"><table><thead><tr><th style="width:34px"></th><th>Item</th><th class="r">Left</th><th class="r hide-m">Uses / day</th><th class="r">Buy</th><th class="r hide-m">Avg price</th><th class="r">Cost</th><th class="hide-m">Last bought</th></tr></thead><tbody>';
+  ORDER.filter(g => groups[g]).forEach(g => {
+    const list = groups[g].sort((a,b) => (b.req?1:0)-(a.req?1:0) || (a.cov??99)-(b.cov??99));
+    const tot = list.filter(i=>i.sel).reduce((s,i)=>s+cost(i),0);
+    h += `<tr class="grp"><td colspan="8">${g}<span>${list.length} items · ${rs(tot)}</span><button class="sel" onclick="selGroup('${g}')">select all</button></td></tr>`;
+    list.forEach(i => {
+      h += `<tr class="${i.sel?'':'off'}">
+        <td><input type="checkbox" class="cb" ${i.sel?'checked':''} onchange="tog(${i.id})"></td>
+        <td><div class="item">${i.name}</div><div class="why">${whyPills(i)}</div>${i.req?`<div class="muted" style="margin-top:3px">Staff send the name only. Quantity is suggested from usage; you decide.</div>`:''}</td>
+        <td class="r left">${i.oh==null?'<span class="muted">—</span>':unitShow(i.oh,i.unit)}${i.cov!=null&&i.oh>0?`<small>${fmt(i.cov,1)} days</small>`:''}</td>
+        <td class="r hide-m muted">${i.dc==null?'—':unitShow(i.dc,i.unit)}</td>
+        <td class="r"><span class="qty"><input value="${fmt(i.q,i.unit==='pcs'?0:2)}" oninput="setQ(${i.id},this.value)"><span class="u">${i.unit}</span></span></td>
+        <td class="r hide-m muted">${i.uc?'₹'+fmt(i.uc*(i.unit==='g'||i.unit==='ml'?1000:1),0)+'/'+(i.unit==='g'?'kg':i.unit==='ml'?'L':i.unit):'—'}</td>
+        <td class="r" id="c${i.id}"><b>${rs(cost(i))}</b></td>
+        <td class="hide-m muted">${i.last?new Date(i.last).toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'never'}</td></tr>`;
+    });
+  });
+  h += '</tbody></table>' + (buy.length?'':'<div class="empty">Nothing to buy. Everything has at least 3 days of stock.</div>') + '</div>';
+  document.getElementById('p-buy').innerHTML = h;
+
+  const wait = ITEMS.filter(i => i.state === 'wait');
+  document.getElementById('p-wait').innerHTML = '<div class="card"><table><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Cost</th><th>Approved</th><th>Status</th><th></th></tr></thead><tbody>' +
+    (wait.map(i => `<tr><td class="item">${i.name}${i.req?` <span class="pill req">Staff · ${i.req.by}</span>`:''}</td><td class="r">${unitShow(i.q,i.unit)}</td><td class="r"><b>${rs(cost(i))}</b></td><td class="muted">Sayee · just now</td><td><span class="status wait">Waiting for purchase</span></td><td class="r"><button class="rowbtn" onclick="undo(${i.id})">Undo</button></td></tr>`).join('') ||
+    '<tr><td colspan="6" class="empty">Nothing approved yet. Approve items on the "To buy" tab.</td></tr>') + '</tbody></table></div>';
+
+  document.getElementById('p-done').innerHTML = '<div class="card"><table><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Paid</th><th class="hide-m">Logged by</th><th>Date</th></tr></thead><tbody>' +
+    BOUGHT.map(b => `<tr><td class="item">${b.name}</td><td class="r">${unitShow(b.qty,b.unit)}</td><td class="r">${rs(b.price)}</td><td class="hide-m muted">${b.by||'—'}</td><td class="muted">${b.d}</td></tr>`).join('') + '</tbody></table></div>';
+
+  const sel = buy.filter(i => i.sel), tot = sel.reduce((s,i)=>s+cost(i),0);
+  const q = id => document.getElementById(id);
+  q('k-out').textContent = buy.filter(i=>i.oh===0).length;
+  q('k-low').textContent = buy.filter(i=>i.oh>0&&i.cov!=null&&i.cov<=3).length;
+  q('k-req').textContent = buy.filter(i=>i.req).length;
+  q('k-cost').textContent = rs(tot); q('k-cost-s').textContent = sel.length + ' items selected';
+  q('k-wait').textContent = wait.length;
+  q('t-buy').textContent = buy.length; q('t-wait').textContent = wait.length; q('t-done').textContent = BOUGHT.length;
+  q('hbtn').textContent = sel.length ? `${sel.length} · ${rs(tot)}` : '';
+  q('sb-n').textContent = `${sel.length} items · ${rs(tot)}`;
+  q('sb-s').textContent = 'Selected on the To buy list';
+}
+function find(id){ return ITEMS.find(i => i.id === id); }
+function tog(id){ const i = find(id); i.sel = !i.sel; render(); }
+function selGroup(g){ const l = ITEMS.filter(i=>i.state==='buy'&&where(i.category)===g); const all = l.every(i=>i.sel); l.forEach(i=>i.sel=!all); render(); }
+function setQ(id, v){ const i = find(id); i.q = parseFloat(v)||0; document.getElementById('c'+id).innerHTML = '<b>'+rs(cost(i))+'</b>';
+  const sel = ITEMS.filter(x=>x.state==='buy'&&x.sel), tot = sel.reduce((s,x)=>s+cost(x),0);
+  document.getElementById('k-cost').textContent = rs(tot); document.getElementById('sb-n').textContent = `${sel.length} items · ${rs(tot)}`; document.getElementById('hbtn').textContent = `${sel.length} · ${rs(tot)}`; }
+function approve(){ const sel = ITEMS.filter(i=>i.state==='buy'&&i.sel); if(!sel.length) return; sel.forEach(i=>i.state='wait'); render(); toast(`${sel.length} items approved. They close by themselves when the purchase is logged.`); }
+function undo(id){ find(id).state='buy'; render(); }
+function tab(t){ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); ['buy','wait','done'].forEach(x=>document.getElementById('p-'+x).classList.toggle('hidden',x!==t)); }
+function share(){
+  const sel = ITEMS.filter(i=>(i.state==='buy'&&i.sel)||i.state==='wait'); const g = {};
+  sel.forEach(i => (g[where(i.category)] = g[where(i.category)] || []).push(i));
+  let t = '*URS Majestic · to buy · Fri 9 Oct*\n';
+  ORDER.filter(k=>g[k]).forEach(k => { t += `\n*${k}*\n` + g[k].map(i=>`• ${i.name} – ${unitShow(i.q,i.unit)}`).join('\n') + '\n'; });
+  t += `\nApprox ${rs(sel.reduce((s,i)=>s+cost(i),0))}`;
+  const m = document.createElement('div'); m.className = 'modal-bg';
+  m.innerHTML = `<div class="modal"><h3>Share on WhatsApp</h3><p>Opens WhatsApp with this list ready to send to whoever is buying.</p><pre>${t}</pre><div class="acts"><button class="btn" onclick="this.closest('.modal-bg').remove()">Close</button><button class="btn btn-p" onclick="this.closest('.modal-bg').remove();toast('In the real screen this opens WhatsApp')">Open WhatsApp</button></div></div>`;
+  m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m);
+}
+function toast(msg){ const t = document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
+render();
+</script>
+</body>
+</html>

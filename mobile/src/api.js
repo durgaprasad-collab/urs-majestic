@@ -49,6 +49,8 @@ export const api = {
   me: () => request("/api/auth/me"),
   listRequisitions: (status) => request(`/api/requisitions/${status ? `?status_filter=${status}` : ""}`),
   createRequisition: (payload) => request("/api/requisitions/", { method: "POST", body: payload }),
+  openRequests: () => request("/api/requisitions/open"),
+  withdrawRequisition: (id) => request(`/api/requisitions/${id}`, { method: "DELETE" }),
   decideRequisition: (id, approve, decision_note) =>
     request(`/api/requisitions/${id}/decision`, { method: "PATCH", body: { approve, decision_note } }),
   lowStock: () => request("/api/stock/low"),
