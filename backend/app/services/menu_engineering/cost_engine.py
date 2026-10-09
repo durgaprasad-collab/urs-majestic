@@ -120,6 +120,7 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
             Purchase.qty,
             Purchase.unit,
             Purchase.total_price,
+            Purchase.notes,
         )
         .join(Purchase, Purchase.ingredient_id == Ingredient.id)
         .filter(Ingredient.cost_role == "recipe", Purchase.usage_type == "menu",
@@ -129,12 +130,16 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
 
     # ingredient_id -> [spend, base_qty (g/ml), name, category, pack_size_g, has_direct_unit_row]
     acc: dict[int, list] = {}
-    for ing_id, name, category, pack_size_g, qty, unit, price in rows:
+    for ing_id, name, category, pack_size_g, qty, unit, price, notes in rows:
         if qty is None or price is None:
             continue
         qty = decimal.Decimal(str(qty))
         unit = getattr(unit, "value", unit)  # ORM enum -> plain string
-        direct_unit_row = unit in ("kg", "l", "g", "ml")
+        # The DB trigger convert_packet_purchase_to_kg rewrites every 'pcs' row
+        # on a pack-sized item to kg and notes "auto-converted from N x Gg
+        # packets". Those rows came in as pieces, so they can't carry a
+        # litre-vs-ml mixup either.
+        direct_unit_row = unit in ("kg", "l", "g", "ml") and "auto-converted from" not in (notes or "")
         if unit in ("kg", "l"):
             base = qty * 1000
         elif unit in ("g", "ml"):

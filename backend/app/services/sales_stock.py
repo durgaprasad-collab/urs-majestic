@@ -17,7 +17,7 @@ from app.core.config import settings
 
 
 _MAP_SQL = text("""
-    SELECT m.menu_item_id, m.ingredient_id, m.intensity, m.portion_override_g,
+    SELECT m.menu_item_id, m.ingredient_id, m.intensity, m.grams_override, m.portion_override_g,
            i.unit::text AS ingredient_unit, i.pack_size_g, i.category, i.cost_role::text,
            i.portion_light_g, i.portion_medium_g, i.portion_heavy_g,
            COALESCE(v.unit::text, i.unit::text) AS stock_unit
@@ -37,6 +37,10 @@ _MENU_SQL = text("SELECT id, name FROM menu_items")
 
 
 def _portion(row) -> Decimal | None:
+    # A weighed portion (grams_override) wins, same as v_dish_recipe_cost
+    # uses for food cost, so stock and costing agree on what a dish uses.
+    if row["grams_override"] is not None:
+        return Decimal(str(row["grams_override"]))
     if row["portion_override_g"] is not None:
         return Decimal(str(row["portion_override_g"]))
     return row.get(f"portion_{row['intensity']}_g")
@@ -53,6 +57,10 @@ def _to_stock_unit(amount: Decimal, ingredient_unit: str, stock_unit: str, pack_
         base_qty, base_unit = amount / Decimal("1000"), "l"
     elif ingredient_unit == "ml":
         base_qty, base_unit = amount, "ml"
+    elif ingredient_unit == "pcs" and pack_size_g and stock_unit in ("kg", "g"):
+        # Bought by the packet/bunch but stocked by weight (packet purchases
+        # are converted to kg on entry): the portion grams go straight across.
+        base_qty, base_unit = amount, "g"
     elif ingredient_unit == "pcs":
         # A configured pack weight means the portion is grams; otherwise the
         # existing portion input is already a piece count (e.g. one bottle).
