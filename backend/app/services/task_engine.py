@@ -224,10 +224,9 @@ def build_tasks(db: Session) -> tuple[datetime.date | None, list[dict]]:
             t.add("swiggy_upload", "bi", "P0", f"Upload the Swiggy report ({i['value']})", i["note"] + ".",
                   "Swiggy data is current to yesterday.", i["href"], impact=4000)
         elif i["key"] == "settings":
-            t.add("margin_setting", "bi", "P1", f"Review the contribution margin ({i['value']})",
-                  "Every target and break-even on this page is computed from it. Re-derive it from last month's "
-                  "purchases vs sales.", "Margin re-set in Business Settings with a note on how it was derived.",
-                  i["href"])
+            t.add("margin_setting", "bi", "P1", f"Approve the contribution margin ({i['value']})",
+                  i["note"] + ". Every break-even and target on this page is computed from it.",
+                  "Margin approved (or corrected) in Business Settings.", i["href"])
         elif i["key"] == "orders":
             t.add("order_counts", "bi", "P2", f"Petpooja order counts: {i['value']}", i["note"] + ".",
                   "Bad days corrected or explained.", i["href"])

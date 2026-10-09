@@ -1536,3 +1536,15 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 @media print {
   .td-date, .td-tt, .td-more, .td-check { display: none !important; }
 }
+
+/* Business Settings: stored vs measured contribution margin */
+.margin-check { margin-bottom: 1rem; border-left: 4px solid var(--rs-good, #1E8A5A); }
+.margin-check.drifted { border-left-color: var(--gold); background: #FFFCF2; }
+.margin-check-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.margin-check-label { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.margin-check-nums { display: flex; gap: 1.6rem; flex-wrap: wrap; margin: .35rem 0 .4rem; }
+.margin-check-nums small { display: block; font-size: .7rem; color: var(--muted); }
+.margin-check-nums b { font-size: 1.35rem; }
+.margin-check-nums b.dn { color: #C2412D; }
+.margin-check form .btn-primary { width: auto; min-height: 40px; padding: .55rem 1.1rem; }
+.margin-ok { font-size: .85rem; font-weight: 600; color: #1E8A5A; }

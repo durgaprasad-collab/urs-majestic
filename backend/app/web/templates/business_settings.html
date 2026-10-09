@@ -16,6 +16,27 @@
   <span class="hero-sub">across {{ summary_rows|length }} categories</span>
 </div>
 
+{% if derived_margin %}{% set dm = derived_margin %}
+<div class="card margin-check {{ 'drifted' if dm.drifted else '' }}" id="margin">
+  <div class="margin-check-row">
+    <div>
+      <span class="margin-check-label">Contribution margin</span>
+      <div class="margin-check-nums">
+        <span><small>Stored (used by every target)</small><b>{{ "{:g}".format(dm.stored) }}%</b></span>
+        <span><small>Measured from your data</small><b>{{ "%.1f"|format(dm.pct) }}%</b></span>
+        <span><small>Difference</small><b class="{{ 'dn' if dm.drifted else '' }}">{{ "%+.1f"|format(dm.drift) }} pts</b></span>
+      </div>
+      <p class="recon-sub">{{ dm.start.strftime('%d %b') }} – {{ dm.end.strftime('%d %b %Y') }}: net sales ₹{{ "{:,.0f}".format(dm.revenue) }}, menu purchases ₹{{ "{:,.0f}".format(dm.purchases) }} (ingredients, packaging, gas). Margin = 1 − purchases ÷ sales, over last full month + month to date. Recalculated on every page load.</p>
+    </div>
+    {% if dm.drifted %}
+    <form method="post" action="/business-settings/margin/use-measured">
+      <button type="submit" class="btn-primary">Use {{ "%.1f"|format(dm.pct) }}%</button>
+    </form>
+    {% else %}<span class="margin-ok">✓ In line with the data</span>{% endif %}
+  </div>
+</div>
+{% endif %}
+
 <div data-tabs>
   <div class="tabs">
     <button type="button" class="tab-btn active" data-tab-btn="overview">Overview</button>
@@ -133,7 +154,7 @@
         <label for="margin_pct" class="form-label">Estimated contribution margin (%)</label>
         <input id="margin_pct" name="margin_pct" type="number" step="0.1" min="0" max="100" class="form-input"
                value="{{ "{:g}".format(financials.margin_pct) }}" required />
-        <p class="recon-sub">Replaced automatically by actual margin once recipe costing + aggregator commission are live.</p>
+        <p class="recon-sub">Compare with the measured margin at the top of this page.</p>
 
         <label for="growth_pct" class="form-label">Growth target (%)</label>
         <input id="growth_pct" name="growth_pct" type="number" step="0.1" min="0" max="100" class="form-input"

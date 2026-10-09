@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import business_today
 from app.core.database import SessionLocal
+from app.services import business_settings as bs
 from app.services import target_engine
 
 log = logging.getLogger(__name__)
@@ -29,7 +30,6 @@ LEAK_TARGET_PCT = 35    # leak value = cost above this % x qty sold
 LEAK_MIN_QTY = 10       # ignore dishes sold fewer times than this in 30 days
 ZOMATO_HIT_ORDERS = 20  # Zomato orders in 60 days that make a dish a "Zomato hit"
 STALE_CHANNEL_DAYS = 3  # channel data older than this (vs newest data) is stale
-SETTINGS_STALE_DAYS = 45
 
 _cache: dict = {"at": 0.0, "data": None}
 _lock = threading.Lock()
@@ -197,12 +197,15 @@ def _build(db: Session) -> dict:
             SELECT item_name, sale_date, round(sum(revenue) / nullif(sum(qty), 0), 2) AS unit, sum(qty) q
             FROM item_sales WHERE sale_date > :asof - 30 AND sale_date <= :asof GROUP BY 1, 2
         ), modal AS (
-            SELECT DISTINCT ON (item_name) item_name, unit
+            SELECT DISTINCT ON (item_name) item_name, unit, days
             FROM (SELECT item_name, unit, count(*) days, max(sale_date) last_day FROM d GROUP BY 1, 2) x
             ORDER BY item_name, days DESC, last_day DESC
-        ), tot AS (SELECT item_name, sum(q) q FROM d GROUP BY 1)
+        ), tot AS (SELECT item_name, sum(q) q, count(*) days FROM d GROUP BY 1)
+        -- Only a dish with one clearly regular price (billed on at least half its
+        -- selling days) can be called stale; dishes with variants bill all over.
         SELECT count(*) FROM modal JOIN tot USING (item_name) JOIN menu_items m ON m.name = modal.item_name
         WHERE m.is_active AND m.is_food AND tot.q >= :minq AND abs(modal.unit - m.price) >= 1
+          AND modal.days * 2 >= tot.days
     """), {"asof": asof, "minq": LEAK_MIN_QTY}).scalar() or 0
     leak_total = sum(r["leak"] for r in leak_rows)
 
@@ -256,11 +259,14 @@ def _build(db: Session) -> dict:
         issues.append({"key": "orders", "title": "Petpooja order counts", "value": f"{t['bad_order_days']} days look wrong",
                        "note": "Bill count far too low for the day's sales, so average bill is off",
                        "level": "warn", "href": "/data-reconciliation"})
-    margin_age = (today - margin_row).days if margin_row else None
-    if margin_age is not None and margin_age > SETTINGS_STALE_DAYS:
-        issues.append({"key": "settings", "title": "Contribution margin", "value": f"{targets['margin_pct']:.0f}%, set {margin_row:%d %b}",
-                       "note": "Drives every target. Review it in Business Settings", "level": "warn",
-                       "href": "/business-settings"})
+    # Flag the stored margin when the data says something different, not by age.
+    dm = bs.derived_margin(db, asof)
+    margin_drifted = bool(dm and dm["drifted"])
+    if margin_drifted:
+        issues.append({"key": "settings", "title": "Contribution margin",
+                       "value": f"{float(dm['stored']):.0f}% stored, data says {float(dm['pct']):.1f}%",
+                       "note": f"Measured {dm['start']:%d %b}–{dm['end']:%d %b}. Drives every target; approve it in Business Settings",
+                       "level": "warn", "href": "/business-settings#margin"})
     if stale_prices:
         issues.append({"key": "prices", "title": "Menu prices", "value": f"{stale_prices} out of date",
                        "note": "Petpooja bills a different price than the menu table, so food cost % there is off",
@@ -339,7 +345,7 @@ def _build(db: Session) -> dict:
             "purchases": t["ledger_open"] or 0,
             "reconcile": t["recon_open"] or 0,
             "menu": len(leak_rows),
-            "settings": margin_age is not None and margin_age > SETTINGS_STALE_DAYS,
+            "settings": margin_drifted,
         },
         "freshness": freshness,
     }

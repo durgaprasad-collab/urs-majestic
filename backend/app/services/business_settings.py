@@ -7,8 +7,8 @@ must read its financial assumptions through here rather than storing its own,
 so the whole system stays consistent as URS Majestic grows.
 """
 import decimal
-from datetime import date
-from sqlalchemy import select
+from datetime import date, timedelta
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.core.clock import business_today
@@ -191,3 +191,57 @@ def setting_history(db: Session, key: str, limit: int = 12) -> list[BusinessSett
         .limit(limit)
     )
     return list(db.execute(stmt).scalars())
+
+
+# How far the stored margin may drift from the data before it is flagged.
+MARGIN_DRIFT_PTS = D("2")
+
+
+def derived_margin(db: Session, as_of: date | None = None) -> dict | None:
+    """Contribution margin measured from the data, for comparison with the
+    stored setting (it never overwrites the setting by itself).
+
+        margin = 1 - menu purchases / net sales
+
+    Window: the 1st of the previous calendar month through the latest day
+    with sales (up to `as_of`) - one full month plus month-to-date, which
+    smooths out bulk buys (rice, oil, spare gas cylinders) landing in one
+    month. Net sales are after Zomato/Swiggy commission; menu purchases are
+    usage_type='menu' (ingredients, packaging and cooking gas), excluding
+    soft-deleted rows and personal/other spend.
+    """
+    as_of = as_of or business_today()
+    end = db.execute(text(
+        "SELECT max(business_date) FROM daily_channel_sales WHERE business_date <= :d"), {"d": as_of}).scalar()
+    if end is None:
+        return None
+    start = (end.replace(day=1) - timedelta(days=1)).replace(day=1)
+    row = db.execute(text("""
+        SELECT
+          (SELECT sum(net_sales) FROM daily_channel_sales WHERE business_date BETWEEN :s AND :e) AS revenue,
+          (SELECT sum(total_price) FROM purchases
+             WHERE deleted_at IS NULL AND usage_type = 'menu' AND purchase_date BETWEEN :s AND :e) AS purchases
+    """), {"s": start, "e": end}).mappings().one()
+    revenue, purchases = D(str(row["revenue"] or 0)), D(str(row["purchases"] or 0))
+    if revenue <= 0:
+        return None
+    pct = ((1 - purchases / revenue) * 100).quantize(D("0.01"))
+    # Compare with the value targets use right now (target_engine reads today's setting).
+    stored = get_financials(db)["margin_pct"]
+    return {
+        "pct": pct, "revenue": revenue, "purchases": purchases, "start": start, "end": end,
+        "stored": stored, "drift": (pct - stored).quantize(D("0.01")),
+        "drifted": abs(pct - stored) >= MARGIN_DRIFT_PTS,
+    }
+
+
+def apply_derived_margin(db: Session, created_by: str) -> BusinessSetting | None:
+    """Store the data-derived margin as the new setting (appended to history)."""
+    m = derived_margin(db)
+    if m is None:
+        return None
+    note = (f"DERIVED from data, {m['start']:%d %b} - {m['end']:%d %b %Y}: net sales Rs{m['revenue']:,.0f} vs "
+            f"menu purchases Rs{m['purchases']:,.0f} (ingredients, packaging, gas). "
+            f"Method: 1 - purchases / sales over the previous full month + month to date. "
+            f"Replaces {m['stored']}%.")
+    return set_setting(db, SETTING_CONTRIBUTION_MARGIN_PCT, m["pct"], note=note, created_by=created_by)

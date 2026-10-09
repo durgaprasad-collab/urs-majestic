@@ -35,6 +35,7 @@ def _page_ctx(db: Session, user, **extra) -> dict:
         "categories": bs.CATEGORIES,
         "frequency_labels": bs.FREQUENCY_LABELS,
         "today": date.today().isoformat(),
+        "derived_margin": bs.derived_margin(db),
     }
     ctx.update(extra)
     return ctx
@@ -54,6 +55,19 @@ def business_settings(request: Request, db: Session = Depends(get_db)):
     if redir:
         return redir
     return _tmpl(request, "business_settings.html", _page_ctx(db, user, saved=request.query_params.get("saved")))
+
+
+@router.post("/business-settings/margin/use-measured")
+def use_measured_margin(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    bs.apply_derived_margin(db, created_by=user.name)
+    # Targets, the pulse strip and the day's tasks all read this setting.
+    from app.services import shell_pulse, task_engine
+    task_engine.generate_daily_tasks(db)
+    shell_pulse.invalidate()
+    return RedirectResponse("/business-settings?saved=1#margin", status_code=303)
 
 
 @router.post("/business-settings/expenses")
