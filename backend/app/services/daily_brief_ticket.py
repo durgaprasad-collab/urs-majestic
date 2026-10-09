@@ -14,7 +14,7 @@ ASSUMPTION .. not measured / Modelled .. UNSOURCED / RETIRED) already exists
 in the data; a second hand-maintained classification would drift from it the
 first time someone adds a new setting.
 
-Notion calls use urllib (matching receipt_parse.py's OCR.space pattern) --
+Notion calls use urllib (plain stdlib HTTP, no extra dependency) --
 no new HTTP dependency. Every Notion call degrades gracefully: an unset
 NOTION_API_KEY or a Notion-side failure returns a `notion_connected: False`
 panel state rather than breaking the page.

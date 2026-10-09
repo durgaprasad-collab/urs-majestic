@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 11 · Purchases</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .head p{color:var(--ink-2);font-size:13px;margin-top:2px}
+  .btn{font:600 13px Inter;border-radius:10px;padding:9px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+  .btn-p{background:var(--ground);border-color:var(--ground);color:#fff}
+  .kpis{display:grid;grid-template-columns:1.2fr repeat(4,1fr);background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .k{padding:12px 16px;border-right:1px solid var(--line);border-top:3px solid transparent}.k:last-child{border-right:0}
+  .k.good{border-top-color:var(--good)}.k.warn{border-top-color:var(--gold)}.k.bad{border-top-color:var(--bad)}
+  .k .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .k .v{font-size:22px;font-weight:700;margin-top:2px}.k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{font-size:11.5px;color:var(--ink-2)}
+  .bars{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:7px 0 4px;gap:2px}.bars i{display:block}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card .cap{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .card .cap h3{font-size:14px}.card .cap p{font-size:12px;color:var(--ink-3)}
+  .fix .cap{background:#FFF6F3}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:600;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);background:#FBFAF6;white-space:nowrap}
+  th.r,td.r{text-align:right}
+  td{padding:8px 12px;border-bottom:1px solid #F0EEE6;font-size:13px;vertical-align:middle}
+  .nm{font-weight:600}.muted{color:var(--ink-3);font-size:12px}
+  .rb{font:600 12px Inter;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+  .rb.go{background:var(--ground);border-color:var(--ground);color:#fff}
+  .up{color:var(--bad);font-weight:700}.down{color:var(--good);font-weight:700}
+  .bill{border-bottom:1px solid var(--line)}
+  .bill summary{list-style:none;display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:11px 16px;cursor:pointer}
+  .bill summary::-webkit-details-marker{display:none}
+  .bill summary:hover{background:#FAFAF6}
+  .bill .v{font-weight:700}.bill .who{font-size:12px;color:var(--ink-3)}
+  .bill .amt{font-weight:700;font-size:14px}
+  .bill .ln{font-size:12px;color:var(--ink-2)}
+  .bill table td{padding:6px 16px;font-size:12.5px}
+  .day{padding:8px 16px;background:#F7F6F0;font:700 12px Inter;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase;display:flex;justify-content:space-between}
+  .day span{font-weight:600;text-transform:none;letter-spacing:0}
+  .flag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:6px;white-space:nowrap}
+  .flag.u{background:var(--bad-bg);color:var(--bad)}.flag.p{background:var(--warn-bg);color:var(--warn)}
+  /* new bill */
+  .nb{background:#fff;border:2px solid var(--gold);border-radius:14px;margin-bottom:14px;overflow:hidden}
+  .nb .top{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;padding:14px 16px;border-bottom:1px solid var(--line);background:#FFFCF2}
+  .nb label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:var(--ink-2)}
+  .nb input,.nb select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:500 13.5px Inter;background:#fff}
+  .nb td input{width:100%}
+  .nb td.qty input{width:90px;text-align:right}.nb td.rs input{width:100px;text-align:right}
+  .unit{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+  .chk{font-size:11.5px}
+  .chk.ok{color:var(--good)}.chk.warn{color:var(--warn);font-weight:600}.chk.bad{color:var(--bad);font-weight:600}
+  .nb .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;background:#FBFAF6}
+  .photo{display:flex;align-items:center;gap:8px;border:1.5px dashed #CFC9B6;border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--ink-2)}
+  .notes{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
+  .note{background:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;color:#3c4440}.note b{display:block;color:var(--ink);margin-bottom:3px}
+  @media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.k{border-bottom:1px solid var(--line)}.k:first-child{grid-column:span 2}.grid{grid-template-columns:1fr}.notes{grid-template-columns:1fr}.hm{display:none}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 11 v2: Purchases.</b> Photo button now reads the bill with AI and fills the lines for you to check (try "Read a bill photo": it fills in the real 7 Oct cash memo). One bill at a time with all its lines (not one item per form), the unit fixed to how each item is tracked, a live price check against what you usually pay, and recent entries shown as bills. Real data, Fri 9 Oct. The new-bill box is live: pick items, type quantities and prices. Nothing saves.</div>
+<div class="wrap">
+  <div class="head">
+    <div><h1>Purchases</h1><p>Every bill, grouped by supplier. The admin and the staff app log into the same list.</p></div>
+    <div style="display:flex;gap:8px"><button class="btn" onclick="readPhoto()">📷 Read a bill photo</button><button class="btn btn-p" onclick="document.getElementById('nb').scrollIntoView({behavior:'smooth'})">+ New bill</button></div>
+  </div>
+
+  <div class="kpis">
+    <div class="k"><div class="l">October so far</div><div class="v">₹53,815</div><div class="bars" id="catbars"></div><div class="s">+46% on 1–9 Sep (₹36,841) · gas ₹11,750 of it</div></div>
+    <div class="k"><div class="l">Last 7 days</div><div class="v">₹43,508</div><div class="s">101 lines · Usha 50 · Durga 42 · Raghu 9</div></div>
+    <div class="k bad"><div class="l">Need fixing</div><div class="v">25</div><div class="s">logged in the wrong unit</div></div>
+    <div class="k warn"><div class="l">Price moves</div><div class="v">7</div><div class="s">±15% vs the usual price</div></div>
+    <div class="k good"><div class="l">Bills read from photos</div><div class="v">—</div><div class="s">starts once photo reading is on</div></div>
+  </div>
+
+  <div class="nb" id="nb">
+    <div class="top">
+      <label>Date<input type="date" value="2026-10-09"></label>
+      <label style="flex:1;min-width:200px">Supplier<input list="vendors" placeholder="Hyperpure, Farmers Factory, local market…"><datalist id="vendors"><option>Hyperpure</option><option>Farmers Factory Pallikaranai</option><option>Galaxy (Koyambedu)</option><option>Zomato instant grocery</option><option>Local market</option><option>Dairy (cash memo)</option></datalist></label>
+      <label>Bill / order no.<input placeholder="optional"></label>
+      <button class="photo" onclick="readPhoto()" style="cursor:pointer;background:#fff">📷 Read this bill from a photo</button>
+    </div>
+    <table><thead><tr><th>Item</th><th class="r">Qty</th><th>Unit</th><th class="r">Amount ₹</th><th>Check</th></tr></thead><tbody id="lines"></tbody></table>
+    <div class="foot"><span class="muted">Enter adds a line · units follow how the item is tracked</span><div style="display:flex;gap:10px;align-items:center"><b id="nbtot"></b><button class="btn btn-p">Save bill</button></div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card fix">
+      <div class="cap"><div><h3>Need fixing · 25</h3><p>Logged in a different unit than the item is tracked in. This skews prices and stock.</p></div></div>
+      <table><tbody>
+        <tr><td><span class="nm">Coriander</span><div class="muted">20 lines in kg/g · tracked in bunches (100 g)</div></td><td class="r"><button class="rb go">Convert all</button></td></tr>
+        <tr><td><span class="nm">Chicken Masala, Jeera, Cinnamon, Turmeric</span><div class="muted">8 lines in kg · tracked in g</div></td><td class="r"><button class="rb go">Convert all</button></td></tr>
+        <tr><td><span class="nm">Milk, Fresh cream, Oil for lamp</span><div class="muted">4 lines in ml/l · tracked in the other</div></td><td class="r"><button class="rb go">Convert all</button></td></tr>
+        <tr><td><span class="nm">11 vegetables in g</span><div class="muted">Lemon, Mushroom, Beans, Garlic… tracked in kg</div></td><td class="r"><button class="rb go">Convert all</button></td></tr>
+        <tr><td><span class="nm">Gobi</span> <span class="flag u">needs you</span><div class="muted">8 lines in pieces · how many kg is one head?</div></td><td class="r"><button class="rb">Set weight</button></td></tr>
+        <tr><td><span class="nm">Green chilli sauce, Chilli sauce</span> <span class="flag u">needs you</span><div class="muted">3 lines in pcs/kg · tracked in ml/g</div></td><td class="r"><button class="rb">Review</button></td></tr>
+      </tbody></table>
+    </div>
+    <div class="card">
+      <div class="cap"><div><h3>Price watch</h3><p>Last price vs the usual (median of the 6 weeks before), in the item's own unit</p></div></div>
+      <table><thead><tr><th>Item</th><th class="r">Last</th><th class="r">Usual</th><th class="r">Change</th></tr></thead><tbody id="watch"></tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cap"><div><h3>Recent bills</h3><p>Grouped by date and supplier · open a bill to see or edit its lines</p></div><input placeholder="Search item or supplier…" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:13px Inter;width:220px"></div>
+    <div id="bills"></div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b>A bill, not a line</b>Usha and Durga log 10–16 lines from one Hyperpure or Farmers Factory order. One form per bill with the supplier and bill number typed once saves most of the typing and keeps every line traceable to its bill.</div>
+    <div class="note"><b>Units can't drift</b>The unit is fixed to how the item is tracked (Coriander in bunches, Onion in kg). Typing grams for a kilo item converts automatically. That's what caused the 25 entries above and the 200 "kg" of Tomato Sauce.</div>
+    <div class="note"><b>Read the bill photo</b>Take a photo of any bill, printed or handwritten. AI reads the supplier, date, bill number and every line, matches each to your items and units, and fills the form. Lines it isn't sure about are marked; nothing saves until you press Save.</div>
+    <div class="note"><b>Price check while typing</b>Each line shows the per-unit price against what you usually pay. A price far off (a typo or a real jump) is flagged before saving; real jumps appear in Price watch.</div>
+  </div>
+</div>
+
+<script>
+const B = __BILLS__;
+const W = [['Tomato','kg',36,24,50],['Coriander','bunch',13.6,9.5,44],['Carrot','kg',50,78,-36],['Beans','kg',120,92.5,30],['Green Chilli','kg',62,49,27],['Mushroom','kg',200,242.5,-18],['Capsicum','kg',65,55,18]];
+const CATS = [['Utilities',16570,'#8A6D3B'],['Vegetables',13424,'#1E8A5A'],['Condiments',5529,'#B7791F'],['Dry Goods',5303,'#6B7FA6'],['Dairy',5155,'#2563A8'],['Other',7834,'#C9C3B0']];
+const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
+document.getElementById('catbars').innerHTML = CATS.map(c=>`<i title="${c[0]} ${rs(c[1])}" style="flex:${c[1]};background:${c[2]}"></i>`).join('');
+document.getElementById('watch').innerHTML = W.map(w=>`<tr><td class="nm">${w[0]}</td><td class="r">₹${w[2]}/${w[1]}</td><td class="r muted">₹${w[3]}/${w[1]}</td><td class="r ${w[4]>0?'up':'down'}">${w[4]>0?'+':''}${w[4]}%</td></tr>`).join('');
+
+// group recent lines into bills: supplier + bill ref parsed from notes, else "Local purchases · person"
+const supplier = n => {
+  if (/Hyperpure\s+(ZHP\S+)/.test(n)) return 'Hyperpure · ' + n.match(/Hyperpure\s+(ZHP\S+?)[,:]/)?.[1]?.slice(-6);
+  if (/Farmers Factory/.test(n)) return 'Farmers Factory · ' + (n.match(/SO-\d+/)||[''])[0];
+  if (/Galaxy/.test(n)) return 'Galaxy (Koyambedu) · bill ' + (n.match(/bill (\d+)/)||['',''])[1];
+  if (/Zomato instant/.test(n)) return 'Zomato instant grocery';
+  if (/cash memo/i.test(n)) return 'Cash memo';
+  return null;
+};
+const UNITS = {Coriander:'pcs',Gobi:'kg','Green chilli sauce':'ml'};
+const days = {};
+B.forEach(r => {
+  const s = supplier(r.notes) || `Local purchases`;
+  const key = r.d + '|' + s + '|' + r.by;
+  (days[r.d] = days[r.d] || {});
+  (days[r.d][key] = days[r.d][key] || {s, by: r.by, lines: []}).lines.push(r);
+});
+let h = '';
+Object.entries(days).forEach(([d, bills]) => {
+  const tot = Object.values(bills).reduce((a,b)=>a+b.lines.reduce((x,l)=>x+l.tp,0),0);
+  h += `<div class="day">${d}<span>${rs(tot)} · ${Object.keys(bills).length} bills</span></div>`;
+  Object.values(bills).sort((a,b)=>b.lines.length-a.lines.length).forEach(b => {
+    const amt = b.lines.reduce((x,l)=>x+l.tp,0);
+    const bad = b.lines.filter(l => l.unit !== l.iunit).length;
+    h += `<details class="bill"><summary><div><span class="v">${b.s}</span>${bad?`<span class="flag u">${bad} unit issue${bad>1?'s':''}</span>`:''}<div class="ln">${b.lines.slice(0,5).map(l=>l.item.replace(/ \(.*\)/,'')).join(', ')}${b.lines.length>5?` +${b.lines.length-5} more`:''}</div></div><span class="who">${b.lines.length} line${b.lines.length>1?'s':''} · ${b.by}</span><span class="amt">${rs(amt)}</span></summary>
+      <table><tbody>${b.lines.map(l=>`<tr><td>${l.item}${l.unit!==l.iunit?`<span class="flag u">${l.unit} → ${l.iunit}</span>`:''}</td><td class="r">${l.qty} ${l.unit}</td><td class="r">${rs(l.tp)}</td><td class="r muted hm">${l.t}</td></tr>`).join('')}</tbody></table></details>`;
+  });
+});
+document.getElementById('bills').innerHTML = h;
+
+// live new bill
+const ITEMS = {'Onion':['kg',63.5],'Tomato':['kg',24],'Paneer':['kg',270],'Coriander':['bunch',9.5,100],'Butter':['kg',220],'Spring Onion':['kg',104],'Fresh cream (Rich\'s Double Dream)':['ml',0.195],'Gobi':['kg',70]};
+const lines = [{i:'Onion',q:'15',a:'894'},{i:'Paneer',q:'5',a:'1700'},{i:'Coriander',q:'600',a:'90',u:'g'},{i:'',q:'',a:''}];
+function renderLines(){
+  document.getElementById('lines').innerHTML = lines.map((l,k)=>{
+    const it = ITEMS[l.i]; let unit = it ? it[0] : '—', chk = '';
+    if (it && l.q && l.a) {
+      let q = parseFloat(l.q);
+      if (l.u === 'g' && unit === 'bunch') { chk = `<span class="chk ok">600 g = ${q/it[2]} bunches</span> `; q = q/it[2]; }
+      const per = parseFloat(l.a)/q, dev = per/it[1]-1;
+      chk += Math.abs(dev) < .15 ? `<span class="chk ok">₹${per.toFixed(per<1?3:0)}/${unit} · usual</span>` : `<span class="chk ${Math.abs(dev)>.6?'bad':'warn'}">₹${per.toFixed(per<1?3:0)}/${unit} · ${dev>0?'+':''}${Math.round(dev*100)}% vs usual ₹${it[1]}</span>`;
+    }
+    return `<tr><td><input list="items" value="${l.i}" placeholder="Start typing an item…" onchange="lines[${k}].i=this.value;renderLines()"></td>
+      <td class="qty r"><input value="${l.q}" onchange="lines[${k}].q=this.value;renderLines()"></td>
+      <td class="unit">${l.u && unit==='bunch' ? 'g → bunch' : unit}</td>
+      <td class="rs r"><input value="${l.a}" onchange="lines[${k}].a=this.value;renderLines()"></td><td>${chk}</td></tr>`;
+  }).join('') + `<datalist id="items">${Object.keys(ITEMS).map(i=>`<option>${i}</option>`).join('')}</datalist>`;
+  const tot = lines.reduce((s,l)=>s+(parseFloat(l.a)||0),0), n = lines.filter(l=>l.i&&l.a).length;
+  document.getElementById('nbtot').textContent = `${n} lines · ${rs(tot)}`;
+}
+function readPhoto(){
+  const nb = document.getElementById('nb'); nb.scrollIntoView({behavior:'smooth'});
+  document.getElementById('lines').innerHTML = '<tr><td colspan="5" style="padding:18px;text-align:center;color:var(--ink-2)">Reading the photo… (about 5 seconds)</td></tr>';
+  setTimeout(() => {
+    const inputs = nb.querySelectorAll('.top input');
+    inputs[1].value = 'Dairy (cash memo)'; inputs[2].value = 'memo 7/10/26'; inputs[0].value = '2026-10-07';
+    lines.length = 0;
+    lines.push({i:'Paneer',q:'5',a:'1350',src:1},{i:'Butter',q:'2',a:'440',src:1},{i:'Baby Corn',q:'0.6',a:'99',src:1,unsure:'handwriting: 0.6 or 6?'},{i:'',q:'',a:''});
+    ITEMS['Baby Corn'] = ['kg',170];
+    renderLines();
+    document.querySelectorAll('#lines tr').forEach((tr,k) => { const l = lines[k]; if (l && l.src) tr.querySelector('td').insertAdjacentHTML('beforeend', `<div class="chk ${l.unsure?'warn':'ok'}" style="margin-top:3px">${l.unsure ? '⚠ check: '+l.unsure : '✓ read from photo'}</div>`); });
+  }, 1200);
+}
+renderLines();
+</script>
+</body>
+</html>

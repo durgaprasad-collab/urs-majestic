@@ -16,6 +16,7 @@ import time
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.services.purchases_page import UNCONVERTIBLE_SQL
 from app.core.clock import business_today
 from app.core.database import SessionLocal
 from app.services import business_settings as bs
@@ -230,7 +231,8 @@ def _build(db: Session) -> dict:
     t = db.execute(text("""
         SELECT
           (SELECT count(*) FROM v_ingredient_reorder_forecast WHERE is_active AND on_hand_qty < 0) neg_stock,
-          (SELECT count(*) FROM purchase_ledger_sync_issues WHERE resolved_at IS NULL) ledger_open,
+          (SELECT count(*) FROM purchases p JOIN ingredients i ON i.id = p.ingredient_id
+             WHERE {UNCONVERTIBLE}) ledger_open,
           (SELECT count(*) FROM requisitions WHERE status = 'pending') req_pending,
           (SELECT 2 - count(DISTINCT cylinder) FROM gas_readings
              WHERE cylinder_role = 'in_use' AND recorded_at > now() - interval '24 hours') gas_missing,
@@ -246,7 +248,7 @@ def _build(db: Session) -> dict:
                AND net_sales / orders > 3 * (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY net_sales / orders)
                                              FROM daily_channel_sales WHERE channel = 'petpooja' AND orders > 0
                                                AND business_date > :asof - 30)) bad_order_days
-    """), {"asof": asof}).mappings().one()
+    """.replace("{UNCONVERTIBLE}", UNCONVERTIBLE_SQL)), {"asof": asof}).mappings().one()
 
     issues = []
     if t["neg_stock"]:

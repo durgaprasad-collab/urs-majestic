@@ -28,6 +28,10 @@ class Purchase(Base):
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Supplier and bill/order number, so lines entered together read as one
+    # bill (0044). Optional: local market buys often have neither.
+    vendor: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bill_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Set when the purchase was created from an uploaded receipt: links back to the
     # archived image + OCR text (purchase_receipts, migration 0020). Kept a plain
     # int -- the FK constraint lives in the DB; there is no ORM PurchaseReceipt

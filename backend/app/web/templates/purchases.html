@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Purchases — URS Majestic{% endblock %}
+
+{% block content %}
+{% macro rs(v) %}₹{{ '{:,.0f}'.format(v or 0) }}{% endmacro %}
+{% macro per(v, u) %}{% if u == 'g' %}₹{{ '{:,.0f}'.format(v * 1000) }}/kg{% elif u == 'ml' %}₹{{ '{:,.0f}'.format(v * 1000) }}/L{% else %}₹{{ '{:,.1f}'.format(v)|replace('.0', '') }}/{{ 'bunch' if u == 'pcs' else u }}{% endif %}{% endmacro %}
+{% set CAT_COLORS = ['#1E8A5A', '#8A6D3B', '#B7791F', '#6B7FA6', '#2563A8', '#C9C3B0'] %}
+<div class="sl pu" data-pu>
+  <div class="sl-head">
+    <div>
+      <h1 class="sl-title">Purchases</h1>
+      <p class="sl-sub">Every bill, grouped by supplier. One bill at a time with all its lines; units follow how each item is tracked, and each price is checked against what you usually pay.</p>
+    </div>
+    <div class="sl-btns">
+      {% if deleted_count %}<a class="sl-btn" href="/purchases?show_deleted=1">Deleted ({{ deleted_count }})</a>{% endif %}
+      <a class="sl-btn sl-btn-p" href="#new-bill" data-pu-focus>+ New bill</a>
+    </div>
+  </div>
+  {% if notice %}<p class="sl-flash">{{ notice }}</p>{% endif %}
+  {% if error %}<p class="sl-flash pu-err">{{ error }}</p>{% endif %}
+  {% if add_error %}<p class="sl-flash pu-err">{{ add_error }}</p>{% endif %}
+
+  <div class="sl-kpis pu-kpis">
+    <div class="sl-k">
+      <span class="l">{{ s.month_label }} so far</span><span class="v">{{ rs(s.month) }}</span>
+      <span class="pu-bars">{% for c in s.cats %}<i title="{{ c.cat }} {{ rs(c.rs) }}" style="flex:{{ c.rs|float }};background:{{ CAT_COLORS[loop.index0 % 6] }}"></i>{% endfor %}</span>
+      <span class="s">{% if s.change is not none %}{{ '+' if s.change >= 0 }}{{ s.change|round|int }}% on {{ s.prev_label }} ({{ rs(s.prev) }}){% endif %}{% if s.gas %} · gas {{ rs(s.gas) }}{% endif %}</span>
+    </div>
+    <div class="sl-k"><span class="l">Last 7 days</span><span class="v">{{ rs(s.week) }}</span>
+      <span class="s">{{ s.week_lines }} lines{% for p in s.people[:3] %} · {{ p.name }} {{ p.n }}{% endfor %}</span></div>
+    <a class="sl-k {{ 'bad' if fix else 'good' }}" href="#need-fixing"><span class="l">Need fixing</span><span class="v">{{ fix|map(attribute='rows')|map('length')|sum }}</span><span class="s">{{ 'logged in a unit that can\'t be converted' if fix else 'every line converts cleanly' }}</span></a>
+    <a class="sl-k {{ 'warn' if watch else '' }}" href="#price-watch"><span class="l">Price moves</span><span class="v">{{ watch|length }}</span><span class="s">±15% vs the usual price</span></a>
+  </div>
+
+  {# ── NEW BILL ── #}
+  <div class="pu-nb" id="new-bill">
+    <div class="pu-nb-top">
+      <label>Date<input type="date" data-pu-date value="{{ today }}" max="{{ today }}"></label>
+      <label class="pu-grow">Supplier<input data-pu-vendor list="pu-vendors" placeholder="Hyperpure, Farmers Factory, local market…" autocomplete="off"></label>
+      <datalist id="pu-vendors">{% for v in vendors %}<option>{{ v }}</option>{% endfor %}<option>Local market</option></datalist>
+      <label>Bill / order no.<input data-pu-ref placeholder="optional"></label>
+      <label>For<select data-pu-usage><option value="menu">Menu / kitchen</option><option value="others_personal">Personal / other</option></select></label>
+    </div>
+    <table class="sl-table pu-lines">
+      <thead><tr><th>Item</th><th class="r">Qty</th><th>Unit</th><th class="r">Amount ₹</th><th>Check</th><th></th></tr></thead>
+      <tbody data-pu-lines></tbody>
+    </table>
+    <datalist id="pu-items"></datalist>
+    <div class="pu-nb-foot">
+      <span class="sl-muted">Enter on the amount adds a line · <a href="#" data-pu-add-item>item not in the list?</a></span>
+      <span class="pu-nb-save"><b data-pu-total></b><button type="button" class="sl-btn sl-btn-p" data-pu-save>Save bill</button></span>
+    </div>
+    <form method="post" action="/ingredients/quick-add" class="pu-quick" data-pu-quick hidden>
+      <input name="name" placeholder="New item name" required>
+      <select name="unit"><option>kg</option><option>g</option><option>l</option><option>ml</option><option>pcs</option></select>
+      <input name="category" placeholder="Category (optional)">
+      <button type="submit" class="sl-btn">Add item</button>
+    </form>
+  </div>
+
+  <div class="pu-grid">
+    <div class="sl-card {{ 'pu-fix' if fix }}" id="need-fixing">
+      <div class="sl-sechead"><h3>Need fixing · {{ fix|map(attribute='rows')|map('length')|sum }}</h3><p>Lines logged in a unit that can't be converted to how the item is tracked. They're left out of prices and stock until fixed.</p></div>
+      {% for g in fix %}
+      <div class="pu-fixrow">
+        <div><b>{{ g.name }}</b> <span class="sl-muted">{{ g.rows|length }} line{{ 's' if g.rows|length != 1 }} in {{ g.units|join('/') }} · tracked in {{ g.item_unit }}</span></div>
+        {% if g.per_piece %}
+        <form class="pu-perpiece" data-pu-perpiece="{{ g.ingredient_id }}" data-name="{{ g.name }}"><label>1 piece =<input inputmode="decimal" placeholder="kg" required></label><span>kg</span><button type="submit" class="sl-btn sl-btn-p">Convert {{ g.rows|length }}</button></form>
+        {% else %}
+        <div class="pu-fixlinks">{% for r in g.rows[:4] %}<a href="/purchases/{{ r.id }}/edit">{{ '%g'|format(r.qty|float) }} {{ r.unit }} · {{ r.purchase_date.strftime('%d %b') }}</a>{% endfor %}</div>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="sl-empty">Nothing to fix. Every line converts to its item's unit.</p>
+      {% endfor %}
+    </div>
+    <div class="sl-card" id="price-watch">
+      <div class="sl-sechead"><h3>Price watch</h3><p>Latest price vs the usual (median of the six weeks before), in the item's own unit</p></div>
+      {% if watch %}
+      <table class="sl-table">
+        <thead><tr><th>Item</th><th class="r">Last</th><th class="r">Usual</th><th class="r">Change</th></tr></thead>
+        <tbody>{% for w in watch[:10] %}<tr><td class="sl-item"><a href="/purchases?ingredient_id={{ w.ingredient_id }}">{{ w.name }}</a></td><td class="r">{{ per(w.last, w.unit) }}</td><td class="r sl-muted">{{ per(w.usual, w.unit) }}</td><td class="r {{ 'pu-up' if w.change > 0 else 'pu-down' }}">{{ '+' if w.change > 0 }}{{ w.change|round|int }}%</td></tr>{% endfor %}</tbody>
+      </table>
+      {% else %}<p class="sl-empty">No price moved more than 15% this week.</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="sl-card">
+    <div class="sl-sechead pu-billhead"><div><h3>Recent bills</h3><p>Last two weeks, grouped by date and supplier · open a bill to edit or delete a line</p></div>
+      <input type="search" placeholder="Search item or supplier…" data-pu-search aria-label="Search bills"></div>
+    {% for d in days %}
+    <div class="pu-day" data-pu-day><span>{{ d.date.strftime('%a %d %b') }}</span><span>{{ rs(d.total) }} · {{ d.bills|length }} bill{{ 's' if d.bills|length != 1 }}</span></div>
+    {% for b in d.bills %}
+    <details class="pu-bill" data-pu-bill data-text="{{ (b.vendor ~ ' ' ~ (b.bill_ref or '') ~ ' ' ~ b.lines|map(attribute='name')|join(' '))|lower }}">
+      <summary>
+        <div><b>{{ b.vendor }}</b>{% if b.bill_ref %} <span class="sl-muted">· {{ b.bill_ref }}</span>{% endif %}{% if b.issues %} <span class="pu-flag">{{ b.issues }} unit issue{{ 's' if b.issues != 1 }}</span>{% endif %}
+          <div class="pu-ln">{{ b.lines[:5]|map(attribute='name')|join(', ') }}{% if b.lines|length > 5 %} +{{ b.lines|length - 5 }} more{% endif %}</div></div>
+        <span class="sl-muted">{{ b.lines|length }} line{{ 's' if b.lines|length != 1 }} · {{ b.people }}</span>
+        <b>{{ rs(b.total) }}</b>
+      </summary>
+      <table class="sl-table"><tbody>
+        {% for l in b.lines %}
+        <tr><td>{{ l.name }}{% if l.unconvertible %} <span class="pu-flag">{{ l.unit }}, tracked in {{ l.item_unit }}</span>{% endif %}{% if l.usage_type != 'menu' %} <span class="sl-muted">· personal</span>{% endif %}</td>
+          <td class="r">{{ '%g'|format(l.qty|float) }} {{ l.unit }}</td><td class="r">{{ rs(l.total_price) }}</td>
+          <td class="r pu-acts"><a href="/purchases/{{ l.id }}/edit">Edit</a>
+            <details><summary>Delete</summary>
+              <form method="post" action="/purchases/{{ l.id }}/delete"><input type="hidden" name="row_version" value="{{ l.row_version }}">
+                <input name="reason" minlength="{{ min_delete_reason }}" required placeholder="Why? e.g. entered twice">
+                <button type="submit" class="pu-del">Delete</button></form></details></td></tr>
+        {% endfor %}
+      </tbody></table>
+    </details>
+    {% endfor %}
+    {% else %}
+    <p class="sl-empty">No purchases in the last two weeks.</p>
+    {% endfor %}
+    <p class="sl-empty" data-pu-nomatch hidden>No bill matches.</p>
+  </div>
+</div>
+<script id="pu-data" type="application/json">{"items": {{ items_json|safe }}, "sel": {{ sel or 'null' }}}</script>
+<script src="/static/purchases.js?v=1" defer></script>
+{% endblock %}

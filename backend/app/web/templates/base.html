@@ -8,7 +8,7 @@
   <link rel="icon" href="/static/img/logo-circle-360.jpg" />
   <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/fonts/fonts.css?v=1" />
-  <link rel="stylesheet" href="/static/style.css?v=49" />
+  <link rel="stylesheet" href="/static/style.css?v=50" />
   <script src="/static/app.js?v=3" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
@@ -90,7 +90,7 @@
           <button class="rs-add" type="button" data-quick-toggle aria-expanded="false"><svg class="rs-i"><use href="#i-plus"/></svg><span>Quick add</span></button>
           <div class="quick-menu" data-quick-menu hidden>
             <span class="quick-menu-title">What are you adding?</span>
-            <a href="/purchases/new"><b>₹</b><span>Purchase<small>Log an expense</small></span></a>
+            <a href="/purchases/new"><b>₹</b><span>Purchase bill<small>Log a bill, many lines</small></span></a>
             <a href="/stock-log"><b>▦</b><span>Stock count<small>Update many at once</small></span></a>
             <a href="/upload"><b>⇧</b><span>Sales report<small>POS, Zomato or Swiggy</small></span></a>
           </div>
@@ -108,7 +108,7 @@
     <section class="command-panel" role="dialog" aria-modal="true" aria-label="Navigate or take action">
       <div class="command-input-wrap"><span>⌕</span><input type="search" data-command-input placeholder="Try “purchase”, “stock” or “analysis”…" autocomplete="off" /><kbd>Esc</kbd></div>
       <div class="command-results" data-command-results>
-        <a href="/purchases/new" data-command-item data-keywords="add create log expense bill receipt purchase"><b>＋ Purchase</b><small>Log an expense</small></a>
+        <a href="/purchases/new" data-command-item data-keywords="add create log expense bill receipt purchase"><b>＋ Purchase bill</b><small>Log a bill, many lines</small></a>
         <a href="/stock-log" data-command-item data-keywords="stock inventory count update"><b>▦ Stock count</b><small>Update inventory</small></a>
         <a href="/buy" data-command-item data-keywords="buy order requisition approve staff request running out shopping list"><b>✓ Buy</b><small>Staff requests and items running out</small></a>
         <a href="/gas-log" data-command-item data-keywords="gas cylinder weight reading"><b>◉ Gas</b><small>Cylinders weighed nightly</small></a>

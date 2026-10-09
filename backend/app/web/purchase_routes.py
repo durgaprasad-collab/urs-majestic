@@ -11,8 +11,10 @@ A purchase row is a financial record. Three rules hold everywhere below:
 """
 import re
 from datetime import date, timedelta
-from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse
+import json
+from urllib.parse import urlencode
+from fastapi import APIRouter, Request, Form, Depends
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
@@ -20,17 +22,13 @@ from app.core.database import get_db
 from app.core.clock import business_today
 from app.models.ingredient import Ingredient
 from app.models.purchase import Purchase
-from app.services import gdrive
 from app.services.order_derived_stock import sync_order_derived_stock
-from app.services.receipt_parse import ocr_image, parse_receipt_text
+from app.services import purchases_page
 from app.web.audit import log_change, log_field_diffs, resync_derived_costs
 from app.web.deps import _tmpl, require_user
 import logging
 
 logger = logging.getLogger("purchases")
-
-# Reject non-images and oversized uploads before OCR.
-_MAX_RECEIPT_BYTES = 10 * 1024 * 1024  # 10 MB
 
 router = APIRouter(tags=["purchases"])
 
@@ -175,6 +173,8 @@ def purchases_list(request: Request, db: Session = Depends(get_db)):
     raw_id = request.query_params.get("ingredient_id", "")
     filter_id = int(raw_id) if raw_id.isdigit() else None
     show_deleted = bool(request.query_params.get("show_deleted"))
+    if not filter_id and not show_deleted:
+        return _overview(request, db, user)
 
     q = db.query(Purchase).order_by(Purchase.purchase_date.desc(), Purchase.created_at.desc())
     q = q.filter(Purchase.deleted_at.isnot(None)) if show_deleted else _live(q)
@@ -197,6 +197,31 @@ def purchases_list(request: Request, db: Session = Depends(get_db)):
     })
 
 
+def _overview(request: Request, db: Session, user):
+    """The Purchases page: new bill, need fixing, price watch, recent bills."""
+    usual = purchases_page.usual_prices(db)
+    items = [{"id": i.id, "name": i.name, "unit": _unit_str(i.unit), "pack_g": float(i.pack_size_g) if i.pack_size_g else None,
+              "usual": round(usual[i.id]["price"], 4) if i.id in usual else None}
+             for i in _ingredient_options(db)]
+    sel = request.query_params.get("sel")
+    return _tmpl(request, "purchases.html", {
+        "user": user,
+        "s": purchases_page.summary(db),
+        "fix": purchases_page.need_fixing(db),
+        "watch": purchases_page.price_watch(usual),
+        "days": purchases_page.recent_bills(db),
+        "vendors": purchases_page.vendors(db),
+        "items_json": json.dumps(items),
+        "today": business_today().isoformat(),
+        "sel": int(sel) if sel and sel.isdigit() else None,
+        "deleted_count": _count_deleted(db, None),
+        "min_delete_reason": MIN_DELETE_REASON,
+        "error": request.query_params.get("error"),
+        "notice": request.query_params.get("notice"),
+        "add_error": request.query_params.get("add_error"),
+    })
+
+
 def _count_deleted(db: Session, filter_id: int | None) -> int:
     q = db.query(func.count(Purchase.id)).filter(Purchase.deleted_at.isnot(None))
     if filter_id:
@@ -204,131 +229,117 @@ def _count_deleted(db: Session, filter_id: int | None) -> int:
     return int(q.scalar() or 0)
 
 
-@router.get("/purchases/new", response_class=HTMLResponse)
-def purchases_new_get(request: Request, db: Session = Depends(get_db)):
+@router.get("/purchases/new")
+def purchases_new_get(request: Request):
+    """Entry moved onto /purchases (one bill, many lines). Quick-add still
+    lands here with ?sel= / ?add_error=, which the new page picks up."""
+    keep = {k: v for k, v in request.query_params.items() if k in ("sel", "add_error")}
+    return RedirectResponse("/purchases" + ("?" + urlencode(keep) if keep else "") + "#new-bill", status_code=303)
+
+
+_UNITS = ("kg", "g", "l", "ml", "pcs")
+
+
+@router.post("/purchases/bill")
+async def save_bill(request: Request, db: Session = Depends(get_db)):
+    """Save a whole bill: {date, vendor, bill_ref, usage_type, override,
+    lines: [{ingredient_id, qty, unit, amount}]}. Lines arrive in the item's
+    own unit (the page converts). Possible duplicates come back as 409 with
+    the list unless override is set; an override is audit-logged."""
     user, redir = require_user(request, db)
     if redir:
-        return redir
-    sel = request.query_params.get("sel")
-    return _tmpl(request, "purchases_new.html", {
-        "user": user,
-        "ingredients": _ingredient_options(db),
-        "error": None,
-        "today": date.today().isoformat(),
-        "new_ingredient_id": int(sel) if sel and sel.isdigit() else None,
-        "add_error": request.query_params.get("add_error"),
-        "add_open": bool(request.query_params.get("add_open")),
-    })
-
-
-@router.post("/purchases/new")
-async def purchases_new_post(
-    request: Request,
-    ingredient_id: int = Form(...),
-    qty: str = Form(...),
-    unit: str = Form(...),
-    total_price: str = Form(...),
-    purchase_date: str = Form(...),
-    usage_type: str = Form(...),
-    notes: str = Form(default=""),
-    override_duplicate: str = Form(default=""),
-    db: Session = Depends(get_db),
-):
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-
-    entered = {
-        "ingredient_id": ingredient_id,
-        "qty": qty,
-        "unit": unit,
-        "total_price": total_price,
-        "purchase_date": purchase_date,
-        "usage_type": usage_type,
-        "notes": notes,
-    }
-
-    def render_form(message, duplicates=None, status: int = 400):
-        """Re-render the form with everything the operator typed still in it.
-
-        The previous version dropped every field on any failure and made them
-        start again -- which is exactly the pressure that produces a careless
-        re-entry.
-        """
-        return _tmpl(request, "purchases_new.html", {
-            "user": user,
-            "ingredients": _ingredient_options(db),
-            "error": message,
-            "today": date.today().isoformat(),
-            "form": entered,
-            "new_ingredient_id": ingredient_id,
-            "duplicates": duplicates or [],
-        }, status_code=status)
-
-    if usage_type not in _SELECTABLE_USAGE:
-        return render_form(f"Unknown usage type '{usage_type}'.")
-
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    body = await request.json()
     try:
-        qty_f = float(qty)
-        price_f = float(total_price)
-        pdate = date.fromisoformat(purchase_date)
-    except ValueError as exc:
-        return render_form(f"Could not read what you entered: {exc}")
+        pdate = date.fromisoformat(body.get("date") or "")
+    except ValueError:
+        return JSONResponse({"error": "Pick the bill date."}, status_code=400)
+    if pdate > business_today() + timedelta(days=1):
+        return JSONResponse({"error": "The bill date is in the future."}, status_code=400)
+    usage = body.get("usage_type") or "menu"
+    if usage not in _SELECTABLE_USAGE:
+        return JSONResponse({"error": "Unknown usage type."}, status_code=400)
+    vendor = (body.get("vendor") or "").strip()[:120] or None
+    bill_ref = (body.get("bill_ref") or "").strip()[:80] or None
+    lines = []
+    for n, raw in enumerate(body.get("lines") or [], start=1):
+        try:
+            iid, qty, amount = int(raw["ingredient_id"]), float(raw["qty"]), float(raw["amount"])
+        except (KeyError, TypeError, ValueError):
+            return JSONResponse({"error": f"Line {n}: item, quantity and amount are all needed."}, status_code=400)
+        unit = raw.get("unit")
+        if qty <= 0 or amount < 0 or unit not in _UNITS or not db.get(Ingredient, iid):
+            return JSONResponse({"error": f"Line {n}: check the quantity, unit and amount."}, status_code=400)
+        lines.append((iid, qty, unit, amount))
+    if not lines:
+        return JSONResponse({"error": "Add at least one line."}, status_code=400)
 
-    # Computed even when the operator is overriding, so the audit log can
-    # record what was overridden rather than just that something was.
-    duplicates = _duplicate_candidates(db, ingredient_id, pdate, price_f)
-    if duplicates and not override_duplicate:
-        return render_form(None, duplicates=duplicates, status=200)
+    dups = []
+    for iid, qty, unit, amount in lines:
+        for d in _duplicate_candidates(db, iid, pdate, amount):
+            ing = db.get(Ingredient, iid)
+            dups.append(f"{ing.name}: {d['qty']} {d['unit']} for \u20b9{float(d['total_price']):,.0f} "
+                        f"on {d['purchase_date']:%d %b} ({d['why']})")
+    if dups and not body.get("override"):
+        return JSONResponse({"duplicates": dups}, status_code=409)
 
+    note = " \u00b7 ".join(x for x in (vendor, bill_ref) if x) or None
+    created = []
     try:
-        p = Purchase(
-            ingredient_id=ingredient_id,
-            qty=qty_f,
-            unit=unit,
-            total_price=price_f,
-            purchase_date=pdate,
-            usage_type=usage_type,
-            entered_by_user_id=user.id,
-            notes=notes.strip() or None,
-        )
-        db.add(p)
-        db.flush()
-        if duplicates:
-            # An override is a judgement call on a financial record, so it is
-            # logged like every other one. This also makes the override rate
-            # measurable: if it runs near 100%, the warning is noise and the
-            # windows need narrowing.
-            log_change(
-                db,
-                batch="purchase_duplicate_override",
-                target_table="purchases",
-                target_id=p.id,
-                field="duplicate_warning_overridden",
-                old_value=None,
-                new_value="; ".join(
-                    "#{} ({})".format(d["id"], d["why"]) for d in duplicates
-                ),
-                reason=(
-                    "Operator confirmed this is a separate purchase despite "
-                    "{} nearby row(s) for the same ingredient.".format(len(duplicates))
-                ),
-                actor_user_id=user.id,
-            )
-        # A new purchase moves ingredient cost, so the menu snapshot is stale
-        # from this moment until it is repointed.
+        for iid, qty, unit, amount in lines:
+            p = Purchase(ingredient_id=iid, qty=qty, unit=unit, total_price=amount, purchase_date=pdate,
+                         usage_type=usage, entered_by_user_id=user.id, vendor=vendor, bill_ref=bill_ref, notes=note)
+            db.add(p)
+            db.flush()
+            created.append(p.id)
+        if dups:
+            log_change(db, batch="purchase_duplicate_override", target_table="purchases", target_id=created[0],
+                       field="duplicate_warning_overridden", old_value=None, new_value="; ".join(dups)[:2000],
+                       reason=f"Operator confirmed the bill is new despite {len(dups)} similar row(s).",
+                       actor_user_id=user.id)
         resync_derived_costs(db)
         try:
             with db.begin_nested():
                 sync_order_derived_stock(db)
         except Exception:
-            # Experimental comparison model -- must never block a purchase save.
             logger.exception("order-derived sync failed")
         db.commit()
     except Exception as exc:
         db.rollback()
-        return render_form(f"Could not save: {exc}")
-    return RedirectResponse("/purchases", status_code=303)
+        logger.exception("bill save failed")
+        return JSONResponse({"error": f"Could not save: {exc}"}, status_code=500)
+    return JSONResponse({"ok": True, "created": len(created)})
+
+
+@router.post("/purchases/fix-per-piece")
+async def fix_per_piece(request: Request, db: Session = Depends(get_db)):
+    """Convert an item's piece-logged rows to its weight unit with one weight
+    per piece (e.g. one Gobi head = 0.8 kg). Audit-logged per row."""
+    user, redir = require_user(request, db)
+    if redir:
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    body = await request.json()
+    try:
+        iid, per = int(body["ingredient_id"]), float(body["kg_per_piece"])
+    except (KeyError, TypeError, ValueError):
+        return JSONResponse({"error": "Type the weight of one piece in kg."}, status_code=400)
+    ing = db.get(Ingredient, iid)
+    if not ing or not (0 < per <= 25):
+        return JSONResponse({"error": "That weight doesn't look right."}, status_code=400)
+    unit = _unit_str(ing.unit)
+    if unit not in ("kg", "g"):
+        return JSONResponse({"error": f"{ing.name} isn't tracked by weight."}, status_code=400)
+    rows = _live(db.query(Purchase)).filter(Purchase.ingredient_id == iid, Purchase.unit == "pcs").all()
+    for p in rows:
+        new_qty = float(p.qty) * per * (1000 if unit == "g" else 1)
+        log_change(db, batch="purchase_unit_fix", target_table="purchases", target_id=p.id, field="qty/unit",
+                   old_value=f"{p.qty} pcs", new_value=f"{new_qty:g} {unit}",
+                   reason=f"{ing.name} pieces converted at {per:g} kg per piece", actor_user_id=user.id)
+        p.qty, p.unit = new_qty, unit
+    db.flush()
+    resync_derived_costs(db)
+    db.commit()
+    return JSONResponse({"ok": True, "fixed": len(rows)})
 
 
 @router.get("/purchases/{purchase_id}/edit", response_class=HTMLResponse)
@@ -589,106 +600,3 @@ def _receipt_filename(db: Session, user, original: str | None) -> str:
                      {"n": name}).first():
         name, n = f"{base}_{n}{ext}", n + 1
     return name
-
-
-@router.post("/purchases/upload-receipt")
-async def upload_receipt(request: Request, file: UploadFile = File(...),
-                         db: Session = Depends(get_db)):
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-
-    def back(msg):
-        return _tmpl(request, "purchases_new.html", {
-            "user": user, "ingredients": _ingredient_options(db), "error": msg,
-            "today": date.today().isoformat(), "new_ingredient_id": None,
-        }, status_code=400)
-
-    data = await file.read()
-    ctype = file.content_type or ""
-    if not ctype.startswith("image/"):
-        return back("Please upload an image of the receipt (JPG or PNG).")
-    if len(data) > _MAX_RECEIPT_BYTES:
-        return back("That image is too large -- please keep it under 10 MB.")
-
-    try:
-        ocr_text = ocr_image(data, ctype)
-    except Exception:
-        return back("Could not read the image right now -- please try again, or "
-                    "enter the purchase manually below.")
-
-    ing_map = {i.name.lower(): i.id for i in _ingredient_options(db)}
-    lines = parse_receipt_text(ocr_text, ing_map)
-
-    # Archive the image (best-effort) and record the receipt.
-    stored = _receipt_filename(db, user, file.filename)
-    file_id, link = gdrive.upload_receipt(data, stored, ctype)
-    rid = db.execute(text(
-        "INSERT INTO purchase_receipts (drive_file_id, drive_link, original_filename, "
-        " stored_filename, content_type, ocr_text, uploaded_by) "
-        "VALUES (:fid, :link, :orig, :stored, :ct, :ocr, :uid) RETURNING id"
-    ), {"fid": file_id, "link": link, "orig": file.filename, "stored": stored,
-        "ct": ctype, "ocr": ocr_text, "uid": user.id}).scalar()
-    db.commit()
-
-    return _tmpl(request, "purchases_receipt_review.html", {
-        "user": user,
-        "ingredients": _ingredient_options(db),
-        "lines": lines,
-        "receipt_id": rid,
-        "drive_link": link,
-        "archived": bool(file_id),
-        "today": business_today().isoformat(),
-    })
-
-
-@router.post("/purchases/receipt-confirm")
-async def receipt_confirm(request: Request, db: Session = Depends(get_db)):
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-    form = await request.form()
-    receipt_id = int(form["receipt_id"]) if form.get("receipt_id", "").isdigit() else None
-    try:
-        n = int(form.get("row_count", "0"))
-    except ValueError:
-        n = 0
-
-    created = skipped = 0
-    for i in range(n):
-        if form.get(f"include_{i}") != "1":
-            continue
-        try:
-            ingredient_id = int(form.get(f"ingredient_id_{i}", ""))
-            qty = float(form.get(f"qty_{i}", ""))
-            unit = form.get(f"unit_{i}", "")
-            price = float(form.get(f"total_price_{i}", ""))
-            pdate = date.fromisoformat(form.get(f"purchase_date_{i}", ""))
-            usage = form.get(f"usage_type_{i}", "menu")
-        except (TypeError, ValueError):
-            skipped += 1
-            continue
-        if (usage not in _SELECTABLE_USAGE or ingredient_id <= 0
-                or unit not in ("kg", "g", "l", "ml", "pcs")):
-            skipped += 1
-            continue
-        db.add(Purchase(
-            ingredient_id=ingredient_id, qty=qty, unit=unit, total_price=price,
-            purchase_date=pdate, usage_type=usage, entered_by_user_id=user.id,
-            purchase_receipt_id=receipt_id, notes="From uploaded receipt",
-        ))
-        created += 1
-
-    if created:
-        db.flush()
-        resync_derived_costs(db)  # single cost engine; caller commits
-        try:
-            with db.begin_nested():
-                sync_order_derived_stock(db)
-        except Exception:
-            logger.exception("order-derived sync failed")
-        db.commit()
-    msg = f"Created+{created}+purchase(s)+from+the+receipt."
-    if skipped:
-        msg += f"+{skipped}+row(s)+skipped."
-    return RedirectResponse(f"/purchases?notice={msg}", status_code=303)
