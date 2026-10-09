@@ -61,7 +61,13 @@ DEFAULT_XLSX = os.path.join(os.path.dirname(__file__), "..", "data", "pos_export
 # -- Step 1: Seed menu items ------------------------------------------─────────────────
 
 def seed_menu_items(db, seed: dict) -> dict[str, MenuItem]:
-    """Upsert menu items from seed data. Returns name→MenuItem map."""
+    """Upsert menu items from seed data. Returns name→MenuItem map.
+
+    The seed only creates missing items and keeps category / is_food in sync.
+    It never touches price or food_cost_pct on an existing row: those are
+    owner-ruled values edited in the DB (with an audit trail), and this runs
+    on every POS upload -- overwriting them silently reverted the Aug 2026
+    price revision and the owner-stated resale-drink costs."""
     food_cost_default = Decimal(str(seed["_meta"]["food_cost_pct_default"]))
     existing: dict[str, MenuItem] = {m.name: m for m in db.query(MenuItem).all()}
     inserted = updated = 0
@@ -76,12 +82,6 @@ def seed_menu_items(db, seed: dict) -> dict[str, MenuItem]:
                 if getattr(item, field) != val:
                     setattr(item, field, val)
                     changed = True
-            if item.price != price:
-                item.price = price
-                changed = True
-            if item.food_cost_pct != food_cost_default:
-                item.food_cost_pct = food_cost_default
-                changed = True
             if changed:
                 updated += 1
         else:

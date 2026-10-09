@@ -185,10 +185,8 @@ def seed():
                     if getattr(item, field) != row[field]:
                         setattr(item, field, row[field])
                         changed = True
-                price = Decimal(str(row["price"]))
-                if item.price != price:
-                    item.price = price
-                    changed = True
+                # Price is never overwritten on an existing item: owner price
+                # changes live in the DB (see scripts/import_pos.seed_menu_items).
                 if changed:
                     updated += 1
             else:
