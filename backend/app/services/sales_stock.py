@@ -140,7 +140,9 @@ def adjust_stock_for_sales(db, sales) -> dict:
          ORDER BY counted_at, id
     """)).mappings()
     for row in ledger_rows:
-        parts = row["note"].split(":")
+        # petpooja_usage:<date>:<qty>:<unit>[:<annotation>] -- a one-off repair
+        # appended a 5th field to some notes; ignore it rather than the row.
+        parts = row["note"].split(":")[:4]
         if len(parts) == 4:
             try:
                 ledger[(date_from_iso(parts[1]), row["ingredient_id"])] = (Decimal(parts[2]), parts[3])
@@ -178,8 +180,17 @@ def adjust_stock_for_sales(db, sales) -> dict:
                 SELECT 1
                   FROM ingredient_stock
                  WHERE ingredient_id = :ingredient_id
-                   AND (note IS NULL OR note = 'reorder_required')
-                   AND timezone(:business_timezone, counted_at)::date > :sale_date
+                   -- Any row a person entered is a physical count: the stock
+                   -- log (no note / reorder_required), the staff app
+                   -- (app_count) and owner corrections (admin_edit). Only the
+                   -- automatic rows are excluded.
+                   AND COALESCE(note, '') NOT LIKE 'petpooja_usage:%'
+                   AND COALESCE(note, '') NOT LIKE 'purchase_auto:%'
+                   AND COALESCE(note, '') NOT LIKE 'SYSTEM%'
+                   -- The nightly count (~10 PM) is that day's closing count,
+                   -- so it covers that day's sales; counts before 5 AM belong
+                   -- to the previous evening (services/stock_count.count_day).
+                   AND (timezone(:business_timezone, counted_at) - interval '5 hours')::date >= :sale_date
             )
         """), {
             "ingredient_id": ingredient_id,
