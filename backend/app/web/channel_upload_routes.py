@@ -1,4 +1,5 @@
 """Order-level CSV uploads for the Zomato and Swiggy delivery channels."""
+import logging
 from fastapi import APIRouter, Request, UploadFile, File, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -8,7 +9,8 @@ from app.models.upload_log import UploadLog
 from app.services.uploads.item_matching import MenuIndex
 from app.services.uploads.zomato import parse_zomato_csv, date_range_from_filename
 from app.services.uploads.swiggy import parse_swiggy_csv
-from app.core.clock import business_today
+from app.core.clock import business_today, business_date_of
+from app.services.sales_stock import adjust_stock_for_channel
 from app.services.task_engine import refresh_after_upload
 from app.services.uploads.channel_orders import (
     upsert_order, upsert_daily_channel_sales, write_upload_log, exclude_today_orders,
@@ -77,6 +79,14 @@ async def upload_zomato(
             parse_errors=parse_errors, total_rows_seen=total_rows_seen,
             date_range=date_range, succeeded=True, rows_skipped_today=skipped_today,
         )
+        # Deduct the delivery orders' ingredients from stock (own ledger, so a
+        # re-upload only applies the difference).
+        try:
+            with db.begin_nested():
+                adjust_stock_for_channel(db, "zomato", sorted({business_date_of(o.placed_at) for o in orders}))
+        except Exception:
+            # Stock estimates must never block the sales upload itself.
+            logging.getLogger(__name__).exception("zomato stock deduction failed")
         db.commit()
         refresh_after_upload()
     except Exception as exc:
@@ -132,6 +142,14 @@ async def upload_swiggy(
             parse_errors=parse_errors, total_rows_seen=total_rows_seen,
             date_range=date_range, succeeded=True, rows_skipped_today=skipped_today,
         )
+        # Deduct the delivery orders' ingredients from stock (own ledger, so a
+        # re-upload only applies the difference).
+        try:
+            with db.begin_nested():
+                adjust_stock_for_channel(db, "swiggy", sorted({business_date_of(o.placed_at) for o in orders}))
+        except Exception:
+            # Stock estimates must never block the sales upload itself.
+            logging.getLogger(__name__).exception("swiggy stock deduction failed")
         db.commit()
         refresh_after_upload()
     except Exception as exc:

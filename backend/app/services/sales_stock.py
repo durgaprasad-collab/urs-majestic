@@ -1,6 +1,14 @@
-"""Convert imported item sales into idempotent ingredient stock adjustments."""
+"""Convert imported item sales into idempotent ingredient stock adjustments.
 
-from collections import defaultdict
+Walk-in sales come from the Petpooja item report (ledger prefix
+petpooja_usage); delivery orders from the Zomato / Swiggy order uploads
+(zomato_usage / swiggy_usage). Each channel keeps its own applied-usage
+ledger, so re-importing any report is a no-op and a corrected one only
+applies the difference.
+"""
+
+from collections import defaultdict, namedtuple
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -120,7 +128,37 @@ def calculate_ingredient_usage(db, sales) -> tuple[dict, set[str]]:
     return {key: (value[0], value[1]) for key, value in usage.items()}, unresolved
 
 
-def adjust_stock_for_sales(db, sales) -> dict:
+# Every automatic stock row starts with one of these; anything else is a
+# physical count a person entered.
+AUTO_NOTE_PREFIXES = ("petpooja_usage:", "zomato_usage:", "swiggy_usage:", "purchase_auto:", "SYSTEM")
+CHANNEL_LEDGER = {"petpooja": "petpooja_usage", "zomato": "zomato_usage", "swiggy": "swiggy_usage"}
+
+Sale = namedtuple("Sale", "item_name qty sale_date")
+# Delivery orders are deducted from stock from this date on. Older days are
+# already reflected in counts/estimates; deducting them would double count.
+DELIVERY_STOCK_FROM = date(2026, 9, 23)
+
+
+def channel_sales(db, channel: str, dates) -> list:
+    """Dish quantities per IST business date from a delivery channel's orders."""
+    if not dates:
+        return []
+    rows = db.execute(text("""
+        SELECT m.name AS item_name, (o.placed_at AT TIME ZONE :tz)::date AS sale_date, sum(oi.quantity) AS qty
+          FROM orders o JOIN order_items oi ON oi.order_id = o.id JOIN menu_items m ON m.id = oi.menu_item_id
+         WHERE o.channel = :channel AND (o.placed_at AT TIME ZONE :tz)::date = ANY(:dates)
+         GROUP BY 1, 2
+    """), {"channel": channel, "dates": list(dates), "tz": settings.BUSINESS_TIMEZONE}).mappings().all()
+    return [Sale(r["item_name"], r["qty"], r["sale_date"]) for r in rows]
+
+
+def adjust_stock_for_channel(db, channel: str, dates) -> dict:
+    """Deduct a delivery channel's dish usage for the given dates. Caller commits."""
+    dates = [d for d in dates if d >= DELIVERY_STOCK_FROM]
+    return adjust_stock_for_sales(db, channel_sales(db, channel, dates), ledger=CHANNEL_LEDGER[channel], dates=dates)
+
+
+def adjust_stock_for_sales(db, sales, ledger: str = "petpooja_usage", dates=None) -> dict:
     """Append only the usage difference for each date/ingredient.
 
     The latest `petpooja_usage:<date>:<qty>:<unit>` note is the applied-usage
@@ -128,32 +166,33 @@ def adjust_stock_for_sales(db, sales) -> dict:
     corrected report subtracts or restores only its changed quantity.
     """
     calculated, unresolved = calculate_ingredient_usage(db, sales)
-    dates = sorted({sale.sale_date for sale in sales})
+    # `dates` lets a channel re-upload clear a day whose orders all vanished.
+    dates = sorted(set(dates or ()) | {sale.sale_date for sale in sales})
     if not dates:
         return {"adjusted": 0, "unchanged": 0, "initialized_zero": 0, "unresolved": unresolved}
 
-    ledger = {}
+    applied = {}
     ledger_rows = db.execute(text("""
         SELECT ingredient_id, note
           FROM ingredient_stock
-         WHERE note LIKE 'petpooja_usage:%'
+         WHERE note LIKE :prefix
          ORDER BY counted_at, id
-    """)).mappings()
+    """), {"prefix": f"{ledger}:%"}).mappings()
     for row in ledger_rows:
         # petpooja_usage:<date>:<qty>:<unit>[:<annotation>] -- a one-off repair
         # appended a 5th field to some notes; ignore it rather than the row.
         parts = row["note"].split(":")[:4]
         if len(parts) == 4:
             try:
-                ledger[(date_from_iso(parts[1]), row["ingredient_id"])] = (Decimal(parts[2]), parts[3])
+                applied[(date_from_iso(parts[1]), row["ingredient_id"])] = (Decimal(parts[2]), parts[3])
             except Exception:
                 continue
 
     adjusted = unchanged = initialized_zero = 0
-    relevant_ledger_keys = {key for key in ledger if key[0] in dates}
+    relevant_ledger_keys = {key for key in applied if key[0] in dates}
     for key in sorted(set(calculated) | relevant_ledger_keys):
         sale_date, ingredient_id = key
-        old_used, old_unit = ledger.get(key, (Decimal("0"), None))
+        old_used, old_unit = applied.get(key, (Decimal("0"), None))
         new_used, unit = calculated.get(key, (Decimal("0"), old_unit))
         delta = new_used - old_used
         if abs(delta) < Decimal("0.000001"):
@@ -185,6 +224,8 @@ def adjust_stock_for_sales(db, sales) -> dict:
                    -- (app_count) and owner corrections (admin_edit). Only the
                    -- automatic rows are excluded.
                    AND COALESCE(note, '') NOT LIKE 'petpooja_usage:%'
+                   AND COALESCE(note, '') NOT LIKE 'zomato_usage:%'
+                   AND COALESCE(note, '') NOT LIKE 'swiggy_usage:%'
                    AND COALESCE(note, '') NOT LIKE 'purchase_auto:%'
                    AND COALESCE(note, '') NOT LIKE 'SYSTEM%'
                    -- The nightly count (~10 PM) is that day's closing count,
@@ -216,7 +257,7 @@ def adjust_stock_for_sales(db, sales) -> dict:
             VALUES (:ingredient_id, :balance, CAST(:unit AS unit_type), NULL, :note)
         """), {
             "ingredient_id": ingredient_id, "balance": balance, "unit": unit,
-            "note": f"petpooja_usage:{sale_date.isoformat()}:{new_used.normalize()}:{unit}",
+            "note": f"{ledger}:{sale_date.isoformat()}:{new_used.normalize()}:{unit}",
         })
         adjusted += 1
     return {"adjusted": adjusted, "unchanged": unchanged, "initialized_zero": initialized_zero, "unresolved": unresolved}

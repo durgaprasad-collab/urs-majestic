@@ -4,7 +4,8 @@ app's Count tab and the 10 PM reminder.
 
 Stock rows come from three places, and the UI must never confuse them:
   counted   a person entered it (stock log, staff app, admin correction)
-  sales     petpooja_usage:* - recipes x dishes sold, deducted automatically
+  sales     petpooja_usage:* / zomato_usage:* / swiggy_usage:* - recipes x
+            dishes sold (walk-in and delivery), deducted automatically
   purchase  purchase_auto:*  - added automatically when a purchase is logged
   system    SYSTEM-COMPUTED rows from one-off repairs
 """
@@ -33,12 +34,16 @@ CATEGORY_ORDER = [
     "Vegetables", "Dairy", "Frozen", "Dry Goods", "Spices", "Condiments", "Pulses", "Flour",
     "Utilities", "packaging", "Beverage - Resale",
 ]
-_AUTO = ("petpooja_usage", "purchase_auto", "SYSTEM")
+_AUTO = ("petpooja_usage", "zomato_usage", "swiggy_usage", "purchase_auto", "SYSTEM")
+# SQL filter for "a person entered this row" (keep in step with _AUTO).
+HUMAN_ROW_SQL = ("coalesce(s.note, '') NOT LIKE 'petpooja_usage%' AND coalesce(s.note, '') NOT LIKE 'zomato_usage%' "
+                 "AND coalesce(s.note, '') NOT LIKE 'swiggy_usage%' AND coalesce(s.note, '') NOT LIKE 'purchase_auto%' "
+                 "AND coalesce(s.note, '') NOT LIKE 'SYSTEM%'")
 
 
 def source_of(note: str | None) -> str:
     note = note or ""
-    if note.startswith("petpooja_usage"):
+    if note.startswith(("petpooja_usage", "zomato_usage", "swiggy_usage")):
         return "sales"
     if note.startswith("purchase_auto"):
         return "purchase"
@@ -60,12 +65,10 @@ def is_full_count_day(day: datetime.date) -> bool:
 
 
 def _human_counts(db: Session) -> dict[int, dict]:
-    rows = db.execute(text("""
+    rows = db.execute(text(f"""
         SELECT DISTINCT ON (s.ingredient_id) s.ingredient_id, s.on_hand_qty, s.counted_at, u.name AS by_name
         FROM ingredient_stock s LEFT JOIN users u ON u.id = s.counted_by
-        WHERE coalesce(s.note, '') NOT LIKE 'petpooja_usage%'
-          AND coalesce(s.note, '') NOT LIKE 'purchase_auto%'
-          AND coalesce(s.note, '') NOT LIKE 'SYSTEM%'
+        WHERE {HUMAN_ROW_SQL}
         ORDER BY s.ingredient_id, s.counted_at DESC
     """)).mappings().all()
     return {r["ingredient_id"]: dict(r) for r in rows}
@@ -139,12 +142,11 @@ def summary(db: Session, items: list[dict]) -> dict:
     day = count_day()
     kind, todo = tonights_list(items, day)
     stock = [i for i in items if i["stockable"]]
-    last = db.execute(text("""
+    last = db.execute(text(f"""
         SELECT (s.counted_at AT TIME ZONE 'Asia/Kolkata')::date AS d, count(DISTINCT s.ingredient_id) n,
                mode() WITHIN GROUP (ORDER BY u.name) AS by_name
         FROM ingredient_stock s LEFT JOIN users u ON u.id = s.counted_by
-        WHERE coalesce(s.note, '') NOT LIKE 'petpooja_usage%' AND coalesce(s.note, '') NOT LIKE 'purchase_auto%'
-          AND coalesce(s.note, '') NOT LIKE 'SYSTEM%'
+        WHERE {HUMAN_ROW_SQL}
         GROUP BY 1 ORDER BY 1 DESC LIMIT 1
     """)).mappings().first()
     return {
