@@ -262,7 +262,7 @@ def _build(db: Session) -> dict:
     if t["bad_order_days"]:
         issues.append({"key": "orders", "title": "Petpooja order counts", "value": f"{t['bad_order_days']} days look wrong",
                        "note": "Bill count far too low for the day's sales, so average bill is off",
-                       "level": "warn", "href": "/data-reconciliation"})
+                       "level": "warn", "href": "/reconciliation#channels"})
     # Flag the stored margin when the data says something different, not by age.
     dm = bs.derived_margin(db, asof)
     margin_drifted = bool(dm and dm["drifted"])
@@ -348,7 +348,10 @@ def _build(db: Session) -> dict:
             "gas": t["gas_missing"] or 0,
             "stock": t["neg_stock"] or 0,
             "purchases": t["ledger_open"] or 0,
-            "reconcile": t["recon_open"] or 0,
+            # Unexplained mismatches plus channels whose data has gone stale.
+            "reconcile": (t["recon_open"] or 0) + sum(1 for lag in (swiggy_lag,) if lag is not None and lag > STALE_CHANNEL_DAYS)
+                         + sum(1 for last in (t["zomato_last"], t["petpooja_last"])
+                               if last is not None and (asof - last).days > STALE_CHANNEL_DAYS),
             "menu": len(leak_rows),
             "settings": margin_drifted,
         },

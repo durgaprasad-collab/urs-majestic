@@ -159,7 +159,7 @@ def get_attention_items(db: Session) -> list[dict]:
                 "detail": f"Oldest since {oldest:%d %b}. Reconcile before trusting today's numbers."
                 if oldest
                 else "Reconcile before trusting today's numbers.",
-                "link": "/data-reconciliation",
+                "link": "/reconciliation#channels",
                 "link_label": "Reconcile",
             }
         )
@@ -197,7 +197,7 @@ def get_attention_items(db: Session) -> list[dict]:
                     "icon": "🟠",
                     "title": f"{f['channel'].title()}: {f['rows_failed']} row(s) failed to import",
                     "detail": "Some sales are missing from the totals below.",
-                    "link": "/data-reconciliation",
+                    "link": "/reconciliation#channels",
                     "link_label": "Review",
                 }
             )

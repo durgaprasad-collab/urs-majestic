@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 13 · Reconcile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;--rev:#1E6B4A;--pur:#C9A24A}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .head p{color:var(--ink-2);font-size:13px;margin-top:2px;max-width:700px}
+  .months{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .months button{border:0;background:none;padding:9px 14px;font:600 13px Inter;color:var(--ink-2);border-right:1px solid var(--line);cursor:pointer}
+  .months button:last-child{border-right:0}.months button.on{background:var(--ground);color:var(--gold-2)}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .k{padding:12px 16px;border-right:1px solid var(--line);border-top:3px solid transparent}.k:last-child{border-right:0}
+  .k.good{border-top-color:var(--good)}.k.warn{border-top-color:var(--gold)}.k.bad{border-top-color:var(--bad)}
+  .k .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .k .v{font-size:22px;font-weight:700;margin-top:2px}.k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{font-size:11.5px;color:var(--ink-2)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .card .cap{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .card .cap h3{font-size:14px}.card .cap p{font-size:12px;color:var(--ink-3)}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--ink-2)}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .legend i.line{height:2px;border-radius:0;vertical-align:3px;width:14px}
+  .chart{padding:12px 16px 8px}
+  .bars{position:relative;display:flex;align-items:flex-end;gap:3px;height:170px;border-bottom:1px solid var(--line)}
+  .day{flex:1;display:flex;align-items:flex-end;gap:2px;height:100%;position:relative}
+  .day i{flex:1;border-radius:3px 3px 0 0;display:block}
+  .day i.r{background:var(--rev)}.day i.p{background:var(--pur)}
+  .day:hover .tip{display:block}
+  .tip{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#14201B;color:#fff;font-size:11px;padding:6px 8px;border-radius:7px;white-space:nowrap;z-index:3;margin-bottom:4px}
+  .be{position:absolute;left:0;right:0;border-top:1.5px dashed var(--bad)}
+  .be span{position:absolute;right:0;top:-16px;font-size:10.5px;color:var(--bad);background:#fff;padding:0 4px}
+  .xl{display:flex;gap:3px;font-size:10px;color:var(--ink-3);margin-top:4px}.xl span{flex:1;text-align:center}
+  .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:14px}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:600;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);background:#FBFAF6;white-space:nowrap}
+  th.r,td.r{text-align:right}
+  td{padding:8px 12px;border-bottom:1px solid #F0EEE6;font-size:13px}
+  .neg{color:var(--bad);font-weight:700}.pos{color:var(--good);font-weight:700}
+  .muted{color:var(--ink-3);font-size:12px}
+  .pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .pill.ok{background:var(--good-bg);color:var(--good)}.pill.late{background:var(--bad-bg);color:var(--bad)}.pill.ex{background:#F2F1EA;color:var(--ink-2)}
+  .mini{height:6px;border-radius:3px;background:#ECE9DF;overflow:hidden;width:90px;display:inline-block;vertical-align:middle;margin-right:6px}.mini i{display:block;height:100%;background:var(--pur)}
+  .notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+  .note{background:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;color:#3c4440}.note b{display:block;color:var(--ink);margin-bottom:3px}
+  @media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.k{border-bottom:1px solid var(--line)}.grid{grid-template-columns:1fr}.notes{grid-template-columns:1fr}.hm{display:none}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 13: Reconcile, money in vs money out.</b> Daily revenue against purchases and the break-even line, each month's result after fixed costs, where the purchase money goes, and whether every channel's data is in and matches. Real data to Thu 8 Oct. Hover the bars; switch months. Nothing saves.</div>
+<div class="wrap">
+  <div class="head">
+    <div><h1>Reconcile</h1><p>Did the money that came in cover what went out? Revenue from all channels against purchases and fixed costs, with fixed costs spread evenly over the month so part-months compare fairly.</p></div>
+    <div class="months" id="months"></div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <div class="cap"><div><h3 id="ch-title"></h3><p>Revenue and purchases per day · dashed line = break-even revenue per day (fixed costs ÷ days ÷ margin)</p></div>
+      <div class="legend"><span><i style="background:var(--rev)"></i>Revenue</span><span><i style="background:var(--pur)"></i>Purchases</span><span><i class="line" style="border-top:2px dashed var(--bad);background:none"></i>Break-even</span></div></div>
+    <div class="chart"><div class="bars" id="bars"></div><div class="xl" id="xl"></div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="cap"><div><h3>Month by month</h3><p>Purchases are cash spent, not food used, so a stock-up month looks worse than it is</p></div></div>
+      <table><thead><tr><th>Month</th><th class="r">Revenue</th><th class="r">Purchases</th><th class="r hm">% of rev.</th><th class="r hm">Fixed costs</th><th class="r">Result</th></tr></thead><tbody id="mtab"></tbody></table>
+    </div>
+    <div class="card">
+      <div class="cap"><div><h3>Where the purchase money went</h3><p id="cat-sub"></p></div></div>
+      <table><thead><tr><th>Category</th><th class="r">Spend</th><th class="r">% of revenue</th></tr></thead><tbody id="cats"></tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cap"><div><h3>Channel data check</h3><p>Each channel's uploaded orders vs its own declared totals · last data in</p></div><span class="pill ok">0 unexplained mismatches</span></div>
+    <table><thead><tr><th>Channel</th><th class="r">Revenue</th><th class="r hm">Orders</th><th class="r hm">Avg order</th><th>Last data</th><th>Days checked</th></tr></thead><tbody id="chtab"></tbody></table>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b>One question, answered</b>The old page mixed this with purchase summaries, unmapped ingredients and usage by dish. Those now live where they're used (Purchases and Ingredient Mapping), and this page answers one thing: are we covering our costs, day by day and month by month.</div>
+    <div class="note"><b>Fair part-month view</b>The old ledger set the whole month's ₹2.01 lakh fixed costs against 8 days of October sales and showed a ₹1.4 lakh "gap". Spreading fixed costs per day shows October is actually <b>ahead</b> so far.</div>
+    <div class="note"><b>Data you can trust</b>All three channels' uploads match their own totals (314 days checked, one catering day explained). The real gap is freshness: Swiggy's last data is 3 Oct, so October is missing a few Swiggy orders until it's uploaded.</div>
+  </div>
+</div>
+
+<script>
+const R = {"Sep": {"rows": [{"d": "2026-09-01", "rev": 8772.2, "pur": 5245.7, "tgt": 12418.7, "ach": 8772.2}, {"d": "2026-09-02", "rev": 4955.1, "pur": 3474.0, "tgt": 24837.39, "ach": 13727.3}, {"d": "2026-09-03", "rev": 3695.2, "pur": 4508.47, "tgt": 37256.09, "ach": 17422.5}, {"d": "2026-09-04", "rev": 7799.6, "pur": 7349.37, "tgt": 49674.79, "ach": 25222.1}, {"d": "2026-09-05", "rev": 10438.0, "pur": 3905.28, "tgt": 62093.48, "ach": 35660.1}, {"d": "2026-09-06", "rev": 15114.4, "pur": 850.0, "tgt": 74512.18, "ach": 50774.5}, {"d": "2026-09-07", "rev": 4550.05, "pur": 6320.0, "tgt": 86930.88, "ach": 55324.55}, {"d": "2026-09-08", "rev": 5155.65, "pur": 5095.73, "tgt": 99349.58, "ach": 60480.2}, {"d": "2026-09-09", "rev": 4413.6, "pur": 92.0, "tgt": 111768.27, "ach": 64893.8}, {"d": "2026-09-10", "rev": 5800.05, "pur": 5891.84, "tgt": 124186.97, "ach": 70693.85}, {"d": "2026-09-11", "rev": 6306.45, "pur": 7904.32, "tgt": 136605.67, "ach": 77000.3}, {"d": "2026-09-12", "rev": 11567.45, "pur": 0.0, "tgt": 149024.36, "ach": 88567.75}, {"d": "2026-09-13", "rev": 8384.4, "pur": 6273.22, "tgt": 161443.06, "ach": 96952.15}, {"d": "2026-09-14", "rev": 8672.95, "pur": 638.0, "tgt": 173861.76, "ach": 105625.1}, {"d": "2026-09-15", "rev": 6976.2, "pur": 3444.0, "tgt": 186280.46, "ach": 112601.3}, {"d": "2026-09-16", "rev": 2705.32, "pur": 3727.09, "tgt": 198699.15, "ach": 115306.62}, {"d": "2026-09-17", "rev": 7432.2, "pur": 416.0, "tgt": 211117.85, "ach": 122738.82}, {"d": "2026-09-18", "rev": 8651.14, "pur": 4925.5, "tgt": 223536.55, "ach": 131389.96}, {"d": "2026-09-19", "rev": 16649.74, "pur": 5546.11, "tgt": 235955.24, "ach": 148039.7}, {"d": "2026-09-20", "rev": 13080.4, "pur": 4573.39, "tgt": 248373.94, "ach": 161120.1}, {"d": "2026-09-21", "rev": 6788.9, "pur": 6148.65, "tgt": 260792.64, "ach": 167909.0}, {"d": "2026-09-22", "rev": 10328.6, "pur": 0.0, "tgt": 273211.33, "ach": 178237.6}, {"d": "2026-09-23", "rev": 6580.4, "pur": 9080.0, "tgt": 285630.03, "ach": 184818.0}, {"d": "2026-09-24", "rev": 7926.0, "pur": 0.0, "tgt": 298048.73, "ach": 192744.0}, {"d": "2026-09-25", "rev": 10619.2, "pur": 6012.22, "tgt": 310467.42, "ach": 203363.2}, {"d": "2026-09-26", "rev": 21647.6, "pur": 2060.0, "tgt": 322886.12, "ach": 225010.8}, {"d": "2026-09-27", "rev": 18280.33, "pur": 12370.06, "tgt": 335304.82, "ach": 243291.13}, {"d": "2026-09-28", "rev": 10509.6, "pur": 595.0, "tgt": 347723.52, "ach": 253800.73}, {"d": "2026-09-29", "rev": 10909.75, "pur": 3444.0, "tgt": 360142.21, "ach": 264710.48}, {"d": "2026-09-30", "rev": 11378.65, "pur": 8460.0, "tgt": 372560.91, "ach": 276089.13}], "rev": 276089.13, "pur": 128349.95, "fixed": 201176.67, "gap": 53437.49, "target": 372560.91}, "Oct": {"rows": [{"d": "2026-10-01", "rev": 8156.0, "pur": 3574.0, "tgt": 12018.09, "ach": 8156.0}, {"d": "2026-10-02", "rev": 17514.4, "pur": 6732.22, "tgt": 24036.19, "ach": 25670.4}, {"d": "2026-10-03", "rev": 21797.0, "pur": 2339.62, "tgt": 36054.28, "ach": 47467.4}, {"d": "2026-10-04", "rev": 20650.7, "pur": 13190.5, "tgt": 48072.38, "ach": 68118.1}, {"d": "2026-10-05", "rev": 11723.5, "pur": 7592.12, "tgt": 60090.47, "ach": 79841.6}, {"d": "2026-10-06", "rev": 12349.75, "pur": 7060.6, "tgt": 72108.56, "ach": 92191.35}, {"d": "2026-10-07", "rev": 10218.1, "pur": 10602.53, "tgt": 84126.66, "ach": 102409.45}, {"d": "2026-10-08", "rev": 11868.15, "pur": 2603.0, "tgt": 96144.75, "ach": 114277.6}], "rev": 114277.6, "pur": 53694.59, "fixed": 201369.17, "gap": 140786.16, "target": 372560.91}, "cats": [["Aug", "Utilities", 35097.0], ["Aug", "Dry Goods", 22494.0], ["Aug", "Condiments", 20357.0], ["Aug", "Vegetables", 19808.0], ["Aug", "Dairy", 12756.0], ["Aug", "Spices", 6791.0], ["Aug", "Beverage - Resale", 2760.0], ["Aug", "Other", 1742.0], ["Aug", "Pulses", 1058.0], ["Aug", "Overhead", 732.0], ["Aug", "Flour", 384.0], ["Aug", "packaging", 294.0], ["Aug", "Equipment", 151.0], ["Sep", "Utilities", 46793.0], ["Sep", "Vegetables", 19186.0], ["Sep", "Condiments", 17228.0], ["Sep", "Dry Goods", 16902.0], ["Sep", "Dairy", 14733.0], ["Sep", "Spices", 6060.0], ["Sep", "Beverage - Resale", 3520.0], ["Sep", "Other", 1617.0], ["Sep", "packaging", 881.0], ["Sep", "Overhead", 753.0], ["Sep", "Flour", 651.0], ["Sep", "Staff", 25.0], ["Oct", "Utilities", 16570.0], ["Oct", "Vegetables", 13424.0], ["Oct", "Condiments", 5529.0], ["Oct", "Dry Goods", 5303.0], ["Oct", "Dairy", 5155.0], ["Oct", "Spices", 3299.0], ["Oct", "Beverage - Resale", 2208.0], ["Oct", "Other", 1179.0], ["Oct", "packaging", 601.0], ["Oct", "Overhead", 266.0], ["Oct", "Flour", 260.0], ["Oct", "Staff", 20.0]], "rev": [["Aug", 202732.0], ["Sep", 276089.0], ["Oct", 114278.0]], "ch": [["petpooja", "Aug", 179113.0, 640], ["swiggy", "Aug", 2805.0, 8], ["zomato", "Aug", 20815.0, 71], ["catering", "Sep", 8000.0, 1], ["petpooja", "Sep", 201217.0, 880], ["swiggy", "Sep", 3311.0, 10], ["zomato", "Sep", 63561.0, 231], ["petpooja", "Oct", 78797.0, 281], ["swiggy", "Oct", 414.0, 2], ["zomato", "Oct", 35066.0, 126]], "Aug": {"rev": 202732.3, "pur": 124424.23, "fixed": 201176.67, "gap": 122868.6, "target": 372560.91, "rows": [{"d": "2026-08-01", "rev": 12308.0, "pur": 306.0}, {"d": "2026-08-02", "rev": 10053.0, "pur": 8476.26}, {"d": "2026-08-03", "rev": 5166.2, "pur": 3740.0}, {"d": "2026-08-04", "rev": 5916.0, "pur": 1778.0}, {"d": "2026-08-05", "rev": 4368.2, "pur": 8401.92}, {"d": "2026-08-06", "rev": 5607.0, "pur": 456.0}, {"d": "2026-08-07", "rev": 6269.2, "pur": 6975.88}, {"d": "2026-08-08", "rev": 13825.0, "pur": 1361.0}, {"d": "2026-08-09", "rev": 11293.0, "pur": 8623.4}, {"d": "2026-08-10", "rev": 2890.0, "pur": 3978.32}, {"d": "2026-08-11", "rev": 3016.2, "pur": 1365.0}, {"d": "2026-08-12", "rev": 3815.0, "pur": 10531.76}, {"d": "2026-08-13", "rev": 5764.0, "pur": 0.0}, {"d": "2026-08-14", "rev": 9585.4, "pur": 4911.64}, {"d": "2026-08-15", "rev": 11835.0, "pur": 6118.62}, {"d": "2026-08-16", "rev": 7715.0, "pur": 11286.82}, {"d": "2026-08-17", "rev": 4776.0, "pur": 3002.0}, {"d": "2026-08-18", "rev": 4286.0, "pur": 2804.2}, {"d": "2026-08-19", "rev": 3086.2, "pur": 4909.42}, {"d": "2026-08-20", "rev": 4475.2, "pur": 3205.0}, {"d": "2026-08-21", "rev": 6748.2, "pur": 3072.0}, {"d": "2026-08-22", "rev": 8913.4, "pur": 1437.0}, {"d": "2026-08-23", "rev": 5077.0, "pur": 0.0}, {"d": "2026-08-24", "rev": 3509.0, "pur": 5693.0}, {"d": "2026-08-25", "rev": 3638.0, "pur": 0.0}, {"d": "2026-08-26", "rev": 5996.45, "pur": 5306.57}, {"d": "2026-08-27", "rev": 2891.2, "pur": 5820.0}, {"d": "2026-08-28", "rev": 6013.0, "pur": 3295.0}, {"d": "2026-08-29", "rev": 12781.2, "pur": 580.0}, {"d": "2026-08-30", "rev": 5775.6, "pur": 6989.42}, {"d": "2026-08-31", "rev": 5339.65, "pur": 0.0}]}};
+const rs = n => (n < 0 ? '−' : '') + '₹' + Math.abs(Math.round(n)).toLocaleString('en-IN');
+const lakh = n => (n < 0 ? '−' : '') + '₹' + (Math.abs(n)/100000).toFixed(2) + 'L';
+const DAYS = {Aug:31, Sep:30, Oct:31};
+const MARGIN = 0.5405; // contribution margin used for break-even (Settings)
+let cur = 'Oct';
+document.getElementById('months').innerHTML = ['Aug','Sep','Oct'].map(m=>`<button class="${m===cur?'on':''}" onclick="cur='${m}';render()">${m}${m==='Oct'?' (to 8th)':''}</button>`).join('');
+
+function render(){
+  document.querySelectorAll('#months button').forEach(b=>b.classList.toggle('on', b.textContent.startsWith(cur)));
+  const M = R[cur], days = M.rows.length || DAYS[cur], full = DAYS[cur];
+  const fixedToDate = M.fixed * days / full, result = M.rev - M.pur - fixedToDate;
+  const tgtToDate = M.target * days / full;
+  const bePerDay = M.fixed / full / MARGIN;
+  document.getElementById('kpis').innerHTML = `
+    <div class="k ${M.rev >= tgtToDate ? 'good' : 'warn'}"><div class="l">Revenue${cur==='Oct'?' to date':''}</div><div class="v">${rs(M.rev)}</div><div class="s">break-even ${cur==='Oct'?'to date ':''}${rs(tgtToDate)} · ${M.rev>=tgtToDate?'+':'−'}${Math.abs(Math.round((M.rev/tgtToDate-1)*100))}%</div></div>
+    <div class="k"><div class="l">Purchases</div><div class="v">${rs(M.pur)}</div><div class="s">${Math.round(M.pur/M.rev*100)}% of revenue · cash spent</div></div>
+    <div class="k"><div class="l">Fixed costs${cur==='Oct'?' to date':''}</div><div class="v">${rs(fixedToDate)}</div><div class="s">${rs(M.fixed)}/month · ${days} of ${full} days</div></div>
+    <div class="k ${result>=0?'good':'bad'}"><div class="l">Left after costs</div><div class="v ${result>=0?'pos':'neg'}">${rs(result)}</div><div class="s">revenue − purchases − fixed</div></div>
+    <div class="k ${cur==='Oct'?'warn':'good'}"><div class="l">Data check</div><div class="v">${cur==='Oct'?'2 <small>of 3 current</small>':'3 <small>of 3</small>'}</div><div class="s">${cur==='Oct'?'Swiggy last data 3 Oct':'all channels in and matching'}</div></div>`;
+  // chart
+  const rows = M.rows.length ? M.rows : [];
+  const max = Math.max(bePerDay*1.15, ...rows.map(r=>Math.max(r.rev, r.pur)), 1);
+  document.getElementById('ch-title').textContent = `${cur} · day by day`;
+  document.getElementById('bars').innerHTML = rows.length
+    ? rows.map(r=>`<div class="day"><i class="r" style="height:${r.rev/max*100}%"></i><i class="p" style="height:${r.pur/max*100}%"></i><div class="tip">${new Date(r.d).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}: revenue ${rs(r.rev)} · purchases ${rs(r.pur)}</div></div>`).join('')
+      + `<div class="be" style="bottom:${bePerDay/max*100}%"><span>break-even ${rs(bePerDay)}/day</span></div>`
+    : '<p class="muted" style="margin:auto">Daily detail shown for the selected month in the real page</p>';
+  document.getElementById('xl').innerHTML = rows.map((r,i)=>`<span>${(i%3===0||rows.length<12)?new Date(r.d).getDate():''}</span>`).join('');
+  // month table
+  document.getElementById('mtab').innerHTML = ['Aug','Sep','Oct'].map(m=>{const x=R[m], d=x.rows.length||DAYS[m], f=x.fixed*d/DAYS[m], res=x.rev-x.pur-f;
+    return `<tr style="${m===cur?'background:#FFFCF2':''}"><td><b>${m}</b>${m==='Oct'?' <span class="muted">to 8th</span>':''}</td><td class="r">${lakh(x.rev)}</td><td class="r">${lakh(x.pur)}</td><td class="r hm">${Math.round(x.pur/x.rev*100)}%</td><td class="r hm muted">${lakh(f)}</td><td class="r ${res>=0?'pos':'neg'}">${lakh(res)}</td></tr>`;}).join('');
+  // categories
+  const cats = R.cats.filter(c=>c[0]===cur).sort((a,b)=>b[2]-a[2]);
+  const top = cats.slice(0,6), rest = cats.slice(6).reduce((s,c)=>s+c[2],0);
+  if (rest) top.push([cur,'Everything else',rest]);
+  const big = Math.max(...top.map(c=>c[2]));
+  document.getElementById('cat-sub').textContent = `${cur}: ${rs(M.pur)} across ${cats.length} categories`;
+  document.getElementById('cats').innerHTML = top.map(c=>`<tr><td>${c[1]==='Utilities'?'Utilities (gas, packaging)':c[1]}</td><td class="r"><span class="mini"><i style="width:${c[2]/big*100}%"></i></span>${rs(c[2])}</td><td class="r muted">${(c[2]/M.rev*100).toFixed(1)}%</td></tr>`).join('');
+  // channels
+  const ch = R.ch.filter(c=>c[1]===cur);
+  const last = {petpooja:'Thu 8 Oct', zomato:'Thu 8 Oct', swiggy:'Sat 3 Oct', catering:'Sun 6 Sep'};
+  const checked = {petpooja:123, zomato:100, swiggy:91, catering:1};
+  document.getElementById('chtab').innerHTML = ch.map(c=>{const late = cur==='Oct' && c[0]==='swiggy';
+    return `<tr><td><b>${c[0]==='petpooja'?'Dine-in (Petpooja)':c[0][0].toUpperCase()+c[0].slice(1)}</b></td><td class="r">${rs(c[2])}</td><td class="r hm">${c[3]}</td><td class="r hm muted">${c[3]?rs(c[2]/c[3]):'—'}</td>
+      <td>${late?`<span class="pill late">${last[c[0]]} · 6 days behind</span>`:`<span class="muted">${last[c[0]]}</span>`}</td><td>${c[0]==='catering'?'<span class="pill ex">1 explained</span>':`<span class="pill ok">${checked[c[0]]} match</span>`}</td></tr>`;}).join('');
+}
+render();
+</script>
+</body>
+</html>

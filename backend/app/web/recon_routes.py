@@ -13,24 +13,10 @@ from app.services.recon import get_data_trust, get_channel_status, get_daily_rec
 router = APIRouter(tags=["web"])
 
 
-@router.get("/data-reconciliation", response_class=HTMLResponse)
-def data_reconciliation(request: Request, db: Session = Depends(get_db)):
-    user, redir = require_user(request, db)
-    if redir:
-        return redir
-
-    show_all = request.query_params.get("all") == "1"
-    daily = get_daily_recon(db)
-    if not show_all:
-        daily = [r for r in daily if r["status"] != "OK"]
-
-    return _tmpl(request, "data_reconciliation.html", {
-        "user": user,
-        "trust": get_data_trust(db),
-        "channels": get_channel_status(db),
-        "daily": daily,
-        "show_all": show_all,
-    })
+@router.get("/data-reconciliation")
+def data_reconciliation():
+    """Folded into Reconcile's channel data check (2026-10-09)."""
+    return RedirectResponse("/reconciliation#channels", status_code=301)
 
 
 @router.post("/data-reconciliation/explain")
@@ -60,4 +46,4 @@ def data_reconciliation_explain(
     )
     db.commit()
 
-    return RedirectResponse("/data-reconciliation", status_code=303)
+    return RedirectResponse("/reconciliation?notice=Explanation+saved.#channels", status_code=303)

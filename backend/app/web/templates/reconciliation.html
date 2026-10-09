@@ -1,383 +1,81 @@
 {% extends "base.html" %}
-{% block title %}Reconciliation — URS Majestic{% endblock %}
+{% block title %}Reconcile — URS Majestic{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <div>
-    <h1 class="page-title">Purchase Reconciliation</h1>
-    <p class="card-sub">Rolling three months · {{ window_start.strftime('%d %b %Y') }}–{{ window_end.strftime('%d %b %Y') }}</p>
+{% macro rs(v) %}{% if v is not none and v < 0 %}−{% endif %}₹{{ '{:,.0f}'.format((v or 0)|abs) }}{% endmacro %}
+{% macro lakh(v) %}{% if v < 0 %}−{% endif %}₹{{ '%.2f'|format((v|abs) / 100000) }}L{% endmacro %}
+<div class="sl rc">
+  <div class="sl-head">
+    <div><h1 class="sl-title">Reconcile</h1>
+      <p class="sl-sub">Did the money that came in cover what went out? Revenue from all channels against purchases and fixed costs, with fixed costs spread evenly over the month so part-months compare fairly. Data to <b>{{ through.strftime('%a %d %b') }}</b>.</p></div>
+    <div class="rc-months">{% for v in months %}<a href="/reconciliation?month={{ v.start.strftime('%Y-%m') }}" class="{{ 'on' if v.start == m.start }}">{{ v.start.strftime('%b') }}{% if v.partial %} <small>to {{ v.end.day }}</small>{% endif %}</a>{% endfor %}</div>
   </div>
-</div>
+  {% if notice %}<p class="sl-flash">{{ notice }}</p>{% endif %}
 
-<p class="card-sub" style="margin:-.2rem 0 .7rem">
-  Calendar month daily ledger for <strong>{{ selected_month_label }}</strong>. Use the month picker to switch periods; the lower sections still show the rolling three-month purchase analysis.
-</p>
-
-<style>
-  .recon-month-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin:1rem 0}
-  .recon-month-card{padding:1rem;border:1px solid #e2ddd1;border-radius:14px;background:#fff}
-  .recon-month-card span{display:block;color:#777;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
-  .recon-month-card b{display:block;margin-top:.25rem;font-size:1.35rem;color:#0b3a2e}
-  .recon-month-cell strong,.recon-month-cell small{display:block;white-space:nowrap}
-  .recon-month-cell small{color:#777;margin-top:.12rem}
-  .recon-section{margin-top:1rem}
-  .recon-ledger-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem;margin:1rem 0}
-  .recon-ledger-card{padding:1rem;border:1px solid #e2ddd1;border-top:4px solid #0b3a2e;border-radius:14px;background:#fff;box-shadow:0 4px 12px rgba(11,58,46,.04)}
-  .recon-ledger-card span{display:block;color:#777;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
-  .recon-ledger-card b{display:block;margin-top:.25rem;font-size:1.35rem;color:#0b3a2e}
-  .recon-ledger-card small{display:block;margin-top:.2rem;color:#777;font-size:.72rem;line-height:1.3}
-  .recon-ledger-card.revenue{border-top-color:#1e8f5a}
-  .recon-ledger-card.purchases{border-top-color:#8e44ad}
-  .recon-ledger-card.target{border-top-color:#d18f00}
-  .recon-ledger-card.cash{border-top-color:#6c5ce7}
-  .recon-ledger-card.achieved{border-top-color:#2d6cdf}
-  .recon-ledger-note{margin:.35rem 0 .9rem;color:#666;font-size:.82rem}
-  .recon-ledger-table tfoot td{background:#f4efe6;font-weight:700;border-top:2px solid #d8ccb8}
-  .recon-ledger-table tfoot small{display:block;color:#777;font-size:.68rem;font-weight:600;margin-top:.08rem}
-  @media(max-width:900px){.recon-ledger-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:700px){.recon-month-grid{grid-template-columns:1fr}.recon-rolling-table{min-width:760px}}
-</style>
-
-<form method="get" action="/reconciliation" class="filter-bar">
-  <select name="month" class="form-input filter-select" onchange="this.form.submit()">
-    {% for month in month_options %}
-    <option value="{{ month.key }}" {% if month.key == selected_month_key %}selected{% endif %}>{{ month.label }}</option>
-    {% endfor %}
-  </select>
-  <select name="ingredient_id" class="form-input filter-select" onchange="this.form.submit()">
-    <option value="">All ingredients</option>
-    {% for ing in filter_options %}
-    <option value="{{ ing.id }}" {% if ing.id == filter_id %}selected{% endif %}>{{ ing.name }}</option>
-    {% endfor %}
-  </select>
-  {% if filter_id %}
-  <a href="/reconciliation" class="btn-link-sm" style="white-space:nowrap">✕ Clear</a>
-  {% endif %}
-</form>
-
-{% if filter_ing %}
-<p class="card-sub" style="margin:-.4rem 0 .8rem">
-  Showing <strong>{{ filter_ing.name }}</strong> only. Monthly spend, purchase summary and
-  usage-by-dish are scoped to this ingredient; the unmapped-ingredient warning below stays global.
-</p>
-{% endif %}
-
-<div class="card" style="margin-top:1rem">
-  <div class="prep-head" style="margin-top:0">
-    <div>
-      <h2 class="prep-title">Calendar month daily ledger</h2>
-      <p class="card-sub">Daily revenue and purchases for <strong>{{ selected_month_label }}</strong>. Target is break-even pace; achieved is cumulative actual revenue to date.</p>
-    </div>
+  <div class="sl-kpis rc-kpis">
+    <div class="sl-k {{ 'good' if m.vs_be is not none and m.vs_be >= 0 else 'warn' }}"><span class="l">Revenue{{ ' to date' if m.partial }}</span><span class="v">{{ rs(m.revenue) }}</span>
+      <span class="s">{% if m.be_to_date %}break-even {{ 'to date ' if m.partial }}{{ rs(m.be_to_date) }} · {{ '+' if m.vs_be >= 0 else '−' }}{{ m.vs_be|abs|round|int }}%{% endif %}</span></div>
+    <div class="sl-k"><span class="l">Purchases</span><span class="v">{{ rs(m.purchases) }}</span><span class="s">{% if m.purchase_pct is not none %}{{ m.purchase_pct|round|int }}% of revenue · {% endif %}cash spent</span></div>
+    <div class="sl-k"><span class="l">Fixed costs{{ ' to date' if m.partial }}</span><span class="v">{{ rs(m.fixed_to_date) }}</span><span class="s">{{ rs(m.fixed_month) }}/month · {{ m.days }} of {{ m.days_in }} days</span></div>
+    <div class="sl-k {{ 'good' if m.result >= 0 else 'bad' }}"><span class="l">Left after costs</span><span class="v {{ 'rc-pos' if m.result >= 0 else 'rc-neg' }}">{{ rs(m.result) }}</span><span class="s">revenue − purchases − fixed</span></div>
+    <a class="sl-k {{ 'bad' if mismatches else ('warn' if stale else 'good') }}" href="#channels"><span class="l">Data check</span>
+      {% set current = channels|rejectattr('channel', 'equalto', 'catering')|rejectattr('stale')|list|length %}
+      {% set total = channels|rejectattr('channel', 'equalto', 'catering')|list|length %}
+      <span class="v">{{ current }}</span> <span class="v small">of {{ total }} current</span>
+      <span class="s">{% if mismatches %}{{ mismatches|length }} mismatch{{ 'es' if mismatches|length != 1 }} to explain{% elif stale %}{{ stale|map(attribute='label')|join(', ') }} last data {{ stale[0].last.strftime('%d %b') }}{% else %}all channels in and matching{% endif %}</span></a>
   </div>
 
-  <div class="recon-ledger-grid">
-    <div class="recon-ledger-card revenue">
-      <span>Revenue subtotal</span>
-      <b>₹{{ "{:,.0f}".format(month_ledger.revenue_total) }}</b>
-      <small>through {{ selected_month_display_end.strftime('%d %b %Y') }}</small>
-    </div>
-    <div class="recon-ledger-card purchases">
-      <span>Purchases subtotal</span>
-      <b>₹{{ "{:,.0f}".format(month_ledger.purchases_total) }}</b>
-      <small>through {{ selected_month_display_end.strftime('%d %b %Y') }}</small>
-    </div>
-    <div class="recon-ledger-card target">
-      <span>Break-even subtotal</span>
-      {% if month_ledger.target_total is not none %}
-      <b>₹{{ "{:,.0f}".format(month_ledger.target_total) }}</b>
-      <small>break-even target for {{ selected_month_label }}</small>
-      {% else %}
-      <b>—</b>
-      <small>No target configured</small>
-      {% endif %}
-    </div>
-    <div class="recon-ledger-card cash">
-      <span>Cash needed this month</span>
-      <b>â‚¹{{ "{:,.0f}".format(month_ledger.cash_needed_total) }}</b>
-      {% if month_ledger.cash_gap_short %}
-      <small>â‚¹{{ "{:,.0f}".format(month_ledger.cash_gap_abs) }} still to cover from revenue</small>
-      {% else %}
-      <small>â‚¹{{ "{:,.0f}".format(month_ledger.cash_gap_abs) }} ahead of cash bills</small>
-      {% endif %}
-    </div>
-    <div class="recon-ledger-card achieved">
-      <span>Achieved subtotal</span>
-      <b>₹{{ "{:,.0f}".format(month_ledger.achieved_total) }}</b>
-      {% if month_ledger.achieved_total_pct is not none %}
-      <small>{{ "%.1f"|format(month_ledger.achieved_total_pct) }}% of target</small>
-      {% else %}
-      <small>Actual revenue through {{ selected_month_display_end.strftime('%d %b %Y') }}</small>
-      {% endif %}
-    </div>
-  </div>
-
-  <p class="recon-ledger-note">Revenue and purchases are daily values. Break-even is fixed bills ÷ contribution margin. Cash needed this month is fixed bills + purchases so far.</p>
-
-  <div class="recon-table-wrap recon-table-scroll">
-    <table class="recon-table recon-ledger-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th class="col-num">Revenue</th>
-          <th class="col-num">Purchases</th>
-          <th class="col-num">Break-even</th>
-          <th class="col-num">Achieved</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in month_ledger.rows %}
-        <tr>
-          <td><strong>{{ row.business_date.strftime('%d %b %Y') }}</strong></td>
-          <td class="col-num">₹{{ "{:,.0f}".format(row.revenue) }}<small>day</small></td>
-          <td class="col-num">₹{{ "{:,.0f}".format(row.purchases) }}<small>day</small></td>
-          <td class="col-num">
-            {% if row.target_to_date is not none %}
-            ₹{{ "{:,.0f}".format(row.target_to_date) }}<small>break-even pace to date</small>
-            {% else %}
-            —
-            {% endif %}
-          </td>
-          <td class="col-num">
-            {% if row.achieved_to_date is not none %}
-            ₹{{ "{:,.0f}".format(row.achieved_to_date) }}<small>{% if row.achieved_pct is not none %}{{ "%.1f"|format(row.achieved_pct) }}% of target{% else %}running total{% endif %}</small>
-            {% else %}
-            —
-            {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="5" class="recon-sub">No daily rows found for {{ selected_month_label }}.</td></tr>
-        {% endfor %}
-      </tbody>
-      <tfoot>
-        <tr class="recon-subtotal-row">
-          <td>{{ month_ledger.month_subtotal_label }}</td>
-          <td class="col-num">₹{{ "{:,.0f}".format(month_ledger.revenue_total) }}</td>
-          <td class="col-num">₹{{ "{:,.0f}".format(month_ledger.purchases_total) }}</td>
-          <td class="col-num">
-            {% if month_ledger.target_total is not none %}
-            ₹{{ "{:,.0f}".format(month_ledger.target_total) }}
-            {% else %}
-            —
-            {% endif %}
-          </td>
-          <td class="col-num">
-            ₹{{ "{:,.0f}".format(month_ledger.achieved_total) }}
-            {% if month_ledger.achieved_total_pct is not none %}
-            <small>{{ "%.1f"|format(month_ledger.achieved_total_pct) }}% of target</small>
-            {% endif %}
-          </td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-</div>
-
-<div class="recon-grid">
-  <div class="recon-card recon-menu">
-    <span class="recon-label">Menu purchases</span>
-    <span class="recon-value">₹{{ "{:,.0f}".format(total_menu_cost) }}</span>
-    <span class="recon-sub">rolling 3 months · dish cost engine</span>
-  </div>
-  <div class="recon-card recon-personal">
-    <span class="recon-label">Personal / Other</span>
-    <span class="recon-value">₹{{ "{:,.0f}".format(total_personal_cost) }}</span>
-    <span class="recon-sub">rolling 3 months · excluded from dish cost</span>
-  </div>
-  <div class="recon-card">
-    <span class="recon-label">Excluded / unidentified</span>
-    <span class="recon-value">₹{{ "{:,.0f}".format(total_excluded_cost) }}</span>
-    <span class="recon-sub">rolling 3 months · awaiting classification</span>
-  </div>
-  <div class="recon-card recon-total">
-    <span class="recon-label">Total recorded</span>
-    <span class="recon-value">₹{{ "{:,.0f}".format(grand_total) }}</span>
-    <span class="recon-sub">rolling 3 months · {% if filter_ing %}{{ filter_ing.name }} only{% else %}all purchases{% endif %}</span>
-  </div>
-</div>
-
-<div class="recon-month-grid">
-  {% for month in months %}
-  <div class="recon-month-card">
-    <span>{{ month.label }}</span>
-    <b>₹{{ "{:,.0f}".format(month_totals[month.key]) }}</b>
-  </div>
-  {% endfor %}
-</div>
-
-<section class="card recon-section">
-  <div class="prep-head" style="margin-top:0">
-    <div>
-      <h2 class="prep-title">Category breakdown</h2>
-      <p class="card-sub">Purchase spend by ingredient category for each month.</p>
-    </div>
-  </div>
-  <div class="recon-table-wrap">
-    <table class="recon-table recon-rolling-table">
-      <thead><tr><th>Category</th>{% for month in months %}<th class="col-num">{{ month.label }}</th>{% endfor %}<th class="col-num">3-month total</th></tr></thead>
-      <tbody>
-        {% for row in category_monthly %}
-        <tr>
-          <td><strong>{{ row.category }}</strong></td>
-          {% for month in months %}<td class="col-num">₹{{ "{:,.0f}".format(row.months[month.key]) }}</td>{% endfor %}
-          <td class="col-num"><strong>₹{{ "{:,.0f}".format(row.total) }}</strong></td>
-        </tr>
-        {% else %}<tr><td colspan="5" class="recon-sub">No purchases in this rolling window.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<section class="card recon-section">
-  <div class="prep-head" style="margin-top:0">
-    <div>
-      <h2 class="prep-title">Item-wise breakdown</h2>
-      <p class="card-sub">Quantity and spend for every ingredient, month by month.</p>
-    </div>
-  </div>
-  <div class="recon-table-wrap recon-table-scroll">
-    <table class="recon-table recon-rolling-table">
-      <thead><tr><th>Ingredient</th><th>Category</th><th>Use</th>{% for month in months %}<th class="col-num">{{ month.label }}</th>{% endfor %}<th class="col-num">3-month total</th></tr></thead>
-      <tbody>
-        {% for row in item_monthly %}
-        <tr>
-          <td><strong>{{ row.name }}</strong></td>
-          <td>{{ row.category }}</td>
-          <td>{% if row.usage_type == 'menu' %}Menu{% elif row.usage_type == 'others_personal' %}Personal / Other{% else %}Excluded / unidentified{% endif %}</td>
-          {% for month in months %}
-          {% set cell = row.months[month.key] %}
-          <td class="col-num recon-month-cell">
-            {% if cell.spend %}<strong>₹{{ "{:,.0f}".format(cell.spend) }}</strong><small>{{ "%g"|format(cell.qty) }} {{ row.unit }}</small>{% else %}—{% endif %}
-          </td>
-          {% endfor %}
-          <td class="col-num recon-month-cell"><strong>₹{{ "{:,.0f}".format(row.total_spend) }}</strong><small>{{ "%g"|format(row.total_qty) }} {{ row.unit }}</small></td>
-        </tr>
-        {% else %}<tr><td colspan="7" class="recon-sub">No purchases in this rolling window.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
-
-{% if unmapped_names %}
-<div class="card" style="margin-top:1rem">
-  <h2 class="card-title" style="font-size:1rem">Unmapped menu ingredients</h2>
-  <p class="card-sub">
-    These ingredients have menu purchases logged but are not yet mapped to any dish.
-    Their cost (₹{{ "{:,.0f}".format(unmapped_cost) }}) is excluded from the engine.
-    <a href="/ingredients/mapping">Map them →</a>
-  </p>
-  <ul class="unmapped-list">
-    {% for name in unmapped_names %}
-    <li>{{ name }}</li>
-    {% endfor %}
-  </ul>
-</div>
-{% else %}
-<div class="card" style="margin-top:1rem">
-  <p class="card-sub">All menu ingredients are mapped to at least one dish.</p>
-</div>
-{% endif %}
-
-{% if ingredient_summary or ingredient_usage or usage_empty_reason %}
-<details class="show-more" style="margin-top:1rem">
-  <summary>View ingredient purchase &amp; usage detail</summary>
-  <div class="show-more-body">
-
-    {% if ingredient_summary %}
-    <div class="card">
-      <h2 class="card-title" style="font-size:1rem">Ingredient purchase summary</h2>
-      <p class="card-sub" style="margin-bottom:.75rem">Average quantity and restocking interval per ingredient within the rolling three-month window.</p>
-      <div class="recon-table-wrap">
-        <table class="recon-table">
-          <thead>
-            <tr>
-              <th>Ingredient</th>
-              <th class="col-num">Buys</th>
-              <th class="col-num">Total qty</th>
-              <th class="col-num">Avg qty / buy</th>
-              <th class="col-num">Avg days between buys</th>
-              <th class="col-num">Total spent</th>
-              <th class="col-num">Last bought</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in ingredient_summary %}
-            <tr>
-              <td>{{ row.name }}</td>
-              <td class="col-num">{{ row.count }}</td>
-              <td class="col-num">{{ "%.2f"|format(row.total_qty) }} {{ row.unit }}</td>
-              <td class="col-num">{{ "%.2f"|format(row.avg_qty) }} {{ row.unit }}</td>
-              <td class="col-num">
-                {% if row.avg_days is not none %}
-                  {{ "%.0f"|format(row.avg_days) }} d
-                {% else %}
-                  <span style="color:#888">—</span>
-                {% endif %}
-              </td>
-              <td class="col-num">₹{{ "{:,.0f}".format(row.total_spent) }}</td>
-              <td class="col-num">{{ row.last_date.strftime('%d %b %Y') }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <div class="sl-card rc-chart">
+    <div class="sl-sechead rc-chead"><div><h3>{{ m.start.strftime('%B') }} · day by day</h3><p>Revenue and purchases per day · dashed line = break-even revenue per day</p></div>
+      <div class="rc-legend"><span><i class="r"></i>Revenue</span><span><i class="p"></i>Purchases</span><span><i class="be"></i>Break-even</span></div></div>
+    <div class="rc-bars">
+      {% for r in m.rows %}
+      <div class="rc-day" tabindex="0">
+        <i class="r" style="height:{{ (r.revenue / m.chart_max * 100)|round(1) }}%"></i><i class="p" style="height:{{ (r.purchases / m.chart_max * 100)|round(1) }}%"></i>
+        <span class="rc-tip">{{ r.business_date.strftime('%a %d %b') }}: revenue {{ rs(r.revenue) }} · purchases {{ rs(r.purchases) }}</span>
       </div>
+      {% endfor %}
+      {% if m.be_day %}<div class="rc-be" style="bottom:{{ (m.be_day / m.chart_max * 100)|round(1) }}%"><span>break-even {{ rs(m.be_day) }}/day</span></div>{% endif %}
     </div>
-    {% endif %}
-
-    {% if ingredient_usage %}
-    <div class="card">
-      <h2 class="card-title" style="font-size:1rem">Ingredient usage by dish</h2>
-      <p class="card-sub" style="margin-bottom:.75rem">
-        Share of each ingredient's consumption going to each mapped dish, based on portion
-        size (light/medium/heavy) × units sold.
-      </p>
-      <div class="recon-table-wrap recon-table-scroll">
-        <table class="recon-table">
-          <thead>
-            <tr>
-              <th>Ingredient</th>
-              <th>Dish</th>
-              <th class="col-num">Intensity</th>
-              <th class="col-num">Units sold</th>
-              <th class="col-num">% of ingredient use</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for ing in ingredient_usage %}
-              {% for row in ing.rows %}
-              <tr {% if loop.first %}class="recon-group-start"{% endif %}>
-                <td>{% if loop.first %}<strong>{{ ing.name }}</strong>{% endif %}</td>
-                <td>{{ row.dish }}</td>
-                <td class="col-num">{{ row.intensity }}</td>
-                <td class="col-num">{{ "{:,.0f}".format(row.units_sold) }}</td>
-                <td class="col-num">
-                  {% if row.pct is not none %}
-                    {{ "%.1f"|format(row.pct) }}%
-                  {% else %}
-                    <span style="color:#888">—</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    {% elif usage_empty_reason %}
-    <div class="card">
-      <h2 class="card-title" style="font-size:1rem">Ingredient usage by dish</h2>
-      <p class="card-sub">{{ usage_empty_reason }}</p>
-    </div>
-    {% endif %}
-
+    <div class="rc-x">{% for r in m.rows %}<span>{{ r.business_date.day if loop.index0 % 3 == 0 or m.rows|length < 12 }}</span>{% endfor %}</div>
   </div>
-</details>
-{% endif %}
 
-<div class="card recon-disclaimer" style="margin-top:1rem">
-  <p>
-    <strong>Rolling window:</strong> category, item, purchase-frequency and dish-usage figures above use the current calendar month plus the previous two months.
-  </p>
+  <div class="rc-grid">
+    <div class="sl-card">
+      <div class="sl-sechead"><h3>Month by month</h3><p>Purchases are cash spent, not food used, so a stock-up month looks worse than it is</p></div>
+      <table class="sl-table"><thead><tr><th>Month</th><th class="r">Revenue</th><th class="r">Purchases</th><th class="r sl-hide-sm">% of rev.</th><th class="r sl-hide-sm">Fixed costs</th><th class="r">Result</th></tr></thead>
+        <tbody>{% for v in months %}<tr class="{{ 'rc-sel' if v.start == m.start }}"><td><a href="/reconciliation?month={{ v.start.strftime('%Y-%m') }}"><b>{{ v.start.strftime('%b') }}</b></a>{% if v.partial %} <span class="sl-muted">to {{ v.end.day }}</span>{% endif %}</td>
+          <td class="r">{{ lakh(v.revenue) }}</td><td class="r">{{ lakh(v.purchases) }}</td><td class="r sl-hide-sm">{{ (v.purchase_pct|round|int ~ '%') if v.purchase_pct is not none else '—' }}</td>
+          <td class="r sl-hide-sm sl-muted">{{ lakh(v.fixed_to_date) }}</td><td class="r {{ 'rc-pos' if v.result >= 0 else 'rc-neg' }}">{{ lakh(v.result) }}</td></tr>{% endfor %}</tbody></table>
+    </div>
+    <div class="sl-card">
+      <div class="sl-sechead"><h3>Where the purchase money went</h3><p>{{ m.start.strftime('%B') }}: {{ rs(m.purchases) }} · <a href="/purchases">all purchases →</a></p></div>
+      {% if cats %}
+      {% set big = cats|map(attribute='rs')|max %}
+      <table class="sl-table"><thead><tr><th>Category</th><th class="r">Spend</th><th class="r">% of revenue</th></tr></thead>
+        <tbody>{% for c in cats %}<tr><td>{{ 'Utilities (gas, packaging)' if c.cat == 'Utilities' else c.cat }}</td><td class="r"><span class="rc-mini"><i style="width:{{ (c.rs / big * 100)|round }}%"></i></span>{{ rs(c.rs) }}</td><td class="r sl-muted">{{ ('%.1f'|format(c.pct) ~ '%') if c.pct is not none else '—' }}</td></tr>{% endfor %}</tbody></table>
+      {% else %}<p class="sl-empty">No purchases this month.</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="sl-card" id="channels">
+    <div class="sl-sechead rc-chead"><div><h3>Channel data check</h3><p>Each channel's uploaded orders vs its own declared totals, and the last day of data in</p></div>
+      <span class="rc-pill {{ 'late' if mismatches else 'ok' }}">{{ mismatches|length }} unexplained mismatch{{ 'es' if mismatches|length != 1 }}</span></div>
+    <table class="sl-table"><thead><tr><th>Channel</th><th class="r">Revenue ({{ m.start.strftime('%b') }})</th><th class="r sl-hide-sm">Orders</th><th class="r sl-hide-sm">Avg order</th><th>Last data</th><th>Days checked</th></tr></thead>
+      <tbody>{% for c in channels %}<tr><td><b>{{ c.label }}</b></td><td class="r">{{ rs(c.revenue) }}</td><td class="r sl-hide-sm">{{ c.orders }}</td><td class="r sl-hide-sm sl-muted">{{ rs(c.revenue / c.orders) if c.orders else '—' }}</td>
+        <td>{% if c.stale %}<span class="rc-pill late">{{ c.last.strftime('%a %d %b') }} · {{ c.lag }} days behind</span> <a href="/upload">upload →</a>{% else %}<span class="sl-muted">{{ c.last.strftime('%a %d %b') if c.last else '—' }}</span>{% endif %}</td>
+        <td>{% if c.open %}<span class="rc-pill late">{{ c.open }} to explain</span> {% endif %}{% if c.ok %}<span class="rc-pill ok">{{ c.ok }} match</span> {% endif %}{% if c.explained %}<span class="rc-pill ex">{{ c.explained }} explained</span>{% endif %}</td></tr>{% endfor %}</tbody></table>
+    {% for x in mismatches %}
+    <form method="post" action="/data-reconciliation/explain" class="rc-explain">
+      <b>{{ x.business_date.strftime('%a %d %b') }} · {{ x.channel|title }}</b>
+      <span class="sl-muted">uploaded {{ rs(x.channel_sales) }} vs declared {{ rs(x.crosscheck_sales) }} ({{ rs(x.sales_diff) }})</span>
+      <input type="hidden" name="business_date" value="{{ x.business_date.isoformat() }}"><input type="hidden" name="channel" value="{{ x.channel }}">
+      <input type="hidden" name="expected" value="{{ x.crosscheck_sales }}"><input type="hidden" name="actual" value="{{ x.channel_sales }}">
+      <input type="hidden" name="acknowledged_by" value="{{ user.name }}">
+      <input name="explanation" required placeholder="Why do they differ? e.g. refund issued next day">
+      <button type="submit" class="sl-btn sl-btn-p">Save explanation</button>
+    </form>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}

@@ -305,7 +305,7 @@ def _attention(summary, bt, data_trust, rows, channel_status, failed, zero_count
         n = data_trust["unexplained_mismatches"]
         add(CRITICAL, "🔴", f"Reconciliation failed — {n} unexplained mismatch(es)",
             "Numbers below may be wrong until this is reconciled.",
-            "/data-reconciliation", "Reconcile")
+            "/reconciliation#channels", "Reconcile")
     # Upload freshness: a channel that's never been uploaded is critical; one
     # that's genuinely stale (>=2 days behind the freshest data) is worth a
     # nudge. A 1-day lag is normal — delivery exports routinely trail a day —
@@ -324,7 +324,7 @@ def _attention(summary, bt, data_trust, rows, channel_status, failed, zero_count
         tot = sum(failed.values())
         add(HIGH, "🟠", f"{tot} row(s) failed to import",
             "Some sales are missing from the totals. Re-check the source file.",
-            "/data-reconciliation", "Review")
+            "/reconciliation#channels", "Review")
     # Projection vs the computed targets — only mid-month onward, where a
     # straight-line projection is meaningful (avoids early-month noise).
     if bt.get("computable") and bt["days_elapsed"] >= 7:
