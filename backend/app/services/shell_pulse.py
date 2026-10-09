@@ -189,13 +189,20 @@ def _build(db: Session) -> dict:
         "pct": round(_f(r["pct"]), 1), "qty": int(r["q"]),
         "leak": _f(r["leak"]), "zomato_hit": int(r["zomato_orders"]) >= ZOMATO_HIT_ORDERS,
     } for r in leaks]
+    # A menu price is stale when the price Petpooja bills on most days differs
+    # from the table. (The plain average is skewed by occasional variant or
+    # discount lines, so it would flag dishes whose regular price is right.)
     stale_prices = db.execute(text("""
-        WITH s AS (
-            SELECT item_name, sum(qty) q, sum(revenue) / nullif(sum(qty), 0) AS sold_at FROM item_sales
-            WHERE sale_date > :asof - 30 AND sale_date <= :asof GROUP BY 1
-        )
-        SELECT count(*) FROM s JOIN menu_items m ON m.name = s.item_name
-        WHERE m.is_active AND m.is_food AND s.q >= :minq AND abs(s.sold_at - m.price) >= 1
+        WITH d AS (
+            SELECT item_name, sale_date, round(sum(revenue) / nullif(sum(qty), 0), 2) AS unit, sum(qty) q
+            FROM item_sales WHERE sale_date > :asof - 30 AND sale_date <= :asof GROUP BY 1, 2
+        ), modal AS (
+            SELECT DISTINCT ON (item_name) item_name, unit
+            FROM (SELECT item_name, unit, count(*) days, max(sale_date) last_day FROM d GROUP BY 1, 2) x
+            ORDER BY item_name, days DESC, last_day DESC
+        ), tot AS (SELECT item_name, sum(q) q FROM d GROUP BY 1)
+        SELECT count(*) FROM modal JOIN tot USING (item_name) JOIN menu_items m ON m.name = modal.item_name
+        WHERE m.is_active AND m.is_food AND tot.q >= :minq AND abs(modal.unit - m.price) >= 1
     """), {"asof": asof, "minq": LEAK_MIN_QTY}).scalar() or 0
     leak_total = sum(r["leak"] for r in leak_rows)
 
