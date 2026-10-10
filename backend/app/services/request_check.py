@@ -32,13 +32,34 @@ def _words(s: str) -> set[str]:
     return {w for w in re.split(r"[^a-z0-9]+", s.lower()) if len(w) > 1}
 
 
+# Kitchen names staff type (Hindi / Tamil) -> the item's name. Fresh ginger
+# is logged under Ginger-Garlic by house convention. Garlic is left out on
+# purpose: it goes to Chinese Garlic, Ginger-Garlic or Garlic case by case.
+LOCAL_NAMES = {
+    "adrak": "Ginger-Garlic", "inji": "Ginger-Garlic", "ginger": "Ginger-Garlic",
+    "dhanya": "Coriander", "dhaniya": "Coriander", "dhania": "Coriander", "kothamalli": "Coriander", "kothamali": "Coriander",
+    "pyaz": "Onion", "pyaaz": "Onion", "kanda": "Onion", "vengayam": "Onion",
+    "tamatar": "Tomato", "thakkali": "Tomato",
+    "aloo": "Potato", "alu": "Potato", "urulai": "Potato",
+    "mirchi": "Green Chilli", "hari mirch": "Green Chilli", "milagai": "Green Chilli", "pachai milagai": "Green Chilli",
+    "pudina": "Mint", "gobi": "Gobi", "gobhi": "Gobi", "phool gobi": "Gobi",
+    "shimla mirch": "Capsicum", "gajar": "Carrot", "patta gobi": "Cabbage", "bandh gobi": "Cabbage",
+    "nimbu": "Lemon", "elumichai": "Lemon", "doodh": "Milk", "paal": "Milk", "dahi": "Curd", "thayir": "Curd",
+    "makhan": "Butter", "chawal": "Rice/Basmati", "tel": "Oil", "ennai": "Oil", "maida": "Maida", "atta": "Wheat Flour",
+}
+
+
 def match_ingredient(db: Session, name: str) -> int | None:
-    """Best item for a typed name: exact (any case), then the same words in
-    any order ("Basmati rice" -> "Rice/Basmati"), then the one item whose name
-    holds every typed word. None when it's ambiguous or nothing fits."""
+    """Best item for a typed name: a known kitchen name ("Adrak" -> ginger,
+    "Dhanya" -> Coriander), exact (any case), then the same words in any order
+    ("Basmati rice" -> "Rice/Basmati"), then the one item whose name holds
+    every typed word. None when it's ambiguous or nothing fits."""
     name = (name or "").strip()
     if not name:
         return None
+    local = LOCAL_NAMES.get(re.sub(r"\s+", " ", name.lower()))
+    if local:
+        name = local
     rows = db.execute(text("SELECT id, name FROM ingredients WHERE is_active")).all()
     for iid, n in rows:
         if n.lower() == name.lower():
