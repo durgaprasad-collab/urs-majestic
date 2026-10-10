@@ -19,9 +19,10 @@ from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 from app.core.database import get_db
-from app.core.clock import business_today
+from app.core.clock import business_today, business_tz
 from app.models.ingredient import Ingredient
 from app.models.purchase import Purchase
+from app.models.user import User
 from app.services.order_derived_stock import sync_order_derived_stock
 from app.services import purchases_page
 from app.web.audit import log_change, log_field_diffs, resync_derived_costs
@@ -275,13 +276,22 @@ async def save_bill(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"error": "Add at least one line."}, status_code=400)
 
     dups = []
+    matched_lines = 0
     for iid, qty, unit, amount in lines:
-        for d in _duplicate_candidates(db, iid, pdate, amount):
+        found = _duplicate_candidates(db, iid, pdate, amount)
+        matched_lines += bool(found)
+        for d in found:
             ing = db.get(Ingredient, iid)
+            who = db.get(User, d["entered_by"]) if d["entered_by"] else None
+            prev = db.get(Purchase, d["id"])
+            when = prev.created_at.astimezone(business_tz()).strftime("%d %b %I:%M %p") if prev and prev.created_at else ""
+            by = f" \u00b7 entered by {who.name} {when}" if who else ""
             dups.append(f"{ing.name}: {d['qty']} {d['unit']} for \u20b9{float(d['total_price']):,.0f} "
-                        f"on {d['purchase_date']:%d %b} ({d['why']})")
+                        f"on {d['purchase_date']:%d %b} ({d['why']}){by}")
     if dups and not body.get("override"):
-        return JSONResponse({"duplicates": dups}, status_code=409)
+        # Every line already matches a saved purchase: almost certainly the
+        # same memo keyed twice (two people logged one cash memo on 10 Oct).
+        return JSONResponse({"duplicates": dups, "whole_bill": matched_lines == len(lines)}, status_code=409)
 
     note = " \u00b7 ".join(x for x in (vendor, bill_ref) if x) or None
     created = []

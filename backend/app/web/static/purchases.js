@@ -183,8 +183,13 @@
       });
       const j = await res.json().catch(() => ({}));
       if (res.status === 409 && j.duplicates) {
-        if (confirm(`These look already logged:\n\n• ${j.duplicates.join('\n• ')}\n\nSave the bill anyway?`)) { btn.disabled = false; return save(true); }
-        return;
+        const list = `\n\n• ${j.duplicates.join('\n• ')}`;
+        if (j.whole_bill) {
+          // Every line matches an existing purchase: almost always the same memo keyed twice.
+          if (!confirm(`This bill looks ALREADY LOGGED. Every line matches a purchase that's already saved:${list}\n\nPress Cancel to stop (recommended). Press OK only if you really bought all of this again.`)) return;
+          if (!confirm('Are you sure? Saving it again doubles these purchases and the stock.')) return;
+        } else if (!confirm(`Some lines look already logged:${list}\n\nSave the bill anyway?`)) return;
+        btn.disabled = false; return save(true);
       }
       if (!res.ok) { alert(j.error || 'Not saved'); return; }
       location.href = `/purchases?notice=${encodeURIComponent(`Bill saved: ${j.created} line${j.created > 1 ? 's' : ''}.`)}`;
