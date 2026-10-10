@@ -8,7 +8,7 @@
   <link rel="icon" href="/static/img/logo-circle-360.jpg" />
   <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/fonts/fonts.css?v=1" />
-  <link rel="stylesheet" href="/static/style.css?v=56" />
+  <link rel="stylesheet" href="/static/style.css?v=57" />
   <script src="/static/app.js?v=3" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
@@ -27,7 +27,7 @@
   {% set manage_items = [
     ('/reconciliation', 'Reconcile', 'recon', '/reconciliation', b.reconcile, 'bad'),
     ('/results', 'Menu Analysis', 'chart', '/results', b.menu, 'warn'),
-    ('/ingredients/mapping', 'Ingredient Mapping', 'map', '/ingredients', None, None),
+    ('/ingredients/mapping', 'Recipes', 'map', '/ingredients', None, None),
     ('/users', 'Users', 'users', '/users', None, None),
     ('/business-settings', 'Settings', 'cog', '/business-settings', '!' if b.settings else None, 'warn'),
   ] %}
@@ -120,7 +120,7 @@
         <a href="/results" data-command-item data-keywords="menu analysis food cost item performance"><b>⌁ Menu Analysis</b><small>Explore performance</small></a>
         <a href="/reconciliation" data-command-item data-keywords="reconcile mismatch channel money"><b>↻ Reconcile</b><small>Resolve mismatches</small></a>
         <a href="/data-reconciliation" data-command-item data-keywords="data trust channel mismatch"><b>✓ Data Trust</b><small>Cross-check channel data</small></a>
-        <a href="/ingredients/mapping" data-command-item data-keywords="ingredient mapping dish recipe"><b>⇄ Ingredient Mapping</b><small>Map ingredients to dishes</small></a>
+        <a href="/ingredients/mapping" data-command-item data-keywords="recipes ingredient mapping dish grams portion cost"><b>⇄ Recipes</b><small>Grams and cost per dish</small></a>
         <a href="/users" data-command-item data-keywords="users staff team password pin reset login account"><b>👤 Users</b><small>Staff logins, reset a password</small></a>
         <a href="/business-settings" data-command-item data-keywords="business settings expenses targets margin"><b>◎ Settings</b><small>Business setup</small></a>
       </div>

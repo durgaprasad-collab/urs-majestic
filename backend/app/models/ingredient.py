@@ -64,4 +64,11 @@ class IngredientDishMap(Base):
     # engine uses it verbatim instead of looking up the ingredient's tier.
     # NULL (the common case) means "use the intensity tier" as before.
     portion_override_g: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # Weighed grams (ml for liquids) for this ingredient in this dish. Wins over
+    # portion_override_g and the tier everywhere (cost engine, food-cost views,
+    # stock deduction). 0047 merged portion_override_g into it.
+    grams_override: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # 'weighed' (confirmed for this dish) or 'estimate' (copied from the old
+    # light/medium/heavy tier by 0047, not yet confirmed).
+    grams_source: Mapped[str | None] = mapped_column(String(16), nullable=True)
     ingredient: Mapped["Ingredient"] = relationship("Ingredient", back_populates="dish_maps")

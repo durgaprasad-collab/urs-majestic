@@ -62,7 +62,7 @@
       {% else %}<p class="sl-empty">Every Petpooja name in these {{ days }} days matches a menu item.</p>{% endfor %}
       {% if unlinked|length > 8 %}<button type="button" class="ma-morebtn" data-ma-showmore>+ {{ unlinked|length - 8 }} more · {{ rs(unlinked[8:]|sum(attribute='rv')) }}</button>{% endif %}
       </div>
-      {% if uncosted %}<p class="ma-note"><b>Sold but not costed yet:</b> {{ uncosted|map(attribute='n')|join(', ') }}. Map their ingredients in <a href="/ingredients/mapping">Ingredient Mapping</a>.</p>{% endif %}
+      {% if uncosted %}<p class="ma-note"><b>Sold but not costed yet:</b> {{ uncosted|map(attribute='n')|join(', ') }}. Add their recipes in <a href="/ingredients/mapping">Recipes</a>.</p>{% endif %}
       {% if unsold %}<p class="ma-note"><b>On the menu, no dine-in sales in {{ days }} days:</b> {{ unsold|join(', ') }}.</p>{% endif %}
     </div>
   </div>

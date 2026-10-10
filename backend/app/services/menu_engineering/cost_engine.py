@@ -305,7 +305,9 @@ def _dish_recipe_costs(
             continue  # spices are amortized per dish, not portioned — no double count
         # An explicit per-dish override (e.g. a garnish quantity that doesn't
         # fit the ingredient's shared tiers) wins over the intensity lookup.
-        grams = m.portion_override_g
+        # Same order as stock deduction (sales_stock._portion) and
+        # v_dish_recipe_cost: weighed grams, then the legacy override, then tier.
+        grams = m.grams_override if m.grams_override is not None else m.portion_override_g
         if grams is None:
             grams = getattr(ing, _INTENSITY_COL.get(m.intensity, "portion_medium_g"))
         per_g = ing_cost.get(ing.id)

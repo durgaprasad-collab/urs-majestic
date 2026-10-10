@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Recipes — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="sl rp">
+  <div class="sl-head">
+    <div><h1 class="sl-title">Recipes</h1>
+      <p class="sl-sub">What goes into each dish, in grams, and what it costs. Every ingredient has its own grams in every dish. These grams drive food cost on Menu Analysis and what each sale takes off the Stock Log.</p></div>
+  </div>
+  {% if add_error %}<p class="sl-flash bad">{{ add_error }}</p>{% endif %}
+  <div class="sl-kpis rp-kpis" data-rp-kpis></div>
+  <div class="rp-tabs" role="tablist">
+    <button type="button" data-rp-tab="dish" class="on">By dish</button>
+    <button type="button" data-rp-tab="ing">By ingredient</button>
+    <button type="button" data-rp-tab="att">Needs attention<span class="rp-n" data-rp-attn></span></button>
+  </div>
+
+  <section data-rp-panel="dish">
+    <div class="rp-split">
+      <div class="sl-card rp-listcard"><input class="rp-search" data-rp-dq placeholder="Search dishes" autocomplete="off"><div class="rp-list" data-rp-dlist></div></div>
+      <div class="sl-card" data-rp-recipe></div>
+    </div>
+  </section>
+
+  <section data-rp-panel="ing" hidden>
+    <div class="rp-split">
+      <div class="sl-card rp-listcard"><input class="rp-search" data-rp-iq placeholder="Search ingredients" autocomplete="off"><div class="rp-list" data-rp-ilist></div>
+        <form method="post" action="/ingredients/new" class="rp-newing"><input name="name" placeholder="New ingredient" required><select name="unit"><option>kg</option><option>g</option><option>l</option><option>ml</option><option>pcs</option></select><button type="submit" class="sl-btn">Add</button></form></div>
+      <div class="sl-card" data-rp-ingcard></div>
+    </div>
+  </section>
+
+  <section data-rp-panel="att" hidden><div class="sl-card" data-rp-att></div></section>
+</div>
+<script id="rp-data" type="application/json">{{ data_json|safe }}</script>
+<script id="rp-sel" type="application/json">{{ sel|tojson }}</script>
+<script src="/static/recipes.js?v=1" defer></script>
+{% endblock %}

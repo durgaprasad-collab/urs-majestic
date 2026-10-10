@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 15 · Recipes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .head p{color:var(--ink-2);font-size:13px;margin-top:2px;max-width:720px}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .k{padding:12px 16px;border-right:1px solid var(--line);border-top:3px solid transparent;cursor:pointer}.k:last-child{border-right:0}
+  .k.good{border-top-color:var(--good)}.k.warn{border-top-color:var(--gold)}.k.bad{border-top-color:var(--bad)}
+  .k .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .k .v{font-size:22px;font-weight:700;margin-top:2px}.k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{font-size:11.5px;color:var(--ink-2)}
+  .tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+  .tabs button{border:0;background:none;padding:10px 14px;font:600 13.5px Inter;color:var(--ink-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs button.on{color:var(--ground);border-bottom-color:var(--gold)}
+  .tabs .n{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--bad-bg);color:var(--bad);font-size:11px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .cap{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .cap h3{font-size:15px}.cap p{font-size:12px;color:var(--ink-3)}
+  .split{display:grid;grid-template-columns:300px 1fr;gap:14px;align-items:start}
+  .list{max-height:690px;overflow:auto}
+  .search{width:calc(100% - 24px);margin:10px 12px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:500 13px Inter}
+  .li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid #F0EEE6;cursor:pointer}
+  .li:hover{background:#FBFAF6}.li.on{background:#FFFCF2;box-shadow:inset 3px 0 0 var(--gold)}
+  .li b{font-size:13px;font-weight:600;display:block}.li small{font-size:11px;color:var(--ink-3)}
+  .fc{font-size:12px;font-weight:700;white-space:nowrap}.fc.hi{color:var(--bad)}.fc.mid{color:var(--warn)}.fc.ok{color:var(--good)}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);background:#FBFAF6;white-space:nowrap}
+  td{padding:7px 12px;border-bottom:1px solid #F0EEE6;font-size:13px;vertical-align:middle}
+  .r{text-align:right}.mut{color:var(--ink-3)}
+  .g{width:70px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font:600 13px Inter;text-align:right}
+  .g.ed{border-color:var(--gold);background:#FFFCF2}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap}
+  .tag.m{background:var(--good-bg);color:var(--good)}.tag.t{background:#F2F1EA;color:var(--ink-2)}.tag.x{background:var(--bad-bg);color:var(--bad)}
+  .bar{display:inline-block;width:60px;height:6px;border-radius:3px;background:#ECE9DF;overflow:hidden;vertical-align:middle;margin-right:6px}.bar i{display:block;height:100%;background:var(--gold)}
+  .sum{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:#FBFAF6}
+  .sum div{padding:11px 16px;border-right:1px solid var(--line)}.sum div:last-child{border-right:0}
+  .sum span{display:block;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
+  .sum b{font-size:18px}.sum small{display:block;font-size:11px;color:var(--ink-2)}
+  .spices{padding:9px 16px;font-size:12px;color:var(--ink-2);background:#FBFAF6;border-bottom:1px solid #F0EEE6}
+  .add{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--line)}
+  .add input{flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:13px Inter}
+  .btn{border:0;background:var(--ground);color:var(--gold-2);font:600 12.5px Inter;padding:7px 13px;border-radius:8px;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .save{display:none;align-items:center;gap:10px;padding:10px 16px;background:#FFF6DA;border-top:1px solid #EBD9A0;font-size:12.5px}
+  .save.on{display:flex}.save .sp{flex:1}
+  .tiers{display:flex;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);background:#FBFAF6;align-items:flex-end}
+  .tiers label{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--ink-2)}
+  .use{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}
+  .use div{padding:12px 16px;border-right:1px solid var(--line)}.use div:last-child{border-right:0}
+  .use span{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}.use b{display:block;font-size:20px}.use small{font-size:11.5px;color:var(--ink-2)}
+  .att{padding:12px 16px;border-bottom:1px solid #F0EEE6;display:flex;gap:12px;align-items:flex-start}.att:last-child{border-bottom:0}
+  .att .ic{flex:0 0 28px;height:28px;border-radius:8px;display:grid;place-items:center;font-weight:700}
+  .ic.bad{background:var(--bad-bg);color:var(--bad)}.ic.warn{background:var(--warn-bg);color:var(--warn)}
+  .att b{font-size:13.5px}.att p{font-size:12.5px;color:var(--ink-2);margin-top:3px}.att .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.chip{font-size:11.5px;padding:3px 9px;border-radius:999px;background:#F2F1EA;color:var(--ink-2)}
+  [hidden]{display:none!important}
+  @media (max-width:860px){.kpis{grid-template-columns:1fr 1fr}.split{grid-template-columns:1fr}.list{max-height:260px}.sum,.use{grid-template-columns:1fr 1fr}.hide-sm{display:none}.wrap{padding:14px 16px 40px}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 15 · Recipes (was Ingredient Mapping).</b> Real recipes and prices. Pick a dish and edit any grams box (the cost updates live). The other two tabs work too. Nothing saves in the mockup.</div>
+<div class="wrap">
+  <div class="head">
+    <div><h1>Recipes</h1><p>What goes into each dish, in grams, and what it costs. These grams drive food cost on Menu Analysis and the stock that sales take off the Stock Log.</p></div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="tabs"><button data-t="dish" class="on">By dish</button><button data-t="ing">By ingredient</button><button data-t="att">Needs attention<span class="n" id="attN"></span></button></div>
+
+  <section data-p="dish">
+    <div class="split">
+      <div class="card"><input class="search" id="dq" placeholder="Search dishes"><div class="list" id="dlist"></div></div>
+      <div class="card" id="recipe"></div>
+    </div>
+  </section>
+
+  <section data-p="ing" hidden>
+    <div class="split">
+      <div class="card"><input class="search" id="iq" placeholder="Search ingredients"><div class="list" id="ilist"></div></div>
+      <div class="card" id="ingcard"></div>
+    </div>
+  </section>
+
+  <section data-p="att" hidden><div class="card" id="att"></div></section>
+</div>
+
+<script>
+const D = __DATA__;
+const rs = (n, d = 0) => '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fcc = f => f > 45 ? 'hi' : f > 35 ? 'mid' : 'ok';
+const byId = Object.fromEntries(D.dishes.map(d => [d.id, d]));
+const byName = Object.fromEntries(D.dishes.map(d => [d.n, d]));
+const ingBy = Object.fromEntries(D.ings.map(i => [i.name, i]));
+const priced = l => l.role === 'recipe' && l.cat !== 'Spices';
+const lineCost = l => (priced(l) && l.g != null && l.kg != null) ? l.g * l.kg / 1000 : null;
+function recipeCost(id) { return (D.lines[id] || []).reduce((s, l) => s + (lineCost(l) || 0), 0); }
+function dishCost(d) {
+  if (d.combo) return (D.combos[d.id] || []).reduce((s, c) => s + (c.n ? c.pf * recipeCost(byName[c.n]?.id) : 0) + (c.fc || 0), 0);
+  return recipeCost(d.id);
+}
+const full = d => dishCost(d) + D.spice + d.pack;
+const fcNew = d => full(d) / d.p * 100;
+
+// Findings
+const conflicts = []; let measured = 0, totalLines = 0;
+D.dishes.forEach(d => (D.lines[d.id] || []).forEach(l => { totalLines++; if (l.src === 'measured') measured++; if (l.conflict) conflicts.push({ d, l }); }));
+const unmappedIngs = D.ings.filter(i => i.role === 'recipe' && i.nd === 0);
+const resale = D.ings.filter(i => /resale/i.test(i.name) && i.nd > 0);
+const moved = D.dishes.filter(d => d.f != null && !d.combo && Math.abs(fcNew(d) - d.f) >= 2).sort((a, b) => Math.abs(fcNew(b) - b.f) - Math.abs(fcNew(a) - a.f));
+const attCount = (conflicts.length ? 1 : 0) + (unmappedIngs.length ? 1 : 0) + (resale.length ? 1 : 0) + 1;
+
+const avgOld = D.dishes.filter(d => d.f != null).reduce((s, d) => s + d.f * d.q, 0) / D.dishes.filter(d => d.f != null).reduce((s, d) => s + d.q, 0);
+const avgNew = D.dishes.reduce((s, d) => s + fcNew(d) * d.q, 0) / D.dishes.reduce((s, d) => s + d.q, 0);
+document.getElementById('kpis').innerHTML = `
+  <div class="k good" data-go="dish"><span class="l">Dishes costed</span><div class="v">${D.dishes.filter(d => d.conf === 'reliable').length} <small>of ${D.dishes.length}</small></div><span class="s">${D.dishes.filter(d => d.conf !== 'reliable').length} provisional · ${Object.keys(D.combos).length} combos built from dishes</span></div>
+  <div class="k warn" data-go="dish"><span class="l">Weighed grams</span><div class="v">${measured} <small>of ${totalLines} lines</small></div><span class="s">the rest use light / medium / heavy</span></div>
+  <div class="k ${moved.length ? 'warn' : 'good'}" data-go="att"><span class="l">Food cost, plate-weighted</span><div class="v">${avgNew.toFixed(1)}%</div><span class="s">was ${avgOld.toFixed(1)}% before using every weighed gram</span></div>
+  <div class="k bad" data-go="att"><span class="l">Two weights saved</span><div class="v">${conflicts.length}</div><span class="s">same dish, same ingredient: pick one</span></div>
+  <div class="k warn" data-go="att"><span class="l">In no recipe</span><div class="v">${unmappedIngs.length}</div><span class="s">bought as kitchen items, used in no dish</span></div>`;
+document.getElementById('attN').textContent = attCount;
+
+// Tabs
+function tab(t) { document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t)); document.querySelectorAll('[data-p]').forEach(p => p.hidden = p.dataset.p !== t); }
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => tab(b.dataset.t));
+document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => tab(b.dataset.go));
+
+// ── By dish
+let cur = D.dishes[0].id, dirty = 0;
+function dlist() {
+  const q = document.getElementById('dq').value.trim().toLowerCase();
+  document.getElementById('dlist').innerHTML = D.dishes.filter(d => !q || (d.n + ' ' + d.c).toLowerCase().includes(q)).map(d => {
+    const f = fcNew(d);
+    return `<div class="li ${d.id === cur ? 'on' : ''}" data-d="${d.id}"><div><b>${esc(d.n)}</b><small>${esc(d.c)} · ${d.q + d.qd} plates/30d${d.combo ? ' · combo' : ''}</small></div><span class="fc ${fcc(f)}">${f.toFixed(0)}%</span></div>`;
+  }).join('');
+}
+document.getElementById('dlist').onclick = e => { const li = e.target.closest('[data-d]'); if (li) { cur = +li.dataset.d; dirty = 0; dlist(); recipe(); } };
+document.getElementById('dq').oninput = dlist;
+
+function recipe() {
+  const d = byId[cur], el = document.getElementById('recipe');
+  const head = `<div class="cap"><div><h3>${esc(d.n)}</h3><p>${esc(d.c)} · menu price ${rs(d.p)} · ${d.q} dine-in + ${d.qd} delivery plates in 30 days</p></div>${d.conf !== 'reliable' ? '<span class="tag x">Provisional</span>' : ''}</div>`;
+  let body;
+  if (d.combo) {
+    const rows = (D.combos[d.id] || []).map(c => { const comp = byName[c.n]; const cost = (comp ? c.pf * recipeCost(comp.id) : 0) + (c.fc || 0);
+      return `<tr><td><b>${esc(c.n || 'Fixed item')}</b>${c.guess ? ' <span class="tag x">guess</span>' : ''}</td><td class="r">${c.n ? '× ' + c.pf : ''}</td><td class="r">${c.fc ? rs(c.fc, 2) + ' fixed' : ''}</td><td class="r"><b>${rs(cost, 2)}</b></td></tr>`; }).join('');
+    body = `<table><thead><tr><th>Part of the combo</th><th class="r">Portion</th><th class="r"></th><th class="r">Cost</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="spices">A combo is costed from its dishes' recipes, so change grams on those dishes. Packaging and spices are charged once per combo.</div>`;
+  } else {
+    const L = (D.lines[d.id] || []).slice().sort((a, b) => (lineCost(b) || -1) - (lineCost(a) || -1));
+    const main = L.filter(l => l.cat !== 'Spices'), sp = L.filter(l => l.cat === 'Spices');
+    const rc = recipeCost(d.id);
+    body = `<table><thead><tr><th>Ingredient</th><th class="r">Grams</th><th class="hide-sm">From</th><th class="r hide-sm">Price</th><th class="r">Cost</th></tr></thead><tbody>
+      ${main.map((l, ix) => { const c = lineCost(l);
+        return `<tr><td><b>${esc(l.i)}</b></td><td class="r"><input class="g" data-ix="${L.indexOf(l)}" value="${l.g ?? ''}" inputmode="decimal"> ${l.u === 'l' || l.u === 'ml' ? 'ml' : l.u === 'pcs' && !/Coriander|Curry|Mint/.test(l.i) ? 'pc' : 'g'}</td>
+        <td class="hide-sm">${l.conflict ? `<span class="tag x">two weights: ${l.go} / ${l.po}</span>` : l.src === 'measured' ? '<span class="tag m">weighed</span>' : `<span class="tag t">${l.t}</span>`}</td>
+        <td class="r hide-sm mut">${l.kg != null ? rs(l.kg) + '/kg' : '<span class="tag x">no price</span>'}</td>
+        <td class="r">${c != null ? `<span class="bar"><i style="width:${Math.min(100, c / rc * 100)}%"></i></span><b>${rs(c, 2)}</b>` : '—'}</td></tr>`; }).join('')}
+      </tbody></table>
+      ${sp.length ? `<div class="spices"><b>${sp.length} spices</b> (${sp.map(l => esc(l.i) + ' ' + l.g + 'g').join(', ')}) are covered by the spice share below, not costed one by one.</div>` : ''}
+      <div class="add"><input placeholder="Add an ingredient to this dish… (search)"><input style="flex:0 0 90px" placeholder="grams"><button class="btn ghost">Add</button></div>`;
+  }
+  const rc = dishCost(d), tot = rc + D.spice + d.pack, f = tot / d.p * 100;
+  el.innerHTML = head + body + `
+    <div class="sum"><div><span>Recipe</span><b>${rs(rc, 2)}</b><small>ingredients above</small></div>
+      <div><span>Spices + packaging</span><b>${rs(D.spice + d.pack, 2)}</b><small>${rs(D.spice, 2)} spices · ${rs(d.pack, 2)} boxes (${(D.parcel * 100).toFixed(0)}% of orders are parcel)</small></div>
+      <div><span>Food cost</span><b class="fc ${fcc(f)}" style="font-size:18px">${f.toFixed(1)}%</b><small>${rs(tot, 2)} of ${rs(d.p)}${d.f != null && Math.abs(f - d.f) >= 0.5 ? ` · was ${d.f}%` : ''}</small></div>
+      <div><span>Per plate left</span><b>${rs(d.p - tot)}</b><small>× ${d.q + d.qd} plates = ${rs((d.p - tot) * (d.q + d.qd))}</small></div></div>
+    <div class="save ${dirty ? 'on' : ''}"><span class="sp"><b>${dirty} change${dirty > 1 ? 's' : ''}</b>: saving updates food cost and what each sale takes off stock from now on.</span><button class="btn ghost" id="undo">Undo</button><button class="btn">Save recipe</button></div>`;
+  el.querySelectorAll('.g').forEach(inp => inp.onchange = () => {
+    const l = D.lines[d.id][+inp.dataset.ix], v = parseFloat(inp.value);
+    if (!(v >= 0)) return; if (l._o === undefined) { l._o = l.g; dirty++; }
+    l.g = v; l.src = 'measured'; l.conflict = false; recipe(); dlist();
+  });
+  const u = el.querySelector('#undo'); if (u) u.onclick = () => { D.lines[d.id].forEach(l => { if (l._o !== undefined) { l.g = l._o; delete l._o; } }); dirty = 0; recipe(); dlist(); };
+}
+dlist(); recipe();
+
+// ── By ingredient
+let icur = 'Paneer';
+const plates = d => d.q + d.qd;
+function ilist() {
+  const q = document.getElementById('iq').value.trim().toLowerCase();
+  document.getElementById('ilist').innerHTML = D.ings.filter(i => i.role === 'recipe' && (!q || i.name.toLowerCase().includes(q))).map(i =>
+    `<div class="li ${i.name === icur ? 'on' : ''}" data-i="${esc(i.name)}"><div><b>${esc(i.name)}</b><small>${esc(i.c || '—')} · ${i.nd} dish${i.nd === 1 ? '' : 'es'}</small></div><span class="mut" style="font-size:12px">${i.kg != null ? rs(i.kg) + '/kg' : 'no price'}</span></div>`).join('');
+}
+document.getElementById('ilist').onclick = e => { const li = e.target.closest('[data-i]'); if (li) { icur = li.dataset.i; ilist(); ingcard(); } };
+document.getElementById('iq').oninput = ilist;
+function ingcard() {
+  const i = ingBy[icur];
+  const uses = []; D.dishes.forEach(d => (D.lines[d.id] || []).forEach(l => { if (l.i === icur) uses.push({ d, l }); }));
+  uses.sort((a, b) => (b.l.g || 0) * plates(b.d) - (a.l.g || 0) * plates(a.d));
+  const grams = uses.reduce((s, u) => s + (u.l.g || 0) * plates(u.d), 0);
+  const perUnit = (i.u === 'g' || i.u === 'ml' || i.u === 'pcs') ? 1 : 1000;
+  const recipeUse = grams / perUnit, unit = i.u === 'l' ? 'L' : i.u;
+  const gap = i.bought ? (i.bought - recipeUse) / i.bought * 100 : null;
+  document.getElementById('ingcard').innerHTML = `
+    <div class="cap"><div><h3>${esc(i.name)}</h3><p>${esc(i.c || '—')} · ${i.kg != null ? rs(i.kg) + '/kg, average price paid' : 'no purchase price yet'} · in ${uses.length} dishes</p></div></div>
+    <div class="use"><div><span>Recipes say</span><b>${recipeUse.toFixed(1)} ${unit}</b><small>grams × plates sold, 30 days, all channels</small></div>
+      <div><span>Bought</span><b>${(i.bought || 0).toFixed(1)} ${unit}</b><small>menu purchases, same 30 days</small></div>
+      <div><span>Gap</span><b class="fc ${gap == null ? '' : Math.abs(gap) <= 15 ? 'ok' : Math.abs(gap) <= 35 ? 'mid' : 'hi'}">${gap == null ? '—' : (gap > 0 ? '+' : '') + gap.toFixed(0) + '%'}</b><small>${gap == null ? 'nothing bought' : gap > 15 ? 'bought more than recipes use: portions may be bigger than written' : gap < -15 ? 'recipes use more than was bought: grams may be too high' : 'recipes match what you buy'}</small></div></div>
+    <div class="tiers"><span style="font-size:12px;color:var(--ink-2);flex-basis:100%">Default portions, used where a dish has no weighed grams:</span>
+      <label>Light<input class="g" value="${i.l ?? ''}"></label><label>Medium<input class="g" value="${i.m ?? ''}"></label><label>Heavy<input class="g" value="${i.h ?? ''}"></label><button class="btn ghost">Save portions</button></div>
+    <table><thead><tr><th>Dish</th><th class="r">Grams</th><th class="hide-sm">From</th><th class="r">Plates</th><th class="r">Used</th></tr></thead><tbody>
+    ${uses.map(u => `<tr><td><b>${esc(u.d.n)}</b></td><td class="r">${u.l.g ?? '—'}</td><td class="hide-sm">${u.l.conflict ? '<span class="tag x">two weights</span>' : u.l.src === 'measured' ? '<span class="tag m">weighed</span>' : `<span class="tag t">${u.l.t}</span>`}</td><td class="r">${plates(u.d)}</td><td class="r"><b>${((u.l.g || 0) * plates(u.d) / perUnit).toFixed(perUnit === 1 ? 0 : 2)} ${unit}</b></td></tr>`).join('') || '<tr><td colspan="5" class="mut">Not in any recipe yet.</td></tr>'}
+    </tbody></table>
+    <div class="add"><input placeholder="Add ${esc(i.name)} to a dish… (search)"><input style="flex:0 0 90px" placeholder="grams"><button class="btn ghost">Add</button></div>`;
+}
+ilist(); ingcard();
+
+// ── Needs attention
+const parts = [];
+if (conflicts.length) parts.push(`<div class="att"><span class="ic bad">2</span><div><b>${conflicts.length} lines have two different weights saved</b>
+  <p>Two places stored grams for the same line, and different parts of the system read different ones. Pick the right weight once; everything uses it after that.</p>
+  ${conflicts.map(c => `<div class="acts"><span style="font-size:12.5px;min-width:260px">${esc(c.d.n)} · <b>${esc(c.l.i)}</b></span><button class="btn ghost">${c.l.go} g</button><button class="btn ghost">${c.l.po} g</button></div>`).join('')}</div></div>`);
+parts.push(`<div class="att"><span class="ic warn">↕</span><div><b>${moved.length} dishes change food cost once every weighed gram is used</b>
+  <p>Food cost on Menu Analysis ignored ${D.dishes.reduce((s, d) => s + (D.lines[d.id] || []).filter(l => l.go != null && l.po == null).length, 0)} weighed amounts (e.g. Paneer 110 g, Maida 60.4 g), and the stock count ignored ${D.dishes.reduce((s, d) => s + (D.lines[d.id] || []).filter(l => l.po != null && l.go == null).length, 0)} others (Onion 150 g in gravies). After this redesign there is one grams value per line.</p>
+  <div class="chips">${moved.slice(0, 10).map(d => `<span class="chip">${esc(d.n)} ${d.f}% → <b>${fcNew(d).toFixed(1)}%</b></span>`).join('')}</div></div></div>`);
+if (resale.length) parts.push(`<div class="att"><span class="ic warn">₹</span><div><b>${resale.map(i => esc(i.name)).join(' and ')} have no price</b><p>Resale items (sold as bought). Log one purchase each so the Goli Soda and Water Bottle lines are costed.</p></div></div>`);
+if (unmappedIngs.length) parts.push(`<div class="att"><span class="ic warn">${unmappedIngs.length}</span><div><b>${unmappedIngs.length} kitchen items are in no recipe</b>
+  <p>They're bought as ingredients, but no dish uses them, so they never count towards food cost or come off stock when dishes sell. Add each to its dishes, or mark it as not a recipe item (packaging, cleaning, staff).</p>
+  <div class="chips">${unmappedIngs.map(i => `<span class="chip">${esc(i.name)}</span>`).join('')}</div></div></div>`);
+document.getElementById('att').innerHTML = parts.join('');
+</script>
+</body>
+</html>
