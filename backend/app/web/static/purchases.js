@@ -9,7 +9,57 @@
   const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
   const $ = s => root.querySelector(s);
   const body = $('[data-pu-lines]');
-  document.getElementById('pu-items').innerHTML = D.items.map(i => `<option value="${i.name.replace(/"/g, '&quot;')}">`).join('');
+
+  // ── Item suggestions: our own dropdown (the browser's datalist only matches
+  // the start of a name in some browsers and is unreliable on Android).
+  const norm = t => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const idx = D.items.map(i => ({ it: i, n: norm(i.name) }));
+  function rank(q) {
+    const nq = norm(q);
+    if (!nq) return [];
+    const toks = nq.split(' ');
+    const out = [];
+    for (const { it, n } of idx) {
+      let sc;
+      if (n === nq) sc = 0;
+      else if (n.startsWith(nq)) sc = 1;
+      else if ((' ' + n).includes(' ' + nq)) sc = 2;
+      else if (n.includes(nq)) sc = 3;
+      else if (toks.every(t => n.includes(t))) sc = 4;
+      else if (n.replace(/ /g, '').includes(nq.replace(/ /g, ''))) sc = 5;
+      else continue;
+      out.push([sc, n.length, it]);
+    }
+    return out.sort((a, b) => a[0] - b[0] || a[1] - b[1]).slice(0, 8).map(x => x[2]);
+  }
+  const sug = document.createElement('div');
+  sug.className = 'pu-sug'; sug.hidden = true; sug.setAttribute('role', 'listbox');
+  document.body.appendChild(sug);
+  let sugFor = null, sugList = [], sugAt = 0;
+  const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function hideSug() { sug.hidden = true; sugFor = null; }
+  function showSug(input) {
+    sugList = rank(input.value);
+    if (!sugList.length || (sugList.length === 1 && sugList[0].name === input.value.trim())) { hideSug(); return; }
+    sugFor = input; sugAt = 0;
+    sug.innerHTML = sugList.map((it, k) => `<div class="pu-sug-i${k === 0 ? ' on' : ''}" role="option" data-k="${k}"><b>${esc(it.name)}</b><span>${it.unit}${it.usual ? ' · ' + perLabel(it.usual, it.unit) : ''}</span></div>`).join('');
+    const r = input.getBoundingClientRect();
+    sug.style.left = r.left + 'px'; sug.style.top = (r.bottom + 2) + 'px'; sug.style.width = Math.max(r.width, 240) + 'px';
+    sug.hidden = false;
+  }
+  function moveSug(d) {
+    sugAt = (sugAt + d + sugList.length) % sugList.length;
+    sug.querySelectorAll('.pu-sug-i').forEach((el, k) => el.classList.toggle('on', k === sugAt));
+  }
+  function pick(it) {
+    const input = sugFor, tr = input.closest('tr');
+    input.value = it.name; hideSug();
+    check(tr); total();
+    tr.querySelector('[data-l-qty]').focus();
+  }
+  sug.addEventListener('mousedown', e => { e.preventDefault(); const el = e.target.closest('.pu-sug-i'); if (el) pick(sugList[+el.dataset.k]); });
+  window.addEventListener('resize', hideSug);
+  window.addEventListener('scroll', () => { if (sugFor) showSug(sugFor); }, true);
 
   // Units a line can be typed in, per the item's tracked unit; all convert back.
   function altUnits(it) {
@@ -32,7 +82,7 @@
 
   function addLine(focus) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><input list="pu-items" data-l-item placeholder="Start typing an item…" autocomplete="off" aria-label="Item"></td>
+    tr.innerHTML = `<td><input data-l-item placeholder="Start typing an item…" autocomplete="off" aria-label="Item"></td>
       <td class="r"><input inputmode="decimal" data-l-qty class="pu-num" aria-label="Quantity"></td>
       <td><select data-l-unit aria-label="Unit" disabled><option>—</option></select></td>
       <td class="r"><input inputmode="decimal" data-l-amt class="pu-num" aria-label="Amount"></td>
@@ -71,6 +121,21 @@
     $('[data-pu-total]').textContent = n ? `${n} line${n > 1 ? 's' : ''} · ${rs(t)}` : '';
   }
 
+  body.addEventListener('input', e => { if (e.target.matches('[data-l-item]')) showSug(e.target); });
+  body.addEventListener('focusin', e => { if (e.target.matches('[data-l-item]') && e.target.value.trim()) showSug(e.target); });
+  body.addEventListener('focusout', e => {
+    if (!e.target.matches('[data-l-item]')) return;
+    // Leaving with a near-exact name: snap it to the item (e.g. "paneer " → "Paneer").
+    const input = e.target, tr = input.closest('tr');
+    if (input.value.trim() && !itemOf(tr)) { const r = rank(input.value); if (r.length === 1 || (r.length && norm(r[0].name) === norm(input.value))) { input.value = r[0].name; check(tr); total(); } }
+    setTimeout(() => { if (sugFor === input) hideSug(); }, 0);
+  });
+  body.addEventListener('keydown', e => {
+    if (!sugFor || e.target !== sugFor) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); moveSug(e.key === 'ArrowDown' ? 1 : -1); e.stopImmediatePropagation(); }
+    else if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) { e.preventDefault(); e.stopImmediatePropagation(); pick(sugList[sugAt]); }
+    else if (e.key === 'Escape') { hideSug(); e.stopImmediatePropagation(); }
+  });
   body.addEventListener('input', e => { const tr = e.target.closest('tr'); if (tr) { check(tr); total(); } });
   body.addEventListener('change', e => { const tr = e.target.closest('tr'); if (tr) { check(tr); total(); } });
   body.addEventListener('keydown', e => {

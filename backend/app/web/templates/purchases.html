@@ -45,7 +45,6 @@
       <thead><tr><th>Item</th><th class="r">Qty</th><th>Unit</th><th class="r">Amount ₹</th><th>Check</th><th></th></tr></thead>
       <tbody data-pu-lines></tbody>
     </table>
-    <datalist id="pu-items"></datalist>
     <div class="pu-nb-foot">
       <span class="sl-muted">Enter on the amount adds a line · <a href="#" data-pu-add-item>item not in the list?</a></span>
       <span class="pu-nb-save"><b data-pu-total></b><button type="button" class="sl-btn sl-btn-p" data-pu-save>Save bill</button></span>
@@ -118,5 +117,5 @@
   </div>
 </div>
 <script id="pu-data" type="application/json">{"items": {{ items_json|safe }}, "sel": {{ sel or 'null' }}}</script>
-<script src="/static/purchases.js?v=1" defer></script>
+<script src="/static/purchases.js?v=2" defer></script>
 {% endblock %}
