@@ -169,7 +169,12 @@
         <tbody>
         {% for r in waiting %}
           <tr data-by-wait data-name="{{ r.item_name }}" data-qty="{{ amt(r.quantity, r.unit) if r.quantity else '' }}" data-group="{{ r.ingredient.category if r.ingredient else '' }}">
-            <td class="sl-item">{{ r.item_name }}{% if (r.note or '').startswith('Catering #') %} <span class="by-pill low">{{ r.note }}</span>{% elif r.note != 'Buy list' %} <span class="by-pill req">Requested by {{ r.requested_by.name }}</span>{% endif %}</td>
+            <td class="sl-item">{{ r.ingredient.name if r.ingredient else r.item_name }}
+              {% if (r.note or '').startswith('Catering #') %}<span class="by-pill low">{{ r.note }}</span>
+              {% elif r.note == 'Next 7 days' %}<span class="by-pill week">Next 7 days · {{ r.decided_by.name if r.decided_by }}</span>
+              {% elif r.note == 'Buy list' %}<span class="by-pill own">To buy list · {{ r.decided_by.name if r.decided_by }}</span>
+              {% else %}<span class="by-pill req">Requested by {{ r.requested_by.name }}</span>{% endif %}
+              <small class="by-src">approved {{ r.decided_local.strftime('%d %b, %I:%M %p').replace(' 0', ' ') if r.decided_local }}</small></td>
             <td class="r">{{ amt(r.quantity, r.unit) if r.quantity else '—' }}</td>
             <td class="sl-hide-sm sl-muted">{{ r.decided_by.name if r.decided_by }}{% if r.decided_local %} · {{ r.decided_local.strftime('%d %b, %I:%M %p').replace(' 0', ' ') }}{% endif %}</td>
             <td><span class="by-status wait">Waiting for purchase</span></td>
@@ -220,5 +225,5 @@ document.querySelectorAll('[data-rq-toggle]').forEach(b => b.addEventListener('c
   b.setAttribute('aria-expanded', String(!row.hidden));
 }));
 </script>
-<script src="/static/buy.js?v=3" defer></script>
+<script src="/static/buy.js?v=4" defer></script>
 {% endblock %}

@@ -18,7 +18,7 @@ from app.core.database import get_db
 from app.models.ingredient import Ingredient
 from app.models.requisition import Requisition, RequisitionStatus
 from app.services import request_check
-from app.services.buy_inbox import OWNER_NOTE, bought_this_week, inbox, week_plan
+from app.services.buy_inbox import OWNER_NOTE, WEEK_NOTE, bought_this_week, inbox, week_plan
 from app.web.deps import _tmpl, require_user
 
 router = APIRouter(tags=["buy"])
@@ -126,7 +126,7 @@ def approve(request: Request, items: str = Form("[]"), db: Session = Depends(get
             continue
         db.add(Requisition(
             requested_by_user_id=user.id, item_name=ing.name, ingredient_id=ing.id,
-            quantity=qty, unit=unit if qty else None, note=OWNER_NOTE,
+            quantity=qty, unit=unit if qty else None, note=WEEK_NOTE if row.get("source") == "week" else OWNER_NOTE,
             status=RequisitionStatus.approved, decided_by_user_id=user.id, decided_at=now,
         ))
         n += 1
@@ -199,7 +199,7 @@ def undo(requisition_id: int, request: Request, db: Session = Depends(get_db)):
         return redir
     req = db.get(Requisition, requisition_id)
     if req and req.status == RequisitionStatus.approved:
-        owner_added = req.note == OWNER_NOTE or (req.note or "").startswith("Catering #")
+        owner_added = req.note in (OWNER_NOTE, WEEK_NOTE) or (req.note or "").startswith("Catering #")
         if owner_added and req.requested_by_user_id == req.decided_by_user_id:
             db.delete(req)
         else:

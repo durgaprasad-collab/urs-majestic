@@ -2163,3 +2163,5 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
   .inline-form { flex-wrap: wrap; }
   .inline-form input { min-width: 0; flex: 1 1 120px; }
 }
+.by-pill.week { background: #EAF1FA; color: #3B6FB6; } .by-pill.own { background: #F2F1EA; color: var(--sl-ink-2); }
+.by-src { display: block; margin-top: 3px; font-size: 11px; font-weight: 500; color: var(--sl-ink-3); }

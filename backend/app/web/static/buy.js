@@ -125,7 +125,7 @@
     const sel = wsel();
     if (!sel.length) { alert('Tick at least one line.'); return; }
     root.querySelector('[data-by-items]').value = JSON.stringify(sel.map(tr => ({
-      ingredient_id: +tr.dataset.iid, requests: [], qty: wqty(tr) || null, unit: tr.dataset.unit || null,
+      ingredient_id: +tr.dataset.iid, requests: [], qty: wqty(tr) || null, unit: tr.dataset.unit || null, source: 'week',
     })));
     b.disabled = true;
     root.querySelector('[data-by-form]').submit();

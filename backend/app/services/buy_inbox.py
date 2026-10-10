@@ -28,7 +28,8 @@ LOW_COVER_DAYS = 3
 UNLOGGED_DAYS = 25
 # Marks requisitions the owner created from the stock list (not staff asks),
 # so Undo can remove them instead of sending them back to "pending".
-OWNER_NOTE = "Buy list"
+OWNER_NOTE = "Buy list"      # owner added it on the "To buy" tab
+WEEK_NOTE = "Next 7 days"    # owner approved it from the "Next 7 days" plan
 
 WHERE = {"Vegetables": "Market · vegetables", "Dairy": "Dairy", "Frozen": "Frozen",
          "Utilities": "Packaging", "packaging": "Packaging"}
