@@ -1932,6 +1932,12 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .rc-mini i { display: block; height: 100%; background: var(--rc-pur); }
 .rc-pill { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .rc-pill.ok { background: var(--sl-good-bg); color: var(--sl-good); } .rc-pill.late { background: var(--sl-bad-bg); color: var(--sl-bad); } .rc-pill.ex { background: #F2F1EA; color: var(--sl-ink-2); }
+.rc-itools { display: flex; flex-wrap: wrap; gap: 8px; }
+.rc-itools select { padding: 8px 10px; border: 1px solid var(--sl-line); border-radius: 10px; background: #fff; font: 500 13px Inter, sans-serif; color: var(--sl-ink); }
+.rc-iwrap { max-height: 560px; overflow: auto; }
+.rc-items thead th { position: sticky; top: 0; z-index: 1; background: #fff; }
+.rc-cell b { display: block; } .rc-cell small { display: block; color: var(--sl-ink-3); font-size: 11px; white-space: nowrap; }
+.rc-items td.rc-selc, .rc-items th.rc-selc { background: #FFFCF2; }
 .rc-explain { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--sl-line); background: #FFF6F3; font-size: 13px; }
 .rc-explain input[name=explanation] { flex: 1; min-width: 220px; padding: 7px 9px; border: 1px solid var(--sl-line); border-radius: 8px; font: 13px Inter, sans-serif; }
 @media (max-width: 900px) {

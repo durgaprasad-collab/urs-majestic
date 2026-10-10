@@ -79,6 +79,52 @@ def categories(db: Session, m: dict) -> list[dict]:
     return top
 
 
+USE_LABEL = {"menu": "Menu", "others_personal": "Personal", "excluded_unidentified": "Excluded"}
+
+
+def items(db: Session, months: list[dict]) -> list[dict]:
+    """Item-wise breakdown: quantity and spend per item for each month shown.
+
+    Quantity is in the item's own unit; a line whose unit can't be converted
+    still counts in spend but is flagged so the total isn't silently short.
+    """
+    from app.services.purchases_page import to_item_unit
+
+    keys = [m["start"].strftime("%Y-%m") for m in months]
+    rows = db.execute(text("""
+        SELECT p.ingredient_id, i.name, coalesce(i.category, 'Other') AS category, i.unit::text AS item_unit,
+               i.pack_size_g, p.qty, p.unit::text AS unit, p.total_price, p.purchase_date,
+               p.usage_type::text AS usage_type
+          FROM purchases p JOIN ingredients i ON i.id = p.ingredient_id
+         WHERE p.deleted_at IS NULL AND p.purchase_date BETWEEN :s AND :e
+    """), {"s": months[0]["start"], "e": business_today()}).mappings().all()
+    acc: dict = {}
+    for r in rows:
+        key = r["purchase_date"].strftime("%Y-%m")
+        if key not in keys:
+            continue
+        it = acc.setdefault((r["ingredient_id"], r["usage_type"]), {
+            "id": r["ingredient_id"], "name": r["name"], "category": r["category"], "unit": r["item_unit"],
+            "use": USE_LABEL.get(r["usage_type"], r["usage_type"]), "usage_type": r["usage_type"],
+            "months": {k: {"qty": 0.0, "rs": Decimal(0), "n": 0} for k in keys},
+            "qty": 0.0, "rs": Decimal(0), "n": 0, "unconverted": 0,
+        })
+        q = to_item_unit(float(r["qty"]), r["unit"], r["item_unit"], r["pack_size_g"])
+        cell = it["months"][key]
+        cell["rs"] += r["total_price"]
+        cell["n"] += 1
+        it["rs"] += r["total_price"]
+        it["n"] += 1
+        if q is None:
+            it["unconverted"] += 1
+        else:
+            cell["qty"] += q
+            it["qty"] += q
+    out = list(acc.values())
+    out.sort(key=lambda x: (-x["rs"], x["name"]))
+    return out
+
+
 def channels(db: Session, m: dict, through: datetime.date) -> list[dict]:
     status = {r["channel"]: r for r in get_channel_status(db)}
     daily = get_daily_recon(db)
@@ -120,5 +166,6 @@ def page(db: Session, month_key: str | None) -> dict:
     cur = next(v for v in views if v["start"] == sel)
     chans = channels(db, cur, through)
     return {"through": through, "months": views, "m": cur, "cats": categories(db, cur),
+            "items": items(db, views),
             "channels": chans, "mismatches": open_mismatches(db),
             "stale": [c for c in chans if c["stale"]]}

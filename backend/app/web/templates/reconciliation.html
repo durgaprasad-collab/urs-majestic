@@ -58,6 +58,23 @@
     </div>
   </div>
 
+  <div class="sl-card" id="items">
+    <div class="sl-sechead rc-chead"><div><h3>Item-wise breakdown</h3><p>Quantity and spend for every item, month by month · {{ items|length }} items · <a href="/purchases">all purchases →</a></p></div>
+      <div class="rc-itools">
+        <select data-rc-cat aria-label="Category"><option value="">All categories</option>{% for c in items|map(attribute='category')|unique|sort %}<option>{{ c }}</option>{% endfor %}</select>
+        <label class="sl-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input data-rc-q placeholder="Search items" autocomplete="off"></label>
+      </div></div>
+    {% if items %}
+    <div class="rc-iwrap"><table class="sl-table rc-items"><thead><tr><th>Item</th><th class="sl-hide-sm">Category</th>{% for v in months %}<th class="r {{ 'rc-selc' if v.start == m.start }}">{{ v.start.strftime('%b') }}{% if v.partial %} <small class="sl-muted">to date</small>{% endif %}</th>{% endfor %}<th class="r">{{ months|length }}-month total</th></tr></thead>
+      <tbody>{% for it in items %}<tr data-rc-item data-name="{{ it.name|lower }}" data-cat="{{ it.category }}">
+        <td><a href="/purchases?ingredient_id={{ it.id }}"><b>{{ it.name }}</b></a>{% if it.usage_type != 'menu' %} <span class="rc-pill ex">{{ it.use }}</span>{% endif %}{% if it.unconverted %} <span class="rc-pill late" title="{{ it.unconverted }} line(s) with a unit that can't be converted to {{ it.unit }}; spend counted, quantity not">unit?</span>{% endif %}</td>
+        <td class="sl-hide-sm sl-muted">{{ it.category }}</td>
+        {% for v in months %}{% set c = it.months[v.start.strftime('%Y-%m')] %}<td class="r rc-cell {{ 'rc-selc' if v.start == m.start }}">{% if c.n %}<b>{{ rs(c.rs) }}</b><small>{{ '%g'|format(c.qty|round(2)) }} {{ it.unit }}</small>{% else %}<span class="sl-muted">—</span>{% endif %}</td>{% endfor %}
+        <td class="r rc-cell"><b>{{ rs(it.rs) }}</b><small>{{ '%g'|format(it.qty|round(2)) }} {{ it.unit }} · {{ it.n }} buy{{ 's' if it.n != 1 }}</small></td></tr>{% endfor %}
+        <tr data-rc-none hidden><td colspan="{{ months|length + 3 }}" class="sl-muted">No items match.</td></tr></tbody></table></div>
+    {% else %}<p class="sl-empty">No purchases in these months.</p>{% endif %}
+  </div>
+
   <div class="sl-card" id="channels">
     <div class="sl-sechead rc-chead"><div><h3>Channel data check</h3><p>Each channel's uploaded orders vs its own declared totals, and the last day of data in</p></div>
       <span class="rc-pill {{ 'late' if mismatches else 'ok' }}">{{ mismatches|length }} unexplained mismatch{{ 'es' if mismatches|length != 1 }}</span></div>
@@ -78,4 +95,20 @@
     {% endfor %}
   </div>
 </div>
+<script>
+(function () {
+  const q = document.querySelector('[data-rc-q]'), cat = document.querySelector('[data-rc-cat]');
+  if (!q) return;
+  function apply() {
+    const t = q.value.trim().toLowerCase(), c = cat.value;
+    let n = 0;
+    document.querySelectorAll('[data-rc-item]').forEach((r) => {
+      const ok = (!t || r.dataset.name.includes(t)) && (!c || r.dataset.cat === c);
+      r.hidden = !ok; n += ok;
+    });
+    document.querySelector('[data-rc-none]').hidden = n !== 0;
+  }
+  q.addEventListener('input', apply); cat.addEventListener('change', apply);
+})();
+</script>
 {% endblock %}
