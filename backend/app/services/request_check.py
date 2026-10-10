@@ -9,6 +9,7 @@ covered since, what the recipes say those plates used, and the stock figure
   chk  Check                recipes say a good share of it should be left
   no   Doubtful             none of its dishes have sold since it was bought
   na   Can't check          no dish uses it (cleaning, extras, ...)
+  na   Staff food           bought for staff meals (category 'Staff')
 
 Recipe grams are still estimates for most dishes, so this advises; it never
 blocks a request.
@@ -64,7 +65,7 @@ def _fmt(q: float | None, unit: str) -> str:
 
 
 def check(db: Session, ingredient_id: int, before: datetime.datetime | None = None) -> dict | None:
-    ing = db.execute(text("SELECT id, name, unit::text AS u, pack_size_g FROM ingredients WHERE id = :i"),
+    ing = db.execute(text("SELECT id, name, unit::text AS u, pack_size_g, category FROM ingredients WHERE id = :i"),
                      {"i": ingredient_id}).mappings().first()
     if not ing:
         return None
@@ -72,9 +73,10 @@ def check(db: Session, ingredient_id: int, before: datetime.datetime | None = No
     before = before or datetime.datetime.now(datetime.timezone.utc)
     buys = db.execute(text("""
         SELECT purchase_date AS d, qty, unit::text AS u, total_price, vendor FROM purchases
-         WHERE ingredient_id = :i AND deleted_at IS NULL AND usage_type = 'menu' AND created_at < :b
+         WHERE ingredient_id = :i AND deleted_at IS NULL AND created_at < :b
+           AND (usage_type = 'menu' OR :staff)
          ORDER BY purchase_date DESC, id DESC LIMIT 12
-    """), {"i": ingredient_id, "b": before}).mappings().all()
+    """), {"i": ingredient_id, "b": before, "staff": ing["category"] == "Staff"}).mappings().all()
     last = buys[0] if buys else None
     last_qty = to_item_unit(float(last["qty"]), last["u"], unit, ing["pack_size_g"]) if last else None
     days = sorted({b["d"] for b in buys})
@@ -110,7 +112,7 @@ def check(db: Session, ingredient_id: int, before: datetime.datetime | None = No
                                 ORDER BY counted_at DESC, id DESC LIMIT 1"""), {"i": ingredient_id, "b": before}).first()
 
     out = {
-        "ingredient_id": ingredient_id, "name": ing["name"], "unit": unit,
+        "ingredient_id": ingredient_id, "name": ing["name"], "unit": unit, "staff": ing["category"] == "Staff",
         "last": {"d": last["d"], "qty": last_qty, "rs": float(last["total_price"]), "vendor": last["vendor"]} if last else None,
         "gap": gap, "n_dishes": len(dishes), "plates": round(plates), "used": used, "daily": daily,
         "stock": stock, "count": {"qty": float(count[0]), "at": count[1]} if count else None, "top": top,
@@ -128,6 +130,10 @@ def _verdict(x: dict) -> dict:
     u, last, name = x["unit"], x["last"], x["name"]
     f = lambda q: _fmt(q, u)  # noqa: E731
     day = lambda d: f"{d.day} {d:%b}"  # noqa: E731
+    if x.get("staff"):
+        tail = f"Last bought {day(last['d'])} ({f(last['qty'])}, ₹{last['rs']:,.0f})" if last else "Not bought before"
+        rhythm = f"; usually every {round(x['gap'])} days." if x["gap"] else "."
+        return {"k": "na", "label": "Staff food", "why": f"{name} is bought for staff meals, so dish sales can't check it. {tail}{rhythm}"}
     if not x["n_dishes"]:
         tail = f"Last bought {day(last['d'])} ({f(last['qty'])}, ₹{last['rs']:,.0f})" if last else "Never bought"
         rhythm = f"; usually bought every {round(x['gap'])} days." if x["gap"] else "."

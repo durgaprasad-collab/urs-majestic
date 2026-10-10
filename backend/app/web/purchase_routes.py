@@ -297,8 +297,11 @@ async def save_bill(request: Request, db: Session = Depends(get_db)):
     created = []
     try:
         for iid, qty, unit, amount in lines:
+            # Staff-meal items (Drumstick, Ladies Finger, ...) never count as
+            # food cost or kitchen stock, whatever the bill's "For" says.
+            line_usage = "others_personal" if (db.get(Ingredient, iid).category == "Staff") else usage
             p = Purchase(ingredient_id=iid, qty=qty, unit=unit, total_price=amount, purchase_date=pdate,
-                         usage_type=usage, entered_by_user_id=user.id, vendor=vendor, bill_ref=bill_ref, notes=note)
+                         usage_type=line_usage, entered_by_user_id=user.id, vendor=vendor, bill_ref=bill_ref, notes=note)
             db.add(p)
             db.flush()
             created.append(p.id)
