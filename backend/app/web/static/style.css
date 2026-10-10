@@ -2134,3 +2134,32 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 }
 .rq-acts { display: none; }
 @media (max-width: 640px) { .rq-acts { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; } .rq-acts form { display: inline; } }
+/* ── Stock Log on phones: each overview row is a card (item · cover · ⋯ on top,
+   quantity box + source below) so the table never widens the page. ── */
+@media (max-width: 640px) {
+  .sl table:has(tr[data-sl-row]) thead { display: none; }
+  .sl tr[data-sl-row] { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid #F0EEE6; }
+  .sl tr[data-sl-row] > td { padding: 0; border: 0; }
+  .sl tr[data-sl-row] > td.sl-hide-sm { display: none; }
+  .sl tr[data-sl-row] > td:nth-child(1) { grid-row: 1; grid-column: 1; }
+  .sl tr[data-sl-row] > td:nth-child(4) { grid-row: 1; grid-column: 2; }
+  .sl tr[data-sl-row] > td.sl-menu-cell { grid-row: 1; grid-column: 3; }
+  .sl tr[data-sl-row] > td:nth-child(2) { grid-row: 2; grid-column: 1 / -1; }
+  .sl tr[data-sl-row] .sl-qedit { flex-wrap: wrap; }
+  .sl table:has(tr[data-sl-row]) tr.sl-cat > td { display: block; }
+}
+/* ── Phones: nothing may widen the page past the screen. Wide tables scroll
+   sideways inside their own card; form fields shrink to fit. Pages with a
+   card layout (Buy, Stock Log) are left to their own rules. ── */
+@media (max-width: 640px) {
+  .app-main table:not(.by-table):not(:has(tr[data-sl-row])) { display: block; max-width: 100%; overflow-x: auto; min-width: 0 !important; width: auto; -webkit-overflow-scrolling: touch; }
+  .sl-card, .card, [class*="-grid"] > *, .ct-order > * { min-width: 0; }
+  .person-actions { flex-wrap: wrap; }
+  .app-main input, .app-main select, .app-main textarea { max-width: 100%; min-width: 0; }
+  .ct-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ct-form label { min-width: 0; }
+  .ct-form input, .ct-form select { width: 100%; }
+  .ct-ohead { flex-wrap: wrap; }
+  .inline-form { flex-wrap: wrap; }
+  .inline-form input { min-width: 0; flex: 1 1 120px; }
+}
