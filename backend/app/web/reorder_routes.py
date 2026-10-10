@@ -489,7 +489,9 @@ def record_stock(
 
     # Packets -> primary unit via pack_size_g (grams/packet). Only weight units
     # convert; a volume primary unit with 'packet' should never happen.
-    if count_unit == "packet":
+    # Pieces of a pack-sized item (an 18 g essence bottle, a 100 g coriander
+    # bunch) stocked by weight: count in pieces, store in the weight unit.
+    if count_unit == "packet" or (count_unit == "pcs" and forecast_unit in ("kg", "g")):
         pack_g = units["pack_size_g"]
         if pack_g:
             on_hand = on_hand * float(pack_g)

@@ -86,6 +86,11 @@ def stock_view(db: Session) -> list[dict]:
         cat = r["category"] or "Other"
         cover = r["cover_days"]
         qty = float(r["on_hand_qty"]) if r["on_hand_qty"] is not None else None
+        # Pack-sized piece items are stocked in kg; show them in pieces (bottles,
+        # bunches), the unit staff count in. record_stock converts back.
+        per_kg = (1000.0 / float(r["pack_size_g"])) if (r["unit"] == "pcs" and r["pack_size_g"]) else None
+        if per_kg and qty is not None:
+            qty = round(qty * per_kg, 2)
         src = source_of(r["note"]) if qty is not None else None
         h_day = count_day(h["counted_at"]) if h else None
         item = {
@@ -93,7 +98,7 @@ def stock_view(db: Session) -> list[dict]:
             "pack": bool(r["pack_size_g"]),
             "qty": qty, "source": src, "estimated": src not in (None, "counted"),
             "cover": cover, "stale": bool(r["stock_stale"]),
-            "last_qty": float(h["on_hand_qty"]) if h else None,
+            "last_qty": (round(float(h["on_hand_qty"]) * per_kg, 2) if per_kg else float(h["on_hand_qty"])) if h else None,
             "last_at": h["counted_at"].astimezone(business_tz()) if h else None,
             "last_by": h["by_name"] if h else None,
             "last_days": (tonight - h_day).days if h_day else None,
