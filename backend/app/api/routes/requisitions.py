@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_owner, get_current_user
 from app.core.database import get_db
+from app.services.request_check import match_ingredient
 from app.models.ingredient import Ingredient
 from app.models.purchase import Purchase
 from app.models.requisition import Requisition, RequisitionStatus
@@ -35,11 +36,10 @@ _EXCLUDED_ITEM_NAMES = {"coriander", "mint"}
 
 
 def _resolve_ingredient(db: Session, item_name: str) -> Ingredient | None:
-    return (
-        db.query(Ingredient)
-        .filter(Ingredient.name.ilike(item_name.strip()))
-        .first()
-    )
+    # Exact name, else the same words in any order ("Basmati rice" ->
+    # "Rice/Basmati"), so the request gets stock and a validity check on Buy.
+    iid = match_ingredient(db, item_name)
+    return db.get(Ingredient, iid) if iid else None
 
 
 def _sync_fulfillment(db: Session, requisitions: list[Requisition]) -> bool:

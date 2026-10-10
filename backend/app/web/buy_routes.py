@@ -17,6 +17,7 @@ from app.core.clock import business_now, business_tz
 from app.core.database import get_db
 from app.models.ingredient import Ingredient
 from app.models.requisition import Requisition, RequisitionStatus
+from app.services import request_check
 from app.services.buy_inbox import OWNER_NOTE, bought_this_week, inbox, week_plan
 from app.web.deps import _tmpl, require_user
 
@@ -37,7 +38,10 @@ def buy_page(request: Request, db: Session = Depends(get_db)):
     for r in data["waiting"]:
         r.decided_local = r.decided_at.astimezone(business_tz()) if r.decided_at else None
     keys = {i["key"] for _, rows in data["groups"] for i in rows}
-    return _tmpl(request, "buy.html", {"user": user, **data, "bought": bought_this_week(db), "week": week_plan(db, keys)})
+    item_options = (db.query(Ingredient.id, Ingredient.name).filter(Ingredient.is_active.is_(True))
+                    .order_by(Ingredient.name).all()) if data["n_requests"] else []
+    return _tmpl(request, "buy.html", {"user": user, **data, "bought": bought_this_week(db), "week": week_plan(db, keys),
+                                       "item_options": item_options, "tz": business_tz()})
 
 
 @router.get("/buy/week/print", response_class=HTMLResponse)
@@ -144,6 +148,45 @@ def reject(requisition_id: int, request: Request, db: Session = Depends(get_db))
         req.decided_at = datetime.now(timezone.utc)
         db.commit()
         notify_decision(db, req, False)
+    return RedirectResponse(url="/buy", status_code=303)
+
+
+@router.post("/buy/requests/{requisition_id}/ask-check")
+def ask_check(requisition_id: int, request: Request, db: Session = Depends(get_db)):
+    """Send the request back with what the recipes say is left. Staff see the
+    note in the app and can request it again if it has really run out."""
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    req = db.get(Requisition, requisition_id)
+    if req and req.status == RequisitionStatus.pending:
+        c = request_check.check(db, req.ingredient_id, before=req.created_at) if req.ingredient_id else None
+        hint = ""
+        if c and c.get("left_hint"):
+            hint = f" Recipes say about {c['left_hint']} should be left."
+        elif c and c["last"]:
+            hint = f" Last bought {c['last']['d']:%d %b} ({c['fmt']['last_qty']})."
+        req.status = RequisitionStatus.rejected
+        req.decided_by_user_id = user.id
+        req.decided_at = datetime.now(timezone.utc)
+        req.decision_note = f"Please check the stock first.{hint} If it has run out, send it again."
+        db.commit()
+        notify_decision(db, req, False)
+    return RedirectResponse(url="/buy", status_code=303)
+
+
+@router.post("/buy/requests/{requisition_id}/match")
+async def rematch(requisition_id: int, request: Request, db: Session = Depends(get_db)):
+    """Owner picks which item a typed request name means."""
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    form = await request.form()
+    req = db.get(Requisition, requisition_id)
+    raw = str(form.get("ingredient_id") or "")
+    if req and req.status == RequisitionStatus.pending and raw.isdigit():
+        req.ingredient_id = int(raw)
+        db.commit()
     return RedirectResponse(url="/buy", status_code=303)
 
 

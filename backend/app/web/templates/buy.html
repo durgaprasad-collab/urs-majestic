@@ -59,7 +59,26 @@
                 {% elif i.cadence %}<span class="by-pill low">Usually bought by now</span>{% endif %}
                 {% if i.unlogged %}<span class="by-pill log">No buy logged for {{ i.days_since }} days — bought outside the log?</span>{% endif %}
               </div>
-              {% if i.requests and i.ingredient_id is none %}<div class="sl-muted">Not in the item list, so there's no stock or price for it.</div>{% endif %}
+              {% if i.requests and i.ingredient_id is none %}<div class="sl-muted">Not in the item list, so there's no stock, price or check for it.</div>{% endif %}
+              {% set c = i.check %}
+              {% if c %}
+              <details class="rq-check">
+                <summary><span class="rq-v {{ c.k }}">{{ c.label }}</span>
+                  <span class="rq-line">{% if c.last %}Last bought {{ c.last.d.strftime('%d %b') }} · {{ c.fmt.last_qty }} · covered {{ c.plates }} plates since{% else %}Never bought{% endif %}{% if c.stock is not none %} · ~{{ c.fmt.stock }} left{% endif %}</span></summary>
+                {% for r in i.requests if r.asked.lower() != i.name.lower() %}
+                <form method="post" action="/buy/requests/{{ r.id }}/match" class="rq-match">Staff typed "<b>{{ r.asked }}</b>"; matched to <b>{{ i.name }}</b>.
+                  <select name="ingredient_id" aria-label="Item for {{ r.asked }}">{% for o in item_options %}<option value="{{ o.id }}" {{ 'selected' if o.id == i.ingredient_id }}>{{ o.name }}</option>{% endfor %}</select><button type="submit" class="by-link">Change</button></form>
+                {% endfor %}
+                <p class="rq-why {{ c.k }}"><b>{{ c.label }}:</b> {{ c.why }}</p>
+                <div class="rq-facts">
+                  <div><span>Last purchase</span><b>{{ c.last.d.strftime('%d %b') if c.last else '—' }}</b><small>{% if c.last %}{{ c.fmt.last_qty }} · {{ rs(c.last.rs) }}{% if c.last.vendor %} · {{ c.last.vendor }}{% endif %}{% endif %}{% if c.gap %} · usually every {{ c.gap|round|int }} days{% endif %}</small></div>
+                  <div><span>Plates covered</span><b>{{ c.plates }}</b><small>{{ c.n_dishes }} dish{{ 'es' if c.n_dishes != 1 }} use it · sold since {{ c.last.d.strftime('%d %b') if c.last else 'the last 30 days' }}</small></div>
+                  <div><span>Recipes used</span><b>{{ c.fmt.used }}</b><small>{% if c.last %}of {{ c.fmt.last_qty }} bought{% endif %}</small>{% if c.used_pct is not none %}<i class="rq-meter"><i style="width:{{ [c.used_pct, 100]|min|round }}%" class="{{ 'full' if c.used_pct >= 80 }}"></i></i>{% endif %}</div>
+                  <div><span>Left now</span><b>{{ c.fmt.stock if c.stock is not none else '—' }}</b><small>{% if c.daily %}uses ~{{ c.fmt.daily }}/day{% else %}no daily use{% endif %}{% if c.count %} · counted {{ c.fmt.count }} on {{ c.count.at.astimezone(tz).strftime('%d %b') }}{% endif %}</small></div>
+                </div>
+                {% if c.top %}<p class="rq-dishes">Most used in: {% for n, p, g in c.top %}{{ n }} ({{ p|round|int }} plates × {{ g|round(1) }} g){{ ' · ' if not loop.last }}{% endfor %}</p>{% endif %}
+              </details>
+              {% endif %}
             </td>
             <td class="r by-left">{{ amt(i.on_hand, i.unit) if i.on_hand is not none else '—' }}{% if i.low %}<small>{{ '%.1f'|format(i.cover) }} days</small>{% endif %}</td>
             <td class="r sl-hide-sm sl-muted">{{ amt(i.per_day, i.unit) if i.per_day else '—' }}</td>
@@ -73,7 +92,7 @@
             <td class="r sl-hide-sm sl-muted">{{ price(i) }}</td>
             <td class="r"><b data-by-cost>{{ rs(i.cost) if i.cost else '—' }}</b></td>
             <td class="sl-hide-sm sl-muted">{{ i.last.strftime('%d %b') if i.last else 'never' }}
-              {% for r in i.requests %}<form method="post" action="/buy/requests/{{ r.id }}/reject" class="by-reject" data-by-reject="{{ i.name }}"><button type="submit" class="by-link">Reject request</button></form>{% endfor %}
+              {% for r in i.requests %}<form method="post" action="/buy/requests/{{ r.id }}/ask-check" class="by-reject"><button type="submit" class="by-link" title="Sends it back to {{ r.by }} with what the recipes say is left">Ask to check</button></form><form method="post" action="/buy/requests/{{ r.id }}/reject" class="by-reject" data-by-reject="{{ i.name }}"><button type="submit" class="by-link">Reject request</button></form>{% endfor %}
             </td>
           </tr>
           {% endfor %}

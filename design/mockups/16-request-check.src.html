@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 16 · Request check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;--info:#3B6FB6;--info-bg:#EAF1FA}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  .wrap{max-width:1100px;margin:0 auto;padding:18px 20px 60px}
+  h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .sub{color:var(--ink-2);font-size:13px;margin:2px 0 14px;max-width:720px}
+  .tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+  .tabs span{padding:10px 14px;font:600 13.5px Inter;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs span.on{color:var(--ground);border-bottom-color:var(--gold)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .cap{padding:11px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+  .cap h3{font-size:14px}.cap p{font-size:12px;color:var(--ink-3)}
+  .row{border-bottom:1px solid #F0EEE6}.row:last-child{border-bottom:0}
+  .top{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:11px 16px;cursor:pointer}
+  .top:hover{background:#FBFAF6}
+  .nm b{font-size:14px}.nm small{display:block;font-size:12px;color:var(--ink-2);margin-top:2px}
+  .who{font-size:11.5px;color:var(--ink-3)}
+  .v{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+  .v.ok{background:var(--good-bg);color:var(--good)}.v.chk{background:var(--warn-bg);color:var(--warn)}.v.no{background:var(--bad-bg);color:var(--bad)}.v.na{background:#F2F1EA;color:var(--ink-2)}
+  .acts{display:flex;gap:6px}
+  .btn{border:0;background:var(--ground);color:var(--gold-2);font:600 12.5px Inter;padding:7px 12px;border-radius:8px;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .det{display:none;padding:0 16px 14px}.row.open .det{display:block}
+  .why{font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:10px}
+  .why.ok{background:var(--good-bg)}.why.chk{background:var(--warn-bg)}.why.no{background:var(--bad-bg)}.why.na{background:#F6F5F0}
+  .facts{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .facts div{padding:9px 12px;border-right:1px solid var(--line)}.facts div:last-child{border-right:0}
+  .facts span{display:block;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
+  .facts b{display:block;font-size:16px;margin-top:2px}.facts small{display:block;font-size:11px;color:var(--ink-2)}
+  .meter{height:8px;border-radius:4px;background:#ECE9DF;overflow:hidden;margin-top:6px;display:flex}
+  .meter i{display:block;height:100%}
+  .dishes{font-size:12px;color:var(--ink-2);margin-top:8px}
+  .match{font-size:12px;margin-bottom:8px;padding:7px 10px;border-radius:8px;background:var(--info-bg);color:var(--info)}
+  .note{font-size:12px;color:var(--ink-2);padding:10px 16px;background:#FBFAF6;border-top:1px solid var(--line)}
+  @media (max-width:760px){.top{grid-template-columns:1fr auto}.acts{grid-column:1/-1}.facts{grid-template-columns:1fr 1fr}.facts div:nth-child(2){border-right:0}.facts div:nth-child(-n+2){border-bottom:1px solid var(--line)}.wrap{padding:14px 16px 40px}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 16 · Buy: check each staff request.</b> These are your last 10 real requests, each judged as of the time it was sent: Basmati is pending now, and the rest were approved, bought or rejected. Tap a row to open its check.</div>
+<div class="wrap">
+  <h1>Buy</h1>
+  <p class="sub">Staff requests come first, and each one is checked against the last purchase, how many plates it has covered since, and what's left.</p>
+  <div class="tabs"><span class="on">To buy</span><span>Next 7 days</span><span>Approved · waiting</span><span>Bought this week</span></div>
+  <div class="card">
+    <div class="cap"><div><h3>Staff requests</h3><p>Valid = the last purchase is used up or nearly · Check = recipes say some should be left · Doubtful = its dishes haven't sold</p></div></div>
+    <div id="rows"></div>
+    <div class="note">How it works: <b>plates covered</b> = dishes using the item sold since the last purchase (dine-in + Zomato/Swiggy). <b>Recipes used</b> = those plates × each dish's grams. The verdict compares that with what was bought and with the latest stock figure. Recipe grams are still estimates for most dishes, so treat "Check" as "ask before buying", not "no".</div>
+  </div>
+</div>
+<script>
+const D = __DATA__;
+const fmt = (q, u) => { if (q == null) return '—'; if (u === 'g' && q >= 1000) return (q / 1000).toFixed(1) + ' kg'; if (u === 'ml' && q >= 1000) return (q / 1000).toFixed(1) + ' L'; return (+q.toFixed(q < 10 ? 2 : 1)) + ' ' + (u === 'l' ? 'L' : u); };
+const day = s => new Date(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+const ago = (from, to) => Math.round((new Date(to) - new Date(from)) / 86400000);
+function verdict(x) {
+  const L = x.last, u = x.unit;
+  if (!x.n_dishes) return { k: 'na', t: "Can't check", why: `No dish uses ${x.name}, so sales can't say whether it's used up. ${L ? `Last bought ${day(L.d)} (${fmt(L.q, u)}, ₹${Math.round(L.rs)})` : 'Never bought'}${x.gap ? `; usually bought every ${Math.round(x.gap)} days.` : '.'}` };
+  if (!L) return { k: 'ok', t: 'Valid', why: `Never bought before, and ${x.n_dishes} dishes use it.` };
+  if (!x.plates) return { k: 'no', t: 'Doubtful', why: `None of the ${x.n_dishes} dish${x.n_dishes > 1 ? 'es' : ''} using ${x.name} has sold since it was last bought on ${day(L.d)}. The ${fmt(L.q, u)} bought then should still be there.` };
+  const left = x.stock, days = x.daily ? left / x.daily : null;
+  const usedPct = x.used / L.q * 100;
+  if (x.used > L.q * 1.5 && L.q) return { k: 'ok', t: 'Valid', why: `Recipes used ${fmt(x.used, u)} since ${day(L.d)}, ${Math.round(x.used / L.q)}× the ${fmt(L.q, u)} bought then. It's used up, and some purchases were probably never logged (or it's made in-house).`, flag: true };
+  if (usedPct >= 80 || (days != null && days <= 1.5)) return { k: 'ok', t: 'Valid', why: `${fmt(L.q, u)} bought ${day(L.d)} has covered ${x.plates} plates; recipes used ${fmt(x.used, u)} (${Math.round(usedPct)}%). ${left != null ? `The stock figure says ${fmt(left, u)} left${days != null ? `, ${days < 1 ? 'under a day' : '~' + days.toFixed(1) + ' days'} at ${fmt(x.daily, u)}/day` : ''}.` : ''}` };
+  if (days != null && days <= 4) return { k: 'ok', t: 'Valid · order ahead', why: `Recipes used ${fmt(x.used, u)} of the ${fmt(L.q, u)} bought ${day(L.d)} (${x.plates} plates). About ${fmt(left, u)} left, ~${days.toFixed(1)} days at ${fmt(x.daily, u)}/day. Worth ordering now if it comes by delivery.` };
+  return { k: 'chk', t: 'Check', why: `Recipes used only ${fmt(x.used, u)} of the ${fmt(L.q, u)} bought ${day(L.d)} (${x.plates} plates). About ${fmt(left, u)} should be left${days != null ? `, ~${days.toFixed(0)} days` : ''}. Ask the kitchen to look before buying.` };
+}
+const ST = { pending: 'Pending', approved: 'Approved', fulfilled: 'Bought', rejected: 'Rejected' };
+document.getElementById('rows').innerHTML = D.items.map((x, n) => {
+  const v = verdict(x), L = x.last, u = x.unit;
+  const usedW = L && L.q ? Math.min(100, x.used / L.q * 100) : 0;
+  return `<div class="row ${n === 0 ? 'open' : ''}">
+    <div class="top" onclick="this.parentElement.classList.toggle('open')">
+      <div class="nm"><b>${x.asked}</b>${x.matched ? ` <span class="who">→ ${x.name}</span>` : ''} <span class="who">· ${x.who} · ${new Date(x.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ${ST[x.status]}</span>
+        <small>${L ? `Last bought ${day(L.d)} · ${fmt(L.q, u)} · covered ${x.plates} plates since` : 'Never bought'}${x.stock != null ? ` · ~${fmt(x.stock, u)} left` : ''}</small></div>
+      <span class="v ${v.k}">${v.t}</span>
+      <div class="acts">${x.status === 'pending' ? '<button class="btn">Approve</button><button class="btn ghost">Ask to check</button><button class="btn ghost">Reject</button>' : ''}</div>
+    </div>
+    <div class="det">
+      ${x.matched ? `<div class="match">Staff typed "<b>${x.asked}</b>". It's not an item name, so it's matched to <b>${x.name}</b>. <u>Change</u></div>` : ''}
+      <div class="why ${v.k}"><b>${v.t}:</b> ${v.why}</div>
+      <div class="facts">
+        <div><span>Last purchase</span><b>${L ? day(L.d) : '—'}</b><small>${L ? `${fmt(L.q, u)} · ₹${Math.round(L.rs)}${L.vendor ? ' · ' + L.vendor : ''}` : ''}${x.gap ? ` · usually every ${Math.round(x.gap)} days` : ''}</small></div>
+        <div><span>Plates covered</span><b>${x.plates}</b><small>dishes using it, sold since ${L ? day(L.d) : '—'}</small></div>
+        <div><span>Recipes used</span><b>${fmt(x.used, u)}</b><small>${L ? `of ${fmt(L.q, u)} bought` : ''}</small>${L ? `<div class="meter"><i style="width:${usedW}%;background:${usedW >= 80 ? 'var(--good)' : 'var(--gold)'}"></i></div>` : ''}</div>
+        <div><span>Left now</span><b>${x.stock != null ? fmt(x.stock, u) : '—'}</b><small>${x.daily ? `uses ~${fmt(x.daily, u)}/day` : 'no daily use'}${x.count ? ` · last count ${fmt(x.count.q, u)} on ${day(x.count.at)}` : ''}</small></div>
+      </div>
+      ${x.per.length ? `<div class="dishes">Most used in: ${x.per.map(p => `${p[0]} (${p[1]} plates × ${p[2]} g)`).join(' · ')}</div>` : ''}
+    </div></div>`;
+}).join('');
+</script>
+</body>
+</html>

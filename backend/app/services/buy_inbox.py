@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.clock import business_now, business_tz
 from app.models.requisition import Requisition, RequisitionStatus
+from app.services import request_check
 from app.services.stock_count import NON_STOCK_CATEGORIES, NON_STOCK_NAMES
 
 LOW_COVER_DAYS = 3
@@ -80,6 +81,16 @@ def inbox(db: Session) -> dict:
             .options(joinedload(Requisition.requested_by), joinedload(Requisition.decided_by))
             .filter(Requisition.status.in_([RequisitionStatus.pending, RequisitionStatus.approved]))
             .order_by(Requisition.created_at).all())
+    # Requests typed with a name that isn't an item ("Basmati rice"): match
+    # them now so they get stock and a validity check. The owner can change it.
+    relinked = False
+    for r in reqs:
+        if r.status == RequisitionStatus.pending and r.ingredient_id is None:
+            iid = request_check.match_ingredient(db, r.item_name)
+            if iid:
+                r.ingredient_id, relinked = iid, True
+    if relinked:
+        db.commit()
     waiting = [r for r in reqs if r.status == RequisitionStatus.approved]
     waiting_ids = {r.ingredient_id for r in waiting if r.ingredient_id}
 
@@ -90,10 +101,11 @@ def inbox(db: Session) -> dict:
         key = f"i{r.ingredient_id}" if r.ingredient_id else f"r{r.id}"
         it = items.get(key)
         if it is None:
-            it = items[key] = {"key": key, "name": r.item_name, "requests": [],
+            f = fc.get(r.ingredient_id) if r.ingredient_id else None
+            it = items[key] = {"key": key, "name": f["name"] if f else r.item_name, "requests": [],
                                **_row(fc.get(r.ingredient_id) if r.ingredient_id else None, today)}
-        it["requests"].append({"id": r.id, "by": r.requested_by.name,
-                               "at": r.created_at.astimezone(business_tz())})
+        it["requests"].append({"id": r.id, "by": r.requested_by.name, "asked": r.item_name,
+                               "at": r.created_at.astimezone(business_tz()), "created": r.created_at})
 
     for iid, f in fc.items():
         key = f"i{iid}"
@@ -107,6 +119,10 @@ def inbox(db: Session) -> dict:
             items[key] = {"key": key, "name": f["name"], "requests": [], **_row(f, today)}
 
     for it in items.values():
+        it["check"] = None
+        if it["requests"] and it["ingredient_id"]:
+            # Judged as of the first request, so later buys don't hide why it was asked.
+            it["check"] = request_check.check(db, it["ingredient_id"], before=min(r["created"] for r in it["requests"]))
         on_hand, cover = it["on_hand"], it["cover"]
         it["out"] = on_hand is not None and on_hand <= 0
         it["low"] = not it["out"] and cover is not None and cover <= LOW_COVER_DAYS
