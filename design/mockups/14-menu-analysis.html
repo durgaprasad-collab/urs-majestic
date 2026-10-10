@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 14 · Menu Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;
+    --S:#C9A24A;--W:#1E6B4A;--P:#3B6FB6;--D:#9AA39E}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .head h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .head p{color:var(--ink-2);font-size:13px;margin-top:2px;max-width:700px}
+  .seg{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{border:0;background:none;padding:9px 14px;font:600 13px Inter;color:var(--ink-2);border-right:1px solid var(--line);cursor:pointer}
+  .seg button:last-child{border-right:0}.seg button.on{background:var(--ground);color:var(--gold-2)}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .k{padding:12px 16px;border-right:1px solid var(--line);border-top:3px solid transparent;text-decoration:none;color:inherit}.k:last-child{border-right:0}
+  .k.good{border-top-color:var(--good)}.k.warn{border-top-color:var(--gold)}.k.bad{border-top-color:var(--bad)}
+  .k .l{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .k .v{font-size:22px;font-weight:700;margin-top:2px}.k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{font-size:11.5px;color:var(--ink-2)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .cap{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .cap h3{font-size:14px}.cap p{font-size:12px;color:var(--ink-3)}
+  .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-bottom:14px}.grid .card{margin-bottom:0}
+  /* matrix */
+  .mx{position:relative;padding:10px 14px 30px 52px}
+  .mx svg{display:block;width:100%;height:330px;overflow:visible}
+  .mx .ax{font-size:10.5px;fill:var(--ink-3)}
+  .mx .ql{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;fill:var(--ink-3);opacity:.8}
+  .dot{stroke:#fff;stroke-width:2;cursor:pointer}.dot:hover{stroke:var(--ink)}
+  .mx .tip{position:absolute;pointer-events:none;background:#14201B;color:#fff;font-size:11.5px;padding:7px 9px;border-radius:8px;white-space:nowrap;display:none;z-index:4;line-height:1.45}
+  .ylab{position:absolute;left:0;top:50%;transform:rotate(-90deg) translateX(50%);transform-origin:left top;font-size:11px;color:var(--ink-2)}
+  .xlab{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:11px;color:var(--ink-2)}
+  /* groups */
+  .gq{display:grid;grid-template-columns:1fr 1fr}
+  .g{padding:12px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer}
+  .g:nth-child(2n){border-right:0}.g:nth-child(n+3){border-bottom:0}
+  .g:hover,.g.on{background:#FFFCF2}
+  .g h4{display:flex;align-items:center;gap:7px;font-size:13px}.g h4 i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .g .n{font-size:20px;font-weight:700;margin-top:4px}.g .n small{font-size:12px;color:var(--ink-2);font-weight:600}
+  .g .a{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+  .share{display:flex;height:8px;margin:12px 16px 4px;border-radius:4px;overflow:hidden;gap:2px}
+  .share i{display:block;height:100%}
+  .sharel{display:flex;flex-wrap:wrap;gap:10px;padding:0 16px 12px;font-size:11.5px;color:var(--ink-2)}
+  /* lists */
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);background:#FBFAF6;white-space:nowrap}
+  th.s{cursor:pointer}th.s:hover{color:var(--ink)}th.s.on{color:var(--ground)}
+  td{padding:8px 12px;border-bottom:1px solid #F0EEE6;font-size:13px;vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  .r{text-align:right}.mut{color:var(--ink-3)}.b{font-weight:700}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#F2F1EA;color:var(--ink-2);white-space:nowrap}
+  .pill i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .fc{font-weight:700}.fc.hi{color:var(--bad)}.fc.mid{color:var(--warn)}.fc.ok{color:var(--good)}
+  .tr{font-size:11px;font-weight:700}.tr.up{color:var(--good)}.tr.dn{color:var(--bad)}
+  .bar{display:inline-block;width:70px;height:6px;border-radius:3px;background:#ECE9DF;overflow:hidden;vertical-align:middle;margin-right:6px}.bar i{display:block;height:100%;background:var(--W)}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;font:600 12px Inter;color:var(--ink-2);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+  .chip.on{background:var(--ground);color:var(--gold-2);border-color:var(--ground)}.chip i{width:8px;height:8px;border-radius:50%}
+  .search{border:1px solid var(--line);border-radius:10px;padding:7px 10px;font:500 13px Inter;min-width:200px}
+  .scroll{max-height:520px;overflow:auto}.scroll thead th{position:sticky;top:0;z-index:1}
+  .act{display:flex;gap:12px;align-items:flex-start;padding:11px 16px;border-bottom:1px solid #F0EEE6}.act:last-child{border-bottom:0}
+  .act .ic{flex:0 0 28px;height:28px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:13px}
+  .ic.bad{background:var(--bad-bg);color:var(--bad)}.ic.warn{background:var(--warn-bg);color:var(--warn)}.ic.good{background:var(--good-bg);color:var(--good)}
+  .act b{font-size:13px}.act p{font-size:12px;color:var(--ink-2);margin-top:2px}.act .amt{margin-left:auto;text-align:right;font-weight:700;white-space:nowrap}.act .amt small{display:block;font-size:11px;color:var(--ink-3);font-weight:500}
+  .link{display:flex;gap:8px;align-items:center;padding:8px 16px;border-bottom:1px solid #F0EEE6;font-size:12.5px}.link:last-child{border-bottom:0}
+  .link .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .link select{max-width:190px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font:12px Inter}
+  .btn{border:0;background:var(--ground);color:var(--gold-2);font:600 12px Inter;padding:6px 11px;border-radius:8px;cursor:pointer}
+  .note{font-size:12px;color:var(--ink-2);padding:10px 16px;background:#FBFAF6;border-top:1px solid var(--line)}
+  @media (max-width:860px){.kpis{grid-template-columns:1fr 1fr}.k{border-bottom:1px solid var(--line)}.grid{grid-template-columns:1fr}.hide-sm{display:none}.wrap{padding:14px 16px 40px}.mx svg{height:260px}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 14 · Menu Analysis.</b> Real dine-in numbers, last 30 days to Thu 9 Oct. Hover dots, click a group or a column header, search the table. 7 / 90-day buttons are wired in the real page.</div>
+<div class="wrap">
+  <div class="head">
+    <div><h1>Menu Analysis</h1><p>Which dishes earn the money, which ones only fill tables, and what to change. Contribution = selling price − food cost, per plate. Dine-in sales (Petpooja).</p></div>
+    <div class="seg"><button>7 days</button><button class="on">30 days</button><button>90 days</button></div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="cap"><div><h3>Menu matrix</h3><p>Each dot is a dish · right = sells more · up = earns more per plate · lines = menu median</p></div></div>
+      <div class="mx" id="mx"><svg id="svg"></svg><div class="tip" id="tip"></div><span class="ylab">Contribution per plate ₹</span><span class="xlab">Plates sold in 30 days (log scale)</span></div>
+    </div>
+    <div class="card">
+      <div class="cap"><div><h3>Four groups</h3><p>Click one to filter the table</p></div></div>
+      <div class="gq" id="groups"></div>
+      <div class="share" id="share"></div>
+      <div class="sharel" id="sharel"></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="cap"><div><h3>Do this first</h3><p>Ranked by rupees per month</p></div></div>
+      <div id="acts"></div>
+    </div>
+    <div class="card">
+      <div class="cap"><div><h3>Not counted · <span id="unN"></span></h3><p>Petpooja names that don't match a menu item, so they're missing from this page. Link once; it sticks.</p></div></div>
+      <div id="unl"></div>
+      <div class="note" id="unsold"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cap"><div><h3>Every dish · <span id="cnt"></span></h3><p>Trend = plates vs the 30 days before · food cost: <span style="color:var(--good)">≤35%</span> · <span style="color:var(--warn)">35–45%</span> · <span style="color:var(--bad)">&gt;45%</span></p></div>
+      <div class="tools"><span id="chips"></span><input class="search" id="q" placeholder="Search dish or category"></div></div>
+    <div class="scroll"><table><thead><tr>
+      <th class="s" data-k="n">Dish</th><th class="hide-sm">Group</th><th class="s r" data-k="q">Plates</th><th class="r hide-sm s" data-k="ap">Avg price</th>
+      <th class="s r" data-k="f">Food cost</th><th class="s r hide-sm" data-k="cpu">Per plate</th><th class="s r on" data-k="tc">Contribution</th></tr></thead><tbody id="tb"></tbody></table></div>
+  </div>
+</div>
+
+<script>
+const ITEMS = [{"n": "Combo 02 - Paneer Power Combo", "c": "Combos", "q": 226.0, "rv": 38194, "ap": 169, "f": 50.6, "cpu": 83, "tc": 18856, "pq": 75.0, "conf": "reliable", "k": "W"}, {"n": "Combo 01 - Mini North Indian Meal", "c": "Combos", "q": 235.0, "rv": 35015, "ap": 149, "f": 48.5, "cpu": 77, "tc": 18043, "pq": 231.0, "conf": "reliable", "k": "W"}, {"n": "Chappati (2) With Channa", "c": "Breads", "q": 190.0, "rv": 16910, "ap": 89, "f": 53.3, "cpu": 42, "tc": 7899, "pq": 144.0, "conf": "reliable", "k": "W"}, {"n": "Chilli Parotta", "c": "Breads", "q": 66.0, "rv": 9834, "ap": 149, "f": 25.7, "cpu": 111, "tc": 7303, "pq": 12.0, "conf": "reliable", "k": "S"}, {"n": "Paneer Fried Rice", "c": "Fried Rice / Noodles", "q": 46.0, "rv": 7414, "ap": 161, "f": 39.3, "cpu": 98, "tc": 4502, "pq": 23.0, "conf": "reliable", "k": "S"}, {"n": "Paneer Butter Masala", "c": "Gravy-Paneer", "q": 34.0, "rv": 6766, "ap": 199, "f": 39.0, "cpu": 121, "tc": 4131, "pq": 26.0, "conf": "reliable", "k": "S"}, {"n": "Gobi Fried Rice", "c": "Fried Rice / Noodles", "q": 40.0, "rv": 6040, "ap": 151, "f": 40.0, "cpu": 91, "tc": 3622, "pq": 34.0, "conf": "reliable", "k": "W"}, {"n": "Veg Fried Rice", "c": "Fried Rice / Noodles", "q": 44.0, "rv": 5776, "ap": 131, "f": 38.5, "cpu": 81, "tc": 3553, "pq": 26.0, "conf": "reliable", "k": "W"}, {"n": "Butter Naan (1 No)", "c": "Tandoori Breads", "q": 78.0, "rv": 4602, "ap": 59, "f": 41.0, "cpu": 35, "tc": 2714, "pq": 63.0, "conf": "reliable", "k": "W"}, {"n": "Channa Batura", "c": "Breads", "q": 42.0, "rv": 4578, "ap": 109, "f": 45.0, "cpu": 60, "tc": 2518, "pq": 22.0, "conf": "reliable", "k": "W"}, {"n": "Veg Briyani / Pulav", "c": "Rice / Briyanis", "q": 24.0, "rv": 4056, "ap": 169, "f": 42.9, "cpu": 97, "tc": 2318, "pq": 25.0, "conf": "reliable", "k": "S"}, {"n": "Gobi 65", "c": "Starters-65", "q": 40.0, "rv": 3960, "ap": 99, "f": 37.8, "cpu": 62, "tc": 2462, "pq": 21.0, "conf": "reliable", "k": "W"}, {"n": "Mixed Fried Rice", "c": "Fried Rice / Noodles", "q": 20.0, "rv": 3930, "ap": 196, "f": 39.1, "cpu": 120, "tc": 2392, "pq": 13.0, "conf": "reliable", "k": "S"}, {"n": "Paneer Tikka (5 Pcs)", "c": "Tikka", "q": 21.0, "rv": 3759, "ap": 179, "f": 38.6, "cpu": 110, "tc": 2310, "pq": 4.0, "conf": "reliable", "k": "S"}, {"n": "Veg Noodles", "c": "Fried Rice / Noodles", "q": 28.0, "rv": 3652, "ap": 130, "f": 35.4, "cpu": 84, "tc": 2358, "pq": 13.0, "conf": "reliable", "k": "W"}, {"n": "Gobi Manchurian (Starter)", "c": "Starters-Manchurian", "q": 27.0, "rv": 3483, "ap": 129, "f": 26.0, "cpu": 95, "tc": 2576, "pq": 14.0, "conf": "reliable", "k": "S"}, {"n": "Mushroom Fried Rice", "c": "Fried Rice / Noodles", "q": 20.0, "rv": 3420, "ap": 171, "f": 42.2, "cpu": 99, "tc": 1975, "pq": 20.0, "conf": "reliable", "k": "S"}, {"n": "Mushroom Briyani / Pulav", "c": "Rice / Briyanis", "q": 16.0, "rv": 3184, "ap": 199, "f": 46.0, "cpu": 107, "tc": 1720, "pq": 9.0, "conf": "reliable", "k": "S"}, {"n": "Phulka (2 Nos)", "c": "Breads", "q": 87.0, "rv": 3045, "ap": 35, "f": 63.5, "cpu": 13, "tc": 1112, "pq": 73.0, "conf": "reliable", "k": "W"}, {"n": "Paneer Briyani / Pulav", "c": "Rice / Briyanis", "q": 14.0, "rv": 2646, "ap": 189, "f": 43.7, "cpu": 106, "tc": 1490, "pq": 11.0, "conf": "reliable", "k": "S"}, {"n": "Paneer Paratha (1 No)", "c": "Breads", "q": 29.0, "rv": 2581, "ap": 89, "f": 47.5, "cpu": 47, "tc": 1355, "pq": 27.0, "conf": "reliable", "k": "W"}, {"n": "Garlic Naan (1 No)", "c": "Tandoori Breads", "q": 36.0, "rv": 2484, "ap": 69, "f": 33.8, "cpu": 46, "tc": 1643, "pq": 13.0, "conf": "reliable", "k": "W"}, {"n": "Combo 06b - Briyani Express (Mushroom)", "c": "Combos", "q": 8.0, "rv": 2072, "ap": 259, "f": 42.4, "cpu": 149, "tc": 1193, "pq": 2.0, "conf": "reliable", "k": "P"}, {"n": "Mushroom Masala", "c": "Gravy-Mushroom", "q": 13.0, "rv": 1807, "ap": 139, "f": 41.5, "cpu": 81, "tc": 1057, "pq": 3.0, "conf": "reliable", "k": "W"}, {"n": "Chilli Garlic Fried Rice", "c": "Fried Rice / Noodles", "q": 12.0, "rv": 1788, "ap": 149, "f": 33.3, "cpu": 99, "tc": 1192, "pq": 10.0, "conf": "reliable", "k": "S"}, {"n": "Combo 06a - Briyani Express (Veg)", "c": "Combos", "q": 7.0, "rv": 1533, "ap": 219, "f": 38.8, "cpu": 134, "tc": 938, "pq": 8.0, "conf": "reliable", "k": "P"}, {"n": "Combo 05 - Chinese Mega Box", "c": "Combos", "q": 6.0, "rv": 1494, "ap": 249, "f": 40.4, "cpu": 149, "tc": 891, "pq": 0.0, "conf": "building", "k": "P"}, {"n": "Combo 03 - Veg Kofta Combo", "c": "Combos", "q": 10.0, "rv": 1490, "ap": 149, "f": 33.9, "cpu": 99, "tc": 985, "pq": 8.0, "conf": "reliable", "k": "S"}, {"n": "Chilli Garlic Noodles", "c": "Fried Rice & Noodles", "q": 10.0, "rv": 1490, "ap": 149, "f": 25.8, "cpu": 111, "tc": 1106, "pq": 5.0, "conf": "reliable", "k": "S"}, {"n": "Baby Corn 65", "c": "Starters-65", "q": 12.0, "rv": 1428, "ap": 119, "f": 38.0, "cpu": 74, "tc": 885, "pq": 4.0, "conf": "reliable", "k": "W"}, {"n": "Gobi Noodles", "c": "Fried Rice / Noodles", "q": 9.0, "rv": 1381, "ap": 153, "f": 34.8, "cpu": 100, "tc": 901, "pq": 6.0, "conf": "reliable", "k": "S"}, {"n": "Paneer Tikka Shawarma", "c": "Starters-Specials", "q": 8.0, "rv": 1352, "ap": 169, "f": 43.1, "cpu": 96, "tc": 769, "pq": 5.0, "conf": "reliable", "k": "P"}, {"n": "Stuffed Paratha (Aloo/Gobi) (1 No)", "c": "Breads", "q": 18.0, "rv": 1242, "ap": 69, "f": 46.2, "cpu": 37, "tc": 668, "pq": 27.0, "conf": "reliable", "k": "W"}, {"n": "Kadai Paneer", "c": "Gravy-Paneer", "q": 6.0, "rv": 1194, "ap": 199, "f": 40.4, "cpu": 119, "tc": 712, "pq": 2.0, "conf": "reliable", "k": "P"}, {"n": "Paneer 65", "c": "Starters-65", "q": 8.0, "rv": 1192, "ap": 149, "f": 44.2, "cpu": 83, "tc": 665, "pq": 10.0, "conf": "reliable", "k": "D"}, {"n": "Mushroom 65", "c": "Starters-65", "q": 10.0, "rv": 1190, "ap": 119, "f": 41.3, "cpu": 70, "tc": 698, "pq": 8.0, "conf": "reliable", "k": "W"}, {"n": "Hot & Sour Soup", "c": "Soups", "q": 14.0, "rv": 1106, "ap": 79, "f": 26.5, "cpu": 58, "tc": 813, "pq": 7.0, "conf": "reliable", "k": "W"}, {"n": "Jeera Rice", "c": "Rice / Briyanis", "q": 10.0, "rv": 1090, "ap": 109, "f": 35.5, "cpu": 70, "tc": 703, "pq": 9.0, "conf": "reliable", "k": "W"}, {"n": "Dal Tadka / Fry", "c": "Gravy-Veg/Dal", "q": 11.0, "rv": 1089, "ap": 99, "f": 33.0, "cpu": 66, "tc": 730, "pq": 10.0, "conf": "reliable", "k": "W"}, {"n": "Paneer Tikka Masala", "c": "Gravy-Paneer", "q": 5.0, "rv": 1045, "ap": 209, "f": 38.5, "cpu": 129, "tc": 643, "pq": 4.0, "conf": "reliable", "k": "P"}, {"n": "Gobi Masala", "c": "Gravy-Gobi", "q": 8.0, "rv": 1032, "ap": 129, "f": 32.6, "cpu": 87, "tc": 696, "pq": 1.0, "conf": "reliable", "k": "D"}, {"n": "Roti (2 Nos)", "c": "Tandoori Breads", "q": 21.0, "rv": 1029, "ap": 49, "f": 45.3, "cpu": 27, "tc": 563, "pq": 16.0, "conf": "reliable", "k": "W"}, {"n": "Naan (1 No)", "c": "Tandoori Breads", "q": 21.0, "rv": 1029, "ap": 49, "f": 44.0, "cpu": 27, "tc": 577, "pq": 22.0, "conf": "reliable", "k": "W"}, {"n": "Hyderabadi Paneer", "c": "Gravy-Paneer", "q": 5.0, "rv": 995, "ap": 199, "f": 39.0, "cpu": 121, "tc": 607, "pq": 3.0, "conf": "reliable", "k": "P"}, {"n": "Paneer Noodles", "c": "Fried Rice / Noodles", "q": 6.0, "rv": 974, "ap": 162, "f": 36.8, "cpu": 103, "tc": 615, "pq": 9.0, "conf": "reliable", "k": "P"}, {"n": "Paneer Manchurian (Starter)", "c": "Starters-Manchurian", "q": 6.0, "rv": 954, "ap": 159, "f": 40.1, "cpu": 95, "tc": 571, "pq": 6.0, "conf": "reliable", "k": "P"}, {"n": "Baby Corn Manchurian (Starter)", "c": "Starters-Manchurian", "q": 7.0, "rv": 903, "ap": 129, "f": 28.1, "cpu": 93, "tc": 649, "pq": 1.0, "conf": "reliable", "k": "P"}, {"n": "Kadai Mushroom", "c": "Gravy-Mushroom", "q": 6.0, "rv": 894, "ap": 149, "f": 40.6, "cpu": 88, "tc": 531, "pq": 3.0, "conf": "reliable", "k": "D"}, {"n": "Chilli Paneer", "c": "Starters-Chilli", "q": 5.0, "rv": 845, "ap": 169, "f": 39.4, "cpu": 102, "tc": 512, "pq": 2.0, "conf": "reliable", "k": "P"}, {"n": "Matar Paneer", "c": "Gravy-Paneer", "q": 4.0, "rv": 836, "ap": 209, "f": 40.2, "cpu": 125, "tc": 500, "pq": 2.0, "conf": "reliable", "k": "P"}, {"n": "Mushroom Pepper Fry", "c": "Starters-Manchurian", "q": 6.0, "rv": 834, "ap": 139, "f": 33.8, "cpu": 92, "tc": 552, "pq": 0.0, "conf": "reliable", "k": "P"}, {"n": "Mushroom Manchurian (Starter)", "c": "Starters-Manchurian", "q": 6.0, "rv": 774, "ap": 129, "f": 36.5, "cpu": 82, "tc": 492, "pq": 4.0, "conf": "reliable", "k": "D"}, {"n": "Mushroom Tikka Shawarma", "c": "Starters-Specials", "q": 4.0, "rv": 676, "ap": 169, "f": 37.8, "cpu": 105, "tc": 421, "pq": 0.0, "conf": "reliable", "k": "P"}, {"n": "Channa Masala", "c": "Gravy-Veg/Dal", "q": 5.0, "rv": 645, "ap": 129, "f": 35.9, "cpu": 83, "tc": 413, "pq": 4.0, "conf": "reliable", "k": "D"}, {"n": "Manchow Soup", "c": "Soups", "q": 8.0, "rv": 632, "ap": 79, "f": 30.6, "cpu": 55, "tc": 438, "pq": 9.0, "conf": "reliable", "k": "D"}, {"n": "Butter Roti (2 Nos)", "c": "Tandoori Breads", "q": 10.0, "rv": 590, "ap": 59, "f": 42.2, "cpu": 34, "tc": 341, "pq": 11.0, "conf": "reliable", "k": "W"}, {"n": "Combo 06c - Briyani Express (Paneer)", "c": "Combos", "q": 2.0, "rv": 558, "ap": 279, "f": 39.2, "cpu": 170, "tc": 339, "pq": 0.0, "conf": "reliable", "k": "P"}, {"n": "Mushroom Noodles", "c": "Fried Rice / Noodles", "q": 3.0, "rv": 527, "ap": 176, "f": 39.9, "cpu": 106, "tc": 317, "pq": 0.0, "conf": "reliable", "k": "P"}, {"n": "Veg Manchurian", "c": "Starters-Manchurian", "q": 4.0, "rv": 516, "ap": 129, "f": 19.6, "cpu": 104, "tc": 415, "pq": 3.0, "conf": "reliable", "k": "P"}, {"n": "Aloo Gobi Masala", "c": "Gravy-Gobi", "q": 4.0, "rv": 516, "ap": 129, "f": 33.5, "cpu": 86, "tc": 343, "pq": 4.0, "conf": "reliable", "k": "D"}, {"n": "Mushroom Tikka", "c": "Tikka", "q": 3.0, "rv": 507, "ap": 169, "f": 39.5, "cpu": 102, "tc": 307, "pq": 3.0, "conf": "reliable", "k": "P"}, {"n": "Indo Chinese Duo", "c": "Combos", "q": 2.0, "rv": 498, "ap": 249, "f": 13.1, "cpu": 216, "tc": 433, "pq": 0.0, "conf": "building", "k": "P"}, {"n": "Kadai Veg", "c": "Gravy-Veg/Dal", "q": 3.0, "rv": 447, "ap": 149, "f": 29.8, "cpu": 105, "tc": 314, "pq": 9.0, "conf": "reliable", "k": "P"}, {"n": "Soya Fish Fry (4 Pcs)", "c": "Starters-Specials", "q": 2.0, "rv": 398, "ap": 199, "f": 40.3, "cpu": 119, "tc": 238, "pq": 2.0, "conf": "reliable", "k": "P"}, {"n": "Tomato Soup", "c": "Soups", "q": 5.0, "rv": 395, "ap": 79, "f": 29.1, "cpu": 56, "tc": 280, "pq": 12.0, "conf": "reliable", "k": "D"}, {"n": "Soya Chicken 65", "c": "Starters-65", "q": 2.0, "rv": 298, "ap": 149, "f": 54.1, "cpu": 68, "tc": 137, "pq": 3.0, "conf": "reliable", "k": "D"}, {"n": "Veg Lollipop (5 Pcs)", "c": "Starters-Specials", "q": 2.0, "rv": 258, "ap": 129, "f": 54.5, "cpu": 59, "tc": 117, "pq": 3.0, "conf": "reliable", "k": "D"}, {"n": "Veg Money Bags (5 Pcs)", "c": "Starters-Specials", "q": 2.0, "rv": 238, "ap": 119, "f": 50.2, "cpu": 59, "tc": 118, "pq": 2.0, "conf": "reliable", "k": "D"}, {"n": "Masala Kulcha (1 No)", "c": "Tandoori Breads", "q": 2.0, "rv": 198, "ap": 99, "f": 23.8, "cpu": 75, "tc": 151, "pq": 1.0, "conf": "reliable", "k": "D"}, {"n": "Chilli Mushroom", "c": "Starters-Chilli", "q": 1.0, "rv": 129, "ap": 129, "f": 38.7, "cpu": 79, "tc": 79, "pq": 1.0, "conf": "reliable", "k": "D"}, {"n": "Chilli Gobi", "c": "Starters-Chilli", "q": 1.0, "rv": 129, "ap": 129, "f": 26.5, "cpu": 95, "tc": 95, "pq": 1.0, "conf": "reliable", "k": "P"}, {"n": "Chilli Baby Corn", "c": "Starters-Chilli", "q": 1.0, "rv": 119, "ap": 119, "f": 32.8, "cpu": 80, "tc": 80, "pq": 1.0, "conf": "reliable", "k": "D"}];
+const EXTRA = {"unlinked": [{"n": "Mixed Fried Rice / Noodles Manchurian - Gobi / Mushroom Chilli Gobi / Chilli Mushroom Goli Soda (Mix", "q": 14.0, "rv": 3486.0}, {"n": "Mushroom Noodles (Regular)", "q": 10.0, "rv": 1690.0}, {"n": "Mushroom Fried Rice (Regular)", "q": 5.0, "rv": 845.0}, {"n": "Veg Briyani", "q": 5.0, "rv": 845.0}, {"n": "Gobi Fried Rice (Regular)", "q": 4.0, "rv": 596.0}, {"n": "Paneer Paratha (1 No )", "q": 6.0, "rv": 534.0}, {"n": "Mixed (veg,gobi,mushroom & Paneer) Fried Rice (With Schezwan)", "q": 2.0, "rv": 418.0}, {"n": "Mush. Briyani", "q": 2.0, "rv": 398.0}, {"n": "Veg Fried Rice (Regular)", "q": 3.0, "rv": 387.0}, {"n": "Add On Kulcha", "q": 5.0, "rv": 345.0}, {"n": "Paneer Manchurian", "q": 2.0, "rv": 318.0}, {"n": "Gobi Fried Rice (With Schezwan)", "q": 2.0, "rv": 318.0}, {"n": "Chilli Garlic Noodles (price)", "q": 2.0, "rv": 298.0}, {"n": "Chilli Garlic Fried Rice (price)", "q": 2.0, "rv": 298.0}, {"n": "Veg Noodles (Regular)", "q": 2.0, "rv": 258.0}, {"n": "Gobi Manchurian", "q": 2.0, "rv": 258.0}, {"n": "Stuffed Paratha (1 No) (Gobi)", "q": 3.0, "rv": 207.0}, {"n": "Stuffed Paratha (1 No) (Aloo)", "q": 3.0, "rv": 207.0}, {"n": "Mush. Pulav", "q": 1.0, "rv": 199.0}, {"n": "Add On: Bcm", "q": 2.0, "rv": 198.0}, {"n": "Dal Tadka", "q": 2.0, "rv": 198.0}, {"n": "Paneer Pulav", "q": 1.0, "rv": 189.0}, {"n": "Mixed (Veg,Gobi,Mushroom & Paneer) Noodles (With Schezwan)", "q": 1.0, "rv": 189.0}, {"n": "Mushroom Fried Rice (With Schezwan)", "q": 1.0, "rv": 179.0}, {"n": "Paneer Noodles (Regular)", "q": 1.0, "rv": 159.0}, {"n": "Paneer Fried Rice (Regular)", "q": 1.0, "rv": 159.0}, {"n": "Soya Chicken Manchurian (starter)", "q": 1.0, "rv": 159.0}, {"n": "Sweetcorn Soup", "q": 2.0, "rv": 158.0}, {"n": "Veg Manchow Soup Gobi 65 (5 Pcs)", "q": 1.0, "rv": 149.0}, {"n": "Dal Fry", "q": 1.0, "rv": 99.0}, {"n": "Add On: Cg", "q": 1.0, "rv": 99.0}], "unsold": ["Baby Corn Masala", "Combo 04 - Soup & Starter Combo", "Mixed Noodles", "Sambar Rice", "Soya Chicken Manchurian (Starter)"], "asof": "2026-10-09"};
+const G = {S:{n:'Stars',a:'Sell more & protect the price',c:'var(--S)'},W:{n:'Workhorses',a:'Popular, thin margin: nudge price or trim cost',c:'var(--W)'},
+           P:{n:'Puzzles',a:'Good margin, few orders: promote or reposition',c:'var(--P)'},D:{n:'Dogs',a:'Few orders, low margin: rework or drop',c:'var(--D)'}};
+const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const rk = n => n >= 100000 ? '₹' + (n/100000).toFixed(2) + 'L' : n >= 1000 ? '₹' + (n/1000).toFixed(1) + 'k' : rs(n);
+const med = a => { const s=[...a].sort((x,y)=>x-y), m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+const mu = med(ITEMS.map(i=>i.q)), mc = med(ITEMS.map(i=>i.cpu));
+const REV = ITEMS.reduce((s,i)=>s+i.rv,0), TC = ITEMS.reduce((s,i)=>s+i.tc,0);
+const FC = ITEMS.reduce((s,i)=>s+i.f*i.rv,0)/REV;
+const UNREV = EXTRA.unlinked.reduce((s,u)=>s+u.rv,0);
+const fcc = f => f > 45 ? 'hi' : f > 35 ? 'mid' : 'ok';
+
+// KPIs
+const cnt = k => ITEMS.filter(i=>i.k===k);
+document.getElementById('kpis').innerHTML = `
+  <div class="k"><span class="l">Dine-in sales</span><div class="v">${rk(REV+UNREV)}</div><span class="s">${ITEMS.reduce((s,i)=>s+i.q,0).toLocaleString('en-IN')} plates · ${ITEMS.length} dishes sold</span></div>
+  <div class="k ${FC>40?'warn':'good'}"><span class="l">Food cost</span><div class="v">${FC.toFixed(1)}%</div><span class="s">weighted by sales · goal 35%</span></div>
+  <div class="k good"><span class="l">Contribution</span><div class="v">${rk(TC)}</div><span class="s">${(TC/REV*100).toFixed(0)}% of sales left after food</span></div>
+  <div class="k warn"><span class="l">Top 2 dishes</span><div class="v">${(ITEMS.slice().sort((a,b)=>b.tc-a.tc).slice(0,2).reduce((s,i)=>s+i.tc,0)/TC*100).toFixed(0)}%</div><span class="s">of contribution · both combos, ~50% food cost</span></div>
+  <a class="k bad" href="#unl"><span class="l">Not counted</span><div class="v">${EXTRA.unlinked.length} <small>names</small></div><span class="s">${rs(UNREV)} of sales unlinked</span></a>`;
+
+// Matrix
+const svg = document.getElementById('svg'), tip = document.getElementById('tip');
+function drawMx(){
+  const W = svg.clientWidth, H = svg.clientHeight, pad = 6;
+  const xs = q => pad + (Math.log10(q) - 0) / (Math.log10(300)) * (W - 2*pad);
+  const ymax = 200, ys = v => H - pad - Math.max(0,Math.min(v,ymax)) / ymax * (H - 2*pad);
+  let h = '';
+  [0,50,100,150,200].forEach(v=>{ h += `<line x1="0" x2="${W}" y1="${ys(v)}" y2="${ys(v)}" stroke="#F0EEE6"/><text class="ax" x="-8" y="${ys(v)+3}" text-anchor="end">${v}</text>`; });
+  [1,3,10,30,100,300].forEach(q=>{ h += `<text class="ax" x="${xs(q)}" y="${H+16}" text-anchor="middle">${q}</text>`; });
+  h += `<line x1="${xs(mu)}" x2="${xs(mu)}" y1="0" y2="${H}" stroke="#C9C4B4" stroke-dasharray="4 4"/><line x1="0" x2="${W}" y1="${ys(mc)}" y2="${ys(mc)}" stroke="#C9C4B4" stroke-dasharray="4 4"/>`;
+  h += `<text class="ql" x="${W-6}" y="14" text-anchor="end">Stars</text><text class="ql" x="6" y="14">Puzzles</text><text class="ql" x="${W-6}" y="${H-8}" text-anchor="end">Workhorses</text><text class="ql" x="6" y="${H-8}">Dogs</text>`;
+  ITEMS.slice().sort((a,b)=>a.q-b.q).forEach((i,ix)=>{ const r = 4 + Math.sqrt(i.tc)/14;
+    h += `<circle class="dot" data-i="${ITEMS.indexOf(i)}" cx="${xs(i.q)}" cy="${ys(i.cpu)}" r="${r.toFixed(1)}" fill="${G[i.k].c}" fill-opacity=".85"/>`; });
+  ITEMS.slice().sort((a,b)=>b.tc-a.tc).slice(0,4).forEach((i,n)=>{ h += `<text x="${xs(i.q)-10}" y="${ys(i.cpu)+(n===1?22:-12)}" font-size="11" font-weight="600" fill="#14201B" text-anchor="end">${i.n.replace(/^Combo 0\d - /,'')}</text>`; });
+  svg.innerHTML = h;
+}
+drawMx(); addEventListener('resize', drawMx);
+svg.addEventListener('mousemove', e=>{ const d = e.target.closest('.dot'); if(!d){tip.style.display='none';return;}
+  const i = ITEMS[+d.dataset.i], box = document.getElementById('mx').getBoundingClientRect();
+  tip.innerHTML = `<b>${i.n}</b><br>${i.q} plates · ${rs(i.ap)} avg · food cost ${i.f}%<br>${rs(i.cpu)}/plate · ${rs(i.tc)} contribution · ${G[i.k].n}`;
+  tip.style.display='block'; tip.style.left = Math.min(e.clientX - box.left + 12, box.width - 260) + 'px'; tip.style.top = (e.clientY - box.top - 60) + 'px'; });
+svg.addEventListener('mouseleave', ()=>tip.style.display='none');
+
+// Groups
+let gsel = '';
+function drawGroups(){
+  document.getElementById('groups').innerHTML = ['S','P','W','D'].map(k=>{ const a = cnt(k), t = a.reduce((s,i)=>s+i.tc,0);
+    return `<div class="g ${gsel===k?'on':''}" data-g="${k}"><h4><i style="background:${G[k].c}"></i>${G[k].n}</h4><div class="n">${a.length} <small>dishes · ${rk(t)}</small></div><div class="a">${G[k].a}</div></div>`; }).join('');
+}
+drawGroups();
+document.getElementById('share').innerHTML = ['S','W','P','D'].map(k=>`<i style="width:${cnt(k).reduce((s,i)=>s+i.tc,0)/TC*100}%;background:${G[k].c}"></i>`).join('');
+document.getElementById('sharel').innerHTML = 'Share of contribution: ' + ['S','W','P','D'].map(k=>`<span><b>${G[k].n}</b> ${(cnt(k).reduce((s,i)=>s+i.tc,0)/TC*100).toFixed(0)}%</span>`).join('');
+document.getElementById('groups').addEventListener('click', e=>{ const g = e.target.closest('.g'); if(!g) return; gsel = gsel===g.dataset.g ? '' : g.dataset.g; drawGroups(); drawChips(); drawTable(); });
+
+// Actions
+const acts = [];
+const nudge = ITEMS.filter(i=>i.f>45 && i.q>=20).sort((a,b)=>b.q-a.q);
+const step = i => Math.max(5, Math.round(i.ap * 0.07 / 5) * 5);
+nudge.slice(0,3).forEach(i=>{ const st = step(i); acts.push({ic:'bad',t:`${i.n}: ${i.f}% food cost`,p:`${i.q} plates a month at ${rs(i.ap)}. ₹${st} more per plate (or ₹${st} less food in it) brings it to ${(i.f*i.ap/(i.ap+st)).toFixed(0)}%.`,amt:i.q*st,s:`/month at +₹${st}`}); });
+if(nudge.length>3) acts.push({ic:'bad',t:`${nudge.length-3} more popular dishes over 45%`,p:nudge.slice(3).map(i=>`${i.n} ${i.f}%`).join(' · '),amt:nudge.slice(3).reduce((s,i)=>s+i.q*step(i),0),s:'/month at +5–7%'});
+const rising = ITEMS.filter(i=>i.k==='S' && i.pq>0 && i.q/i.pq>=1.8).sort((a,b)=>b.tc-a.tc).slice(0,2);
+rising.forEach(i=>acts.push({ic:'good',t:`${i.n} is taking off`,p:`${i.pq} → ${i.q} plates vs the 30 days before, at ${i.f}% food cost. Keep it on the counter board and suggest it.`,amt:i.tc,s:'contribution'}));
+const dogs = cnt('D').filter(i=>i.f>45);
+if(dogs.length) acts.push({ic:'warn',t:`${dogs.length} slow dishes cost over 45%`,p:dogs.map(i=>i.n).join(', ')+'. Few orders and thin margin: rework the recipe or take them off.',amt:dogs.reduce((s,i)=>s+i.rv,0),s:'sales/month'});
+const ord = {bad:0,warn:1,good:2}; acts.sort((a,b)=>ord[a.ic]-ord[b.ic] || b.amt-a.amt);
+document.getElementById('acts').innerHTML = acts.slice(0,6).map(a=>`<div class="act"><span class="ic ${a.ic}">${a.ic==='bad'?'₹':a.ic==='good'?'↑':'!'}</span><div><b>${a.t}</b><p>${a.p}</p></div><span class="amt">${rs(a.amt)}<small>${a.s}</small></span></div>`).join('');
+
+// Unlinked
+const NAMES = ITEMS.map(i=>i.n).sort();
+const guess = n => { const b = n.replace(/\s*\((Regular|With Schezwan)\)|\s+(?=\))/gi,'').toLowerCase(); return NAMES.find(m=>m.toLowerCase()===b) || NAMES.find(m=>b.length>6 && m.toLowerCase().startsWith(b.slice(0,10))) || ''; };
+document.getElementById('unN').textContent = `${EXTRA.unlinked.length} names · ${rs(UNREV)}`;
+document.getElementById('unl').innerHTML = EXTRA.unlinked.slice(0,7).map(u=>{ const g = guess(u.n);
+  return `<div class="link"><span class="nm" title="${u.n}">${u.n} <span class="mut">· ${u.q} · ${rs(u.rv)}</span></span><select><option value="">Link to…</option>${g?`<option selected>${g}</option>`:''}<option>Not a dish (add-on / drink)</option></select><button class="btn">Link</button></div>`; }).join('') + `<div class="link mut">+ ${EXTRA.unlinked.length-7} more · ${rs(EXTRA.unlinked.slice(7).reduce((s,u)=>s+u.rv,0))}</div>`;
+document.getElementById('unsold').innerHTML = `<b>On the menu, no dine-in sales in 30 days:</b> ${EXTRA.unsold.join(', ')}.`;
+
+// Table
+let sk = 'tc', sd = -1;
+function drawChips(){ document.getElementById('chips').innerHTML = `<button class="chip ${gsel?'':'on'}" data-c="">All</button>` + ['S','W','P','D'].map(k=>`<button class="chip ${gsel===k?'on':''}" data-c="${k}"><i style="background:${G[k].c}"></i>${G[k].n}</button>`).join(''); }
+drawChips();
+document.getElementById('chips').addEventListener('click', e=>{ const c = e.target.closest('.chip'); if(!c) return; gsel = c.dataset.c; drawChips(); drawGroups(); drawTable(); });
+function drawTable(){
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const rows = ITEMS.filter(i=>(!gsel||i.k===gsel) && (!q || (i.n+' '+i.c).toLowerCase().includes(q)))
+    .sort((a,b)=> (typeof a[sk]==='string' ? a[sk].localeCompare(b[sk]) : a[sk]-b[sk]) * sd);
+  const top = Math.max(...ITEMS.map(i=>i.tc));
+  document.getElementById('cnt').textContent = rows.length + (rows.length===ITEMS.length ? '' : ' of ' + ITEMS.length);
+  document.getElementById('tb').innerHTML = rows.map(i=>{ const d = i.pq ? Math.round((i.q/i.pq-1)*100) : null;
+    return `<tr><td><b>${i.n}</b><br><span class="mut" style="font-size:11.5px">${i.c}</span></td>
+    <td class="hide-sm"><span class="pill"><i style="background:${G[i.k].c}"></i>${G[i.k].n}</span></td>
+    <td class="r b">${i.q}<br>${d===null?'<span class="tr mut">new</span>':`<span class="tr ${d>=0?'up':'dn'}">${d>=0?'▲':'▼'} ${Math.abs(d)}%</span>`}</td>
+    <td class="r hide-sm">${rs(i.ap)}</td><td class="r"><span class="fc ${fcc(i.f)}">${i.f}%</span></td><td class="r hide-sm">${rs(i.cpu)}</td>
+    <td class="r"><span class="bar"><i style="width:${i.tc/top*100}%"></i></span><b>${rs(i.tc)}</b></td></tr>`; }).join('');
+  document.querySelectorAll('th.s').forEach(t=>t.classList.toggle('on', t.dataset.k===sk));
+}
+document.querySelectorAll('th.s').forEach(t=>t.addEventListener('click', ()=>{ if(sk===t.dataset.k) sd=-sd; else { sk=t.dataset.k; sd = sk==='n'?1:-1; } drawTable(); }));
+document.getElementById('q').addEventListener('input', drawTable);
+drawTable();
+</script>
+</body>
+</html>

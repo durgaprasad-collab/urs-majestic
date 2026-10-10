@@ -2,139 +2,84 @@
 {% block title %}Menu Analysis — URS Majestic{% endblock %}
 
 {% block content %}
+{% macro rs(v) %}₹{{ '{:,.0f}'.format(v or 0) }}{% endmacro %}
+{% macro rk(v) %}{% set a = (v or 0)|abs %}{% if a >= 100000 %}₹{{ '%.2f'|format(a / 100000) }}L{% elif a >= 1000 %}₹{{ '%.1f'|format(a / 1000) }}k{% else %}₹{{ '{:,.0f}'.format(a) }}{% endif %}{% endmacro %}
+{% set COL = {'S': 'var(--ma-s)', 'W': 'var(--ma-w)', 'P': 'var(--ma-p)', 'D': 'var(--ma-d)'} %}
+<div class="sl ma">
+  <div class="sl-head">
+    <div><h1 class="sl-title">Menu Analysis</h1>
+      <p class="sl-sub">Which dishes earn the money, which ones only fill tables, and what to change. Contribution = selling price − food cost, per plate. Dine-in sales (Petpooja){% if asof %}, {{ start.strftime('%d %b') }} – {{ asof.strftime('%a %d %b') }}{% endif %}.</p></div>
+    <div class="rc-months">{% for d in (7, 30, 90) %}<a href="/results?days={{ d }}" class="{{ 'on' if d == days }}">{{ d }} days</a>{% endfor %}</div>
+  </div>
+  {% if notice %}<p class="sl-flash">{{ notice }}</p>{% endif %}
+  {% if today_excluded %}<p class="sl-flash">{{ today_excluded }} row(s) dated today were left out (same-day exports are incomplete).</p>{% endif %}
+  {% if parse_errors_count %}<p class="sl-flash bad">{{ parse_errors_count }} row(s) could not be read (line(s) {{ parse_error_lines }}). See the upload log.</p>{% endif %}
 
-<div class="results-header">
-  <h1 class="results-title">Menu Analysis</h1>
-  <p class="results-meta">
-    {{ date_from }} – {{ date_to }}&nbsp;&nbsp;·&nbsp;&nbsp;
-    {{ item_count }} items&nbsp;&nbsp;·&nbsp;&nbsp;
-    Total ₹{{ "{:,.0f}".format(total_rev) }}
-  </p>
-  <a href="/upload" class="link-upload">Upload new file</a>
-</div>
+  {% if items %}
+  <div class="sl-kpis ma-kpis">
+    <div class="sl-k"><span class="l">Dine-in sales</span><span class="v">{{ rk(rev_all) }}</span><span class="s">{{ '{:,.0f}'.format(plates) }} plates · {{ items|length }} dishes sold</span></div>
+    <div class="sl-k {{ 'warn' if fc > 40 else 'good' }}"><span class="l">Food cost</span><span class="v">{{ '%.1f'|format(fc) }}%</span><span class="s">weighted by sales · goal {{ goal_fc }}%</span></div>
+    <div class="sl-k good"><span class="l">Contribution</span><span class="v">{{ rk(tc) }}</span><span class="s">{{ (tc / rev * 100)|round|int }}% of sales left after food</span></div>
+    <div class="sl-k warn"><span class="l">Top 2 dishes</span><span class="v">{{ top2_share|round|int }}%</span><span class="s">of contribution · {{ top2|map(attribute='n')|map('replace', 'Combo 01 - ', '')|map('replace', 'Combo 02 - ', '')|join(', ') }}</span></div>
+    <a class="sl-k {{ 'bad' if unlinked else 'good' }}" href="#unlinked"><span class="l">Not counted</span><span class="v">{{ unlinked|length }} <small>name{{ 's' if unlinked|length != 1 }}</small></span><span class="s">{% if unlinked %}{{ rs(unlinked_rv) }} of sales unlinked{% else %}every Petpooja name is linked{% endif %}</span></a>
+  </div>
 
-<div class="tabs">
-  <a href="/results" class="tab-btn active">Menu Analysis</a>
-  <a href="/data-reconciliation" class="tab-btn">Data Trust</a>
-</div>
+  <div class="ma-grid">
+    <div class="sl-card">
+      <div class="sl-sechead"><h3>Menu matrix</h3><p>Each dot is a dish · right = sells more · up = earns more per plate · bigger = more contribution · lines = menu median</p></div>
+      <div class="ma-mx" data-ma-mx><svg data-ma-svg role="img" aria-label="Dishes by plates sold and contribution per plate"></svg><div class="ma-tip" data-ma-tip></div>
+        <span class="ma-ylab">Contribution per plate ₹</span><span class="ma-xlab">Plates sold in {{ days }} days (log scale)</span></div>
+    </div>
+    <div class="sl-card">
+      <div class="sl-sechead"><h3>Four groups</h3><p>Click one to filter the table</p></div>
+      <div class="ma-gq">
+        {% for k in ('S', 'P', 'W', 'D') %}{% set g = groups|selectattr('k', 'equalto', k)|first %}
+        <button type="button" class="ma-g" data-ma-g="{{ k }}"><span class="ma-gh"><i style="background:{{ COL[k] }}"></i>{{ g.label }}</span>
+          <span class="ma-gn">{{ g.n }} <small>dish{{ 'es' if g.n != 1 }} · {{ rk(g.tc) }}</small></span><span class="ma-ga">{{ g.action }}</span></button>{% endfor %}
+      </div>
+      <div class="ma-share">{% for k in ('S', 'W', 'P', 'D') %}{% set g = groups|selectattr('k', 'equalto', k)|first %}<i style="width:{{ g.share|round(1) }}%;background:{{ COL[k] }}"></i>{% endfor %}</div>
+      <div class="ma-sharel">Share of contribution: {% for k in ('S', 'W', 'P', 'D') %}{% set g = groups|selectattr('k', 'equalto', k)|first %}<span><b>{{ g.label }}</b> {{ g.share|round|int }}%</span>{% endfor %}</div>
+    </div>
+  </div>
 
-{% if engine_ran %}
-<p class="alert-success">Cost engine ran — derived costs updated.</p>
-{% endif %}
+  <div class="ma-grid">
+    <div class="sl-card">
+      <div class="sl-sechead"><h3>Do this first</h3><p>Ranked by rupees over the {{ days }} days</p></div>
+      {% for a in actions %}
+      <div class="ma-act"><span class="ma-ic {{ a.kind }}">{{ '₹' if a.kind == 'bad' else ('↑' if a.kind == 'good' else '!') }}</span>
+        <div><b>{{ a.title }}</b><p>{{ a.text }}</p></div><span class="ma-amt">{{ rs(a.amt) }}<small>{{ a.unit }}</small></span></div>
+      {% else %}<p class="sl-empty">Nothing urgent: no popular dish is over 45% food cost.</p>{% endfor %}
+    </div>
+    <div class="sl-card" id="unlinked">
+      <div class="sl-sechead"><h3>Not counted · {{ unlinked|length }} name{{ 's' if unlinked|length != 1 }}{% if unlinked %} · {{ rs(unlinked_rv) }}{% endif %}</h3><p>Petpooja names that don't match a menu item, so they're missing from this page. Link once: past sales move over and future uploads use it.</p></div>
+      <div class="ma-links">
+      {% for u in unlinked %}
+      <form class="ma-link" data-ma-link="{{ u.n }}" {% if loop.index > 8 %}hidden data-ma-more{% endif %}>
+        <span class="ma-nm" title="{{ u.n }}">{{ u.n }} <span class="sl-muted">· {{ '%g'|format(u.q) }} · {{ rs(u.rv) }}</span></span>
+        <select required aria-label="Menu item for {{ u.n }}"><option value="">Link to…</option>{% for o in options %}<option value="{{ o.id }}" {{ 'selected' if o.id == u.guess }}>{{ o.name }}{{ '' if o.food else ' (not food)' }}</option>{% endfor %}</select>
+        <button type="submit" class="sl-btn sl-btn-p">Link</button>
+      </form>
+      {% else %}<p class="sl-empty">Every Petpooja name in these {{ days }} days matches a menu item.</p>{% endfor %}
+      {% if unlinked|length > 8 %}<button type="button" class="ma-morebtn" data-ma-showmore>+ {{ unlinked|length - 8 }} more · {{ rs(unlinked[8:]|sum(attribute='rv')) }}</button>{% endif %}
+      </div>
+      {% if uncosted %}<p class="ma-note"><b>Sold but not costed yet:</b> {{ uncosted|map(attribute='n')|join(', ') }}. Map their ingredients in <a href="/ingredients/mapping">Ingredient Mapping</a>.</p>{% endif %}
+      {% if unsold %}<p class="ma-note"><b>On the menu, no dine-in sales in {{ days }} days:</b> {{ unsold|join(', ') }}.</p>{% endif %}
+    </div>
+  </div>
 
-{% if today_excluded %}
-<p class="alert-success">{{ today_excluded }} row(s) dated today were excluded (same-day exports are incomplete).</p>
-{% endif %}
-
-{% if parse_errors_count %}
-<p class="alert-error">{{ parse_errors_count }} row(s) could not be parsed (line(s) {{ parse_error_lines }}) — see the upload log for details.</p>
-{% endif %}
-
-{% macro cost_badge(r) %}
-  {# Confidence gates how firmly cost/margin is presented. Only 'reliable'
-     (weigh-in confirmed) is a firm figure; 'building' is engine-derived from
-     partial recipe costing and shown as provisional. The static 0.350
-     placeholder is never used, so there is no "Estimated" case. #}
-  {% if r.cost_confidence == 'reliable' %}
-  <span class="cost-badge cost-derived-reliable">Derived ✓</span>
+  <div class="sl-card">
+    <div class="sl-sechead ma-thead"><div><h3>Every dish · <span data-ma-cnt>{{ items|length }}</span></h3><p>Trend = plates vs the {{ days }} days before · food cost: <span class="ma-fc ok">≤35%</span> · <span class="ma-fc mid">35–45%</span> · <span class="ma-fc hi">&gt;45%</span> · ~ = provisional cost</p></div>
+      <div class="ma-tools"><span class="ma-chips"><button type="button" class="sl-chip on" data-ma-chip="">All</button>{% for k in ('S', 'W', 'P', 'D') %}<button type="button" class="sl-chip" data-ma-chip="{{ k }}"><i style="background:{{ COL[k] }}"></i>{{ (groups|selectattr('k', 'equalto', k)|first).label }}</button>{% endfor %}</span>
+        <label class="sl-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input data-ma-q placeholder="Search dish or category" autocomplete="off"></label></div></div>
+    <div class="ma-scroll"><table class="sl-table ma-table"><thead><tr>
+      <th data-ma-sort="n">Dish</th><th class="sl-hide-sm">Group</th><th class="r" data-ma-sort="q">Plates</th><th class="r sl-hide-sm" data-ma-sort="ap">Avg price</th>
+      <th class="r" data-ma-sort="f">Food cost</th><th class="r sl-hide-sm" data-ma-sort="cpu">Per plate</th><th class="r on" data-ma-sort="tc">Contribution</th></tr></thead>
+      <tbody data-ma-tb></tbody></table></div>
+  </div>
   {% else %}
-  <span class="cost-badge cost-derived-building" title="Provisional — engine-derived from partial recipe costing, not yet weigh-in confirmed">Provisional ~</span>
-  {% endif %}
-{% endmacro %}
-
-{% macro item_table(items) %}
-<div class="item-list">
-  {% for r in items %}
-  <div class="item-row">
-    <div class="item-info">
-      <span class="item-name">{{ r.item }}</span>
-      <span class="item-cat">{{ r.category }}</span>
-    </div>
-    <div class="item-stats">
-      <span class="stat"><strong>{{ "{:,.0f}".format(r.units) }}</strong> sold</span>
-      <span class="stat">₹{{ "{:.0f}".format(r.avg_price) }}</span>
-      {% if r.cost_confidence == 'reliable' %}
-      <span class="stat-margin">{{ "{:.0f}".format(r.margin_pct * 100) }}% margin</span>
-      {% else %}
-      {# Provisional: greyed, tilde-prefixed, labelled and tooltipped so the
-         number is never mistaken for a firm figure. #}
-      <span class="stat-margin stat-provisional"
-            title="Provisional — derived from partial recipe costing, not yet weigh-in confirmed. Not a firm figure.">~{{ "{:.0f}".format(r.margin_pct * 100) }}% margin (prov.)</span>
-      {% endif %}
-      {{ cost_badge(r) }}
-    </div>
-  </div>
-  {% endfor %}
-</div>
-{% endmacro %}
-
-{% set first_key = 'stars' if stars else ('workhorses' if workhorses else ('puzzles' if puzzles else ('dogs' if dogs else none))) %}
-
-{% if first_key %}
-<div data-tabs style="margin-top:1rem">
-  <div class="tabs">
-    {% if stars %}<button type="button" data-tab-btn="stars" class="tab-btn {% if first_key == 'stars' %}active{% endif %}">⭐ Stars</button>{% endif %}
-    {% if workhorses %}<button type="button" data-tab-btn="workhorses" class="tab-btn {% if first_key == 'workhorses' %}active{% endif %}">🐴 Workhorses</button>{% endif %}
-    {% if puzzles %}<button type="button" data-tab-btn="puzzles" class="tab-btn {% if first_key == 'puzzles' %}active{% endif %}">🧩 Puzzles</button>{% endif %}
-    {% if dogs %}<button type="button" data-tab-btn="dogs" class="tab-btn {% if first_key == 'dogs' %}active{% endif %}">🐾 Low Performers</button>{% endif %}
-  </div>
-
-  {% if stars %}
-  <section class="result-section section-star" data-tab-panel="stars" {% if first_key != 'stars' %}hidden{% endif %}>
-    <span class="section-badge badge-star">Push These</span>
-    <h2 class="section-title">⭐ Stars</h2>
-    <p class="section-desc">
-      High volume, high margin — your money-makers.
-      Feature them on WhatsApp, put them at the top of the menu,
-      and train staff to suggest them first.
-    </p>
-    {{ item_table(stars) }}
-  </section>
-  {% endif %}
-
-  {% if workhorses %}
-  <section class="result-section section-workhorse" data-tab-panel="workhorses" {% if first_key != 'workhorses' %}hidden{% endif %}>
-    <span class="section-badge badge-workhorse">Bundle These</span>
-    <h2 class="section-title">🐴 Workhorses</h2>
-    <p class="section-desc">
-      Customers love them, but the margin is thin.
-      Bundle with a high-margin side (naan, dessert, soup),
-      or try a small price increase.
-    </p>
-    {{ item_table(workhorses) }}
-  </section>
-  {% endif %}
-
-  {% if puzzles %}
-  <section class="result-section section-puzzle" data-tab-panel="puzzles" {% if first_key != 'puzzles' %}hidden{% endif %}>
-    <span class="section-badge badge-puzzle">Promote These</span>
-    <h2 class="section-title">🧩 Puzzles</h2>
-    <p class="section-desc">
-      Good margin but not many orders.
-      Post about them on Instagram or run a combo deal —
-      once customers try them, they tend to reorder.
-    </p>
-    {{ item_table(puzzles) }}
-  </section>
-  {% endif %}
-
-  {% if dogs %}
-  <section class="result-section section-dog" data-tab-panel="dogs" {% if first_key != 'dogs' %}hidden{% endif %}>
-    <span class="section-badge badge-dog">Review These</span>
-    <h2 class="section-title">🐾 Low Performers</h2>
-    <p class="section-desc">
-      Low orders and low margin.
-      Ask: are these slow to make? Do they use unique ingredients?
-      If yes, consider removing them to keep operations simple.
-    </p>
-    {{ item_table(dogs) }}
-  </section>
+  <div class="sl-card"><p class="sl-empty">No dine-in sales yet. <a href="/upload">Upload a Petpooja file</a> to get started.</p></div>
   {% endif %}
 </div>
-{% else %}
-<div class="card">
-  <p>No data found. <a href="/upload">Upload a POS file</a> to get started.</p>
-</div>
-{% endif %}
-
+<script id="ma-data" type="application/json">{{ data_json|safe }}</script>
+<script src="/static/menu.js?v=1" defer></script>
 {% endblock %}

@@ -225,12 +225,19 @@ def exclude_today(rows: list[dict], today) -> tuple[list[dict], int]:
 
 # ── Step 3: Resolve names ─────────────────────────────────────────────────────
 
-def build_resolver(seed: dict, menu_map: dict[str, MenuItem]) -> dict[str, str]:
+def pos_alias_map(db) -> dict[str, str]:
+    """pos_name -> menu item name, from pos_aliases (links made on Menu Analysis)."""
+    return {a.pos_name: a.menu_item.name for a in db.query(PosAlias).all()}
+
+
+def build_resolver(seed: dict, menu_map: dict[str, MenuItem], aliases: dict[str, str] | None = None) -> dict[str, str]:
     """Returns pos_name → canonical_name mapping for all known names."""
     resolver: dict[str, str] = {}
     # From pos_name_map
     for pos_name, canonical in seed.get("pos_name_map", {}).items():
         resolver[pos_name] = canonical
+    # Links saved in pos_aliases win over the seed file.
+    resolver.update(aliases or {})
     # Direct exact matches
     for name in menu_map:
         if name not in resolver:
@@ -373,7 +380,7 @@ def main(xlsx_path: str):
                 print(f"    line {e.line}: {e.message}")
 
         print("\n-- Step 3: Resolve and insert item_sales ----------------------------")
-        resolver = build_resolver(seed, menu_map)
+        resolver = build_resolver(seed, menu_map, pos_alias_map(db))
         matched, unmatched = load_sales(db, raw_rows, resolver)
 
         print("\n-- Step 4: Calculate ingredient usage and adjust Stock Log ----------")

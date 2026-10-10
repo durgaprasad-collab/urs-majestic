@@ -4,17 +4,17 @@ import logging
 import tempfile
 import decimal
 from fastapi import APIRouter, Request, Form, UploadFile, File, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.clock import business_today
 from datetime import date
 from app.services.task_engine import refresh_after_upload
 from scripts.import_pos import (
-    seed_menu_items, parse_xlsx, build_resolver, load_sales,
+    seed_menu_items, parse_xlsx, build_resolver, load_sales, pos_alias_map,
     exclude_today, upsert_daily_channel_sales, write_upload_log,
 )
-from app.services.menu_engineering.analysis import get_analysis
+from app.services import menu_page
 from app.services.uploads.petpooja_order_listing import (
     parse_order_listing_xlsx, aggregate_by_day, check_aggregator_alarm,
     find_unpaired_diffs, upsert_order_counts, cross_check_amounts, ALARM_MESSAGE,
@@ -110,7 +110,7 @@ async def upload_post(
         menu_map = seed_menu_items(db, seed)
         raw_rows, parse_errors, declared_total, declared_rows = parse_xlsx(tmp.name)
         raw_rows, excluded_today = exclude_today(raw_rows, business_today())
-        resolver = build_resolver(seed, menu_map)
+        resolver = build_resolver(seed, menu_map, pos_alias_map(db))
         imported_sales, _unmatched = load_sales(db, raw_rows, resolver)
         adjust_stock_for_sales(db, imported_sales)
         try:
@@ -268,36 +268,34 @@ def results(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         return redir
-
-    rows = get_analysis(db)
-
-    all_sales = db.query(ItemSale).all()
-    total_rev = float(sum(s.revenue for s in all_sales))
-    dates = [s.sale_date for s in all_sales]
-    date_from = _fmt_date(min(dates)) if dates else "—"
-    date_to = _fmt_date(max(dates)) if dates else "—"
-    engine_ran = request.query_params.get("engine") == "1"
-    today_excluded = request.query_params.get("today_excluded")
-    parse_errors_count = request.query_params.get("parse_errors")
-    parse_error_lines = request.query_params.get("parse_error_lines")
-
-    def _top10(cls: str) -> list:
-        bucket = [r for r in rows if r["classification"] == cls]
-        bucket.sort(key=lambda r: r["revenue"], reverse=True)
-        return bucket[:10]
-
+    raw = request.query_params.get("days", "")
+    data = menu_page.page(db, int(raw) if raw.isdigit() else 30)
     return _tmpl(request, "results.html", {
-        "user": user,
-        "stars": _top10("Star"),
-        "workhorses": _top10("Workhorse"),
-        "puzzles": _top10("Puzzle"),
-        "dogs": _top10("Dog"),
-        "total_rev": total_rev,
-        "date_from": date_from,
-        "date_to": date_to,
-        "item_count": len(rows),
-        "engine_ran": engine_ran,
-        "today_excluded": today_excluded,
-        "parse_errors_count": parse_errors_count,
-        "parse_error_lines": parse_error_lines,
+        "user": user, **data,
+        "data_json": json.dumps({k: data[k] for k in ("items", "median_q", "median_cpu", "days")} if data.get("items") else {"items": []}),
+        "notice": request.query_params.get("notice"),
+        "today_excluded": request.query_params.get("today_excluded"),
+        "parse_errors_count": request.query_params.get("parse_errors"),
+        "parse_error_lines": request.query_params.get("parse_error_lines"),
     })
+
+
+@router.post("/results/link")
+async def results_link(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    body = await request.json()
+    pos_name = (body.get("pos_name") or "").strip()
+    try:
+        mid = int(body.get("menu_item_id"))
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "Pick a menu item"}, status_code=400)
+    if not pos_name:
+        return JSONResponse({"error": "Missing name"}, status_code=400)
+    try:
+        n = menu_page.link(db, pos_name, mid)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    logger.info("menu link by %s: %r -> %s (%s rows)", user.username, pos_name, mid, n)
+    return JSONResponse({"ok": True, "rows": n})

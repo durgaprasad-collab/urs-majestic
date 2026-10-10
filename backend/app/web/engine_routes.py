@@ -188,7 +188,7 @@ async def run_engine(request: Request, db: Session = Depends(get_db)):
         return redir
     run_cost_engine(db)
     db.commit()
-    return RedirectResponse("/results?engine=1", status_code=303)
+    return RedirectResponse("/results?notice=Food+costs+recalculated.", status_code=303)
 
 
 @router.get("/reconciliation", response_class=HTMLResponse)
