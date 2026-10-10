@@ -190,8 +190,17 @@
   function ingcard() {
     const i = ingById[icur], el = $('[data-rp-ingcard]');
     if (!i) { el.innerHTML = '<p class="sl-empty">Pick an ingredient.</p>'; return; }
+    // Dishes using it directly, plus combos through their parts (Combo 01 =
+    // half a Jeera Rice), the way stock deduction counts them. A combo's own
+    // legacy lines are skipped, as the cost engine does.
     const uses = [];
-    D.dishes.forEach(d => (D.lines[d.id] || []).forEach(l => { if (l.iid === i.id) uses.push({ d, l }); }));
+    D.dishes.forEach(d => {
+      if (d.combo) {
+        (D.combos[d.id] || []).forEach(c => (c.id ? D.lines[c.id] || [] : []).forEach(l => {
+          if (l.iid === i.id) uses.push({ d, l: { ...l, g: l.g != null ? +(l.g * c.pf).toFixed(2) : null, via: `${c.pf} × ${byId[c.id]?.n || 'dish'}` } });
+        }));
+      } else (D.lines[d.id] || []).forEach(l => { if (l.iid === i.id) uses.push({ d, l }); });
+    });
     uses.sort((a, b) => (b.l.g || 0) * plates(b.d) - (a.l.g || 0) * plates(a.d));
     const grams = uses.reduce((s, u) => s + (u.l.g || 0) * plates(u.d), 0);
     const div = i.u === 'kg' || i.u === 'l' ? 1000 : i.u === 'pcs' && i.pack_g ? i.pack_g : 1;
@@ -205,7 +214,7 @@
         <div><span>Bought</span><b>${(i.bought || 0).toFixed(1)} ${unit}</b><small>kitchen purchases, same days</small></div>
         <div><span>Gap</span><b class="rp-fc ${gapc}">${gap == null ? '—' : (gap > 0 ? '+' : '') + gap.toFixed(0) + '%'}</b><small>${gap == null ? 'nothing bought in these days' : gap > 15 ? 'bought more than recipes use: real portions may be bigger' : gap < -15 ? 'recipes use more than was bought: grams may be too high' : 'recipes match what you buy'}</small></div></div>` : '<p class="rp-note">Not a recipe item: not costed per dish and not taken off stock by sales.</p>'}
       <table class="sl-table"><thead><tr><th>Dish</th><th class="r">Grams</th><th class="sl-hide-sm">Grams are</th><th class="r">Plates</th><th class="r">Used</th></tr></thead><tbody>
-      ${uses.map(u => `<tr><td><a href="#" data-open="${u.d.id}"><b>${esc(u.d.n)}</b></a></td><td class="r">${u.l.g ?? '—'} <small>${u.l.u}</small></td>
+      ${uses.map(u => `<tr><td><a href="#" data-open="${u.d.id}"><b>${esc(u.d.n)}</b></a>${u.l.via ? `<small class="sl-muted"> via ${esc(u.l.via)}</small>` : ''}</td><td class="r">${u.l.g ?? '—'} <small>${u.l.u}</small></td>
         <td class="sl-hide-sm">${u.l.conflict ? '<span class="rp-tag x">two weights</span>' : u.l.src === 'weighed' ? '<span class="rp-tag m">confirmed</span>' : '<span class="rp-tag e">estimate</span>'}</td>
         <td class="r">${plates(u.d)}</td><td class="r"><b>${((u.l.g || 0) * plates(u.d) / div).toFixed(div === 1 ? 0 : 2)} ${unit}</b></td></tr>`).join('') || '<tr><td colspan="5" class="sl-muted">Not in any recipe yet.</td></tr>'}
       </tbody></table>

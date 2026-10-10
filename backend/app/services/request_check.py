@@ -88,16 +88,30 @@ def check(db: Session, ingredient_id: int, before: datetime.datetime | None = No
     today = business_today()
     since = last["d"] if last else today - datetime.timedelta(days=30)
     d30 = today - datetime.timedelta(days=30)
+    # Dishes using it directly, plus combos through their parts (Combo 01 =
+    # half a Jeera Rice, ...) -- the same way stock deduction explodes combos.
+    # A combo's own legacy map rows are ignored, as the cost engine does.
     dishes = db.execute(text("""
-        SELECT mi.id, mi.name, coalesce(m.grams_override, m.portion_override_g) AS g,
-               coalesce((SELECT sum(qty) FROM item_sales s WHERE s.item_name = mi.name AND s.sale_date >= :since), 0)
+        WITH uses AS (
+            SELECT mi.id, mi.name, coalesce(m.grams_override, m.portion_override_g) AS g
+              FROM ingredient_dish_map m JOIN menu_items mi ON mi.id = m.menu_item_id
+             WHERE m.ingredient_id = :i AND mi.is_active
+               AND mi.id NOT IN (SELECT combo_menu_item_id FROM combo_components)
+            UNION ALL
+            SELECT cm.id, cm.name, c.portion_factor * coalesce(m.grams_override, m.portion_override_g)
+              FROM combo_components c
+              JOIN menu_items cm ON cm.id = c.combo_menu_item_id
+              JOIN ingredient_dish_map m ON m.menu_item_id = c.component_menu_item_id
+             WHERE m.ingredient_id = :i AND cm.is_active
+        ), per AS (SELECT id, name, sum(g) AS g FROM uses GROUP BY id, name)
+        SELECT per.id, per.name, per.g,
+               coalesce((SELECT sum(qty) FROM item_sales s WHERE s.item_name = per.name AND s.sale_date >= :since), 0)
              + coalesce((SELECT sum(oi.quantity) FROM order_items oi JOIN orders o ON o.id = oi.order_id
-                          WHERE oi.menu_item_id = mi.id AND o.placed_at::date >= :since), 0) AS plates,
-               coalesce((SELECT sum(qty) FROM item_sales s WHERE s.item_name = mi.name AND s.sale_date >= :d30), 0)
+                          WHERE oi.menu_item_id = per.id AND o.placed_at::date >= :since), 0) AS plates,
+               coalesce((SELECT sum(qty) FROM item_sales s WHERE s.item_name = per.name AND s.sale_date >= :d30), 0)
              + coalesce((SELECT sum(oi.quantity) FROM order_items oi JOIN orders o ON o.id = oi.order_id
-                          WHERE oi.menu_item_id = mi.id AND o.placed_at::date >= :d30), 0) AS plates30
-          FROM ingredient_dish_map m JOIN menu_items mi ON mi.id = m.menu_item_id
-         WHERE m.ingredient_id = :i AND mi.is_active
+                          WHERE oi.menu_item_id = per.id AND o.placed_at::date >= :d30), 0) AS plates30
+          FROM per
     """), {"i": ingredient_id, "since": since, "d30": d30}).mappings().all()
     plates = sum(float(d["plates"]) for d in dishes)
     used = sum(float(d["plates"]) * float(d["g"] or 0) for d in dishes) / div
