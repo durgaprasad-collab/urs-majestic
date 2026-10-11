@@ -82,7 +82,7 @@
 <header>
   <div><b>Rush slips</b><small>Test version · owner only · not in the staff app yet</small></div>
   <span class="clock" id="clock"></span>
-  <a href="/daily-brief">Admin →</a>
+  <a href="/daily-brief" id="adminlink">Admin →</a>
 </header>
 <main>
   <p class="note">Use this in <b>Chrome</b> on your phone. <b>Send</b> prints that order's station slips; <b>Print all</b> prints the full board (every open order, pooled). Enter the <b>Petpooja KOT number</b> for every order. Tap <b>Ready</b> on each dish as it comes off the station; ready dishes drop off the slips. Each order is due 12 minutes after it's sent. Pick your printer in Chrome's print screen; a Bluetooth thermal printer needs its Android print service installed.</p>
@@ -111,6 +111,8 @@
 <script id="rush-data" type="application/json">{{ data_json|safe }}</script>
 <script>
 (function () {
+  // Inside the URS Rush app the page is all there is: no way into the full admin.
+  if (/URSRushApp/.test(navigator.userAgent)) document.getElementById('adminlink').remove();
   const D = JSON.parse(document.getElementById('rush-data').textContent);
   const $ = s => document.querySelector(s);
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

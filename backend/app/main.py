@@ -52,6 +52,21 @@ app.add_middleware(
     same_site="lax",
 )
 
+# URS Rush app (rush-app/, Capacitor shell; appends "URSRushApp" to its user
+# agent): keep it on the Rush page. Any other admin page it lands on (the
+# sign-in default, a stray link) goes back to /rush.
+_RUSH_ALLOWED = ("/rush", "/login", "/logout", "/static/", "/change-password", "/health")
+
+
+@app.middleware("http")
+async def keep_rush_app_on_rush(request, call_next):
+    if "URSRushApp" in request.headers.get("user-agent", "") and request.method == "GET" \
+            and not request.url.path.startswith(_RUSH_ALLOWED):
+        from fastapi.responses import RedirectResponse as _R
+        return _R("/rush", status_code=302)
+    return await call_next(request)
+
+
 # ── Static files ───────────────────────────────────────────────────────────────
 _STATIC = os.path.join(os.path.dirname(__file__), "web", "static")
 app.mount("/static", StaticFiles(directory=_STATIC), name="static")
