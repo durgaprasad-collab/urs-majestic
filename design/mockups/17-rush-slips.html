@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 17 · Rush slips</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.5}.mk b{color:#fff}
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 20px 60px}
+  h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .sub{color:var(--ink-2);font-size:13px;margin:2px 0 16px;max-width:820px}
+  h2{font-size:15px;margin:0 0 10px;color:var(--ground)}
+  .cols{display:grid;grid-template-columns:360px 1fr;gap:22px;align-items:start}
+  /* phone */
+  .phone{background:#fff;border:1px solid var(--line);border-radius:26px;padding:14px;box-shadow:0 10px 30px rgba(6,32,19,.08);position:sticky;top:14px}
+  .ph-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .ph-top b{font-size:16px}.clock{font:700 13px 'JetBrains Mono',monospace;color:var(--ink-2)}
+  .seg{display:flex;gap:6px;margin-bottom:8px}
+  .seg button{flex:1;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 4px;font:600 12.5px Inter;cursor:pointer}
+  .seg button.on{background:var(--ground);color:var(--gold-2);border-color:var(--ground)}
+  .tbl{display:flex;gap:6px;margin-bottom:8px;align-items:center;font-size:12px;color:var(--ink-2)}
+  .tbl input{width:70px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;font:600 13px Inter}
+  .chips{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:300px;overflow:auto}
+  .chip{display:flex;justify-content:space-between;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;font:600 12.5px Inter;text-align:left;cursor:pointer}
+  .chip small{color:var(--ink-3);font-weight:500}.chip:active{background:#FFF6DA}
+  .cart{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px;min-height:40px;font-size:13px}
+  .cart div{display:flex;justify-content:space-between;padding:3px 0}
+  .send{width:100%;margin-top:10px;border:0;border-radius:12px;padding:13px;background:var(--gold);color:var(--ground);font:800 15px Inter;cursor:pointer}
+  .send:disabled{opacity:.4}
+  .open{margin-top:12px;font-size:12px;color:var(--ink-2)}
+  .open div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F0EEE6}
+  .due{font:700 12px 'JetBrains Mono',monospace}.due.late{color:var(--bad)}.due.ok{color:var(--good)}
+  /* slips */
+  .slips{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+  .slip{background:#fffef9;border-radius:4px;padding:14px 14px 18px;font:500 13px/1.45 'JetBrains Mono',monospace;color:#111;box-shadow:0 2px 0 #e9e6da,0 8px 20px rgba(0,0,0,.08);position:relative}
+  .slip:after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:6px;background:radial-gradient(circle at 5px -1px,transparent 5px,#fffef9 5px) 0 0/10px 6px repeat-x}
+  .slip h3{font:700 16px 'JetBrains Mono',monospace;text-align:center;letter-spacing:.08em}
+  .slip .meta{text-align:center;font-size:11px;color:#555;border-bottom:1px dashed #999;padding-bottom:6px;margin-bottom:6px}
+  .ln{display:grid;grid-template-columns:52px 1fr;gap:6px;padding:5px 0;border-bottom:1px dotted #ccc}
+  .ln .t{font-weight:700}.ln .t.now{background:#111;color:#fff;text-align:center;border-radius:3px}
+  .ln b{font-size:14px}.ln small{display:block;color:#555;font-size:11.5px}
+  .slip .tot{margin-top:8px;font-size:11.5px;color:#444;text-align:center}
+  .pack .ord{padding:6px 0;border-bottom:1px dashed #999}
+  .pack .ord b{font-size:14px}.pack .ord .box{font-size:12px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:22px}
+  .cap{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .cap p{font-size:12px;color:var(--ink-3)}
+  .prep{display:grid;grid-template-columns:repeat(4,1fr)}
+  .prep>div{padding:12px 16px;border-right:1px solid var(--line)}.prep>div:last-child{border-right:0}
+  .prep h4{font-size:13px;margin-bottom:6px;color:var(--ground)}
+  .prep li{list-style:none;font-size:12.5px;padding:4px 0;border-bottom:1px solid #F3F1EA;display:flex;justify-content:space-between;gap:8px}
+  .prep li b{white-space:nowrap}
+  .how{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 18px}
+  .how div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:12.5px;color:var(--ink-2)}
+  .how b{display:block;color:var(--ink);font-size:13px;margin-bottom:3px}
+  @media (max-width:900px){.cols{grid-template-columns:1fr}.phone{position:static}.prep,.how{grid-template-columns:1fr 1fr}.wrap{padding:14px 16px 40px}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 17 · Rush slips.</b> Your real peak: Friday 2 Oct, 10:00–10:08 PM, orders #41–#46, 15 dishes in 8 minutes (from the Petpooja order listing). The slips on the right are worked out live at 10:08. Add an order on the phone to see them change. Cook times are my estimates; you'd set them.</div>
+<div class="wrap">
+  <h1>Rush slips</h1>
+  <p class="sub">Orders are cooked by station, not one by one. Each order is due 12 minutes after it's taken. Every item gets a "start by" time so all parts of an order finish together. The same dish is pooled across orders into one batch.</p>
+  <div class="how">
+    <div><b>1 · Captain taps the order</b>Phone, about 10 seconds. Combos split into their parts automatically.</div>
+    <div><b>2 · Station slips print</b>One per station: what to cook, how many, start by when, and for which orders.</div>
+    <div><b>3 · Batch, then stagger</b>Wok ×2–3, tandoor 6–8 breads, fryer ×4. Long items start first; breads go in last.</div>
+    <div><b>4 · Packing slip</b>Orders listed by due time with a box-by-box checklist. Out in 10–16 minutes.</div>
+  </div>
+  <div class="cols">
+    <div class="phone">
+      <div class="ph-top"><b>New order</b><span class="clock" id="clock"></span></div>
+      <div class="seg" id="type"><button class="on" data-t="Dine-in">Dine-in</button><button data-t="Parcel">Parcel</button><button data-t="Zomato">Zomato</button><button data-t="Swiggy">Swiggy</button></div>
+      <div class="tbl">Table / ref <input id="ref" placeholder="T5"></div>
+      <div class="chips" id="chips"></div>
+      <div class="cart" id="cart"><span style="color:var(--ink-3)">Tap dishes to add.</span></div>
+      <button class="send" id="send" disabled>Send to kitchen · print slips</button>
+      <div class="open" id="open"></div>
+    </div>
+    <div>
+      <h2>Printed slips</h2>
+      <div class="slips" id="slips"></div>
+      <div class="card">
+        <div class="cap"><div><h2 style="margin:0">Before the rush · Fri/Sat 8:30 PM prep card</h2><p>From your last four Saturdays, scaled to the 61% of Fri/Sat dishes that come after 8:30 PM. Ready these and the rush is mostly assembly plus breads.</p></div></div>
+        <div class="prep" id="prep"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Station, cook minutes and batch size per dish (estimates; owner sets them).
+const ST = {T: 'TANDOOR', W: 'WOK / CHINESE', G: 'GRAVY + RICE', F: 'FRYER / TAWA'};
+const D = {
+  'Butter Naan': ['T', 3, 'pc'], 'Garlic Naan': ['T', 3, 'pc'], 'Roti': ['T', 2, 'pc'], 'Paneer Tikka': ['T', 8, 'plate'],
+  'Gobi Fried Rice': ['W', 5, 'plate'], 'Mixed Fried Rice': ['W', 5, 'plate'], 'Paneer Fried Rice': ['W', 5, 'plate'], 'Veg Noodles': ['W', 5, 'plate'],
+  'Chilli Parotta': ['W', 5, 'plate'], 'Baby Corn Manchurian': ['W', 5, 'plate'], 'Mushroom Manchurian': ['W', 5, 'half'], 'Chilli Mushroom': ['W', 5, 'half'],
+  'Paneer Butter Masala': ['G', 3, 'ladle'], 'Dal Tadka': ['G', 2, 'ladle'], 'Jeera Rice': ['G', 1, 'scoop'], 'Channa': ['G', 2, 'ladle'], 'Mushroom Briyani': ['G', 2, 'plate'],
+  'Gobi Noodles': ['W', 5, 'plate'], 'Gobi Manchurian': ['W', 5, 'plate'], 'Chilli Gobi': ['W', 5, 'plate'], 'Chilli Garlic Fried Rice': ['W', 5, 'plate'],
+  'Naan': ['T', 3, 'pc'], 'Masala Kulcha': ['T', 4, 'pc'], 'Aloo Gobi Masala': ['G', 3, 'ladle'], 'Veg Briyani': ['G', 2, 'plate'],
+  'Paneer 65': ['F', 4, 'half'], 'Gobi 65': ['F', 4, 'plate'], 'Chappati': ['F', 4, 'pc'], 'Phulka': ['F', 3, 'pc'], 'Batura': ['F', 3, 'pc'],
+};
+// Menu items -> parts (combos split; 2-piece breads become 2 pcs).
+const MENU = {
+  'Combo 01 · N. Indian Meal': [['Roti', 1], ['Paneer Butter Masala', .5], ['Dal Tadka', .5], ['Jeera Rice', .5]],
+  'Combo 02 · Paneer Power': [['Butter Naan', 2], ['Paneer Butter Masala', .5], ['Paneer 65', .5]],
+  'Combo 05 · Chinese Box': [['Mixed Fried Rice', .5], ['Mushroom Manchurian', .5], ['Chilli Mushroom', .5]],
+  'Chappati with Channa': [['Chappati', 2], ['Channa', 1]], 'Gobi Fried Rice': [['Gobi Fried Rice', 1]], 'Chilli Parotta': [['Chilli Parotta', 1]],
+  'Phulka (2)': [['Phulka', 2]], 'Butter Naan': [['Butter Naan', 1]], 'Paneer Tikka': [['Paneer Tikka', 1]], 'Channa Batura': [['Batura', 2], ['Channa', 1]],
+  'Mixed Fried Rice': [['Mixed Fried Rice', 1]], 'Paneer Fried Rice': [['Paneer Fried Rice', 1]], 'Mushroom Briyani': [['Mushroom Briyani', 1]],
+  'Veg Noodles': [['Veg Noodles', 1]], 'Garlic Naan': [['Garlic Naan', 1]], 'Baby Corn Manchurian': [['Baby Corn Manchurian', 1]],
+  'Paneer Butter Masala': [['Paneer Butter Masala', 1]], 'Gobi 65': [['Gobi 65', 1]],
+  'Gobi Noodles': [['Gobi Noodles', 1]], 'Gobi Manchurian': [['Gobi Manchurian', 1]], 'Chilli Gobi': [['Chilli Gobi', 1]],
+  'Chilli Garlic Fried Rice': [['Chilli Garlic Fried Rice', 1]], 'Naan': [['Naan', 1]], 'Masala Kulcha': [['Masala Kulcha', 1]],
+  'Aloo Gobi Masala': [['Aloo Gobi Masala', 1]], 'Veg Briyani': [['Veg Briyani', 1]],
+  'Briyani Express · Veg': [['Veg Briyani', 1], ['Gobi 65', .5]],
+};
+const DUE = 12, PACK = 1, BATCH = {W: 3, F: 4, T: 8, G: 99};
+const t0 = 22 * 60; // 10:00 PM, Fri 2 Oct
+const fmt = m => { const h = Math.floor(m / 60) % 24, mm = String(Math.round(m % 60)).padStart(2, '0'); return `${h > 12 ? h - 12 : h}:${mm}`; };
+let now = t0 + 8;
+const ORDERS = [  // real Petpooja orders, Fri 2 Oct 2026, 10:00-10:14 PM (all billed as Pick Up)
+  {no: 41, type: 'Pick Up', ref: '22:00', at: t0, items: [['Gobi Noodles', 1]]},
+  {no: 42, type: 'Pick Up', ref: '22:01', at: t0 + 1, items: [['Gobi Manchurian', 1]]},
+  {no: 43, type: 'Pick Up', ref: '22:02', at: t0 + 2, items: [['Butter Naan', 1], ['Paneer Butter Masala', 1], ['Phulka (2)', 1]]},
+  {no: 44, type: 'Pick Up', ref: '22:05', at: t0 + 5, items: [['Aloo Gobi Masala', 1], ['Butter Naan', 1], ['Masala Kulcha', 1], ['Phulka (2)', 1]]},
+  {no: 45, type: 'Pick Up', ref: '22:05', at: t0 + 5, items: [['Briyani Express · Veg', 1]]},
+  {no: 46, type: 'Pick Up', ref: '22:08', at: t0 + 8, items: [['Chilli Gobi', 1], ['Gobi Noodles', 1], ['Combo 01 · N. Indian Meal', 1], ['Veg Briyani', 1]]},
+];
+let cart = [], type = 'Dine-in';
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
+
+function parts() {
+  // [{dish, st, qty, order, start, due}]
+  const out = [];
+  for (const o of ORDERS) {
+    const due = o.at + DUE;
+    for (const [mi, n] of o.items) for (const [dish, f] of MENU[mi]) {
+      const [st, cook] = D[dish];
+      out.push({dish, st, qty: f * n, order: o.no, due, start: due - PACK - cook});
+    }
+  }
+  return out;
+}
+function render() {
+  document.getElementById('clock').textContent = fmt(now) + ' PM';
+  const P = parts();
+  let html = '';
+  for (const st of ['T', 'W', 'G', 'F']) {
+    const rows = P.filter(p => p.st === st).sort((a, b) => a.start - b.start);
+    // pool same dish whose start times are within 4 minutes, up to the batch size
+    const batches = [];
+    for (const p of rows) {
+      const b = batches.find(b => b.dish === p.dish && p.start - b.start <= 4 && b.qty + p.qty <= BATCH[st] + .01);
+      if (b) { b.qty += p.qty; if (!b.orders.includes(p.order)) b.orders.push(p.order); }
+      else batches.push({dish: p.dish, qty: p.qty, start: p.start, orders: [p.order]});
+    }
+    batches.sort((a, b) => a.start - b.start);
+    const total = rows.reduce((s, p) => s + p.qty, 0);
+    html += `<div class="slip"><h3>${ST[st]}</h3><div class="meta">printed ${fmt(now)} PM · ${batches.length} batches</div>
+      ${batches.map(b => { const unit = D[b.dish][2]; const q = unit === 'half' ? `${b.qty * 2} half` : (b.qty % 1 && unit !== 'ladle' && unit !== 'scoop') ? `${b.qty * 2} half` : unit === 'ladle' || unit === 'scoop' ? `${+b.qty.toFixed(1)} ${unit}` : `×${+b.qty.toFixed(1)}`;
+        return `<div class="ln"><span class="t ${b.start <= now ? 'now' : ''}">${b.start <= now ? 'NOW' : fmt(b.start)}</span><span><b>${esc(b.dish)} ${q}</b><small>for #${b.orders.join(' #')}</small></span></div>`; }).join('')}
+      <div class="tot">${+total.toFixed(1)} portions · fire the black lines now</div></div>`;
+  }
+  // packing slip
+  const ord = ORDERS.slice().sort((a, b) => (a.at + DUE) - (b.at + DUE));
+  html += `<div class="slip pack"><h3>PACK / PASS</h3><div class="meta">by due time · target ${DUE} min</div>
+    ${ord.map(o => `<div class="ord"><b>#${o.no} ${o.type} ${esc(o.ref)}</b> <span style="float:right;font-weight:700">due ${fmt(o.at + DUE)}</span>
+      <div class="box">${o.items.map(([m, n]) => `□ ${n}× ${esc(m)}`).join('<br>')}</div></div>`).join('')}</div>`;
+  document.getElementById('slips').innerHTML = html;
+  document.getElementById('open').innerHTML = '<b>Open orders</b>' + ord.map(o => {
+    const left = o.at + DUE - now; return `<div><span>#${o.no} ${o.type} ${esc(o.ref)}</span><span class="due ${left < 3 ? 'late' : 'ok'}">due ${fmt(o.at + DUE)} · ${left} min</span></div>`; }).join('');
+}
+// phone
+document.getElementById('chips').innerHTML = Object.keys(MENU).map(m => `<button class="chip" data-m="${esc(m)}">${esc(m)}<small>+</small></button>`).join('');
+document.getElementById('chips').onclick = e => { const b = e.target.closest('[data-m]'); if (!b) return; const c = cart.find(x => x[0] === b.dataset.m); c ? c[1]++ : cart.push([b.dataset.m, 1]); drawCart(); };
+document.getElementById('type').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; type = b.dataset.t; document.querySelectorAll('#type button').forEach(x => x.classList.toggle('on', x === b)); };
+function drawCart() {
+  document.getElementById('cart').innerHTML = cart.length ? cart.map(([m, n], i) => `<div><span>${n}× ${esc(m)}</span><a href="#" data-x="${i}" style="color:var(--bad)">remove</a></div>`).join('') : '<span style="color:var(--ink-3)">Tap dishes to add.</span>';
+  document.getElementById('send').disabled = !cart.length;
+}
+document.getElementById('cart').onclick = e => { const x = e.target.closest('[data-x]'); if (!x) return; e.preventDefault(); cart.splice(+x.dataset.x, 1); drawCart(); };
+document.getElementById('send').onclick = () => {
+  now += 1;
+  ORDERS.push({no: ORDERS[ORDERS.length - 1].no + 1, type, ref: document.getElementById('ref').value || (type === 'Dine-in' ? 'T?' : '—'), at: now, items: cart.slice()});
+  cart = []; drawCart(); render();
+};
+// prep card from Saturday averages (whole day; scale to dinner as you see fit)
+const SAT = {'Combo 01 · N. Indian Meal': 15.8, 'Combo 02 · Paneer Power': 14.5, 'Chappati with Channa': 9.8, 'Gobi Fried Rice': 7.8, 'Phulka (2)': 6.5, 'Chilli Parotta': 6.5,
+  'Butter Naan': 5.8, 'Paneer Tikka': 4.5, 'Channa Batura': 4.2, 'Mixed Fried Rice': 4.0, 'Paneer Fried Rice': 3.8, 'Mushroom Briyani': 3.8, 'Veg Noodles': 3.5,
+  'Garlic Naan': 3.2, 'Combo 05 · Chinese Box': 3.0, 'Baby Corn Manchurian': 2.8, 'Paneer Butter Masala': 2.5, 'Gobi 65': 2.2};
+const need = {};
+const EVENING = 0.61; // share of Fri/Sat dishes ordered after 8:30 PM (order listings, Jun–Oct)
+for (const [m, n] of Object.entries(SAT)) for (const [d, f] of MENU[m]) need[d] = (need[d] || 0) + f * n * EVENING;
+const PREP = {
+  T: [['Naan dough balls', (need['Butter Naan'] || 0) + (need['Garlic Naan'] || 0), 'balls'], ['Roti dough balls', need['Roti'] || 0, 'balls'], ['Paneer tikka, marinated & skewered', need['Paneer Tikka'] || 0, 'plates']],
+  W: [['Cooked rice, cooled (fried rice base)', (need['Gobi Fried Rice'] + need['Mixed Fried Rice'] + need['Paneer Fried Rice']) * .2, 'kg'], ['Noodles, boiled & oiled', need['Veg Noodles'] * .15, 'kg'], ['Parotta, shredded', need['Chilli Parotta'], 'plates'], ['Par-fried gobi / baby corn / mushroom', need['Baby Corn Manchurian'] + need['Mushroom Manchurian'] * 2 + need['Chilli Mushroom'] * 2, 'portions']],
+  G: [['Paneer butter masala, hot box', need['Paneer Butter Masala'], 'portions'], ['Dal tadka, hot box', need['Dal Tadka'], 'portions'], ['Jeera rice, hot box', need['Jeera Rice'], 'portions'], ['Channa masala', need['Channa'], 'portions'], ['Mushroom briyani (dum)', need['Mushroom Briyani'], 'plates']],
+  F: [['Chappati dough / rolled', need['Chappati'], 'pcs'], ['Phulka rolled', need['Phulka'], 'pcs'], ['Batura dough balls', need['Batura'], 'balls'], ['Paneer & gobi 65, par-fried', need['Paneer 65'] * 2 + need['Gobi 65'], 'half-portions']],
+};
+document.getElementById('prep').innerHTML = ['T', 'W', 'G', 'F'].map(s => `<div><h4>${ST[s]}</h4><ul>${PREP[s].map(([n, q, u]) => `<li><span>${n}</span><b>${u === 'kg' ? (Math.ceil(q * 10) / 10) : Math.ceil(q)} ${u}</b></li>`).join('')}</ul></div>`).join('');
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rush slips (test) — URS Majestic</title>
+<link rel="stylesheet" href="/static/fonts/fonts.css?v=1">
+<style>
+  :root { --g: #062013; --gold: #D4A62A; --gold2: #E9C55A; --bg: #F3F2EC; --ink: #14201B; --ink2: #56645D; --ink3: #98A39D; --line: #E4E1D6; --bad: #C2412D; --warn: #B7791F; --ok: #1E8A5A; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.35 Inter, system-ui, sans-serif; padding-bottom: 40px; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; background: var(--g); color: #fff; }
+  header b { font: 700 18px Cinzel, serif; color: var(--gold2); } header small { display: block; font-size: 11.5px; color: #c9d6cd; }
+  header a { color: #c9d6cd; font-size: 13px; text-decoration: none; }
+  .clock { font: 700 15px ui-monospace, Menlo, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 12px 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  h2 { font-size: 16px; margin-bottom: 10px; }
+  .types { display: flex; gap: 6px; margin-bottom: 8px; }
+  .types button { flex: 1; padding: 11px 4px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font: 600 13.5px Inter, sans-serif; }
+  .types button.on { background: var(--g); border-color: var(--g); color: var(--gold2); }
+  .row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .row input { min-width: 0; padding: 11px 10px; border: 1px solid var(--line); border-radius: 10px; font: 500 15px Inter, sans-serif; }
+  #ref { width: 92px; flex: none; } #q { flex: 1; }
+  .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 330px; overflow-y: auto; }
+  .chip { padding: 12px 9px; border: 1px solid var(--line); border-radius: 10px; background: #FBFAF6; text-align: left; font: 600 13.5px/1.2 Inter, sans-serif; color: var(--ink); }
+  .chip:active { background: #FFF3C4; }
+  .chip small { display: block; margin-top: 2px; font-weight: 500; font-size: 11px; color: var(--ink3); }
+  .cart { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 6px; }
+  .line { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; font-size: 14.5px; }
+  .qty { display: flex; align-items: center; gap: 10px; }
+  .qty button { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; }
+  .send { width: 100%; margin-top: 10px; padding: 14px; border: 0; border-radius: 12px; background: var(--gold); color: var(--g); font: 800 16px Inter, sans-serif; }
+  .send:disabled { opacity: .4; }
+  .err { margin-top: 8px; color: var(--bad); font-size: 14px; }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .head h2 { margin: 0; }
+  .ghost { padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font: 600 13px Inter, sans-serif; }
+  .ord { border: 1px solid var(--line); border-left: 5px solid var(--ok); border-radius: 10px; padding: 10px; margin-top: 8px; }
+  .ord.soon { border-left-color: var(--warn); } .ord.late { border-left-color: var(--bad); background: #FFF6F4; }
+  .otop { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 14.5px; }
+  .due { font-weight: 800; font-size: 13.5px; } .ord.late .due { color: var(--bad); }
+  .items { margin: 6px 0 8px; font-size: 13.5px; color: #333; }
+  .acts { display: flex; gap: 8px; }
+  .acts button { flex: 1; padding: 10px; border-radius: 9px; border: 1px solid var(--line); background: #fff; font: 600 14px Inter, sans-serif; }
+  .acts .pk { background: var(--g); border-color: var(--g); color: #fff; }
+  .muted { color: var(--ink3); font-size: 13.5px; }
+  .note { font-size: 12.5px; color: var(--ink2); background: #FFF8E1; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  /* slips (on screen and printed) */
+  .slips { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .slip { background: #FFFEF8; border: 1px dashed #bbb; border-radius: 6px; padding: 10px; font: 500 14px/1.4 ui-monospace, Menlo, Consolas, monospace; color: #000; }
+  .slip-h { text-align: center; font-weight: 800; font-size: 17px; letter-spacing: .06em; }
+  .slip-m { text-align: center; font-size: 11.5px; border-bottom: 1px dashed #888; padding-bottom: 5px; margin-bottom: 4px; }
+  .slip-l { display: grid; grid-template-columns: 56px 1fr; gap: 6px; padding: 5px 0; border-bottom: 1px dotted #bbb; }
+  .slip-l b { font-size: 15px; } .slip-l small { display: block; font-size: 12px; }
+  .slip-t { font-weight: 800; } .slip-t.now { background: #000; color: #fff; text-align: center; border-radius: 3px; }
+  .slip-o { padding: 6px 0; border-bottom: 1px dashed #888; } .slip-due { float: right; font-weight: 800; }
+  @media print {
+    @page { size: 80mm auto; margin: 3mm; }
+    header, main > .card, .note, .no-print { display: none !important; }
+    body { background: #fff; padding: 0; }
+    main { padding: 0; max-width: none; }
+    .slips { display: block; width: 74mm; }
+    .slip { border: 0; border-bottom: 2px dashed #000; border-radius: 0; background: #fff; break-after: page; page-break-after: always; margin: 0 0 4mm; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div><b>Rush slips</b><small>Test version · owner only · not in the staff app yet</small></div>
+  <span class="clock" id="clock"></span>
+  <a href="/daily-brief">Admin →</a>
+</header>
+<main>
+  <p class="note">Use this in <b>Chrome</b> on your phone. <b>Send</b> prints that order's station slips; <b>Print all</b> prints the full board (every open order, pooled). Each order is due 12 minutes after it's sent. Pick your printer in Chrome's print screen; a Bluetooth thermal printer needs its Android print service installed.</p>
+  <section class="card">
+    <h2>New order</h2>
+    <div class="types" id="types"></div>
+    <div class="row"><input id="ref" placeholder="Table / ref" autocomplete="off"><input id="q" placeholder="Search dish" autocomplete="off"></div>
+    <div class="chips" id="chips"></div>
+    <div class="cart" id="cart" hidden></div>
+    <div class="err" id="err" hidden></div>
+    <button class="send" id="send" disabled>Send to kitchen · print slips</button>
+  </section>
+  <section class="card">
+    <div class="head"><h2>Open orders</h2><button class="ghost" id="printall" hidden>Print all slips</button></div>
+    <div id="orders"><p class="muted">Loading…</p></div>
+  </section>
+  <section id="printarea" class="slips" hidden></section>
+</main>
+<script id="rush-data" type="application/json">{{ data_json|safe }}</script>
+<script>
+(function () {
+  const D = JSON.parse(document.getElementById('rush-data').textContent);
+  const $ = s => document.querySelector(s);
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const short = n => n.replace(' (2 Nos)', ' (2)').replace(' (1 No)', '').replace(/^Combo (\d+\w?) - /, 'C$1 · ');
+  let type = D.types[0], cart = [], board = null;
+
+  function tick() { $('#clock').textContent = new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); }
+  tick(); setInterval(tick, 15000);
+
+  $('#types').innerHTML = D.types.map(t => `<button data-t="${t}" class="${t === type ? 'on' : ''}">${t}</button>`).join('');
+  $('#types').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; type = b.dataset.t; document.querySelectorAll('#types button').forEach(x => x.classList.toggle('on', x === b)); };
+
+  function chips() {
+    const q = $('#q').value.trim().toLowerCase();
+    const list = (q ? D.menu.filter(m => m.name.toLowerCase().includes(q)) : D.menu).slice(0, q ? 40 : 24);
+    $('#chips').innerHTML = list.map(m => `<button class="chip" data-id="${m.id}">${esc(short(m.name))}${m.parts ? `<small>${m.parts.map(p => esc(short(p.name))).join(' + ')}</small>` : ''}</button>`).join('');
+  }
+  chips();
+  $('#q').oninput = chips;
+  $('#chips').onclick = e => { const b = e.target.closest('[data-id]'); if (!b) return; add(+b.dataset.id, 1); };
+
+  function add(id, d) {
+    const m = D.menu.find(x => x.id === id), c = cart.find(x => x.id === id);
+    if (c) { c.qty += d; if (c.qty <= 0) cart = cart.filter(x => x !== c); }
+    else if (d > 0) cart.push({ id, name: m.name, qty: 1 });
+    drawCart();
+  }
+  function drawCart() {
+    $('#cart').hidden = !cart.length;
+    $('#cart').innerHTML = cart.map(c => `<div class="line"><span>${esc(c.name)}</span><span class="qty"><button data-d="-1" data-id="${c.id}">−</button><b>${c.qty}</b><button data-d="1" data-id="${c.id}">+</button></span></div>`).join('');
+    $('#send').disabled = !cart.length;
+  }
+  $('#cart').onclick = e => { const b = e.target.closest('[data-d]'); if (b) add(+b.dataset.id, +b.dataset.d); };
+
+  async function call(url, body) {
+    const res = await fetch(url, { method: body === undefined ? 'GET' : 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: body === undefined ? undefined : JSON.stringify(body) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.error || 'Something went wrong');
+    return j;
+  }
+
+  function drawBoard(b) {
+    board = b;
+    $('#printall').hidden = !b.orders.length;
+    $('#orders').innerHTML = b.orders.length ? b.orders.map(o => `
+      <div class="ord ${o.mins_left < 0 ? 'late' : o.mins_left <= 3 ? 'soon' : ''}">
+        <div class="otop"><b>#${o.id} ${esc(o.type)}${o.ref ? ' · ' + esc(o.ref) : ''}</b><span class="due">due ${o.due} · ${o.mins_left < 0 ? `${-o.mins_left} min late` : `${o.mins_left} min`}</span></div>
+        <div class="items">${o.items.map(i => `${i.qty}× ${esc(i.name)}`).join(' · ')}</div>
+        <div class="acts"><button class="pk" data-act="packed" data-id="${o.id}">Packed</button><button data-act="cancel" data-id="${o.id}">Cancel</button></div>
+      </div>`).join('') : '<p class="muted">No open orders.</p>';
+  }
+  $('#orders').onclick = async e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    if (b.dataset.act === 'cancel' && !confirm(`Cancel #${b.dataset.id}?`)) return;
+    try { drawBoard(await call(`/rush/orders/${b.dataset.id}/${b.dataset.act}`, {})); } catch (err) { alert(err.message); }
+  };
+
+  function print(s, title) {
+    $('#printarea').hidden = false;
+    $('#printarea').innerHTML = s.slips.map(sl => `<div class="slip"><div class="slip-h">${esc(sl.label.toUpperCase())}</div><div class="slip-m">${esc(title)} · printed ${s.printed}</div>
+      ${sl.batches.map(bt => `<div class="slip-l"><span class="slip-t ${bt.now ? 'now' : ''}">${bt.now ? 'NOW' : bt.start}</span><span><b>${esc(bt.dish)} ${esc(bt.qty)}</b><small>for #${bt.orders.join(' #')}</small></span></div>`).join('')}</div>`).join('')
+      + `<div class="slip"><div class="slip-h">PACK / PASS</div><div class="slip-m">target ${s.promise_min} min</div>
+      ${s.pack.map(o => `<div class="slip-o"><b>#${o.id} ${esc(o.type)}${o.ref ? ' ' + esc(o.ref) : ''}</b> <span class="slip-due">due ${o.due}</span>${o.items.map(i => `<div>□ ${i.qty}× ${esc(i.name)}</div>`).join('')}</div>`).join('')}</div>`;
+    setTimeout(() => window.print(), 200);
+  }
+
+  $('#send').onclick = async () => {
+    const btn = $('#send'); btn.disabled = true; $('#err').hidden = true;
+    try {
+      const r = await call('/rush/orders', { order_type: type, ref: $('#ref').value, items: cart.map(c => ({ menu_item_id: c.id, qty: c.qty })) });
+      cart = []; drawCart(); $('#ref').value = ''; $('#q').value = ''; chips();
+      drawBoard(r.board);
+      print(r.slips, `Order #${r.id}`);
+    } catch (err) { $('#err').textContent = err.message; $('#err').hidden = false; btn.disabled = false; }
+  };
+  $('#printall').onclick = () => board && print(board, 'All open orders');
+
+  const load = () => call('/rush/board').then(drawBoard).catch(() => {});
+  load(); setInterval(load, 20000);
+})();
+</script>
+</body>
+</html>
