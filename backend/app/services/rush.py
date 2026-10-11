@@ -18,9 +18,9 @@ PROMISE_MIN = 12
 PACK_MIN = 1
 # Same dish from different KOTs is cooked together when their start times are
 # within this many minutes (owner, 11 Oct 2026: 3 minutes for every station).
-POOL_WINDOW_MIN = {"T": 3, "W": 3, "F": 3, "G": 3}
-BATCH = {"T": 8, "W": 3, "F": 4, "G": 99}
-STATIONS = {"T": "Tandoor", "W": "Wok / Chinese", "G": "Gravy + rice", "F": "Fryer / tawa"}
+POOL_WINDOW_MIN = {"T": 3, "W": 3, "F": 3, "G": 3, "C": 3}
+BATCH = {"T": 8, "W": 3, "F": 4, "G": 99, "C": 4}
+STATIONS = {"T": "Tandoor", "W": "Wok / Chinese", "G": "Gravy + rice", "F": "Fryer / tawa", "C": "Combos"}
 ORDER_TYPES = ("Dine-in", "Parcel", "Zomato", "Swiggy")
 OPEN_HOURS = 4  # an open order older than this drops off the board
 
@@ -127,7 +127,14 @@ def board(db: Session, only_order: int | None = None) -> dict:
             continue  # food ready: off the station slips
         o = by_id[l["order_id"]]
         due = o["created_at"] + datetime.timedelta(minutes=PROMISE_MIN)
-        pieces = combos.get(l["id"]) or [{"name": l["name"], "station": l["st"], "cook": l["cook"], "factor": 1.0}]
+        # Combos stay whole on the board (owner, 11 Oct: list the item, don't
+        # split it): one line on the Combos card, timed by its slowest part.
+        if l["id"] in combos:
+            parts_ = combos[l["id"]]
+            pieces = [{"name": l["name"], "station": "C", "factor": 1.0,
+                       "cook": max((p["cook"] or 3) for p in parts_)}]
+        else:
+            pieces = [{"name": l["name"], "station": l["st"], "cook": l["cook"], "factor": 1.0}]
         for p in pieces:
             if not p["station"]:
                 continue
