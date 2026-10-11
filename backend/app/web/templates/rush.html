@@ -55,6 +55,22 @@
   .acts button { flex: 1; padding: 10px; border-radius: 9px; border: 1px solid var(--line); background: #fff; font: 600 14px Inter, sans-serif; }
   .acts .pk { background: var(--g); border-color: var(--g); color: #fff; }
   .muted { color: var(--ink3); font-size: 13.5px; }
+  .tabs { display: flex; background: #0B2A1C; }
+  .tabs button { flex: 1; padding: 11px; border: 0; background: none; color: #c9d6cd; font: 700 14px Inter, sans-serif; border-bottom: 3px solid transparent; }
+  .tabs button.on { color: var(--gold2); border-bottom-color: var(--gold); }
+  .days { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .days button { padding: 7px 10px; border: 0; border-right: 1px solid var(--line); background: #fff; font: 600 12.5px Inter, sans-serif; }
+  .days button:last-child { border-right: 0; } .days button.on { background: var(--g); color: var(--gold2); }
+  .hk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .hk div { background: #FBFAF6; border: 1px solid var(--line); border-radius: 10px; padding: 8px; text-align: center; }
+  .hk b { display: block; font-size: 19px; } .hk span { font-size: 11px; color: var(--ink2); text-transform: uppercase; letter-spacing: .04em; }
+  .hday { margin: 14px 2px 6px; font: 700 13px Inter, sans-serif; color: var(--ink2); text-transform: uppercase; letter-spacing: .05em; }
+  .ho { background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--ok); border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+  .ho.late { border-left-color: var(--bad); } .ho.cx { border-left-color: var(--ink3); opacity: .75; }
+  .ho .t { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+  .ho .m { font-weight: 800; } .ho.late .m { color: var(--bad); } .ho.cx .m { color: var(--ink3); }
+  .ho .i { margin-top: 5px; font-size: 13px; color: #333; } .ho .i small { color: var(--ink3); }
+  .ho .s { margin-top: 4px; font-size: 12px; color: var(--ink3); }
   .how { font-size: 12.5px; color: var(--ink2); margin: 2px 0 10px; line-height: 1.45; }
   .nowtag { background: #000; color: #fff; padding: 0 5px; border-radius: 3px; font: 700 11px ui-monospace, monospace; }
   #board .slip { background: #fff; }
@@ -70,7 +86,7 @@
   .slip-o { padding: 6px 0; border-bottom: 1px dashed #888; } .slip-due { float: right; font-weight: 800; }
   @media print {
     @page { size: 80mm auto; margin: 3mm; }
-    header, main > .card, .note, .no-print { display: none !important; }
+    header, .tabs, #hist, #live > .card, .note, .no-print { display: none !important; }
     body { background: #fff; padding: 0; }
     main { padding: 0; max-width: none; }
     .slips { display: block; width: 74mm; }
@@ -84,7 +100,9 @@
   <span class="clock" id="clock"></span>
   <a href="/daily-brief" id="adminlink">Admin →</a>
 </header>
+<nav class="tabs"><button data-tab="live" class="on">Live</button><button data-tab="hist">History</button></nav>
 <main>
+ <div id="live">
   <p class="note">Use this in <b>Chrome</b> on your phone. <b>Send</b> prints that order's station slips; <b>Print all</b> prints the full board (every open order, pooled). Enter the <b>Petpooja KOT number</b> for every order. Tap <b>Ready</b> on each dish as it comes off the station; ready dishes drop off the slips. Each order is due 12 minutes after it's sent. Pick your printer in Chrome's print screen; a Bluetooth thermal printer needs its Android print service installed.</p>
   <section class="card">
     <h2>New order</h2>
@@ -107,6 +125,15 @@
     <div id="orders"><p class="muted">Loading…</p></div>
   </section>
   <section id="printarea" class="slips" hidden></section>
+ </div>
+ <div id="hist" hidden>
+  <section class="card">
+    <div class="head"><h2>Closed orders</h2>
+      <span class="days" id="days"><button data-d="1" class="on">Today</button><button data-d="2">2 days</button><button data-d="7">7 days</button></span></div>
+    <div class="hk" id="hsum"></div>
+  </section>
+  <div id="hlist"><p class="muted">Loading…</p></div>
+ </div>
 </main>
 <script id="rush-data" type="application/json">{{ data_json|safe }}</script>
 <script>
@@ -213,6 +240,37 @@
   let saved = null; try { saved = localStorage.getItem(NP); } catch (e) {}
   setMode(saved === '1');
   $('#noprint').onchange = () => setMode($('#noprint').checked);
+
+  // ── History tab
+  let hdays = 1;
+  async function loadHist() {
+    $('#hlist').innerHTML = '<p class="muted">Loading…</p>';
+    try {
+      const h = await call(`/rush/history?days=${hdays}`), s = h.summary;
+      $('#hsum').innerHTML = `<div><b>${s.packed}</b><span>packed</span></div>
+        <div><b>${s.packed ? Math.round(s.on_time / s.packed * 100) + '%' : '—'}</b><span>within ${s.promise_min} min</span></div>
+        <div><b>${s.avg_min ?? '—'}</b><span>avg min</span></div><div><b>${s.cancelled}</b><span>cancelled</span></div>`;
+      let day = '';
+      $('#hlist').innerHTML = h.orders.length ? h.orders.map(o => {
+        const head = o.day !== day ? `<div class="hday">${esc(o.day)}</div>` : ''; day = o.day;
+        const cx = o.status === 'cancelled';
+        return head + `<div class="ho ${cx ? 'cx' : o.on_time ? '' : 'late'}">
+          <div class="t"><b>KOT ${esc(o.kot || o.id)} · ${esc(o.type)}${o.ref ? ' · ' + esc(o.ref) : ''}</b>
+            <span class="m">${cx ? 'Cancelled' : `${o.mins} min${o.on_time ? '' : ' · late'}`}</span></div>
+          <div class="i">${o.items.map(i => `${i.qty}× ${esc(i.name)}${i.ready_min != null ? ` <small>ready ${i.ready_min}m</small>` : ''}`).join(' · ')}</div>
+          <div class="s">sent ${o.taken}${o.packed ? ` · packed ${o.packed}` : ''}${o.by ? ` · ${esc(o.by)}` : ''}</div></div>`;
+      }).join('') : '<p class="muted card">No closed orders in this period.</p>';
+    } catch (err) { $('#hlist').innerHTML = `<p class="err">${esc(err.message)}</p>`; }
+  }
+  document.querySelector('.tabs').onclick = e => {
+    const b = e.target.closest('[data-tab]'); if (!b) return;
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    $('#live').hidden = b.dataset.tab !== 'live'; $('#hist').hidden = b.dataset.tab !== 'hist';
+    if (b.dataset.tab === 'hist') loadHist();
+    window.scrollTo(0, 0);
+  };
+  $('#days').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; hdays = +b.dataset.d;
+    document.querySelectorAll('#days button').forEach(x => x.classList.toggle('on', x === b)); loadHist(); };
 
   const load = () => call('/rush/board').then(drawBoard).catch(() => {});
   load(); setInterval(load, 20000);

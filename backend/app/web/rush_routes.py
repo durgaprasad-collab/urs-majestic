@@ -42,6 +42,14 @@ def board(request: Request, db: Session = Depends(get_db)):
     return JSONResponse(rush.board(db))
 
 
+@router.get("/rush/history")
+def history(request: Request, db: Session = Depends(get_db)):
+    if not _owner(request, db):
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    raw = request.query_params.get("days", "1")
+    return JSONResponse(rush.history(db, int(raw) if raw.isdigit() else 1))
+
+
 @router.post("/rush/orders")
 async def create(request: Request, db: Session = Depends(get_db)):
     user = _owner(request, db)

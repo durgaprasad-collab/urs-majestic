@@ -177,3 +177,42 @@ def _qty(q: float, dish: str = "") -> str:
     if abs(q * 2 - round(q * 2)) < 0.01:
         return f"{int(round(q * 2))} half"
     return f"×{q:g}"
+
+
+def history(db: Session, days: int = 1) -> dict:
+    """Closed orders (packed or cancelled) from the last `days` business days,
+    newest first, with time taken against the promise."""
+    days = max(1, min(int(days or 1), 30))
+    rows = db.execute(text("""
+        SELECT o.id, o.kot_no, o.order_type, o.ref, o.status, o.created_at, o.packed_at, u.name AS by
+          FROM kitchen_orders o LEFT JOIN users u ON u.id = o.created_by
+         WHERE o.status IN ('packed', 'cancelled')
+           AND o.created_at > (date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata' - interval '5 hours')
+                               - make_interval(days => :d - 1) + interval '5 hours') AT TIME ZONE 'Asia/Kolkata'
+         ORDER BY o.created_at DESC
+    """), {"d": days}).mappings().all()
+    ids = [r["id"] for r in rows]
+    items = db.execute(text("""
+        SELECT ki.order_id, ki.qty, ki.ready_at, mi.name FROM kitchen_order_items ki JOIN menu_items mi ON mi.id = ki.menu_item_id
+         WHERE ki.order_id = ANY(:ids) ORDER BY ki.id
+    """), {"ids": ids or [0]}).mappings().all()
+    out, took = [], []
+    for r in rows:
+        mins = round((r["packed_at"] - r["created_at"]).total_seconds() / 60, 1) if r["packed_at"] else None
+        if r["status"] == "packed" and mins is not None:
+            took.append(mins)
+        out.append({
+            "id": r["id"], "kot": r["kot_no"], "type": r["order_type"], "ref": r["ref"], "by": r["by"],
+            "status": r["status"], "day": r["created_at"].astimezone(business_tz()).strftime("%a %d %b"),
+            "taken": _clock(r["created_at"]), "packed": _clock(r["packed_at"]) if r["packed_at"] else None,
+            "mins": mins, "on_time": mins is not None and mins <= PROMISE_MIN,
+            "items": [{"name": i["name"], "qty": i["qty"],
+                       "ready_min": round((i["ready_at"] - r["created_at"]).total_seconds() / 60, 1) if i["ready_at"] else None}
+                      for i in items if i["order_id"] == r["id"]],
+        })
+    packed = [o for o in out if o["status"] == "packed"]
+    return {"days": days, "orders": out, "summary": {
+        "packed": len(packed), "cancelled": sum(1 for o in out if o["status"] == "cancelled"),
+        "on_time": sum(1 for o in packed if o["on_time"]),
+        "avg_min": round(sum(took) / len(took), 1) if took else None,
+        "worst_min": max(took) if took else None, "promise_min": PROMISE_MIN}}
