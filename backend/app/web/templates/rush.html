@@ -184,7 +184,7 @@
 
   function slipHtml(sl, title, printed) {
     return `<div class="slip"><div class="slip-h">${esc(sl.label.toUpperCase())}</div><div class="slip-m">${esc(title)} · ${printed}</div>
-      ${sl.batches.map(bt => `<div class="slip-l"><span class="slip-t ${bt.now ? 'now' : ''}">${bt.now ? 'NOW' : bt.start}</span><span><b>${esc(bt.dish)} ${esc(bt.qty)}</b><small>for KOT ${(bt.kots || bt.orders).join(', ')}</small></span></div>`).join('')}</div>`;
+      ${sl.batches.map(bt => `<div class="slip-l"><span class="slip-t ${bt.now ? 'now' : ''}">${bt.now ? 'NOW' : bt.start}</span><span><b>${esc(bt.dish)} ${esc(bt.qty)}</b><small>for KOT ${(bt.tags || bt.kots || bt.orders).map(esc).join(' · ')}</small></span></div>`).join('')}</div>`;
   }
   function drawBoard(b) {
     board = b;

@@ -150,13 +150,15 @@ def board(db: Session, only_order: int | None = None) -> dict:
             else:
                 batches.append({"dish": p["dish"], "qty": p["qty"], "start": p["start"], "orders": [p["order"]]})
         kot = {o["id"]: (o["kot_no"] or str(o["id"])) for o in orders}
+        src = {o["id"]: o["order_type"] for o in orders}
         if only_order is not None:
             batches = [b for b in batches if only_order in b["orders"]]
         if not batches:
             continue
         slips.append({"station": st, "label": label, "batches": [{
             "dish": _dish(b["dish"]), "qty": _qty(b["qty"], b["dish"]), "orders": b["orders"],
-            "kots": [kot[i] for i in b["orders"]], "now": b["start"] <= now,
+            "kots": [kot[i] for i in b["orders"]],
+            "tags": [f"{kot[i]} {src[i]}" for i in b["orders"]], "now": b["start"] <= now,
             "start": _clock(b["start"])} for b in sorted(batches, key=lambda b: b["start"])]})
     return {"printed": _clock(now), "promise_min": PROMISE_MIN, "orders": out_orders, "slips": slips,
             "pack": out_orders if only_order is None else
