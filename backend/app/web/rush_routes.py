@@ -6,7 +6,7 @@ printing works. Logic lives in app/services/rush.py.
 import json
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -27,7 +27,8 @@ def _owner(request: Request, db: Session):
 def page(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
-        return redir
+        # Come back here after signing in (the Rush app opens straight on /rush).
+        return RedirectResponse("/login?next=/rush", status_code=302)
     return _tmpl(request, "rush.html", {
         "user": user,
         "data_json": json.dumps({"menu": rush.menu(db), "types": rush.ORDER_TYPES, "promise": rush.PROMISE_MIN}),

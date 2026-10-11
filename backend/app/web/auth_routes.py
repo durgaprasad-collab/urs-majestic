@@ -11,14 +11,22 @@ from app.web.deps import _tmpl, require_user
 router = APIRouter(tags=["auth"])
 
 
+def _safe_next(value: str | None) -> str:
+    """Where to go after signing in: a local path only (the Rush app sends
+    ?next=/rush), never another site."""
+    v = (value or "").strip()
+    return v if v.startswith("/") and not v.startswith("//") and "\\" not in v else "/upload"
+
+
 @router.get("/login", response_class=HTMLResponse)
 def login_get(request: Request):
+    nxt = _safe_next(request.query_params.get("next"))
     if request.session.get("user_id"):
-        return RedirectResponse("/upload", status_code=302)
+        return RedirectResponse(nxt, status_code=302)
     error = None
     if request.query_params.get("owner_required") == "1":
         error = "Owner access is required. Staff should use the Staff App."
-    return _tmpl(request, "login.html", {"error": error})
+    return _tmpl(request, "login.html", {"error": error, "next": nxt})
 
 
 @router.post("/login")
@@ -26,6 +34,7 @@ async def login_post(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
+    next: str = Form(default=""),
     db: Session = Depends(get_db),
 ):
     ip = _get_ip(request)
@@ -58,7 +67,7 @@ async def login_post(
     request.session["username"] = user.username
     request.session["name"] = user.name
     request.session["is_admin"] = user.is_admin
-    return RedirectResponse("/upload", status_code=303)
+    return RedirectResponse(_safe_next(next), status_code=303)
 
 
 @router.get("/logout")

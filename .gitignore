@@ -58,3 +58,8 @@ admin-app/android/**/build/
 
 # Built Android packages (share the APK directly; never commit binaries)
 *.apk
+rush-app/node_modules/
+rush-app/android/app/build/
+rush-app/android/.gradle/
+rush-app/android/build/
+rush-app/*.apk

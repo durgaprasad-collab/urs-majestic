@@ -185,7 +185,8 @@
     $('#printarea').innerHTML = s.slips.map(sl => slipHtml(sl, title, 'printed ' + s.printed)).join('')
       + `<div class="slip"><div class="slip-h">PACK / PASS</div><div class="slip-m">target ${s.promise_min} min</div>
       ${s.pack.map(o => `<div class="slip-o"><b>KOT ${esc(o.kot || o.id)} ${esc(o.type)}${o.ref ? ' ' + esc(o.ref) : ''}</b> <span class="slip-due">due ${o.due}</span>${o.items.map(i => `<div>${i.ready ? '☑' : '□'} ${i.qty}× ${esc(i.name)}</div>`).join('')}</div>`).join('')}</div>`;
-    setTimeout(() => window.print(), 200);
+    // In the Rush app (Android WebView) window.print does nothing; the app adds a print bridge.
+    setTimeout(() => (window.URSPrint && window.URSPrint.print) ? window.URSPrint.print(document.title) : window.print(), 200);
   }
 
   $('#send').onclick = async () => {
