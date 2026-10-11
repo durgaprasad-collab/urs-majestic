@@ -23,6 +23,7 @@
     ('/gas-log', 'Gas', 'flame', '/gas-log', b.gas, 'bad'),
     ('/purchases', 'Purchases', 'receipt', '/purchases', b.purchases, 'warn'),
     ('/catering-orders', 'Catering', 'cater', '/catering-orders', None, None),
+    ('/rush', 'Rush (test)', 'trend', '/rush', None, None),
   ] %}
   {% set manage_items = [
     ('/reconciliation', 'Reconcile', 'recon', '/reconciliation', b.reconcile, 'bad'),
@@ -118,6 +119,7 @@
         <a href="/daily-brief" data-command-item data-keywords="today home daily brief dashboard"><b>✦ Today</b><small>Open the daily brief</small></a>
         <a href="/buy?tab=week" data-command-item data-keywords="order forecast week weekly plan purchase stock supplier"><b>↗ Next 7 days</b><small>What runs out this week, one order</small></a>
         <a href="/results" data-command-item data-keywords="menu analysis food cost item performance"><b>⌁ Menu Analysis</b><small>Explore performance</small></a>
+        <a href="/rush" data-command-item data-keywords="rush kitchen slips orders kot station peak"><b>⚡ Rush slips (test)</b><small>Captain orders, station slips</small></a>
         <a href="/reconciliation" data-command-item data-keywords="reconcile mismatch channel money"><b>↻ Reconcile</b><small>Resolve mismatches</small></a>
         <a href="/data-reconciliation" data-command-item data-keywords="data trust channel mismatch"><b>✓ Data Trust</b><small>Cross-check channel data</small></a>
         <a href="/ingredients/mapping" data-command-item data-keywords="recipes ingredient mapping dish grams portion cost"><b>⇄ Recipes</b><small>Grams and cost per dish</small></a>
