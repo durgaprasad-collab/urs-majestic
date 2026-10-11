@@ -36,7 +36,7 @@
     <button type="button" class="rs-tile st-{{ lk.status }}" data-pulse-tile="leaks" aria-expanded="false">
       <span class="rs-l"><span class="rs-lt">Margin leaks</span><span class="rs-chip c-{{ lk.status }}">{{ lk.count }}</span></span>
       <span class="rs-v">{{ inrk(lk.total) }}<small>/month</small></span>
-      <span class="rs-s">{{ lk.count }} dishes over 40% food cost{% if lk.zomato_hits %} · {{ lk.zomato_hits }} Zomato hits{% endif %}</span>
+      <span class="rs-s">{{ lk.count }} dish{{ 'es' if lk.count != 1 }} over 40% food cost{% if lk.zomato_hits %} · {{ lk.zomato_hits }} Zomato hit{{ 's' if lk.zomato_hits != 1 }}{% endif %}</span>
     </button>
 
     <button type="button" class="rs-tile st-{{ g.status }}" data-pulse-tile="gas" aria-expanded="false">

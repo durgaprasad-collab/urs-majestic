@@ -78,13 +78,18 @@ def stock_view(db: Session) -> list[dict]:
     """Every active ingredient with its estimate, last real count and flags."""
     from app.web.stock_log_routes import _stock_rows  # avoid a circular import at load
 
+    from app.services.buy_inbox import _resale_daily  # sales-based use for resale drinks
+
     tonight = count_day()
     human = _human_counts(db)
+    resale = _resale_daily(db)
     items = []
     for r in _stock_rows(db):
         h = human.get(r["ingredient_id"])
         cat = r["category"] or "Other"
         cover = r["cover_days"]
+        if resale.get(r["ingredient_id"]) and r["on_hand_qty"] is not None:
+            cover = float(r["on_hand_qty"]) / resale[r["ingredient_id"]]
         qty = float(r["on_hand_qty"]) if r["on_hand_qty"] is not None else None
         # Pack-sized piece items are stocked in kg; show them in pieces (bottles,
         # bunches), the unit staff count in. record_stock converts back.
@@ -105,6 +110,11 @@ def stock_view(db: Session) -> list[dict]:
             "counted_tonight": h_day == tonight,
             "stockable": cat not in NON_STOCK_CATEGORIES and r["name"] not in NON_STOCK_NAMES,
         }
+        # Packaging isn't taken off stock by sales, so between counts its
+        # "days left" only grows with purchases. Without a recent count, say so.
+        if cat in ("Utilities", "packaging") and src != "counted" and (item["last_days"] is None or item["last_days"] > STALE_COUNT_DAYS):
+            cover = item["cover"] = None
+            item["pack_uncounted"] = True
         item["f_low"] = cover is not None and cover < LOW_COVER_DAYS
         item["f_zero"] = item["estimated"] and qty == 0
         item["f_recount"] = item["stale"]

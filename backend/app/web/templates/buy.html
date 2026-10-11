@@ -196,8 +196,9 @@
         <thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Paid</th><th class="sl-hide-sm">Logged by</th><th>Date</th></tr></thead>
         <tbody>
         {% for b in bought %}
-          <tr><td class="sl-item">{{ b.name }}{% if b.from_list %} <span class="by-status done">From the list</span>{% endif %}</td>
-            <td class="r">{{ amt(b.qty, b.unit) }}</td><td class="r">{{ rs(b.total_price) }}</td>
+          {% set refund = b.total_price < 0 or b.qty < 0 %}
+          <tr><td class="sl-item">{{ b.name }}{% if refund %} <span class="by-pill low">Refund</span>{% elif b.from_list %} <span class="by-status done">From the list</span>{% endif %}</td>
+            <td class="r">{{ amt(-b.qty if refund else b.qty, b.unit) }}{% if refund %} <small class="sl-muted">returned</small>{% endif %}</td><td class="r">{% if refund %}−{{ rs(-b.total_price) }}{% else %}{{ rs(b.total_price) }}{% endif %}</td>
             <td class="sl-hide-sm sl-muted">{{ b.by_name or '—' }}</td><td class="sl-muted">{{ b.purchase_date.strftime('%a %d %b') }}</td></tr>
         {% else %}
           <tr><td colspan="5" class="sl-empty">No purchases logged in the last 7 days.</td></tr>

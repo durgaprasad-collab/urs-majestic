@@ -77,7 +77,7 @@
             <td class="sl-hide-sm sl-muted" data-sl-last>{% if i.last_at %}{{ num(i.last_qty) }} {{ i.unit }} · {{ i.last_at.strftime('%d %b') }}{% if i.last_by %} · {{ i.last_by }}{% endif %}{% else %}never{% endif %}</td>
             <td>
               {% if i.cover is not none %}<span class="sl-cov {{ 'red' if i.cover < 3 else ('orange' if i.cover < 7 else 'green') }} {{ 'est' if i.estimated }}">{{ '%.1f'|format(i.cover) }} days</span>
-              {% else %}<span class="sl-cov none">{{ 'Recount needed' if i.stale else 'No data' }}</span>{% endif %}
+              {% else %}<span class="sl-cov none">{{ 'Count on Monday' if i.pack_uncounted else ('Recount needed' if i.stale else 'No data') }}</span>{% endif %}
             </td>
             <td class="sl-hide-sm sl-why">{{ i.why|join(' · ') }}</td>
             <td class="sl-menu-cell">

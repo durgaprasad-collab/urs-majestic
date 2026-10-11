@@ -53,13 +53,51 @@ def _suggested(row) -> Decimal | None:
 
 
 def _forecast(db: Session) -> dict[int, dict]:
+    # The Buy page needs this for both tabs; read the (slow) view once per request.
+    cached = db.info.get("buy_forecast")
+    if cached is not None:
+        return {k: dict(v) for k, v in cached.items()}
+    out = _load_forecast(db)
+    db.info["buy_forecast"] = out
+    return {k: dict(v) for k, v in out.items()}
+
+
+def _load_forecast(db: Session) -> dict[int, dict]:
     rows = db.execute(text("""
         SELECT ingredient_id, name, category, unit, on_hand_qty, stock_days_cover_left, status,
                suggested_order_qty, last_qty, last_purchase, avg_unit_cost, daily_consumption
           FROM v_ingredient_reorder_forecast WHERE is_active
     """)).mappings().all()
-    return {r["ingredient_id"]: dict(r) for r in rows
-            if (r["category"] or "") not in NON_STOCK_CATEGORIES and r["name"] not in NON_STOCK_NAMES}
+    out = {r["ingredient_id"]: dict(r) for r in rows
+           if (r["category"] or "") not in NON_STOCK_CATEGORIES and r["name"] not in NON_STOCK_NAMES}
+    # Items sold as they are (Water Bottle, Goli Soda): the view's purchase-
+    # based daily use is meaningless (Water Bottle read 0.016/day against ~11
+    # sold a day), so use the last 30 days of sales instead.
+    for iid, per_day in _resale_daily(db).items():
+        f = out.get(iid)
+        if f is None or not per_day:
+            continue
+        f["daily_consumption"] = Decimal(str(round(per_day, 3)))
+        if f["on_hand_qty"] is not None:
+            f["stock_days_cover_left"] = (Decimal(f["on_hand_qty"]) / f["daily_consumption"]).quantize(Decimal("0.1"))
+    return out
+
+
+def _resale_daily(db: Session) -> dict[int, float]:
+    """{ingredient_id: units a day} for items mapped to non-food menu items
+    (resale drinks), from dine-in + delivery sales over the last 30 days."""
+    rows = db.execute(text("""
+        SELECT m.ingredient_id,
+               sum((coalesce((SELECT sum(qty) FROM item_sales s WHERE s.item_name = mi.name
+                               AND s.sale_date > current_date - 30), 0)
+                  + coalesce((SELECT sum(oi.quantity) FROM order_items oi JOIN orders o ON o.id = oi.order_id
+                               WHERE oi.menu_item_id = mi.id AND o.placed_at > now() - interval '30 days'), 0))
+                   * coalesce(m.grams_override, 1)) / 30.0 AS per_day
+          FROM ingredient_dish_map m JOIN menu_items mi ON mi.id = m.menu_item_id
+         WHERE mi.is_active AND NOT mi.is_food
+         GROUP BY m.ingredient_id
+    """)).all()
+    return {iid: float(v) for iid, v in rows if v}
 
 
 def _row(f: dict | None, today: datetime.date) -> dict:

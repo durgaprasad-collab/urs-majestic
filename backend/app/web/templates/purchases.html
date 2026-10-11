@@ -2,7 +2,7 @@
 {% block title %}Purchases — URS Majestic{% endblock %}
 
 {% block content %}
-{% macro rs(v) %}₹{{ '{:,.0f}'.format(v or 0) }}{% endmacro %}
+{% macro rs(v) %}{% if v is not none and v < 0 %}−{% endif %}₹{{ '{:,.0f}'.format((v or 0)|abs) }}{% endmacro %}
 {% macro per(v, u) %}{% if u == 'g' %}₹{{ '{:,.0f}'.format(v * 1000) }}/kg{% elif u == 'ml' %}₹{{ '{:,.0f}'.format(v * 1000) }}/L{% else %}₹{{ '{:,.1f}'.format(v)|replace('.0', '') }}/{{ 'bunch' if u == 'pcs' else u }}{% endif %}{% endmacro %}
 {% set CAT_COLORS = ['#1E8A5A', '#8A6D3B', '#B7791F', '#6B7FA6', '#2563A8', '#C9C3B0'] %}
 <div class="sl pu" data-pu>
@@ -99,8 +99,8 @@
       </summary>
       <table class="sl-table"><tbody>
         {% for l in b.lines %}
-        <tr><td>{{ l.name }}{% if l.unconvertible %} <span class="pu-flag">{{ l.unit }}, tracked in {{ l.item_unit }}</span>{% endif %}{% if l.usage_type != 'menu' %} <span class="sl-muted">· personal</span>{% endif %}</td>
-          <td class="r">{{ '%g'|format(l.qty|float) }} {{ l.unit }}</td><td class="r">{{ rs(l.total_price) }}</td>
+        <tr><td>{{ l.name }}{% if l.unconvertible %} <span class="pu-flag">{{ l.unit }}, tracked in {{ l.item_unit }}</span>{% endif %}{% if l.usage_type != 'menu' %} <span class="sl-muted">· personal</span>{% endif %}{% if l.total_price < 0 %} <span class="pu-flag">Refund</span>{% endif %}</td>
+          <td class="r">{{ '%g'|format((l.qty|float)|abs) }} {{ l.unit }}{% if l.total_price < 0 %} <small class="sl-muted">returned</small>{% endif %}</td><td class="r">{% if l.total_price < 0 %}−{{ rs(-l.total_price) }}{% else %}{{ rs(l.total_price) }}{% endif %}</td>
           <td class="r pu-acts"><a href="/purchases/{{ l.id }}/edit">Edit</a>
             <details><summary>Delete</summary>
               <form method="post" action="/purchases/{{ l.id }}/delete"><input type="hidden" name="row_version" value="{{ l.row_version }}">

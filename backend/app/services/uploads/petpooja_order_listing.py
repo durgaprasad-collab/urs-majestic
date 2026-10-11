@@ -137,22 +137,27 @@ def find_unpaired_diffs(daily_amounts: dict[date, decimal.Decimal], tolerance=de
 
 
 def upsert_order_counts(db: Session, daily_counts: dict[date, dict]) -> tuple[int, list[date]]:
-    """UPDATE daily_channel_sales.orders (channel='petpooja') for each date
-    that already has a row — net_sales is owned by the item-report upload,
-    so a date with no existing row is skipped rather than inserted with a
-    fabricated net_sales. Returns (dates_updated, dates_skipped)."""
+    """Set daily_channel_sales.orders (channel='petpooja') for each date.
+
+    net_sales is owned by the item-report upload. When this file arrives
+    first (11 Oct 2026: uploaded 14 s before the item report, and 10 Oct's
+    order count was lost), the row is created with this file's own SUM(My
+    Amount) as a provisional net_sales; the item report's upsert then
+    replaces net_sales and keeps the count. Returns (dates_updated, [])."""
     updated = 0
-    skipped: list[date] = []
     for business_date, agg in daily_counts.items():
         result = db.query(DailyChannelSales).filter(
             DailyChannelSales.channel == "petpooja",
             DailyChannelSales.business_date == business_date,
         ).update({"orders": agg["count"]}, synchronize_session=False)
-        if result:
-            updated += 1
-        else:
-            skipped.append(business_date)
-    return updated, skipped
+        if not result:
+            db.add(DailyChannelSales(
+                business_date=business_date, channel="petpooja", net_sales=agg["amount"],
+                orders=agg["count"], restaurant_discount=decimal.Decimal("0"),
+                platform_discount=decimal.Decimal("0"), source_file="order listing (provisional sales)",
+            ))
+        updated += 1
+    return updated, []
 
 
 def cross_check_amounts(db: Session, daily_counts: dict[date, dict]) -> dict[date, decimal.Decimal]:
