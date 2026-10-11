@@ -53,6 +53,9 @@
   .acts button { flex: 1; padding: 10px; border-radius: 9px; border: 1px solid var(--line); background: #fff; font: 600 14px Inter, sans-serif; }
   .acts .pk { background: var(--g); border-color: var(--g); color: #fff; }
   .muted { color: var(--ink3); font-size: 13.5px; }
+  .how { font-size: 12.5px; color: var(--ink2); margin: 2px 0 10px; line-height: 1.45; }
+  .nowtag { background: #000; color: #fff; padding: 0 5px; border-radius: 3px; font: 700 11px ui-monospace, monospace; }
+  #board .slip { background: #fff; }
   .note { font-size: 12.5px; color: var(--ink2); background: #FFF8E1; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
   /* slips (on screen and printed) */
   .slips { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
@@ -90,6 +93,11 @@
     <div class="cart" id="cart" hidden></div>
     <div class="err" id="err" hidden></div>
     <button class="send" id="send" disabled>Send to kitchen · print slips</button>
+  </section>
+  <section class="card">
+    <div class="head"><h2>Kitchen board · all open orders</h2><span class="muted" id="bstamp"></span></div>
+    <p class="how">Each dish is listed by <b>start-by time</b>: the order's due time (sent + 12 min) minus 1 min to pack, minus the dish's cook time (fried rice 5, naan 3, roti 2, tikka 8, gravy 3…). Earliest start first; <b class="nowtag">NOW</b> means its start time has passed. The same dish from different KOTs is cooked together (wok up to 3, fryer 4, tandoor 8) when their start times are within 4 minutes. Ready dishes drop off.</p>
+    <div class="slips" id="board"><p class="muted">Loading…</p></div>
   </section>
   <section class="card">
     <div class="head"><h2>Open orders</h2><button class="ghost" id="printall" hidden>Print all slips</button></div>
@@ -142,8 +150,15 @@
     return j;
   }
 
+  function slipHtml(sl, title, printed) {
+    return `<div class="slip"><div class="slip-h">${esc(sl.label.toUpperCase())}</div><div class="slip-m">${esc(title)} · ${printed}</div>
+      ${sl.batches.map(bt => `<div class="slip-l"><span class="slip-t ${bt.now ? 'now' : ''}">${bt.now ? 'NOW' : bt.start}</span><span><b>${esc(bt.dish)} ${esc(bt.qty)}</b><small>for KOT ${(bt.kots || bt.orders).join(', ')}</small></span></div>`).join('')}</div>`;
+  }
   function drawBoard(b) {
     board = b;
+    $('#bstamp').textContent = `updated ${b.printed}`;
+    $('#board').innerHTML = b.slips.length ? b.slips.map(sl => slipHtml(sl, 'All open', `as of ${b.printed}`)).join('')
+      : '<p class="muted">Nothing to cook: no open dishes.</p>';
     $('#printall').hidden = !b.orders.length;
     $('#orders').innerHTML = b.orders.length ? b.orders.map(o => {
       const all = o.total && o.ready === o.total;
@@ -164,8 +179,7 @@
 
   function print(s, title) {
     $('#printarea').hidden = false;
-    $('#printarea').innerHTML = s.slips.map(sl => `<div class="slip"><div class="slip-h">${esc(sl.label.toUpperCase())}</div><div class="slip-m">${esc(title)} · printed ${s.printed}</div>
-      ${sl.batches.map(bt => `<div class="slip-l"><span class="slip-t ${bt.now ? 'now' : ''}">${bt.now ? 'NOW' : bt.start}</span><span><b>${esc(bt.dish)} ${esc(bt.qty)}</b><small>for KOT ${(bt.kots || bt.orders).join(', ')}</small></span></div>`).join('')}</div>`).join('')
+    $('#printarea').innerHTML = s.slips.map(sl => slipHtml(sl, title, 'printed ' + s.printed)).join('')
       + `<div class="slip"><div class="slip-h">PACK / PASS</div><div class="slip-m">target ${s.promise_min} min</div>
       ${s.pack.map(o => `<div class="slip-o"><b>KOT ${esc(o.kot || o.id)} ${esc(o.type)}${o.ref ? ' ' + esc(o.ref) : ''}</b> <span class="slip-due">due ${o.due}</span>${o.items.map(i => `<div>${i.ready ? '☑' : '□'} ${i.qty}× ${esc(i.name)}</div>`).join('')}</div>`).join('')}</div>`;
     setTimeout(() => window.print(), 200);
