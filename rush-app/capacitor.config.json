@@ -6,5 +6,9 @@
     "url": "https://admin.ursmajestic.com/rush",
     "androidScheme": "https",
     "cleartext": false
+  },
+  "appendUserAgent": "URSRushApp",
+  "android": {
+    "appendUserAgent": "URSRushApp"
   }
 }
