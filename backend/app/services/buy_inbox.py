@@ -144,6 +144,7 @@ def inbox(db: Session) -> dict:
             it = items[key] = {"key": key, "name": f["name"] if f else r.item_name, "requests": [],
                                **_row(fc.get(r.ingredient_id) if r.ingredient_id else None, today)}
         it["requests"].append({"id": r.id, "by": r.requested_by.name, "asked": r.item_name,
+                               "proxy": (r.note or "").startswith("Entered by") and r.note,
                                "at": r.created_at.astimezone(business_tz()), "created": r.created_at})
 
     for iid, f in fc.items():

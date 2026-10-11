@@ -5,6 +5,9 @@ in one list. Approving records an approved requisition with the owner's
 quantity; it closes itself when the purchase is logged.
 """
 import json
+import logging
+import re
+from urllib.parse import urlencode
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
@@ -17,10 +20,12 @@ from app.core.clock import business_now, business_tz
 from app.core.database import get_db
 from app.models.ingredient import Ingredient
 from app.models.requisition import Requisition, RequisitionStatus
+from app.models.user import User
 from app.services import request_check
 from app.services.buy_inbox import OWNER_NOTE, WEEK_NOTE, bought_this_week, inbox, week_plan
 from app.web.deps import _tmpl, require_user
 
+log = logging.getLogger("buy")
 router = APIRouter(tags=["buy"])
 
 _UNITS = {"kg", "g", "l", "ml", "pcs"}
@@ -40,8 +45,10 @@ def buy_page(request: Request, db: Session = Depends(get_db)):
     keys = {i["key"] for _, rows in data["groups"] for i in rows}
     item_options = (db.query(Ingredient.id, Ingredient.name).filter(Ingredient.is_active.is_(True))
                     .order_by(Ingredient.name).all()) if data["n_requests"] else []
+    staff_users = (db.query(User).filter(User.is_active.is_(True), User.username != "claude_bot")
+                   .order_by(User.is_admin, User.name).all())
     return _tmpl(request, "buy.html", {"user": user, **data, "bought": bought_this_week(db), "week": week_plan(db, keys),
-                                       "item_options": item_options, "tz": business_tz()})
+                                       "item_options": item_options, "tz": business_tz(), "staff_users": staff_users})
 
 
 @router.get("/buy/week/print", response_class=HTMLResponse)
@@ -134,6 +141,73 @@ def approve(request: Request, items: str = Form("[]"), db: Session = Depends(get
     for req in notify:
         notify_decision(db, req, True)
     return RedirectResponse(url=f"/buy?approved={n}", status_code=303)
+
+
+_QTY_RE = re.compile(r"(?:^|\s)(\d+(?:[.,]\d+)?\s*(?:kg|kgs|g|gm|gms|grams?|l|ltr|litres?|liters?|ml|pcs?|pieces?|pkts?|packets?|nos?|bunch(?:es)?|box(?:es)?|x)?|x\s*\d+)\s*$", re.I)
+_LEAD_RE = re.compile(r"^\s*(?:[-*•●]+|\d+[.)])\s*")
+
+
+def parse_list(raw: str) -> list[tuple[str, str]]:
+    """A list pasted from WhatsApp / typed from a call: one item per line (commas
+    and semicolons also split). Returns [(name, qty hint)], bullets and numbering
+    removed, a trailing or leading quantity kept as a hint ("Onion 5 kg")."""
+    out, seen = [], set()
+    for part in re.split(r"[\r\n,;]+", raw or ""):
+        t = _LEAD_RE.sub("", part).strip(" .:-\t")
+        if not t:
+            continue
+        hint = ""
+        m = _QTY_RE.search(t)
+        if m and m.start() > 0:
+            hint, t = m.group(1).strip(), t[:m.start()].strip(" -:")
+        else:
+            m2 = re.match(r"^(\d+(?:[.,]\d+)?\s*(?:kg|g|l|ml|pcs?|pkts?|nos?)?)\s+(.+)$", t, re.I)
+            if m2:
+                hint, t = m2.group(1).strip(), m2.group(2).strip()
+        if t and t.lower() not in seen:
+            seen.add(t.lower())
+            out.append((t[:120], hint))
+    return out
+
+
+@router.post("/buy/proxy")
+async def proxy_requests(request: Request, db: Session = Depends(get_db)):
+    """Owner enters a staff member's list (sent by WhatsApp, a call, a slip):
+    each item becomes a pending request in that staff member's name."""
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    form = await request.form()
+    staff = db.get(User, int(form.get("staff_id"))) if str(form.get("staff_id") or "").isdigit() else None
+    if staff is None or not staff.is_active:
+        return RedirectResponse(url="/buy?proxy_error=Pick+who+sent+the+list", status_code=303)
+    items = parse_list(str(form.get("items") or ""))
+    if not items:
+        return RedirectResponse(url="/buy?proxy_error=Type+or+paste+at+least+one+item", status_code=303)
+    added, skipped, unmatched = [], [], []
+    for name, hint in items:
+        iid = request_check.match_ingredient(db, name)
+        ing = db.get(Ingredient, iid) if iid else None
+        shown = ing.name if ing else name
+        q = db.query(Requisition).filter(Requisition.status.in_([RequisitionStatus.pending, RequisitionStatus.approved]))
+        q = q.filter((Requisition.ingredient_id == iid) | Requisition.item_name.ilike(name)) if iid else q.filter(Requisition.item_name.ilike(name))
+        if q.first():
+            skipped.append(shown)
+            continue
+        note = f"Entered by {user.name} for {staff.name}" + (f" · asked {hint}" if hint else "")
+        db.add(Requisition(requested_by_user_id=staff.id, item_name=name if not ing else ing.name,
+                           ingredient_id=iid, note=note[:250]))
+        added.append(shown)
+        if not ing:
+            unmatched.append(name)
+    db.commit()
+    log.info("proxy requests by %s for %s: added=%s skipped=%s", user.username, staff.username, added, skipped)
+    msg = f"{len(added)} request{'s' if len(added) != 1 else ''} added for {staff.name}"
+    if skipped:
+        msg += f" · already requested: {', '.join(skipped)}"
+    if unmatched:
+        msg += f" · not in the item list (pick the item on the row): {', '.join(unmatched)}"
+    return RedirectResponse(url=f"/buy?{urlencode({'proxy': msg})}", status_code=303)
 
 
 @router.post("/buy/requests/{requisition_id}/reject")

@@ -15,11 +15,22 @@
       <p class="sl-sub">Staff requests and items running out, with what's left, how fast it's used and what it costs. Staff send only the item name; you set the quantity.</p>
     </div>
     <div class="sl-btns">
+      <button type="button" class="sl-btn" data-by-proxy>+ Request for staff</button>
       <button type="button" class="sl-btn by-wa" data-by-share>Share list on WhatsApp</button>
       <button type="button" class="sl-btn sl-btn-p" data-by-approve>Approve <b data-by-hbtn></b></button>
     </div>
   </div>
 
+  {% if request.query_params.get('proxy') %}<p class="sl-flash">{{ request.query_params.get('proxy') }}</p>{% endif %}
+  {% if request.query_params.get('proxy_error') %}<p class="sl-flash bad">{{ request.query_params.get('proxy_error') }}</p>{% endif %}
+  <form method="post" action="/buy/proxy" class="sl-card by-proxy" data-by-proxy-form {{ '' if request.query_params.get('proxy_error') else 'hidden' }}>
+    <div class="sl-sechead"><h3>Request for staff</h3><p>Got a list by WhatsApp, a call or a slip? Pick who sent it and paste or type it, one item per line (commas work too). Each item becomes a request in their name, marked as entered by you. Quantities like "5 kg" are kept as a note; you still set what to buy.</p></div>
+    <div class="by-proxy-body">
+      <label>Sent by<select name="staff_id" required><option value="">Pick a person…</option>{% for u in staff_users %}<option value="{{ u.id }}">{{ u.name }}{{ ' (owner)' if u.is_admin }}</option>{% endfor %}</select></label>
+      <label class="by-proxy-list">Items<textarea name="items" rows="6" required placeholder="Onion 5 kg&#10;Tomato&#10;Dhanya&#10;Paneer 2 kg"></textarea></label>
+      <div class="by-proxy-acts"><button type="submit" class="sl-btn sl-btn-p">Add requests</button><button type="button" class="sl-btn" data-by-proxy-close>Cancel</button></div>
+    </div>
+  </form>
   {% if request.query_params.get('approved') %}<p class="sl-flash">{{ request.query_params.get('approved') }} item{{ 's' if request.query_params.get('approved') != '1' }} approved. Each one closes by itself when its purchase is logged.</p>{% endif %}
 
   <div class="sl-kpis by-kpis">
@@ -53,7 +64,7 @@
             <td>
               <div class="sl-item">{{ i.name }}</div>
               <div class="by-why">
-                {% for r in i.requests %}<span class="by-pill req">Requested by {{ r.by }} · {{ r.at.strftime('%d %b, %I:%M %p').replace(' 0', ' ') }}</span>{% endfor %}
+                {% for r in i.requests %}<span class="by-pill req">Requested by {{ r.by }} · {{ r.at.strftime('%d %b, %I:%M %p').replace(' 0', ' ') }}</span>{% if r.proxy %} <span class="by-pill own" title="{{ r.proxy }}">{{ r.proxy.split(' for ')[0] }}{% if ' · asked ' in r.proxy %} · asked {{ r.proxy.split(' · asked ')[1] }}{% endif %}</span>{% endif %}{% endfor %}
                 {% if i.out %}<span class="by-pill out">Out</span>
                 {% elif i.low %}<span class="by-pill low">{{ '%.1f'|format(i.cover) }} days left</span>
                 {% elif i.cadence %}<span class="by-pill low">Usually bought by now</span>{% endif %}
@@ -225,6 +236,13 @@ document.querySelectorAll('[data-rq-toggle]').forEach(b => b.addEventListener('c
   row.hidden = !row.hidden;
   b.setAttribute('aria-expanded', String(!row.hidden));
 }));
+</script>
+<script>
+(function () {
+  const f = document.querySelector('[data-by-proxy-form]');
+  document.querySelector('[data-by-proxy]').addEventListener('click', () => { f.hidden = !f.hidden; if (!f.hidden) { f.scrollIntoView({ behavior: 'smooth', block: 'start' }); f.querySelector('select').focus(); } });
+  f.querySelector('[data-by-proxy-close]').addEventListener('click', () => { f.hidden = true; });
+})();
 </script>
 <script src="/static/buy.js?v=4" defer></script>
 {% endblock %}

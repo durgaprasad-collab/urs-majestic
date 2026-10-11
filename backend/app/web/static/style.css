@@ -2168,3 +2168,10 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 /* Anything marked hidden stays hidden, even where a layout rule sets display
    (the phone card rows on Stock Log / Buy made search "show everything"). */
 [hidden] { display: none !important; }
+.by-proxy { margin-bottom: 14px; border: 2px solid #D4A62A; }
+.by-proxy-body { display: grid; grid-template-columns: 240px 1fr; gap: 12px; padding: 14px 16px; align-items: start; }
+.by-proxy label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: var(--sl-ink-2); }
+.by-proxy select, .by-proxy textarea { padding: 9px 10px; border: 1px solid var(--sl-line); border-radius: 9px; background: #fff; font: 500 14px Inter, sans-serif; color: var(--sl-ink); }
+.by-proxy textarea { resize: vertical; min-height: 120px; }
+.by-proxy-acts { grid-column: 1 / -1; display: flex; gap: 8px; }
+@media (max-width: 640px) { .by-proxy-body { grid-template-columns: 1fr; } }
