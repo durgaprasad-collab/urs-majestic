@@ -25,6 +25,8 @@ from app.core.clock import business_today
 from app.services.purchases_page import to_item_unit
 
 ORDER_AHEAD_DAYS = 4
+# Used far beyond what recipes record (frying oil): judge by how fast it's bought.
+PURCHASE_PACED = {"Oil"}
 LOW_DAYS = 1.5
 
 
@@ -46,6 +48,7 @@ LOCAL_NAMES = {
     "shimla mirch": "Capsicum", "gajar": "Carrot", "patta gobi": "Cabbage", "bandh gobi": "Cabbage",
     "nimbu": "Lemon", "elumichai": "Lemon", "doodh": "Milk", "paal": "Milk", "dahi": "Curd", "thayir": "Curd",
     "makhan": "Butter", "chawal": "Rice/Basmati", "tel": "Oil", "ennai": "Oil", "maida": "Maida", "atta": "Wheat Flour",
+    "master oil": "Mustard oil", "sarson tel": "Mustard oil",
 }
 
 
@@ -95,7 +98,7 @@ def check(db: Session, ingredient_id: int, before: datetime.datetime | None = No
     buys = db.execute(text("""
         SELECT purchase_date AS d, qty, unit::text AS u, total_price, vendor FROM purchases
          WHERE ingredient_id = :i AND deleted_at IS NULL AND created_at < :b
-           AND (usage_type = 'menu' OR :staff)
+           AND (usage_type = 'menu' OR :staff) AND qty > 0 AND total_price >= 0  -- refunds aren't purchases
          ORDER BY purchase_date DESC, id DESC LIMIT 12
     """), {"i": ingredient_id, "b": before, "staff": ing["category"] == "Staff"}).mappings().all()
     last = buys[0] if buys else None
@@ -153,6 +156,13 @@ def check(db: Session, ingredient_id: int, before: datetime.datetime | None = No
         "stock": stock, "count": {"qty": float(count[0]), "at": count[1]} if count else None, "top": top,
         "used_pct": (used / last_qty * 100) if last_qty else None,
     }
+    if ing["name"] in PURCHASE_PACED and last:
+        # Daily use from how much was bought in the 30 days before the request.
+        since30 = (before.astimezone(datetime.timezone.utc) - datetime.timedelta(days=30)).date()
+        bought = sum((to_item_unit(float(b["qty"]), b["u"], unit, ing["pack_size_g"]) or 0) for b in buys if b["d"] >= since30)
+        out["daily"] = bought / 30 if bought else out["daily"]
+        out["paced"] = True
+        out["days_since"] = (before.astimezone(datetime.timezone.utc).date() - last["d"]).days
     out.update(_verdict(out))
     out["fmt"] = {k: _fmt(out[k], unit) for k in ("used", "daily", "stock")}
     out["fmt"]["last_qty"] = _fmt(last_qty, unit)
@@ -176,6 +186,13 @@ def _verdict(x: dict) -> dict:
     if not last:
         return {"k": "ok", "label": "Valid", "why": f"Never bought before, and {x['n_dishes']} dishes use it."}
     q = last["qty"]
+    if x.get("paced") and x["daily"]:
+        # Frying oil etc.: recipes record a fraction of real use, so go by how fast it's bought.
+        lasts = q / x["daily"] if q else 0
+        since = x["days_since"]
+        if since >= lasts * 0.7:
+            return {"k": "ok", "label": "Valid", "why": f"You buy about {f(x['daily'])}/day (last 30 days of purchases; recipes miss frying oil). The {f(q)} bought {day(last['d'])} lasts about {lasts:.0f} days, and it's been {since}."}
+        return {"k": "chk", "label": "Check", "why": f"You buy about {f(x['daily'])}/day, so the {f(q)} bought {day(last['d'])} should last about {lasts:.0f} days; it's been {since}. Ask the kitchen to look before buying."}
     if not x["plates"]:
         n = x["n_dishes"]
         return {"k": "no", "label": "Doubtful",
