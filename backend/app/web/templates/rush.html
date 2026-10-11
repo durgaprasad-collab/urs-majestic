@@ -40,6 +40,8 @@
   .qty button { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; }
   .send { width: 100%; margin-top: 10px; padding: 14px; border: 0; border-radius: 12px; background: var(--gold); color: var(--g); font: 800 16px Inter, sans-serif; }
   .send:disabled { opacity: .4; }
+  .sw { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; font-size: 13px; color: var(--ink2); line-height: 1.35; }
+  .sw input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: #062013; }
   .err { margin-top: 8px; color: var(--bad); font-size: 14px; }
   .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
   .head h2 { margin: 0; }
@@ -92,11 +94,12 @@
     <div class="chips" id="chips"></div>
     <div class="cart" id="cart" hidden></div>
     <div class="err" id="err" hidden></div>
+    <label class="sw"><input type="checkbox" id="noprint"> <span><b>Don't print, board only</b> · when the paper Petpooja KOT goes to the kitchen and this phone runs the board at the pass</span></label>
     <button class="send" id="send" disabled>Send to kitchen · print slips</button>
   </section>
   <section class="card">
     <div class="head"><h2>Kitchen board · all open orders</h2><span class="muted" id="bstamp"></span></div>
-    <p class="how">Each dish is listed by <b>start-by time</b>: the order's due time (sent + 12 min) minus 1 min to pack, minus the dish's cook time (fried rice 5, naan 3, roti 2, tikka 8, gravy 3…). Earliest start first; <b class="nowtag">NOW</b> means its start time has passed. The same dish from different KOTs is cooked together (wok up to 3, fryer 4, tandoor 8) when their start times are within 4 minutes. Ready dishes drop off.</p>
+    <p class="how">Each dish is listed by <b>start-by time</b>: the order's due time (sent + 12 min) minus 1 min to pack, minus the dish's cook time (fried rice 5, naan 3, roti 2, tikka 8, gravy 3…). Earliest start first; <b class="nowtag">NOW</b> means its start time has passed. The same dish from different KOTs is cooked together when their start times are close: <b>wok within 6 min</b> (up to 3), <b>fryer within 6 min</b> (up to 4), <b>gravy + rice any time</b> (hot box), <b>tandoor within 2 min</b> (up to 8, breads must be fresh). Ready dishes drop off.</p>
     <div class="slips" id="board"><p class="muted">Loading…</p></div>
   </section>
   <section class="card">
@@ -196,10 +199,17 @@
       const r = await call('/rush/orders', { order_type: type, kot_no: kot, ref: $('#ref').value, items: cart.map(c => ({ menu_item_id: c.id, qty: c.qty })) });
       cart = []; drawCart(); $('#ref').value = ''; $('#kot').value = ''; $('#kot').classList.remove('need'); $('#q').value = ''; chips();
       drawBoard(r.board);
-      print(r.slips, `KOT ${kot}`);
+      if ($('#noprint').checked) document.getElementById('board').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else print(r.slips, `KOT ${kot}`);
     } catch (err) { $('#err').textContent = err.message; $('#err').hidden = false; btn.disabled = false; }
   };
   $('#printall').onclick = () => board && print(board, 'All open orders');
+  // Board-only mode (paper Petpooja KOT in the kitchen): remembered on this phone.
+  const NP = 'rush-noprint';
+  const setMode = on => { $('#noprint').checked = on; $('#send').textContent = on ? 'Add to board' : 'Send to kitchen · print slips'; try { localStorage.setItem(NP, on ? '1' : '0'); } catch (e) {} };
+  let saved = null; try { saved = localStorage.getItem(NP); } catch (e) {}
+  setMode(saved === '1');
+  $('#noprint').onchange = () => setMode($('#noprint').checked);
 
   const load = () => call('/rush/board').then(drawBoard).catch(() => {});
   load(); setInterval(load, 20000);

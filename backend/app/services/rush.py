@@ -16,7 +16,10 @@ from app.core.clock import business_tz
 
 PROMISE_MIN = 12
 PACK_MIN = 1
-POOL_WINDOW_MIN = 4
+# Same dish from different KOTs is cooked together when their start times are
+# this close (minutes). Wok and fryer dishes hold well in the hot box, gravy and
+# rice are served from it anyway; breads must be fresh, so only near-simultaneous.
+POOL_WINDOW_MIN = {"T": 2, "W": 6, "F": 6, "G": 24 * 60}
 BATCH = {"T": 8, "W": 3, "F": 4, "G": 99}
 STATIONS = {"T": "Tandoor", "W": "Wok / Chinese", "G": "Gravy + rice", "F": "Fryer / tawa"}
 ORDER_TYPES = ("Dine-in", "Parcel", "Zomato", "Swiggy")
@@ -139,7 +142,7 @@ def board(db: Session, only_order: int | None = None) -> dict:
         batches: list[dict] = []
         for p in mine:
             b = next((b for b in batches if b["dish"] == p["dish"]
-                      and (p["start"] - b["start"]).total_seconds() <= POOL_WINDOW_MIN * 60
+                      and (p["start"] - b["start"]).total_seconds() <= POOL_WINDOW_MIN[st] * 60
                       and b["qty"] + p["qty"] <= BATCH[st] + 0.01), None)
             if b:
                 b["qty"] += p["qty"]
