@@ -21,7 +21,15 @@
   .types button.on { background: var(--g); border-color: var(--g); color: var(--gold2); }
   .row { display: flex; gap: 6px; margin-bottom: 8px; }
   .row input { min-width: 0; padding: 11px 10px; border: 1px solid var(--line); border-radius: 10px; font: 500 15px Inter, sans-serif; }
-  #ref { width: 92px; flex: none; } #q { flex: 1; }
+  #kot { flex: 1.2; font-weight: 700; } #kot.need { border-color: var(--bad); background: #FFF6F4; } #ref { flex: 1; } #q { flex: 1; }
+  .il { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; border-top: 1px solid #F0EEE6; font-size: 14px; }
+  .il:first-child { border-top: 0; }
+  .il.done span { color: var(--ink3); text-decoration: line-through; }
+  .rd { flex: none; min-width: 92px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font: 700 13px Inter, sans-serif; color: var(--ink); }
+  .rd.on { background: #E8F5EE; border-color: #BFE3CE; color: var(--ok); }
+  .ord.allready { border-left-color: var(--ok); background: #F3FBF6; }
+  .rdy { font-size: 12.5px; font-weight: 700; color: var(--ink2); }
+  .ord.allready .rdy { color: var(--ok); }
   .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 330px; overflow-y: auto; }
   .chip { padding: 12px 9px; border: 1px solid var(--line); border-radius: 10px; background: #FBFAF6; text-align: left; font: 600 13.5px/1.2 Inter, sans-serif; color: var(--ink); }
   .chip:active { background: #FFF3C4; }
@@ -72,11 +80,12 @@
   <a href="/daily-brief">Admin →</a>
 </header>
 <main>
-  <p class="note">Use this in <b>Chrome</b> on your phone. <b>Send</b> prints that order's station slips; <b>Print all</b> prints the full board (every open order, pooled). Each order is due 12 minutes after it's sent. Pick your printer in Chrome's print screen; a Bluetooth thermal printer needs its Android print service installed.</p>
+  <p class="note">Use this in <b>Chrome</b> on your phone. <b>Send</b> prints that order's station slips; <b>Print all</b> prints the full board (every open order, pooled). Enter the <b>Petpooja KOT number</b> for every order. Tap <b>Ready</b> on each dish as it comes off the station; ready dishes drop off the slips. Each order is due 12 minutes after it's sent. Pick your printer in Chrome's print screen; a Bluetooth thermal printer needs its Android print service installed.</p>
   <section class="card">
     <h2>New order</h2>
     <div class="types" id="types"></div>
-    <div class="row"><input id="ref" placeholder="Table / ref" autocomplete="off"><input id="q" placeholder="Search dish" autocomplete="off"></div>
+    <div class="row"><input id="kot" placeholder="Petpooja KOT no." inputmode="numeric" autocomplete="off"><input id="ref" placeholder="Table / ref" autocomplete="off"></div>
+    <div class="row"><input id="q" placeholder="Search dish" autocomplete="off"></div>
     <div class="chips" id="chips"></div>
     <div class="cart" id="cart" hidden></div>
     <div class="err" id="err" hidden></div>
@@ -110,6 +119,7 @@
   }
   chips();
   $('#q').oninput = chips;
+  $('#kot').oninput = () => $('#kot').classList.remove('need');
   $('#chips').onclick = e => { const b = e.target.closest('[data-id]'); if (!b) return; add(+b.dataset.id, 1); };
 
   function add(id, d) {
@@ -135,35 +145,44 @@
   function drawBoard(b) {
     board = b;
     $('#printall').hidden = !b.orders.length;
-    $('#orders').innerHTML = b.orders.length ? b.orders.map(o => `
-      <div class="ord ${o.mins_left < 0 ? 'late' : o.mins_left <= 3 ? 'soon' : ''}">
-        <div class="otop"><b>#${o.id} ${esc(o.type)}${o.ref ? ' · ' + esc(o.ref) : ''}</b><span class="due">due ${o.due} · ${o.mins_left < 0 ? `${-o.mins_left} min late` : `${o.mins_left} min`}</span></div>
-        <div class="items">${o.items.map(i => `${i.qty}× ${esc(i.name)}`).join(' · ')}</div>
-        <div class="acts"><button class="pk" data-act="packed" data-id="${o.id}">Packed</button><button data-act="cancel" data-id="${o.id}">Cancel</button></div>
-      </div>`).join('') : '<p class="muted">No open orders.</p>';
+    $('#orders').innerHTML = b.orders.length ? b.orders.map(o => {
+      const all = o.total && o.ready === o.total;
+      return `<div class="ord ${all ? 'allready' : o.mins_left < 0 ? 'late' : o.mins_left <= 3 ? 'soon' : ''}">
+        <div class="otop"><b>KOT ${esc(o.kot || o.id)} · ${esc(o.type)}${o.ref ? ' · ' + esc(o.ref) : ''}</b><span class="due">due ${o.due} · ${o.mins_left < 0 ? `${-o.mins_left} min late` : `${o.mins_left} min`}</span></div>
+        <div class="rdy">${all ? 'All ready · pack it' : `${o.ready} of ${o.total} ready`}</div>
+        <div class="items">${o.items.map(i => `<div class="il ${i.ready ? 'done' : ''}"><span>${i.qty}× ${esc(i.name)}</span><button class="rd ${i.ready ? 'on' : ''}" data-item="${i.id}" data-ready="${i.ready ? 1 : 0}">${i.ready ? '✓ Ready' : 'Food ready'}</button></div>`).join('')}</div>
+        <div class="acts"><button class="pk" data-act="packed" data-id="${o.id}">${all ? 'Packed · out' : 'Packed'}</button><button data-act="cancel" data-id="${o.id}">Cancel</button></div>
+      </div>`; }).join('') : '<p class="muted">No open orders.</p>';
   }
   $('#orders').onclick = async e => {
+    const r = e.target.closest('[data-item]');
+    if (r) { r.disabled = true; try { drawBoard(await call(`/rush/items/${r.dataset.item}/${r.dataset.ready === '1' ? 'unready' : 'ready'}`, {})); } catch (err) { alert(err.message); r.disabled = false; } return; }
     const b = e.target.closest('[data-act]'); if (!b) return;
-    if (b.dataset.act === 'cancel' && !confirm(`Cancel #${b.dataset.id}?`)) return;
+    if (b.dataset.act === 'cancel' && !confirm('Cancel this order?')) return;
     try { drawBoard(await call(`/rush/orders/${b.dataset.id}/${b.dataset.act}`, {})); } catch (err) { alert(err.message); }
   };
 
   function print(s, title) {
     $('#printarea').hidden = false;
     $('#printarea').innerHTML = s.slips.map(sl => `<div class="slip"><div class="slip-h">${esc(sl.label.toUpperCase())}</div><div class="slip-m">${esc(title)} · printed ${s.printed}</div>
-      ${sl.batches.map(bt => `<div class="slip-l"><span class="slip-t ${bt.now ? 'now' : ''}">${bt.now ? 'NOW' : bt.start}</span><span><b>${esc(bt.dish)} ${esc(bt.qty)}</b><small>for #${bt.orders.join(' #')}</small></span></div>`).join('')}</div>`).join('')
+      ${sl.batches.map(bt => `<div class="slip-l"><span class="slip-t ${bt.now ? 'now' : ''}">${bt.now ? 'NOW' : bt.start}</span><span><b>${esc(bt.dish)} ${esc(bt.qty)}</b><small>for KOT ${(bt.kots || bt.orders).join(', ')}</small></span></div>`).join('')}</div>`).join('')
       + `<div class="slip"><div class="slip-h">PACK / PASS</div><div class="slip-m">target ${s.promise_min} min</div>
-      ${s.pack.map(o => `<div class="slip-o"><b>#${o.id} ${esc(o.type)}${o.ref ? ' ' + esc(o.ref) : ''}</b> <span class="slip-due">due ${o.due}</span>${o.items.map(i => `<div>□ ${i.qty}× ${esc(i.name)}</div>`).join('')}</div>`).join('')}</div>`;
+      ${s.pack.map(o => `<div class="slip-o"><b>KOT ${esc(o.kot || o.id)} ${esc(o.type)}${o.ref ? ' ' + esc(o.ref) : ''}</b> <span class="slip-due">due ${o.due}</span>${o.items.map(i => `<div>${i.ready ? '☑' : '□'} ${i.qty}× ${esc(i.name)}</div>`).join('')}</div>`).join('')}</div>`;
     setTimeout(() => window.print(), 200);
   }
 
   $('#send').onclick = async () => {
+    const kot = $('#kot').value.trim();
+    if (!kot) {
+      $('#kot').classList.add('need'); $('#kot').focus();
+      $('#err').textContent = 'Enter the Petpooja KOT number first.'; $('#err').hidden = false; return;
+    }
     const btn = $('#send'); btn.disabled = true; $('#err').hidden = true;
     try {
-      const r = await call('/rush/orders', { order_type: type, ref: $('#ref').value, items: cart.map(c => ({ menu_item_id: c.id, qty: c.qty })) });
-      cart = []; drawCart(); $('#ref').value = ''; $('#q').value = ''; chips();
+      const r = await call('/rush/orders', { order_type: type, kot_no: kot, ref: $('#ref').value, items: cart.map(c => ({ menu_item_id: c.id, qty: c.qty })) });
+      cart = []; drawCart(); $('#ref').value = ''; $('#kot').value = ''; $('#kot').classList.remove('need'); $('#q').value = ''; chips();
       drawBoard(r.board);
-      print(r.slips, `Order #${r.id}`);
+      print(r.slips, `KOT ${kot}`);
     } catch (err) { $('#err').textContent = err.message; $('#err').hidden = false; btn.disabled = false; }
   };
   $('#printall').onclick = () => board && print(board, 'All open orders');

@@ -48,11 +48,21 @@ async def create(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"error": "Sign in again"}, status_code=401)
     body = await request.json()
     try:
-        oid = rush.create_order(db, user.id, body.get("order_type"), body.get("ref"), body.get("items") or [])
+        oid = rush.create_order(db, user.id, body.get("order_type"), body.get("ref"), body.get("items") or [], body.get("kot_no"))
     except (ValueError, TypeError, KeyError) as exc:
         db.rollback()
         return JSONResponse({"error": str(exc) or "Not saved"}, status_code=400)
     return JSONResponse({"id": oid, "slips": rush.board(db, only_order=oid), "board": rush.board(db)})
+
+
+@router.post("/rush/items/{item_id}/{action}")
+def item_ready(item_id: int, action: str, request: Request, db: Session = Depends(get_db)):
+    if not _owner(request, db):
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    if action not in ("ready", "unready"):
+        return JSONResponse({"error": "Unknown action"}, status_code=400)
+    rush.set_item_ready(db, item_id, action == "ready")
+    return JSONResponse(rush.board(db))
 
 
 @router.post("/rush/orders/{order_id}/{action}")

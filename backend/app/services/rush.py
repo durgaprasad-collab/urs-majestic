@@ -49,14 +49,18 @@ def _combo_parts(db: Session) -> dict[int, list[dict]]:
     return out
 
 
-def create_order(db: Session, user_id: int, order_type: str, ref: str | None, items: list[dict]) -> int:
+def create_order(db: Session, user_id: int, order_type: str, ref: str | None, items: list[dict],
+                 kot_no: str | None = None) -> int:
     if order_type not in ORDER_TYPES:
         raise ValueError("Pick dine-in, parcel, Zomato or Swiggy")
+    kot_no = (kot_no or "").strip()[:20]
+    if not kot_no:
+        raise ValueError("Enter the Petpooja KOT number")
     clean = [(int(i["menu_item_id"]), int(i["qty"])) for i in items if int(i.get("qty") or 0) > 0]
     if not clean:
         raise ValueError("Add at least one dish")
-    oid = db.execute(text("""INSERT INTO kitchen_orders (order_type, ref, created_by) VALUES (:t, :r, :u) RETURNING id"""),
-                     {"t": order_type, "r": (ref or "").strip()[:40] or None, "u": user_id}).scalar()
+    oid = db.execute(text("""INSERT INTO kitchen_orders (order_type, ref, created_by, kot_no) VALUES (:t, :r, :u, :k) RETURNING id"""),
+                     {"t": order_type, "r": (ref or "").strip()[:40] or None, "u": user_id, "k": kot_no}).scalar()
     for mid, qty in clean:
         db.execute(text("INSERT INTO kitchen_order_items (order_id, menu_item_id, qty) VALUES (:o, :m, :q)"),
                    {"o": oid, "m": mid, "q": qty})
@@ -72,6 +76,14 @@ def set_status(db: Session, order_id: int, status: str) -> None:
     db.commit()
 
 
+def set_item_ready(db: Session, item_id: int, ready: bool) -> None:
+    """Food ready for one line of an open order (or undo)."""
+    db.execute(text("""UPDATE kitchen_order_items ki SET ready_at = CASE WHEN :r THEN now() END
+                         FROM kitchen_orders o
+                        WHERE ki.id = :i AND o.id = ki.order_id AND o.status = 'open'"""), {"r": ready, "i": item_id})
+    db.commit()
+
+
 def _clock(dt: datetime.datetime) -> str:
     return dt.astimezone(business_tz()).strftime("%I:%M").lstrip("0")
 
@@ -84,14 +96,14 @@ def board(db: Session, only_order: int | None = None) -> dict:
     each dish so the cook can pool them."""
     now = datetime.datetime.now(datetime.timezone.utc)
     orders = db.execute(text("""
-        SELECT o.id, o.order_type, o.ref, o.created_at, u.name AS by
+        SELECT o.id, o.order_type, o.ref, o.kot_no, o.created_at, u.name AS by
           FROM kitchen_orders o LEFT JOIN users u ON u.id = o.created_by
          WHERE o.status = 'open' AND o.created_at > now() - make_interval(hours => :h)
          ORDER BY o.created_at
     """), {"h": OPEN_HOURS}).mappings().all()
     ids = [o["id"] for o in orders]
     lines = db.execute(text("""
-        SELECT ki.order_id, ki.qty, mi.id, mi.name, mi.kitchen_station AS st, mi.cook_minutes AS cook
+        SELECT ki.id AS line_id, ki.order_id, ki.qty, ki.ready_at, mi.id, mi.name, mi.kitchen_station AS st, mi.cook_minutes AS cook
           FROM kitchen_order_items ki JOIN menu_items mi ON mi.id = ki.menu_item_id
          WHERE ki.order_id = ANY(:ids) ORDER BY ki.id
     """), {"ids": ids or [0]}).mappings().all()
@@ -101,11 +113,16 @@ def board(db: Session, only_order: int | None = None) -> dict:
     by_id = {o["id"]: o for o in orders}
     for o in orders:
         due = o["created_at"] + datetime.timedelta(minutes=PROMISE_MIN)
-        out_orders.append({"id": o["id"], "type": o["order_type"], "ref": o["ref"], "by": o["by"],
+        mine = [l for l in lines if l["order_id"] == o["id"]]
+        out_orders.append({"id": o["id"], "kot": o["kot_no"], "type": o["order_type"], "ref": o["ref"], "by": o["by"],
                            "taken": _clock(o["created_at"]), "due": _clock(due),
                            "mins_left": round((due - now).total_seconds() / 60),
-                           "items": [{"name": l["name"], "qty": l["qty"]} for l in lines if l["order_id"] == o["id"]]})
+                           "ready": sum(1 for l in mine if l["ready_at"]), "total": len(mine),
+                           "items": [{"id": l["line_id"], "name": l["name"], "qty": l["qty"], "ready": bool(l["ready_at"])}
+                                     for l in mine]})
     for l in lines:
+        if l["ready_at"]:
+            continue  # food ready: off the station slips
         o = by_id[l["order_id"]]
         due = o["created_at"] + datetime.timedelta(minutes=PROMISE_MIN)
         pieces = combos.get(l["id"]) or [{"name": l["name"], "station": l["st"], "cook": l["cook"], "factor": 1.0}]
@@ -130,12 +147,14 @@ def board(db: Session, only_order: int | None = None) -> dict:
                     b["orders"].append(p["order"])
             else:
                 batches.append({"dish": p["dish"], "qty": p["qty"], "start": p["start"], "orders": [p["order"]]})
+        kot = {o["id"]: (o["kot_no"] or str(o["id"])) for o in orders}
         if only_order is not None:
             batches = [b for b in batches if only_order in b["orders"]]
         if not batches:
             continue
         slips.append({"station": st, "label": label, "batches": [{
-            "dish": _dish(b["dish"]), "qty": _qty(b["qty"], b["dish"]), "orders": b["orders"], "now": b["start"] <= now,
+            "dish": _dish(b["dish"]), "qty": _qty(b["qty"], b["dish"]), "orders": b["orders"],
+            "kots": [kot[i] for i in b["orders"]], "now": b["start"] <= now,
             "start": _clock(b["start"])} for b in sorted(batches, key=lambda b: b["start"])]})
     return {"printed": _clock(now), "promise_min": PROMISE_MIN, "orders": out_orders, "slips": slips,
             "pack": out_orders if only_order is None else
