@@ -1,0 +1,10 @@
+{
+  "appId": "com.ursmajestic.rush",
+  "appName": "URS Rush",
+  "webDir": "www",
+  "server": {
+    "url": "https://admin.ursmajestic.com/rush",
+    "androidScheme": "https",
+    "cleartext": false
+  }
+}

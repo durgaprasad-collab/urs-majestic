@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">URS Rush</string>
+    <string name="title_activity_main">URS Rush</string>
+    <string name="package_name">com.ursmajestic.rush</string>
+    <string name="custom_url_scheme">com.ursmajestic.rush</string>
+</resources>
