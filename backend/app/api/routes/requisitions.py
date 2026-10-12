@@ -43,18 +43,26 @@ def _resolve_ingredient(db: Session, item_name: str) -> Ingredient | None:
 
 
 def _sync_fulfillment(db: Session, requisitions: list[Requisition]) -> bool:
-    """Flip approved -> fulfilled where a purchase has landed since approval.
+    """Flip approved or pending -> fulfilled where a purchase of the item has
+    landed since (approved: since approval; pending: since the request -- the
+    item got bought without anyone deciding the request).
     Returns True if anything changed (caller commits)."""
     changed = False
     for req in requisitions:
-        if req.status != RequisitionStatus.approved or not req.ingredient_id or not req.decided_at:
+        if not req.ingredient_id:
+            continue
+        if req.status == RequisitionStatus.approved and req.decided_at:
+            since = req.decided_at
+        elif req.status == RequisitionStatus.pending and req.created_at:
+            since = req.created_at
+        else:
             continue
         match = (
             db.query(Purchase)
             .filter(
                 Purchase.ingredient_id == req.ingredient_id,
                 Purchase.deleted_at.is_(None),
-                Purchase.created_at >= req.decided_at,
+                Purchase.created_at >= since,
             )
             .order_by(Purchase.created_at.asc())
             .first()

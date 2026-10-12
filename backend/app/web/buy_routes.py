@@ -36,8 +36,9 @@ def buy_page(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         return redir
-    approved = db.query(Requisition).filter(Requisition.status == RequisitionStatus.approved).all()
-    if _sync_fulfillment(db, approved):
+    open_reqs = (db.query(Requisition)
+                 .filter(Requisition.status.in_([RequisitionStatus.approved, RequisitionStatus.pending])).all())
+    if _sync_fulfillment(db, open_reqs):
         db.commit()
     data = inbox(db)
     for r in data["waiting"]:
