@@ -27,14 +27,21 @@ class ChainTests(unittest.TestCase):
         self.assertIsNone(rows[0]["used"])
         self.assertEqual(rows[1]["used"], Decimal("2.4"))
 
-    def test_new_cylinder_counts_old_remainder_plus_new_use(self):
-        # Old had 1.9 kg left; new one weighed 38.6 -> 18.6 kg, so 0.6 already used.
-        rows = gas.chain_usage([_r(8, 0, 30, 21.9), _r(9, 0, 30, 38.6, new=True)])
-        self.assertEqual(rows[1]["used"], Decimal("1.9") + Decimal("0.6"))
+    def test_new_tick_is_ignored(self):
+        # Staff tick "new" every night; a drop is still just the drop.
+        rows = gas.chain_usage([_r(8, 0, 30, 38.7), _r(9, 0, 30, 29.6, new=True)])
+        self.assertEqual(rows[1]["used"], Decimal("9.1"))
+        self.assertFalse(rows[1]["swap"])
 
-    def test_heavier_without_new_flag_never_counts_negative(self):
+    def test_heavier_by_more_than_2kg_is_a_swap_with_no_usage(self):
+        rows = gas.chain_usage([_r(8, 0, 30, 21.9), _r(9, 0, 30, 38.6)])
+        self.assertTrue(rows[1]["swap"])
+        self.assertIsNone(rows[1]["used"])
+
+    def test_slightly_heavier_never_counts_negative(self):
         rows = gas.chain_usage([_r(8, 0, 30, 25.0), _r(9, 0, 30, 26.0)])
         self.assertEqual(rows[1]["used"], Decimal("0"))
+        self.assertFalse(rows[1]["swap"])
 
     def test_gap_in_the_log_is_not_a_nights_use(self):
         rows = gas.chain_usage([_r(1, 0, 30, 35.0), _r(9, 0, 30, 25.0)])

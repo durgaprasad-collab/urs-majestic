@@ -20,7 +20,6 @@
     <label>Cylinder<select name="cylinder">{% for c in cylinders %}<option value="{{ c.key }}">{{ c.label }}</option>{% endfor %}</select></label>
     <label>Scale reading (kg)<input name="gross_kg" inputmode="decimal" required placeholder="e.g. 31.4"></label>
     <label>When<input type="datetime-local" name="recorded_at"></label>
-    <label class="gs-chk"><input type="checkbox" name="is_new_cylinder" value="1"> New cylinder fitted</label>
     <button type="submit" class="sl-btn sl-btn-p">Save</button>
   </form>
 
@@ -101,7 +100,7 @@
         <tr>
           <td>{{ n.night.strftime('%a %d %b') }}</td>
           {% for c in cylinders %}{% set r = n.rows.get(c.key) %}
-          <td class="r">{% if r %}<span class="sl-qedit"><input inputmode="decimal" value="{{ '%g'|format(r.gross_kg|float) }}" data-orig="{{ '%g'|format(r.gross_kg|float) }}" data-gs-edit="{{ r.id }}" aria-label="{{ c.label }} reading"><span class="sl-ok" data-gs-ok hidden>✓</span></span>{% if r.is_new_cylinder %}<span class="gs-new">new</span>{% endif %}{% else %}<span class="sl-muted">—</span>{% endif %}</td>
+          <td class="r">{% if r %}<span class="sl-qedit"><input inputmode="decimal" value="{{ '%g'|format(r.gross_kg|float) }}" data-orig="{{ '%g'|format(r.gross_kg|float) }}" data-gs-edit="{{ r.id }}" aria-label="{{ c.label }} reading"><span class="sl-ok" data-gs-ok hidden>✓</span></span>{% if r.swap %}<span class="gs-new" title="Heavier than the reading before: cylinder swapped">swapped</span>{% endif %}{% else %}<span class="sl-muted">—</span>{% endif %}</td>
           <td class="r">{{ kg(n.used.get(c.key)) }}{{ ' kg' if n.used.get(c.key) is not none }}</td>
           {% endfor %}
           <td class="r sl-hide-sm"><b>{{ kg(n.total) }}{{ ' kg' if n.total is not none }}</b></td>

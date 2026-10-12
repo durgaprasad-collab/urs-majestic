@@ -3,9 +3,10 @@
 
 Staff type the scale reading (cylinder included); gas on hand is
 gross - TARE_KG. Use between two readings of the same cylinder is the drop
-in weight; when a reading is marked is_new_cylinder (a swap), use is what
-was left in the old one plus what's already gone from the new one, assuming
-it started full (FULL_KG). A reading belongs to the business night it closes:
+in weight. The staff "new cylinder" tick is ignored (owner, 12 Oct 2026:
+staff can't use it reliably): a reading more than SWAP_RISE_KG heavier
+than the one before means a cylinder was swapped; that night has no usage
+figure (it isn't counted in the daily rate) and the chain restarts. A reading belongs to the business night it closes:
 12:30 AM on the 10th is the night of the 9th (same 05:00 rollover as stock
 counts, services/stock_count.count_day).
 """
@@ -25,6 +26,7 @@ FULL_KG = Decimal("19.2")    # gas in a full commercial cylinder
 REMINDER_HOUR, REMINDER_MINUTE = 0, 30
 AVG_NIGHTS = 7
 CHART_NIGHTS = 14
+SWAP_RISE_KG = Decimal("2")  # heavier than the last reading by more than this = swapped
 LOW_DAYS = Decimal("1.5")    # warn the owner when a cylinder has less than this left
 # A gap longer than this between two readings isn't a night's use (the log
 # lapsed); the later reading just restarts the chain.
@@ -58,16 +60,19 @@ def _readings(db: Session) -> dict[str, list[dict]]:
 
 
 def chain_usage(rows: list[dict]) -> list[dict]:
-    """Fill rows[i]["used"] / ["hours"] for one cylinder's chronological
-    readings (each with recorded_at, net, is_new_cylinder)."""
+    """Fill rows[i]["used"] / ["hours"] / ["swap"] for one cylinder's
+    chronological readings (each with recorded_at and net). Use is the drop
+    between readings; a rise of more than SWAP_RISE_KG is a swap (no figure)."""
+    for r in rows:
+        r["swap"] = False
     for prev, cur in zip(rows, rows[1:]):
         cur["hours"] = (cur["recorded_at"] - prev["recorded_at"]).total_seconds() / 3600
+        if cur["net"] > prev["net"] + SWAP_RISE_KG:
+            cur["swap"] = True
+            continue
         if cur["hours"] > STALE_HOURS:
             continue
-        if cur["is_new_cylinder"]:
-            cur["used"] = max(prev["net"], Decimal(0)) + max(FULL_KG - cur["net"], Decimal(0))
-        else:
-            cur["used"] = max(prev["net"] - cur["net"], Decimal(0))
+        cur["used"] = max(prev["net"] - cur["net"], Decimal(0))
     return rows
 
 
@@ -90,7 +95,7 @@ def cylinder_state(db: Session) -> dict:
         rows = readings.get(key, [])
         last = rows[-1] if rows else None
         rate = _rate(rows, now)
-        swaps = [r for r in rows if r["is_new_cylinder"]]
+        swaps = [r for r in rows if r.get("swap")]
         lasted = None
         if len(swaps) >= 2:
             between = [r for r in rows if swaps[-2]["recorded_at"] < r["recorded_at"] <= swaps[-1]["recorded_at"]]
