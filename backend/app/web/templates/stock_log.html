@@ -14,6 +14,8 @@
         {% if s.last_day %}Last count <b>{{ s.last_day.strftime('%a %d %b') }}</b> ({{ s.last_n }} items{% if s.last_by %}, mostly {{ s.last_by }}{% endif %}).{% else %}No real count yet.{% endif %}
         Between counts, stock is <b>estimated</b> from sales and purchases. Staff count {{ 'all items tonight (Monday full count)' if s.kind == 'full' else s.todo_total ~ ' items every night at 10 PM' }} in the app.
       </p>
+      {% if ingested %}<p class="sl-ingest">Sales last taken off stock:
+        {% for g in ingested %}<span class="{{ 'late' if g.behind >= 1 }}"><b>{{ g.label }}</b> to {{ g.upto.strftime('%a %d %b') }} <small>(ran {{ g.ran.strftime('%a %d %b, %I:%M %p').replace(' 0', ' ') }}{% if g.behind >= 1 %} · {{ g.behind }} day{{ 's' if g.behind != 1 }} behind{% endif %})</small></span>{{ ' · ' if not loop.last }}{% endfor %}</p>{% endif %}
     </div>
     <div class="sl-btns">
       <a href="/stock-log/low-cover.pdf" class="sl-btn">Low-cover PDF</a>

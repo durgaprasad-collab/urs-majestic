@@ -152,6 +152,7 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
         "tonight_ids": [i["id"] for i in tonight],
         "first": stock_count.first_list(items),
         "disabled": stock_count.disabled_items(db),
+        "ingested": stock_count.last_ingestion(db),
     })
 
 

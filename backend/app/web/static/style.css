@@ -2175,3 +2175,6 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .by-proxy textarea { resize: vertical; min-height: 120px; }
 .by-proxy-acts { grid-column: 1 / -1; display: flex; gap: 8px; }
 @media (max-width: 640px) { .by-proxy-body { grid-template-columns: 1fr; } }
+.sl-ingest { margin-top: 6px; font-size: 12.5px; color: var(--sl-ink-2); line-height: 1.6; }
+.sl-ingest small { color: var(--sl-ink-3); }
+.sl-ingest .late, .sl-ingest .late small { color: var(--sl-warn); }

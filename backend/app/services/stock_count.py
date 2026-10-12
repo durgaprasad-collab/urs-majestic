@@ -210,3 +210,27 @@ def disabled_items(db: Session) -> list[dict]:
                  ORDER BY l.repaired_at DESC LIMIT 1) AS reason
         FROM ingredients i WHERE NOT i.is_active ORDER BY i.name
     """)).mappings().all()]
+
+
+INGEST_LABEL = {"petpooja": "Petpooja", "zomato": "Zomato", "swiggy": "Swiggy"}
+
+
+def last_ingestion(db: Session) -> list[dict]:
+    """When sales were last taken off stock, per channel: the latest sales day
+    deducted and when that upload ran (from the usage rows themselves)."""
+    rows = db.execute(text("""
+        SELECT split_part(note, '_usage:', 1) AS ch, max(split_part(split_part(note, ':', 2), ':', 1)) AS upto,
+               max(counted_at) AS ran
+          FROM ingredient_stock WHERE note ~ '^(petpooja|zomato|swiggy)_usage:'
+         GROUP BY 1
+    """)).mappings().all()
+    yesterday = business_now().date() - datetime.timedelta(days=1)
+    out = []
+    for ch in ("petpooja", "zomato", "swiggy"):
+        r = next((x for x in rows if x["ch"] == ch), None)
+        if not r:
+            continue
+        upto = datetime.date.fromisoformat(r["upto"])
+        out.append({"label": INGEST_LABEL[ch], "upto": upto, "ran": r["ran"].astimezone(business_tz()),
+                    "behind": (yesterday - upto).days})
+    return out
