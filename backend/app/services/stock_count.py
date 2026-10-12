@@ -238,21 +238,30 @@ def last_ingestion(db: Session) -> list[dict]:
     return out
 
 
-def _item_ingestion(db: Session) -> dict[int, dict]:
-    """{ingredient_id: {label, upto, ran}}: the item's most recent sales
-    deduction (any channel) -- which sales day and when it ran."""
+def _item_ingestion(db: Session) -> dict[int, list[dict]]:
+    """{ingredient_id: [per channel {label, upto, ran, last_sold}]}.
+
+    upto/ran: the channel's latest sales day taken off stock and when (from
+    last_ingestion) -- every item's stock reflects that channel up to then.
+    last_sold: the item's own latest deduction from that channel, shown when
+    it is older (the item didn't sell there since)."""
+    chans = {g["label"]: g for g in last_ingestion(db)}
     rows = db.execute(text("""
-        SELECT DISTINCT ON (ingredient_id) ingredient_id, split_part(note, '_usage:', 1) AS ch,
-               split_part(note, ':', 2) AS upto, counted_at
-          FROM ingredient_stock WHERE note ~ '^(petpooja|zomato|swiggy)_usage:'
-         ORDER BY ingredient_id, counted_at DESC, id DESC
+        SELECT DISTINCT ON (ingredient_id, ch) ingredient_id, ch, upto FROM (
+            SELECT ingredient_id, split_part(note, '_usage:', 1) AS ch, split_part(note, ':', 2) AS upto, counted_at, id
+              FROM ingredient_stock WHERE note ~ '^(petpooja|zomato|swiggy)_usage:'
+        ) x ORDER BY ingredient_id, ch, upto DESC, counted_at DESC, id DESC
     """)).mappings().all()
-    out = {}
+    mine: dict[int, dict] = {}
     for r in rows:
         try:
-            upto = datetime.date.fromisoformat(r["upto"])
+            mine.setdefault(r["ingredient_id"], {})[INGEST_LABEL.get(r["ch"], r["ch"])] = datetime.date.fromisoformat(r["upto"])
         except ValueError:
             continue
-        out[r["ingredient_id"]] = {"label": INGEST_LABEL.get(r["ch"], r["ch"]), "upto": upto,
-                                   "ran": r["counted_at"].astimezone(business_tz())}
+    out = {}
+    for iid, last in mine.items():
+        out[iid] = [{"label": lab, "upto": g["upto"], "ran": g["ran"],
+                     "last_sold": last.get(lab) if last.get(lab) and last.get(lab) < g["upto"] else None,
+                     "never": lab not in last}
+                    for lab, g in chans.items()]
     return out
