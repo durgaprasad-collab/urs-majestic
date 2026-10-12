@@ -83,6 +83,7 @@ def stock_view(db: Session) -> list[dict]:
     tonight = count_day()
     human = _human_counts(db)
     resale = _resale_daily(db)
+    ingest = _item_ingestion(db)
     items = []
     for r in _stock_rows(db):
         h = human.get(r["ingredient_id"])
@@ -104,6 +105,7 @@ def stock_view(db: Session) -> list[dict]:
             "qty": qty, "source": src, "estimated": src not in (None, "counted"),
             "cover": cover, "stale": bool(r["stock_stale"]),
             "last_qty": (round(float(h["on_hand_qty"]) * per_kg, 2) if per_kg else float(h["on_hand_qty"])) if h else None,
+            "ingest": ingest.get(r["ingredient_id"]),
             "last_at": h["counted_at"].astimezone(business_tz()) if h else None,
             "last_by": h["by_name"] if h else None,
             "last_days": (tonight - h_day).days if h_day else None,
@@ -233,4 +235,24 @@ def last_ingestion(db: Session) -> list[dict]:
         upto = datetime.date.fromisoformat(r["upto"])
         out.append({"label": INGEST_LABEL[ch], "upto": upto, "ran": r["ran"].astimezone(business_tz()),
                     "behind": (yesterday - upto).days})
+    return out
+
+
+def _item_ingestion(db: Session) -> dict[int, dict]:
+    """{ingredient_id: {label, upto, ran}}: the item's most recent sales
+    deduction (any channel) -- which sales day and when it ran."""
+    rows = db.execute(text("""
+        SELECT DISTINCT ON (ingredient_id) ingredient_id, split_part(note, '_usage:', 1) AS ch,
+               split_part(note, ':', 2) AS upto, counted_at
+          FROM ingredient_stock WHERE note ~ '^(petpooja|zomato|swiggy)_usage:'
+         ORDER BY ingredient_id, counted_at DESC, id DESC
+    """)).mappings().all()
+    out = {}
+    for r in rows:
+        try:
+            upto = datetime.date.fromisoformat(r["upto"])
+        except ValueError:
+            continue
+        out[r["ingredient_id"]] = {"label": INGEST_LABEL.get(r["ch"], r["ch"]), "upto": upto,
+                                   "ran": r["counted_at"].astimezone(business_tz())}
     return out

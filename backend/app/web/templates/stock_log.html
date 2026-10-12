@@ -67,7 +67,7 @@
           <tr class="sl-cat"><td colspan="6">{{ 'Packaging' if cat == 'packaging' else cat }}<span>{{ rows|length }} items{% if cat == 'Other' %} · no category set{% endif %}</span></td></tr>
           {% for i in rows %}
           <tr data-sl-row data-name="{{ i.name|lower }}" data-flags="{{ 'low' if i.f_low }} {{ 'zero' if i.f_zero }} {{ 'recount' if i.f_recount }} {{ 'old' if i.f_old }} {{ 'never' if i.f_never }}">
-            <td class="sl-item">{{ i.name }}</td>
+            <td class="sl-item">{{ i.name }}{% if i.ingest %}<small class="sl-ing">Sales off: {{ i.ingest.label }} to {{ i.ingest.upto.strftime('%d %b') }} · ran {{ i.ingest.ran.strftime('%a %I:%M %p').replace(' 0', ' ') }}</small>{% endif %}</td>
             <td>
               <span class="sl-qedit">
                 <input inputmode="decimal" data-sl-qty="{{ i.id }}" value="{{ num(i.qty) }}" placeholder="—" data-orig="{{ num(i.qty) }}" aria-label="On hand for {{ i.name }}">
@@ -122,7 +122,7 @@
         <div class="sl-card sl-sec first-sec" data-sl-section="first">
           <div class="sl-sechead"><h3>Count these first</h3><p>Top {{ first|length }} of {{ s.first_total }}: estimates at zero, low cover, or bought since the last count</p></div>
           {% for i in first %}
-          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %} · <span class="dn">{{ i.why[0] }}</span></div></div>
+          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %} · <span class="dn">{{ i.why[0] }}</span></div>{% if i.ingest %}<small class="sl-ing">Sales off: {{ i.ingest.label }} to {{ i.ingest.upto.strftime('%d %b') }} · ran {{ i.ingest.ran.strftime('%a %I:%M %p').replace(' 0', ' ') }}</small>{% endif %}</div>
             <div class="sl-entry"><input inputmode="decimal" data-sl-qty="{{ i.id }}" placeholder="{{ num(i.qty) if i.qty is not none else 'qty' }}" aria-label="Count for {{ i.name }}"><span class="u">{{ i.unit }}</span><span class="sl-ok" data-sl-ok hidden>✓</span></div></div>
           {% endfor %}
         </div>
@@ -130,7 +130,7 @@
         <div class="sl-card sl-sec" data-sl-section="{{ loop.index }}" hidden>
           <div class="sl-sechead"><h3>{{ 'Packaging' if cat == 'packaging' else cat }}</h3><p>{{ rows|length }} items</p></div>
           {% for i in rows %}
-          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %}</div></div>
+          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %}</div>{% if i.ingest %}<small class="sl-ing">Sales off: {{ i.ingest.label }} to {{ i.ingest.upto.strftime('%d %b') }} · ran {{ i.ingest.ran.strftime('%a %I:%M %p').replace(' 0', ' ') }}</small>{% endif %}</div>
             <div class="sl-entry"><input inputmode="decimal" data-sl-qty="{{ i.id }}" placeholder="{{ num(i.qty) if i.qty is not none else 'qty' }}" aria-label="Count for {{ i.name }}"><span class="u">{{ i.unit }}</span><span class="sl-ok" data-sl-ok hidden>✓</span></div></div>
           {% endfor %}
         </div>

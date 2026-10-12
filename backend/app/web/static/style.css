@@ -2178,3 +2178,4 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .sl-ingest { margin-top: 6px; font-size: 12.5px; color: var(--sl-ink-2); line-height: 1.6; }
 .sl-ingest small { color: var(--sl-ink-3); }
 .sl-ingest .late, .sl-ingest .late small { color: var(--sl-warn); }
+.sl-ing { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--sl-ink-3); }
