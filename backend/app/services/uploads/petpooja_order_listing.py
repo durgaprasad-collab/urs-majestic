@@ -174,3 +174,22 @@ def cross_check_amounts(db: Session, daily_counts: dict[date, dict]) -> dict[dat
             continue
         diffs[business_date] = agg["amount"] - net_sales
     return diffs
+
+
+def store_order_times(db: Session, rows: list[OrderListingRow], upload_date: date) -> int:
+    """Keep each order's time and amount (cancelled and today's orders left out),
+    replacing the dates this file covers. Used to split a sales day around a
+    mid-day stock count (services/sales_stock.share_after)."""
+    from sqlalchemy import text
+    from app.core.clock import business_tz
+
+    keep = [r for r in rows if r.status != "Cancelled" and r.business_date < upload_date]
+    for d in {r.business_date for r in keep}:
+        db.execute(text("DELETE FROM petpooja_order_times WHERE business_date = :d"), {"d": d})
+    for r in keep:
+        created = r.created if r.created.tzinfo else r.created.replace(tzinfo=business_tz())
+        db.execute(text("""INSERT INTO petpooja_order_times (business_date, order_no, created_at, amount)
+                           VALUES (:d, :n, :c, :a) ON CONFLICT (business_date, order_no) DO UPDATE
+                           SET created_at = EXCLUDED.created_at, amount = EXCLUDED.amount"""),
+                   {"d": r.business_date, "n": str(r.order_no), "c": created, "a": r.amount})
+    return len(keep)

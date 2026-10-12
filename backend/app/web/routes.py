@@ -17,7 +17,7 @@ from scripts.import_pos import (
 from app.services import menu_page
 from app.services.uploads.petpooja_order_listing import (
     parse_order_listing_xlsx, aggregate_by_day, check_aggregator_alarm,
-    find_unpaired_diffs, upsert_order_counts, cross_check_amounts, ALARM_MESSAGE,
+    find_unpaired_diffs, upsert_order_counts, cross_check_amounts, ALARM_MESSAGE, store_order_times,
 )
 from app.models.item_sale import ItemSale
 from app.models.upload_log import UploadLog
@@ -210,6 +210,7 @@ async def upload_petpooja_orders(
 
         daily = aggregate_by_day(rows, today)
         dates_updated, dates_skipped_no_row = upsert_order_counts(db, daily)
+        store_order_times(db, rows, today)
         diffs = cross_check_amounts(db, daily)
         warnings = find_unpaired_diffs(diffs)
 

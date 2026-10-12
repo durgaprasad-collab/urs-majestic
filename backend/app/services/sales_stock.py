@@ -222,30 +222,40 @@ def adjust_stock_for_sales(db, sales, ledger: str = "petpooja_usage", dates=None
         # count just after midnight IST is the normal closing count for the
         # preceding trading day even though Render/Postgres may still be on the
         # previous UTC date.
-        covered_by_physical_count = db.execute(text("""
-            SELECT EXISTS (
-                SELECT 1
-                  FROM ingredient_stock
-                 WHERE ingredient_id = :ingredient_id
-                   -- Any row a person entered is a physical count: the stock
-                   -- log (no note / reorder_required), the staff app
-                   -- (app_count) and owner corrections (admin_edit). Only the
-                   -- automatic rows are excluded.
-                   AND COALESCE(note, '') NOT LIKE 'petpooja_usage:%'
-                   AND COALESCE(note, '') NOT LIKE 'zomato_usage:%'
-                   AND COALESCE(note, '') NOT LIKE 'swiggy_usage:%'
-                   AND COALESCE(note, '') NOT LIKE 'purchase_auto:%'
-                   AND COALESCE(note, '') NOT LIKE 'SYSTEM%'
-                   -- The nightly count (~10 PM) is that day's closing count,
-                   -- so it covers that day's sales; counts before 5 AM belong
-                   -- to the previous evening (services/stock_count.count_day).
-                   AND (timezone(:business_timezone, counted_at) - interval '5 hours')::date >= :sale_date
-            )
+        # The latest physical count on or after the sales day decides how much
+        # of that day's usage still has to come off:
+        #   counted on a later business day -> it already includes the whole
+        #     day, nothing comes off (the ledger still advances);
+        #   counted during the sales day itself (a mid-day correction, or the
+        #     ~10 PM nightly count while service runs till 1 AM) -> only the
+        #     share of the day's sales made after the count comes off;
+        #   no count since -> the whole day comes off the latest balance.
+        # Any row a person entered is a physical count (stock log, staff app,
+        # owner edits); automatic rows are excluded. Business days roll over at
+        # 5 AM in the business timezone (services/stock_count.count_day).
+        count = db.execute(text("""
+            SELECT counted_at,
+                   (timezone(:business_timezone, counted_at) - interval '5 hours')::date AS count_day
+              FROM ingredient_stock
+             WHERE ingredient_id = :ingredient_id
+               AND COALESCE(note, '') NOT LIKE 'petpooja_usage:%'
+               AND COALESCE(note, '') NOT LIKE 'zomato_usage:%'
+               AND COALESCE(note, '') NOT LIKE 'swiggy_usage:%'
+               AND COALESCE(note, '') NOT LIKE 'purchase_auto:%'
+               AND COALESCE(note, '') NOT LIKE 'SYSTEM%'
+               AND (timezone(:business_timezone, counted_at) - interval '5 hours')::date >= :sale_date
+             ORDER BY counted_at DESC LIMIT 1
         """), {
             "ingredient_id": ingredient_id,
             "sale_date": sale_date,
             "business_timezone": settings.BUSINESS_TIMEZONE,
-        }).scalar_one()
+        }).mappings().first()
+        if count is None:
+            share = Decimal("1")
+        elif count["count_day"] > sale_date:
+            share = Decimal("0")
+        else:
+            share = share_after(db, ledger, sale_date, count["counted_at"])
         if latest is None:
             # No physical baseline exists. Record a conservative zero balance
             # plus the usage ledger so the same report cannot deduct twice.
@@ -256,10 +266,8 @@ def adjust_stock_for_sales(db, sales, ledger: str = "petpooja_usage", dates=None
             # silently treating litres, kilograms, or pieces as equivalent.
             initialized_zero += 1
             balance = Decimal("0")
-        elif covered_by_physical_count:
-            balance = Decimal(str(latest["on_hand_qty"]))
         else:
-            balance = max(Decimal("0"), Decimal(str(latest["on_hand_qty"])) - delta)
+            balance = max(Decimal("0"), Decimal(str(latest["on_hand_qty"])) - delta * share)
         db.execute(text("""
             INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by, note)
             VALUES (:ingredient_id, :balance, CAST(:unit AS unit_type), NULL, :note)
@@ -269,6 +277,43 @@ def adjust_stock_for_sales(db, sales, ledger: str = "petpooja_usage", dates=None
         })
         adjusted += 1
     return {"adjusted": adjusted, "unchanged": unchanged, "initialized_zero": initialized_zero, "unresolved": unresolved}
+
+
+def share_after(db, ledger: str, sale_date, at) -> Decimal:
+    """Share (0-1) of a sales day's takings made after `at`, by amount.
+
+    Petpooja uses the uploaded order listing's times (petpooja_order_times);
+    Zomato/Swiggy use their own order times. If that day's times aren't in
+    yet, the usual pattern of past days (by time of day) stands in."""
+    if ledger == "petpooja_usage":
+        day_sql = """SELECT sum(amount) AS total, sum(amount) FILTER (WHERE created_at > :at) AS after
+                       FROM petpooja_order_times WHERE business_date = :d"""
+        hist_sql = """SELECT created_at AS t, amount AS a FROM petpooja_order_times
+                       WHERE business_date > :d - 60 AND business_date <> :d"""
+        params = {}
+    else:
+        channel = ledger.split("_")[0]
+        day_sql = """SELECT sum(total_amount) AS total, sum(total_amount) FILTER (WHERE placed_at > :at) AS after
+                       FROM orders WHERE channel = :ch
+                        AND (timezone(:tz, placed_at) - interval '6 hours')::date = :d"""
+        hist_sql = """SELECT placed_at AS t, total_amount AS a FROM orders WHERE channel = :ch
+                       AND placed_at > now() - interval '60 days'"""
+        params = {"ch": channel}
+    params.update({"d": sale_date, "at": at, "tz": settings.BUSINESS_TIMEZONE})
+    row = db.execute(text(day_sql), params).mappings().first()
+    if row and row["total"]:
+        return Decimal(str(row["after"] or 0)) / Decimal(str(row["total"]))
+    # Usual pattern: minutes past the 6 AM day start, so after-midnight orders sort last.
+    from app.core.clock import business_tz
+    def mins(t):
+        lt = t.astimezone(business_tz())
+        return ((lt.hour - 6) % 24) * 60 + lt.minute
+    cut = mins(at)
+    hist = db.execute(text(hist_sql), params).all()
+    total = sum(Decimal(str(a or 0)) for _, a in hist)
+    if not total:
+        return Decimal("1")  # nothing to go on: take the whole day off, as before
+    return sum(Decimal(str(a or 0)) for t, a in hist if mins(t) > cut) / total
 
 
 def date_from_iso(value: str):
