@@ -48,5 +48,53 @@ class ChainTests(unittest.TestCase):
         self.assertIsNone(rows[1]["used"])
 
 
+def _night(day, tandoor, kitchen):
+    """Both cylinders read at 1 AM the morning after `day`'s night."""
+    def row(gross):
+        at = datetime.datetime(2026, 10, day + 1, 1, 0, tzinfo=IST)
+        return {"recorded_at": at, "net": Decimal(str(gross)) - gas.TARE_KG, "night": datetime.date(2026, 10, day)}
+    return row(tandoor), row(kitchen)
+
+
+def _consolidate(*nights):
+    readings = {"tandoor": [], "kitchen": []}
+    for day, t, k in nights:
+        rt, rk = _night(day, t, k)
+        readings["tandoor"].append(rt)
+        readings["kitchen"].append(rk)
+    return gas.consolidated(readings)
+
+
+class ConsolidatedTests(unittest.TestCase):
+    def test_no_swap_is_sum_of_drops(self):
+        n = _consolidate((10, 38.74, 29.13), (11, 29.57, 20.76))[-1]
+        self.assertEqual(n["used"], Decimal("17.54"))
+        self.assertEqual(n["fitted"], 0)
+
+    def test_rotation_counts_one_new_cylinder(self):
+        # Kitchen ran out, took the Tandoor's cylinder; Tandoor got a new one.
+        n = _consolidate((11, 29.57, 20.76), (12, 35.86, 23.125))[-1]
+        self.assertEqual(n["fitted"], 1)
+        self.assertEqual(n["check"], "rotation")
+        self.assertEqual(n["used"], Decimal("10.545"))
+        self.assertEqual(n["split"]["tandoor"], Decimal("3.34"))
+        self.assertEqual(n["split"]["kitchen"], Decimal("7.205"))
+        self.assertEqual(n["returned"], Decimal("0.76"))
+
+    def test_rotation_when_tandoor_reading_barely_moves(self):
+        n = _consolidate((9, 38.8, 20.7), (10, 38.74, 29.13))[-1]
+        self.assertEqual(n["fitted"], 1)
+        self.assertEqual(n["used"], Decimal("10.83"))
+
+    def test_kitchen_heavier_than_tandoor_was_breaks_rotation(self):
+        n = _consolidate((9, 30.0, 20.5), (10, 28.0, 38.0))[-1]
+        self.assertEqual(n["check"], "broken")
+        self.assertEqual(n["fitted"], 1)
+
+    def test_night_far_above_the_others_is_flagged(self):
+        nights = _consolidate((9, 38.8, 20.7), (10, 38.74, 29.13), (11, 29.57, 20.76), (12, 35.86, 23.125))
+        self.assertEqual([n["high"] for n in nights], [False, False, True, False])
+
+
 if __name__ == "__main__":
     unittest.main()

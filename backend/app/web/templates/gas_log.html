@@ -9,7 +9,7 @@
   <div class="sl-head">
     <div>
       <h1 class="sl-title">Gas</h1>
-      <p class="sl-sub">Staff weigh both cylinders, <b>Tandoor</b> and <b>Kitchen</b>, every night at 12:30 AM in the app. Use is the drop in weight between nights (the {{ TARE|int }} kg empty cylinder is subtracted); a new cylinder is handled automatically.</p>
+      <p class="sl-sub">Staff weigh both cylinders, <b>Tandoor</b> and <b>Kitchen</b>, every night at 12:30 AM in the app. <b>Used</b> is for the whole kitchen: gas on hand last night, plus any new cylinder fitted ({{ '%g'|format(FULL|float) }} kg), minus gas on hand tonight, so nights with a cylinder change count too.</p>
     </div>
     <div class="sl-btns"><button type="button" class="sl-btn sl-btn-p" data-gs-add>+ Add a reading</button></div>
   </div>
@@ -29,97 +29,118 @@
       <span class="l">Tonight's weigh-in</span><span class="v">{{ n_logged }}</span> <span class="v small">of {{ cylinders|length }}{{ ' ✓' if n_logged == cylinders|length }}</span>
       <span class="s">{% if n_logged %}{{ logged[-1].logged_tonight.recorded_at.strftime('%I:%M %p').lstrip('0') }}{% if logged[-1].logged_tonight.by_name %} · {{ logged[-1].logged_tonight.by_name }}{% endif %}{% else %}due at 12:30 AM{% endif %}</span>
     </div>
-    <div class="sl-k">
+    <div class="sl-k gs-hero">
       <span class="l">Used last night</span>
-      {% if last_night and last_night.total is not none %}<span class="v">{{ kg(last_night.total) }}</span> <span class="v small">kg</span>
-      <span class="s">{% if per_kg %}{{ rs(last_night.total * per_kg) }} · {% endif %}{% for c in cylinders %}{{ c.label }} {{ kg(last_night.used.get(c.key)) }}{{ ' · ' if not loop.last }}{% endfor %}</span>
-      {% else %}<span class="v">—</span><span class="s">needs two nights of readings</span>{% endif %}
+      {% if last_night %}<span class="v">{{ kg(last_night.used) }}</span> <span class="v small">kg</span>
+      <span class="s">{% if last_night.cost %}{{ rs(last_night.cost) }}{% endif %}{% if last_night.pct %} · {{ '%.1f'|format(last_night.pct) }}% of {{ rs(last_night.sales) }} sales{% endif %}{% if last_night.fitted %} · {{ last_night.fitted }} cylinder{{ 's' if last_night.fitted > 1 }} fitted{% endif %}{% if last_night.high %} · <b class="gs-bad">check the readings</b>{% endif %}</span>
+      {% else %}<span class="v">—</span><span class="s">needs both cylinders weighed two nights running</span>{% endif %}
     </div>
     <div class="sl-k">
       <span class="l">7-day average</span>
-      {% if avg %}<span class="v">{{ kg(avg) }}</span> <span class="v small">kg/day</span><span class="s">{% if per_kg %}{{ rs(avg * per_kg) }}/day at {{ rs(per_kg) }}/kg{% endif %}</span>
+      {% if avg %}<span class="v">{{ kg(avg) }}</span> <span class="v small">kg/day</span>
+      <span class="s">{% if per_kg %}{{ rs(avg * per_kg) }}/day · {% endif %}every night counted{% if left_out %} · {% for n in left_out %}{{ n.night.strftime('%a %d') }}{{ ', ' if not loop.last }}{% endfor %} left out (flagged){% endif %}</span>
       {% else %}<span class="v">—</span><span class="s">builds up after a few nights</span>{% endif %}
     </div>
     <div class="sl-k warn">
-      <span class="l">Gas per dish</span>
-      {% if per_dish %}<span class="v">₹{{ '%.1f'|format(per_dish) }}</span><span class="s">{% if pct_sales %}{{ '%.1f'|format(pct_sales) }}% of sales{% endif %}</span>
-      {% else %}<span class="v">—</span><span class="s">needs a 7-day average</span>{% endif %}
+      <span class="l">Gas cost</span>
+      {% if pct_sales %}<span class="v">{{ '%.1f'|format(pct_sales) }}</span> <span class="v small">% of sales</span><span class="s">{{ rs(avg * per_kg) }}/day against {{ rs(sales_day) }} sales/day</span>
+      {% else %}<span class="v">—</span><span class="s">needs a 7-day average and sales</span>{% endif %}
     </div>
-    <div class="sl-k {{ 'bad' if soonest and soonest.days_left < 1.5 else '' }}">
+    <div class="sl-k {{ 'bad' if soonest and soonest.est_days < 1 else ('warn' if soonest and soonest.est_days < 2 else '') }}">
       <span class="l">Next cylinder</span>
-      {% if soonest %}<span class="v">{{ 'Today' if soonest.days_left < 1 else ('Tomorrow' if soonest.days_left < 2 else 'In ' ~ (soonest.days_left|int) ~ ' days') }}</span>
-      <span class="s">{{ soonest.label }}: {{ kg(soonest.left) }} kg left</span>
+      {% if soonest %}<span class="v">{{ 'Tonight' if soonest.est_days < 1 else ('Tomorrow' if soonest.est_days < 2 else 'In ' ~ (soonest.est_days|int) ~ ' days') }}</span>
+      <span class="s">{{ soonest.label }} has {{ kg(soonest.left) }} kg ≈ {{ days(soonest.est_days) }}</span>
       {% else %}<span class="v">—</span><span class="s">after a few nights of readings</span>{% endif %}
     </div>
   </div>
 
   <div class="gs-grid">
-    {% for c in cylinders %}
-    <div class="sl-card gs-cyl gs-{{ c.key }}">
-      <h3><i></i>{{ c.label }}
-        {% if c.days_left is not none %}<span class="gs-pill {{ 'bad' if c.days_left < 1.5 else ('warn' if c.days_left < 3 else 'good') }}">{{ days(c.days_left) }} left</span>{% endif %}</h3>
-      {% if c.last and c.stale %}
-      <div class="gs-big">— <small>waiting for tonight's weigh-in</small></div>
-      <div class="gs-row"><span>Last reading</span><b>{{ kg(c.last.gross_kg) }} kg · {{ c.last.recorded_at.strftime('%d %b') }}</b></div>
-      <p class="sl-muted" style="margin-top:6px">Too old to use. Gas left and days left start from the first nightly weigh-in.</p>
-      {% elif c.last %}
-      <div class="gs-big">{{ kg(c.left) }} <small>kg gas left</small></div>
-      <div class="gs-gauge"><i style="width:{{ c.pct|round|int }}%"></i></div>
-      <div class="gs-row"><span>Scale, last reading</span><b>{{ kg(c.last.gross_kg) }} kg · {{ c.last.recorded_at.strftime('%d %b %I:%M %p') }}</b></div>
-      <div class="gs-row"><span>Uses</span><b>{{ kg(c.rate) }} kg/day</b></div>
-      <div class="gs-row"><span>Fitted</span><b>{{ c.fitted.strftime('%a %d %b') if c.fitted else '—' }}</b></div>
-      <div class="gs-row"><span>Last cylinder lasted</span><b>{{ days(c.lasted) }}</b></div>
+    <div class="sl-card gs-cyl">
+      <h3>Gas on hand</h3>
+      {% if on_hand is not none %}
+      <div class="gs-big">{{ kg(on_hand) }} <small>kg in both cylinders</small></div>
+      {% if avg %}<p class="sl-muted">≈ {{ days(on_hand / avg) }} at {{ kg(avg) }} kg/day</p>{% endif %}
+      {% for c in cylinders %}
+      <div class="gs-onc gs-{{ c.key }}">
+        <div class="gs-row"><span><i></i>{{ c.label }}</span><b>{{ kg(c.left) }} kg{% if c.fitted_night %} · fitted {{ c.fitted_night.strftime('%a %d') }}{% endif %}{% if c.est_rate %} · ~{{ kg(c.est_rate) }} kg/day{% endif %}</b></div>
+        <div class="gs-gauge"><i style="width:{{ c.pct|round|int }}%"></i></div>
+      </div>
+      {% endfor %}
+      {% if soonest and soonest.key == 'kitchen' %}
+      <p class="gs-next"><b>Next change:</b> Kitchen runs out first. It takes the Tandoor's cylinder ({{ kg(cylinders[0].left) }} kg) and the Tandoor gets a new one. Keep a full spare ready.</p>
+      {% elif soonest %}
+      <p class="gs-next"><b>Next change:</b> {{ soonest.label }} runs out first. Keep a full spare ready.</p>
+      {% endif %}
       {% else %}
-      <p class="sl-empty">No readings yet. Staff log it at 12:30 AM in the app's Gas tab.</p>
+      <p class="sl-empty">Waiting for tonight's weigh-in of both cylinders.</p>
       {% endif %}
     </div>
-    {% endfor %}
     <div class="sl-card gs-chart">
-      <h3>Gas used per night</h3><p class="sl-muted">Last {{ chart|length }} nights · hover a bar</p>
-      <div class="gs-legend">{% for c in cylinders %}<span class="gs-{{ c.key }}"><i></i>{{ c.label }}</span>{% endfor %}</div>
-      {% if chart %}
+      <h3>Gas used per night <span class="sl-muted">whole kitchen · split is an estimate</span></h3>
+      <div class="gs-legend">{% for c in cylinders %}<span class="gs-{{ c.key }}"><i></i>{{ c.label }} (est.)</span>{% endfor %}<span><i class="gs-hatch"></i>Doesn't add up</span><span>⇄ cylinder changed</span></div>
+      {% set shown = chart|selectattr('used')|list %}
+      {% if shown %}
       <div class="gs-bars">
-        {% for n in chart %}{% set t = n.total or 0 %}
-        <div class="gs-bar" style="height:{{ (t / chart_max * 100)|round(1) }}%" tabindex="0">
-          {% for c in cylinders|reverse %}{% set u = n.used.get(c.key) %}{% if u and t %}<i class="gs-{{ c.key }}" style="height:{{ (u / t * 100)|round(1) }}%"></i>{% endif %}{% endfor %}
-          <span class="gs-tip">{{ n.night.strftime('%a %d %b') }}: {{ kg(n.total) }} kg{% for c in cylinders %} · {{ c.label }} {{ kg(n.used.get(c.key)) }}{% endfor %}{% if per_kg and n.total %} · {{ rs(n.total * per_kg) }}{% endif %}</span>
+        {% for n in shown %}
+        <div class="gs-bar{{ ' gs-flag' if n.high }}" style="height:{{ (n.used / chart_max * 100)|round(1) }}%" tabindex="0">
+          {% if n.fitted %}<span class="gs-sw">⇄</span>{% endif %}
+          {% set ssum = (n.split.tandoor + n.split.kitchen) if n.split else 0 %}
+          {% for c in cylinders|reverse %}{% set u = n.split[c.key] if n.split else 0 %}{% if u and ssum %}<i class="gs-{{ c.key }}" style="height:{{ (u / ssum * 100)|round(1) }}%"></i>{% endif %}{% endfor %}
+          <span class="gs-tip">{{ n.night.strftime('%a %d %b') }}: {{ kg(n.used) }} kg{% if n.cost %} · {{ rs(n.cost) }}{% endif %}{% if n.split %} · Tandoor ~{{ kg(n.split.tandoor) }} · Kitchen ~{{ kg(n.split.kitchen) }}{% endif %}</span>
         </div>
         {% endfor %}
       </div>
-      <div class="gs-x">{% for n in chart %}<span>{{ n.night.strftime('%d') if loop.index is odd }}</span>{% endfor %}</div>
-      {% else %}<p class="sl-empty">The chart fills in after the first two nights.</p>{% endif %}
+      <div class="gs-x">{% for n in shown %}<span>{{ n.night.strftime('%a %d') }}<br><b>{{ kg(n.used) }}</b></span>{% endfor %}</div>
+      {% else %}<p class="sl-empty">The chart fills in once both cylinders are weighed two nights running.</p>{% endif %}
     </div>
   </div>
 
   <div class="sl-card">
     <div class="sl-sechead"><h3>Nightly readings</h3><p>Scale weight including the {{ TARE|int }} kg cylinder. Type to correct a reading; it saves on Enter.</p></div>
+    <div class="gs-scroll">
     <table class="sl-table">
-      <thead><tr><th>Night of</th>{% for c in cylinders %}<th class="r">{{ c.label }} (scale)</th><th class="r">Used</th>{% endfor %}<th class="r sl-hide-sm">Total</th><th class="r sl-hide-sm">Cost</th><th class="sl-hide-sm">Logged</th></tr></thead>
+      <thead><tr><th>Night of</th>{% for c in cylinders %}<th class="r">{{ c.label }}</th>{% endfor %}<th class="r sl-hide-sm">Fitted</th><th class="r sl-hide-sm">On hand</th><th class="r">Used</th><th class="sl-hide-sm">Split (est.)</th><th class="r sl-hide-sm">Cost</th><th class="r sl-hide-sm">% sales</th><th>Check</th></tr></thead>
       <tbody>
       {% for n in nights %}
         <tr>
           <td>{{ n.night.strftime('%a %d %b') }}</td>
-          {% for c in cylinders %}{% set r = n.rows.get(c.key) %}
-          <td class="r">{% if r %}<span class="sl-qedit"><input inputmode="decimal" value="{{ '%g'|format(r.gross_kg|float) }}" data-orig="{{ '%g'|format(r.gross_kg|float) }}" data-gs-edit="{{ r.id }}" aria-label="{{ c.label }} reading"><span class="sl-ok" data-gs-ok hidden>✓</span></span>{% if r.swap %}<span class="gs-new" title="Heavier than the reading before: cylinder swapped">swapped</span>{% endif %}{% else %}<span class="sl-muted">—</span>{% endif %}</td>
-          <td class="r">{{ kg(n.used.get(c.key)) }}{{ ' kg' if n.used.get(c.key) is not none }}</td>
+          {% for c in cylinders %}{% set r = n.rows[c.key] %}
+          <td class="r"><span class="sl-qedit"><input inputmode="decimal" value="{{ '%g'|format(r.gross_kg|float) }}" data-orig="{{ '%g'|format(r.gross_kg|float) }}" data-gs-edit="{{ r.id }}" aria-label="{{ c.label }} reading"><span class="sl-ok" data-gs-ok hidden>✓</span></span>{% if n.check == 'rotation' %}<span class="gs-tag">{{ 'new' if c.key == 'tandoor' else "Tandoor's" }}</span>{% elif r.swap %}<span class="gs-tag">new</span>{% endif %}</td>
           {% endfor %}
-          <td class="r sl-hide-sm"><b>{{ kg(n.total) }}{{ ' kg' if n.total is not none }}</b></td>
-          <td class="r sl-hide-sm">{{ rs(n.total * per_kg) if (n.total and per_kg) else '—' }}</td>
-          {% set lr = n.rows.values()|list|sort(attribute='recorded_at')|last %}
-          <td class="sl-hide-sm sl-muted">{{ lr.recorded_at.strftime('%I:%M %p').lstrip('0') }}{% if lr.by_name %} · {{ lr.by_name }}{% endif %}</td>
+          <td class="r sl-hide-sm">{{ n.fitted if n.used is not none else '–' }}</td>
+          <td class="r sl-hide-sm">{{ kg(n.on_hand) }} kg</td>
+          <td class="r">{% if n.used is not none %}<b>{{ kg(n.used) }} kg</b>{% else %}<span class="sl-muted">{{ 'first night' if loop.last else 'gap in log' }}</span>{% endif %}</td>
+          <td class="sl-hide-sm sl-muted">{% if n.split %}T {{ kg(n.split.tandoor) }} · K {{ kg(n.split.kitchen) }}{% endif %}</td>
+          <td class="r sl-hide-sm">{{ rs(n.cost) if n.cost is not none else '–' }}</td>
+          <td class="r sl-hide-sm">{{ '%.1f'|format(n.pct) ~ '%' if n.pct is not none else '–' }}</td>
+          <td>{% if n.high %}<span class="gs-pill bad">⚠ too high</span><div class="gs-why">Far above the other nights{% if n.sales %} on {{ rs(n.sales) }} sales{% endif %}. Was the wrong cylinder weighed?</div>{% elif n.check == 'broken' %}<span class="gs-pill warn">⚠ rotation</span><div class="gs-why">Kitchen got a cylinder heavier than the Tandoor's. Two new cylinders, or a wrong reading?</div>{% elif n.check == 'rotation' %}<span class="gs-pill good">✓ rotation</span>{% endif %}</td>
         </tr>
       {% else %}
-        <tr><td colspan="8" class="sl-empty">No readings yet.</td></tr>
+        <tr><td colspan="10" class="sl-empty">No nights with both cylinders weighed yet.</td></tr>
       {% endfor %}
       </tbody>
     </table>
-    <div class="gs-check">
-      <div><span class="l">Bills · {{ month_start.strftime('%B') }}</span><b>{{ '%g'|format(bills.cylinders|float|round(1)) }} cylinder{{ 's' if bills.cylinders != 1 }} bought</b><span class="sl-muted">{{ kg(bills_kg) }} kg · {{ rs(bills.spend) }}</span></div>
-      <div><span class="l">Weighed as used</span><b>{{ kg(used_month) }} kg</b><span class="sl-muted">{% if first_night %}nights since {{ first_night.strftime('%d %b') }}{% else %}no readings this month yet{% endif %}</span></div>
-      <div><span class="l">Difference</span>
-        {% set gap = bills_kg - used_month %}
-        <b>{{ kg(gap|abs) }} kg {{ 'more bought' if gap > 0 else 'more used' }}</b>
-        <span class="sl-muted">spares on the shelf and part-used cylinders explain a gap of 1–2 cylinders</span></div>
+    </div>
+    <p class="sl-muted gs-foot">Rotation check: after a change, the Kitchen's cylinder must weigh no more than the Tandoor's did the night before. A reading that breaks this is flagged.</p>
+  </div>
+
+  <div class="gs-three">
+    <div class="sl-card">
+      <h3>Bought vs fitted {% if first_night %}{% if bought_since|round|int == fitted_since %}<span class="gs-pill good">✓ matches</span>{% else %}<span class="gs-pill warn">check</span>{% endif %}{% endif %}</h3>
+      {% if first_night %}<div class="gs-mid">{{ '%g'|format(bought_since|float) }} bought · {{ fitted_since }} fitted</div>
+      <p class="sl-muted">Bills after {{ first_night.strftime('%d %b') }}, when both cylinders were first weighed. A difference of one is usually a spare on the shelf.</p>
+      {% else %}<p class="sl-empty">Starts once both cylinders are weighed.</p>{% endif %}
+    </div>
+    <div class="sl-card">
+      <h3>Bills · {{ month_start.strftime('%B') }}</h3>
+      <div class="gs-mid">{{ '%g'|format(bills.cylinders|float|round(1)) }} cylinder{{ 's' if bills.cylinders != 1 }} · {{ kg(bills_kg) }} kg · {{ rs(bills.spend) }}</div>
+      <p class="sl-muted">{% if month_first %}Weighed as used: {{ kg(used_month) }} kg on nights since {{ month_first.strftime('%d %b') }}.{% else %}No weighed nights this month yet.{% endif %}</p>
+    </div>
+    <div class="sl-card">
+      <h3>Left in returned cylinders</h3>
+      {% if returned_avg is not none %}<div class="gs-mid">{{ '%.2f'|format(returned_avg) }} kg each</div>
+      <p class="sl-muted">The last {{ returned|length }} went back with {% for r in returned %}{{ '%.2f'|format(r) }}{{ ', ' if not loop.last }}{% endfor %} kg{% if per_kg %}, about {{ rs(returned_avg * per_kg) }} a cylinder{% endif %}. Check whether the burners can draw it down further.</p>
+      {% else %}<p class="sl-empty">Shows after the first cylinder change.</p>{% endif %}
     </div>
   </div>
 </div>

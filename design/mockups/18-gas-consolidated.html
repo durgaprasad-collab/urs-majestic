@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 18 · Gas, consolidated</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--gold-2:#E9C55A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;--tan:#C2622D;--kit:#2F6E9E}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.55}.mk b{color:#fff}
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 20px 60px}
+  .head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px}
+  h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .sub{color:var(--ink-2);font-size:13px;margin-top:2px;max-width:780px;line-height:1.5}
+  .btn{border:1px solid var(--ground);background:var(--ground);color:var(--gold-2);border-radius:9px;padding:8px 14px;font:600 13px Inter}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+  .k{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-top:3px solid var(--line)}
+  .k.good{border-top-color:var(--good)}.k.warn{border-top-color:var(--warn)}.k.bad{border-top-color:var(--bad)}.k.hero{border-top-color:var(--gold)}
+  .k .l{display:block;font-size:11.5px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+  .k .v{font:800 24px Inter;color:var(--ground)}.k .v small{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .k .s{display:block;font-size:12px;color:var(--ink-2);margin-top:2px;line-height:1.4}
+  .grid{display:grid;grid-template-columns:330px 1fr;gap:14px;margin-bottom:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .card h3{font-size:14.5px;color:var(--ground);margin-bottom:2px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .muted{color:var(--ink-3);font-size:12px}
+  .onhand{font:800 30px Inter;color:var(--ground);margin:6px 0 2px}.onhand small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .cyl{margin-top:10px}
+  .cyl .row{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px}
+  .cyl .row b{font-weight:700}
+  .gauge{height:9px;border-radius:5px;background:#EEECE4;overflow:hidden}.gauge i{display:block;height:100%;border-radius:5px}
+  .t i,.dot.t{background:var(--tan)}.k2 i,.dot.kd{background:var(--kit)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:0}
+  .next{margin-top:12px;background:var(--warn-bg);border-radius:10px;padding:9px 11px;font-size:12.5px;line-height:1.45}
+  .next b{color:var(--warn)}
+  .chart{display:flex;align-items:flex-end;gap:10px;height:170px;margin:14px 0 4px;padding-left:34px;position:relative;border-bottom:1px solid var(--line)}
+  .yl{position:absolute;left:0;font-size:10.5px;color:var(--ink-3);transform:translateY(50%)}
+  .gl{position:absolute;left:34px;right:0;border-top:1px dashed #ECEAE2}
+  .bar{flex:1;max-width:70px;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden;position:relative;gap:2px}
+  .bar i{display:block}
+  .bar.flag{outline:2px dashed var(--bad);outline-offset:2px}
+  .bar .sw{position:absolute;top:-1px;left:50%;transform:translate(-50%,-110%);font-size:10px;font-weight:700;color:var(--ink-2);white-space:nowrap}
+  .xl{display:flex;gap:10px;padding-left:34px}.xl span{flex:1;max-width:70px;text-align:center;font-size:11px;color:var(--ink-2)}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--ink-2);margin-top:8px;flex-wrap:wrap}
+  .hatch{display:inline-block;width:12px;height:9px;border:2px dashed var(--bad);border-radius:2px;margin-right:5px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);font-weight:600}
+  td{padding:9px 8px;border-bottom:1px solid #F0EEE6;vertical-align:top}
+  .r{text-align:right}.mono{font-family:'JetBrains Mono',monospace;font-size:12.5px}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:4px}
+  .tag.sw{background:#EAF1F7;color:var(--kit)}.tag.ok{background:var(--good-bg);color:var(--good)}.tag.bad{background:var(--bad-bg);color:var(--bad)}
+  .est{color:var(--ink-2);font-size:12px}
+  .why{font-size:11.5px;color:var(--bad);margin-top:3px;line-height:1.4}
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+  .big{font:800 22px Inter;color:var(--ground);margin:6px 0 2px}
+  .note{background:#FFFBEF;border:1px dashed #E5D29A;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.55;margin-top:14px;color:#5B4A16}
+  .note b{color:#3F3209}
+  @media(max-width:900px){.kpis{grid-template-columns:1fr 1fr}.grid,.three{grid-template-columns:1fr}.hide-sm{display:none}}
+  .scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 18 · Gas: consolidated usage.</b> Real readings for 9–12 Oct 2026. Headline = gas used by the whole kitchen each night,
+counting swap nights (on hand last night + new cylinders × 19.2 kg − on hand tonight). Tandoor / Kitchen split becomes an estimate from the rotation
+(highest cylinder on Tandoor; when Kitchen runs out it takes Tandoor's, Tandoor gets the new one). Nothing here is built yet.</div>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Gas</h1>
+      <p class="sub">Staff weigh both cylinders every night at 12:30 AM. <b>Used</b> is for the whole kitchen: gas on hand last night, plus any new cylinder fitted (19.2 kg), minus gas on hand tonight, so nights with a cylinder change count too.</p>
+    </div>
+    <button class="btn">+ Add a reading</button>
+  </div>
+
+  <div class="kpis">
+    <div class="k good"><span class="l">Tonight's weigh-in</span><span class="v">2 <small>of 2 ✓</small></span><span class="s">1:05 AM</span></div>
+    <div class="k hero"><span class="l">Used last night</span><span class="v">10.6 <small>kg</small></span><span class="s">₹1,680 · 13.7% of ₹12.3k sales · 1 cylinder fitted</span></div>
+    <div class="k"><span class="l">7-day average</span><span class="v">10.7 <small>kg/day</small></span><span class="s">₹1,700/day · every night counted · Sat 11 left out (flagged)</span></div>
+    <div class="k warn"><span class="l">Gas cost</span><span class="v">8.0<small>% of sales</small></span><span class="s">₹1,700/day against ₹21.3k sales/day</span></div>
+    <div class="k bad"><span class="l">Next cylinder</span><span class="v">Tonight</span><span class="s">Kitchen has 3.1 kg ≈ 4 hours of service</span></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Gas on hand</h3>
+      <div class="onhand">19.0 <small>kg in both cylinders</small></div>
+      <span class="muted">≈ 1.8 days at 10.7 kg/day</span>
+      <div class="cyl t"><div class="row"><span><span class="dot t"></span>Tandoor</span><b>15.9 kg · fitted Sun 12</b></div><div class="gauge"><i style="width:83%"></i></div></div>
+      <div class="cyl k2"><div class="row"><span><span class="dot kd"></span>Kitchen</span><b>3.1 kg · Tandoor's old one</b></div><div class="gauge"><i style="width:16%"></i></div></div>
+      <div class="next"><b>Next change:</b> Kitchen runs out tonight. It takes Tandoor's cylinder (15.9 kg) and Tandoor gets a new one. Keep a full spare ready.</div>
+    </div>
+    <div class="card">
+      <h3>Gas used per night <span class="muted">whole kitchen · Tandoor / Kitchen split is an estimate</span></h3>
+      <div class="chart">
+        <span class="yl" style="bottom:100%">20</span><span class="gl" style="bottom:100%"></span>
+        <span class="yl" style="bottom:50%">10</span><span class="gl" style="bottom:50%"></span>
+        <span class="yl" style="bottom:0">0</span>
+        <div class="bar" style="height:54%"><i style="height:96%;background:var(--kit)"></i><i style="height:4%;background:var(--tan)"></i><span class="sw">⇄ swap</span></div>
+        <div class="bar flag" style="height:87.5%"><i style="height:48%;background:var(--kit)"></i><i style="height:52%;background:var(--tan)"></i></div>
+        <div class="bar" style="height:53%"><i style="height:68%;background:var(--kit)"></i><i style="height:32%;background:var(--tan)"></i><span class="sw">⇄ swap</span></div>
+      </div>
+      <div class="xl"><span>Fri 10<br><b>10.8</b></span><span>Sat 11<br><b>17.5</b></span><span>Sun 12<br><b>10.6</b></span></div>
+      <div class="legend"><span><span class="dot t"></span>Tandoor (est.)</span><span><span class="dot kd"></span>Kitchen (est.)</span><span><span class="hatch"></span>Doesn't add up: check the readings</span><span>⇄ cylinder changed that night</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Nightly readings <span class="muted">scale weight incl. the 20 kg cylinder · type to correct, saves on Enter</span></h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Night of</th><th class="r">Tandoor</th><th class="r">Kitchen</th><th class="r hide-sm">New fitted</th><th class="r hide-sm">On hand</th><th class="r">Used</th><th class="hide-sm">Split (est.)</th><th class="r hide-sm">Cost</th><th class="r hide-sm">% sales</th><th>Check</th></tr></thead>
+      <tbody>
+        <tr><td>Sun 12 Oct</td><td class="r mono">35.86 <span class="tag sw">new</span></td><td class="r mono">23.13 <span class="tag sw">Tandoor's</span></td><td class="r hide-sm">1</td><td class="r hide-sm">19.0 kg</td><td class="r"><b>10.6 kg</b></td><td class="est hide-sm">T 3.3 · K 7.2</td><td class="r hide-sm">₹1,680</td><td class="r hide-sm">13.7%</td><td><span class="tag ok">✓ rotation</span></td></tr>
+        <tr><td>Sat 11 Oct</td><td class="r mono">29.57</td><td class="r mono">20.76</td><td class="r hide-sm">0</td><td class="r hide-sm">10.3 kg</td><td class="r"><b>17.5 kg</b></td><td class="est hide-sm">T 9.2 · K 8.4</td><td class="r hide-sm">₹2,790</td><td class="r hide-sm">10.7%</td><td><span class="tag bad">⚠ too high</span><div class="why">60% above the 7-day average on lower sales than Friday. Was the spare weighed on Friday?</div></td></tr>
+        <tr><td>Fri 10 Oct</td><td class="r mono">38.74 <span class="tag sw">new</span></td><td class="r mono">29.13 <span class="tag sw">Tandoor's</span></td><td class="r hide-sm">1</td><td class="r hide-sm">27.9 kg</td><td class="r"><b>10.8 kg</b></td><td class="est hide-sm">T 0.5 · K 10.4</td><td class="r hide-sm">₹1,720</td><td class="r hide-sm">5.7%</td><td><span class="tag ok">✓ rotation</span></td></tr>
+        <tr><td>Thu 9 Oct</td><td class="r mono">38.80</td><td class="r mono">20.70</td><td class="r hide-sm">–</td><td class="r hide-sm">19.5 kg</td><td class="r muted">first night</td><td class="hide-sm"></td><td class="r hide-sm">–</td><td class="r hide-sm">–</td><td></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="muted" style="margin-top:8px">Rotation check: after a change, Kitchen's cylinder must weigh no more than Tandoor's did the night before. A reading that breaks this is flagged.</p>
+  </div>
+
+  <div class="three">
+    <div class="card">
+      <h3>Bought vs fitted <span class="tag ok">✓ matches</span></h3>
+      <div class="big">2 bought · 2 fitted</div>
+      <span class="muted">since readings began on 9 Oct (bills 10 and 11 Oct; fitted Fri 10 and Sun 12). The 11 Oct one sat a day as the spare.</span>
+    </div>
+    <div class="card">
+      <h3>Weighed vs bought · October</h3>
+      <div class="big">6 cylinders · 115 kg · ₹17,850</div>
+      <span class="muted">Bills average one cylinder every 2 days ≈ 10.7 kg/day, in line with the readings on normal nights.</span>
+    </div>
+    <div class="card">
+      <h3>Left in returned cylinders</h3>
+      <div class="big">0.73 kg each</div>
+      <span class="muted">Kitchen's last two went back with 0.70 and 0.76 kg ≈ ₹115 a cylinder, ~₹1,700 a month. Check whether the burners can draw it down further.</span>
+    </div>
+  </div>
+
+  <div class="note"><b>What changes from today's page:</b> (1) swap nights get a usage figure instead of a blank, so the average uses every night; (2) the headline is one number for the whole kitchen; (3) Tandoor / Kitchen becomes an estimated split; (4) each night gets a rotation check and an "unusually high" flag; (5) new cards compare cylinders bought against cylinders fitted and track gas left in returned cylinders. Phone: KPIs go two per row, the grey columns hide, and the check column stays.</div>
+</div>
+</body>
+</html>

@@ -116,19 +116,63 @@ def cylinder_state(db: Session) -> dict:
     return {"tonight": tonight, "cylinders": cyls, "readings": readings}
 
 
-def nightly(readings: dict[str, list[dict]], nights: int) -> list[dict]:
-    """Per-night use per cylinder for the last `nights` nights, newest first."""
+ROTATION_SLACK_KG = Decimal("0.5")  # scale noise allowed in the rotation check
+HIGH_FACTOR = Decimal("1.4")        # a night this far above the others is flagged
+
+
+def consolidated(readings: dict[str, list[dict]]) -> list[dict]:
+    """Gas used by the whole kitchen per night, oldest first.
+
+    used = gas on hand last night + new cylinders x FULL_KG - gas on hand tonight,
+    so swap nights count too. The rotation (owner, 13 Oct 2026): the heaviest
+    cylinder sits on the Tandoor; when the Kitchen one runs out, the Kitchen
+    takes the Tandoor's cylinder and the Tandoor gets the new one. So a
+    Kitchen swap whose new reading is no heavier than the Tandoor's last one is
+    the Tandoor's cylinder moving over (one new cylinder in, even if the
+    Tandoor's own reading barely moved); a Kitchen reading heavier than that
+    breaks the rotation and is flagged. The Tandoor / Kitchen split assumes the
+    move happened before service, so it is an estimate.
+    """
     by_night: dict[datetime.date, dict] = {}
     for key, rows in readings.items():
         for r in rows:
-            n = by_night.setdefault(r["night"], {"night": r["night"], "rows": {}, "used": {}})
-            n["rows"][key] = r
-            if r["used"] is not None:
-                n["used"][key] = n["used"].get(key, Decimal(0)) + r["used"]
-    out = sorted(by_night.values(), key=lambda n: n["night"], reverse=True)[:nights]
-    for n in out:
-        n["total"] = sum(n["used"].values(), Decimal(0)) if n["used"] else None
-    return out
+            by_night.setdefault(r["night"], {})[key] = r  # last reading of the night wins
+    keys = [k for k, _ in CYLINDERS]
+    nights = [{"night": n, "rows": rows} for n, rows in sorted(by_night.items()) if all(k in rows for k in keys)]
+    for prev, cur in zip(nights, nights[1:]):
+        p, c = prev["rows"], cur["rows"]
+        if any((c[k]["recorded_at"] - p[k]["recorded_at"]).total_seconds() / 3600 > STALE_HOURS for k in keys):
+            continue
+        tp, kp, tn, kn = p["tandoor"]["net"], p["kitchen"]["net"], c["tandoor"]["net"], c["kitchen"]["net"]
+        t_swap = tn > tp + SWAP_RISE_KG
+        k_swap = kn > kp + SWAP_RISE_KG
+        k_inherit = k_swap and kn <= tp + ROTATION_SLACK_KG
+        fitted = (1 if k_swap else 0) + (1 if t_swap and not k_inherit else 0)
+        if k_inherit:
+            split = {"tandoor": FULL_KG - tn, "kitchen": kp + tp - kn}
+            returned = kp
+        else:
+            split = {"tandoor": (tp + FULL_KG if t_swap else tp) - tn, "kitchen": (kp + FULL_KG if k_swap else kp) - kn}
+            returned = kp if k_swap else (tp if t_swap else None)
+        used = tp + kp + fitted * FULL_KG - tn - kn
+        cur.update({
+            "used": max(used, Decimal(0)), "fitted": fitted, "returned": returned,
+            "split": {k: max(v, Decimal(0)) for k, v in split.items()},
+            "check": ("rotation" if k_inherit else ("broken" if k_swap else None)),
+        })
+    for n in nights:
+        n["on_hand"] = sum((max(n["rows"][k]["net"], Decimal(0)) for k in keys), Decimal(0))
+        n.setdefault("used", None)
+        n.setdefault("fitted", 0)
+        n.setdefault("check", None)
+        n["high"] = False
+    # "Too high": well above the other nights around it (needs two to compare).
+    scored = [n for n in nights if n["used"] is not None]
+    for n in scored:
+        others = [o["used"] for o in scored if o is not n and abs((o["night"] - n["night"]).days) <= CHART_NIGHTS]
+        if len(others) >= 2 and n["used"] > HIGH_FACTOR * (sum(others, Decimal(0)) / len(others)):
+            n["high"] = True
+    return nights
 
 
 def price_per_kg(db: Session) -> Decimal | None:
@@ -148,28 +192,38 @@ def page_data(db: Session) -> dict:
     now = business_now()
     tonight = st["tonight"]
     per_kg = price_per_kg(db)
-    nights = nightly(st["readings"], CHART_NIGHTS)
-    done_nights = [n for n in nights if n["night"] < tonight or len(n["used"]) == len(CYLINDERS)]
-    last_night = done_nights[0] if done_nights and done_nights[0]["night"] >= tonight - datetime.timedelta(days=1) else None
+    all_nights = consolidated(st["readings"])
+    nights = list(reversed(all_nights[-CHART_NIGHTS:]))  # newest first
+    first_night = all_nights[0]["night"] if all_nights else None
 
-    rates = [c["rate"] for c in st["cylinders"] if c["rate"]]
-    avg = sum(rates, Decimal(0)) if rates else None
-    since = now.date() - datetime.timedelta(days=AVG_NIGHTS)
-    sales = db.execute(text("""
-        SELECT (SELECT coalesce(sum(qty), 0) FROM item_sales WHERE sale_date > :since) +
-               (SELECT coalesce(sum(oi.quantity), 0) FROM orders o JOIN order_items oi ON oi.order_id = o.id
-                 WHERE o.channel IN ('zomato', 'swiggy') AND (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date > :since) AS dishes,
-               (SELECT coalesce(sum(net_sales), 0) FROM daily_channel_sales WHERE business_date > :since) AS revenue,
-               (SELECT count(DISTINCT sale_date) FROM item_sales WHERE sale_date > :since) AS days
-    """), {"since": since}).mappings().first()
-    days = sales["days"] or 0
-    per_dish = pct_sales = None
-    if avg and per_kg and days:
-        cost_day = avg * per_kg
-        if sales["dishes"]:
-            per_dish = cost_day / (Decimal(str(sales["dishes"])) / days)
-        if sales["revenue"]:
-            pct_sales = cost_day / (Decimal(str(sales["revenue"])) / days) * 100
+    sales = {r["d"]: Decimal(str(r["net"])) for r in db.execute(text("""
+        SELECT business_date AS d, sum(net_sales) AS net FROM daily_channel_sales
+         WHERE business_date >= :since GROUP BY 1
+    """), {"since": tonight - datetime.timedelta(days=CHART_NIGHTS + 1)}).mappings()}
+    for n in nights:
+        n["sales"] = sales.get(n["night"])
+        n["cost"] = n["used"] * per_kg if (n["used"] is not None and per_kg) else None
+        n["pct"] = n["cost"] / n["sales"] * 100 if (n["cost"] is not None and n["sales"]) else None
+
+    scored = [n for n in nights if n["used"] is not None]
+    last_night = scored[0] if scored and scored[0]["night"] >= tonight - datetime.timedelta(days=1) else None
+    week = [n for n in scored if n["night"] > tonight - datetime.timedelta(days=AVG_NIGHTS + 1)]
+    good = [n for n in week if not n["high"]]
+    avg = sum((n["used"] for n in good), Decimal(0)) / len(good) if good else None
+    left_out = [n for n in week if n["high"]]
+    week_sales = [n["sales"] for n in good if n["sales"]]
+    pct_sales = (avg * per_kg) / (sum(week_sales, Decimal(0)) / len(week_sales)) * 100 if (avg and per_kg and week_sales) else None
+    sales_day = sum(week_sales, Decimal(0)) / len(week_sales) if week_sales else None
+
+    # Gas on hand and which cylinder runs out first (rate from the split estimate).
+    cyls = st["cylinders"]
+    on_hand = sum((c["left"] for c in cyls if c["left"] is not None), Decimal(0)) if all(c["left"] is not None for c in cyls) else None
+    for c in cyls:
+        est = [n["split"][c["key"]] for n in good if n.get("split")]
+        c["est_rate"] = sum(est, Decimal(0)) / len(est) if est else None
+        c["est_days"] = c["left"] / c["est_rate"] if (c["left"] is not None and c["est_rate"]) else None
+        c["fitted_night"] = night_of(c["fitted"]) if c["fitted"] else None
+    soonest = min((c for c in cyls if c["est_days"] is not None), key=lambda c: c["est_days"], default=None)
 
     month_start = now.date().replace(day=1)
     bills = db.execute(text("""
@@ -178,19 +232,30 @@ def page_data(db: Session) -> dict:
           FROM purchases p JOIN ingredients i ON i.id = p.ingredient_id
          WHERE i.name = 'Cooking Gas' AND p.deleted_at IS NULL AND p.purchase_date >= :ms
     """), {"ms": month_start, "full": FULL_KG}).mappings().first()
-    used_month = sum((r["used"] for rows in st["readings"].values() for r in rows
-                      if r["used"] is not None and r["night"] >= month_start), Decimal(0))
-    nightly_rows = [r for rows in st["readings"].values() for r in rows]
-    first_night = min((r["night"] for r in nightly_rows if r["night"] >= month_start), default=None)
+    bought_since = None
+    if first_night:
+        # Bills dated after the first consolidated night (the first night has no figure).
+        bought_since = db.execute(text("""
+            SELECT coalesce(sum(CASE WHEN p.unit::text = 'kg' THEN p.qty / :full ELSE p.qty END), 0)
+              FROM purchases p JOIN ingredients i ON i.id = p.ingredient_id
+             WHERE i.name = 'Cooking Gas' AND p.deleted_at IS NULL AND p.purchase_date > :d
+        """), {"d": first_night, "full": FULL_KG}).scalar()
+    fitted_since = sum(n["fitted"] for n in all_nights)
+    month = [n for n in all_nights if n["used"] is not None and n["night"] >= month_start]
+    used_month = sum((n["used"] for n in month), Decimal(0))
+    returned = [n["returned"] for n in all_nights if n.get("returned") is not None][-6:]
+    returned_avg = sum(returned, Decimal(0)) / len(returned) if returned else None
 
-    soonest = min((c for c in st["cylinders"] if c["days_left"] is not None), key=lambda c: c["days_left"], default=None)
-    logged = [c for c in st["cylinders"] if c["logged_tonight"]]
+    logged = [c for c in cyls if c["logged_tonight"]]
+    chart = list(reversed(nights))
     return {
-        **st, "nights": nights, "last_night": last_night, "per_kg": per_kg, "avg": avg,
-        "per_dish": per_dish, "pct_sales": pct_sales, "soonest": soonest, "logged": logged,
+        **st, "nights": nights, "last_night": last_night, "per_kg": per_kg, "avg": avg, "left_out": left_out,
+        "pct_sales": pct_sales, "sales_day": sales_day, "soonest": soonest, "logged": logged, "on_hand": on_hand,
         "bills": bills, "bills_kg": Decimal(str(bills["cylinders"])) * FULL_KG, "used_month": used_month,
-        "first_night": first_night, "month_start": month_start,
-        "chart": list(reversed(nights)), "chart_max": max([n["total"] or 0 for n in nights] + [Decimal(1)]),
+        "month_first": month[0]["night"] if month else None, "month_start": month_start,
+        "first_night": first_night, "bought_since": Decimal(str(bought_since or 0)), "fitted_since": fitted_since,
+        "returned": returned, "returned_avg": returned_avg,
+        "chart": chart, "chart_max": max([n["used"] or 0 for n in chart] + [Decimal(1)]),
     }
 
 

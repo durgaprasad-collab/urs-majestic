@@ -27,7 +27,7 @@ def gas_page(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         return redir
-    return _tmpl(request, "gas_log.html", {"user": user, **gas.page_data(db), "TARE": gas.TARE_KG})
+    return _tmpl(request, "gas_log.html", {"user": user, **gas.page_data(db), "TARE": gas.TARE_KG, "FULL": gas.FULL_KG})
 
 
 @router.post("/gas-log/reading")
