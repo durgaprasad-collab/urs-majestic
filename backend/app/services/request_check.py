@@ -49,6 +49,8 @@ LOCAL_NAMES = {
     "nimbu": "Lemon", "elumichai": "Lemon", "doodh": "Milk", "paal": "Milk", "dahi": "Curd", "thayir": "Curd",
     "makhan": "Butter", "chawal": "Rice/Basmati", "tel": "Oil", "ennai": "Oil", "maida": "Maida", "atta": "Wheat Flour",
     "master oil": "Mustard oil", "sarson tel": "Mustard oil",
+    "jeera": "Jeera Whole (cumin seed)", "tata salt": "Salt", "white paper powder": "White pepper powder",
+    "fork spoon": "Disposable Spoons", "ajinomoto": "Monosodium Glutamate (Ajinomoto)",
 }
 
 
@@ -142,6 +144,37 @@ def check(db: Session, ingredient_id: int, before: datetime.datetime | None = No
     daily = sum(float(d["plates30"]) * float(d["g"] or 0) for d in dishes) / div / 30
     top = sorted(((d["name"], float(d["plates"]), float(d["g"] or 0)) for d in dishes if d["plates"]),
                  key=lambda x: -x[1] * x[2])[:4]
+    # Packaging (spoons, containers, pouches) goes by dish_packaging_map, in
+    # pieces per plate: "always" on every plate; "parcel" on Zomato/Swiggy
+    # plates plus the counter's parcel share; "dine_in" on the rest.
+    pack = db.execute(text("""
+        SELECT mi.id, mi.name, p.qty AS per, p.charge_on::text AS on_,
+               coalesce((SELECT sum(qty) FROM item_sales s WHERE s.item_name = mi.name AND s.sale_date >= :since), 0) AS counter,
+               coalesce((SELECT sum(oi.quantity) FROM order_items oi JOIN orders o ON o.id = oi.order_id
+                          WHERE oi.menu_item_id = mi.id AND o.placed_at::date >= :since), 0) AS delivery,
+               coalesce((SELECT sum(qty) FROM item_sales s WHERE s.item_name = mi.name AND s.sale_date >= :d30), 0) AS counter30,
+               coalesce((SELECT sum(oi.quantity) FROM order_items oi JOIN orders o ON o.id = oi.order_id
+                          WHERE oi.menu_item_id = mi.id AND o.placed_at::date >= :d30), 0) AS delivery30
+          FROM dish_packaging_map p JOIN menu_items mi ON mi.id = p.menu_item_id
+         WHERE p.ingredient_id = :i AND mi.is_active
+    """), {"i": ingredient_id, "since": since, "d30": d30}).mappings().all()
+    if pack:
+        from app.services.menu_engineering.cost_engine import _parcel_rate
+        rate = float(_parcel_rate(db))
+        share = {"always": (1.0, 1.0), "parcel": (rate, 1.0), "dine_in": (1 - rate, 0.0)}
+
+        def pieces(row, c, d):
+            sc, sd = share.get(row["on_"], (1.0, 1.0))
+            return float(row["per"]) * (float(row[c]) * sc + float(row[d]) * sd)
+
+        p_used = [(r["name"], pieces(r, "counter", "delivery"), float(r["counter"]) + float(r["delivery"])) for r in pack]
+        to_unit = 1.0 if unit == "pcs" else None  # packaging is counted in pieces
+        if to_unit:
+            used += sum(u for _, u, _ in p_used)
+            daily += sum(pieces(r, "counter30", "delivery30") for r in pack) / 30
+            plates += sum(n for _, _, n in p_used)
+            dishes = list(dishes) + [{"id": r["id"]} for r in pack if r["id"] not in {d["id"] for d in dishes}]
+            top = sorted(top + [(n, pl, u / pl if pl else 0) for n, u, pl in p_used if pl], key=lambda x: -x[1] * x[2])[:4]
     stock = db.execute(text("""SELECT on_hand_qty FROM ingredient_stock WHERE ingredient_id = :i AND counted_at < :b
                                ORDER BY counted_at DESC, id DESC LIMIT 1"""), {"i": ingredient_id, "b": before}).scalar()
     stock = float(stock) if stock is not None else None
