@@ -75,8 +75,29 @@ def compare(db: Session, days: int = DAYS) -> dict:
     return {"items": items, "unnamed": {"n": unnamed_n, "spend": unnamed_rs}, "days": days}
 
 
+def market_latest(db: Session) -> dict:
+    """The latest Sunday price check: {ingredient_id: cheapest in-stock offer},
+    plus {"_day": date} -- empty before the first check."""
+    day = db.execute(text("SELECT max(checked_on) FROM market_prices")).scalar()
+    if not day:
+        return {}
+    rows = db.execute(text("""
+        SELECT DISTINCT ON (ingredient_id) ingredient_id, channel, product, price, pack_qty, pack_unit, price_per_unit,
+               (SELECT count(DISTINCT channel) FROM market_prices m2
+                 WHERE m2.ingredient_id = m.ingredient_id AND m2.checked_on = m.checked_on AND m2.in_stock) AS n
+          FROM market_prices m WHERE checked_on = :d AND in_stock
+         ORDER BY ingredient_id, price_per_unit
+    """), {"d": day}).mappings().all()
+    out = {r["ingredient_id"]: {**dict(r), "price_per_unit": float(r["price_per_unit"]), "day": day} for r in rows}
+    out["_day"] = day
+    return out
+
+
 def page(db: Session, days: int = DAYS) -> dict:
     data = compare(db, days)
+    market = market_latest(db)
+    for it in data["items"].values():
+        it["online"] = market.get(it["id"])
     rows = sorted((it for it in data["items"].values() if it["n_vendors"] > 1), key=lambda it: -it["over"])
     single = sorted((it for it in data["items"].values() if it["n_vendors"] == 1), key=lambda it: it["name"].lower())
     return {
@@ -84,4 +105,8 @@ def page(db: Session, days: int = DAYS) -> dict:
         "over_total": sum(it["over"] for it in rows),
         "top": rows[:2],
         "categories": sorted({it["category"] or "Other" for it in rows}),
+        "market_day": market.get("_day"),
+        "cheaper_online": sorted((it for it in data["items"].values() if it.get("online") and it["last"]
+                                  and it["online"]["price_per_unit"] < it["last"]["price"] * 0.9),
+                                 key=lambda it: it["online"]["price_per_unit"] / it["last"]["price"]),
     }

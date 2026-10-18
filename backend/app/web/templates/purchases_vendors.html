@@ -22,6 +22,19 @@
     <div class="sl-k"><span class="l">No vendor named</span><span class="v">{{ unnamed.n }}</span><span class="s">lines · {{ lakh(unnamed.spend) }} · can't be compared</span></div>
   </div>
 
+  {% if market_day %}
+  <div class="sl-card vp-online">
+    <div class="sl-sechead"><h3>Cheaper online · Sunday check {{ market_day.strftime('%d %b') }}</h3><p>Items where a delivery app's price was at least 10% under what you last paid. Check the pack size and delivery fee before switching.</p></div>
+    {% if cheaper_online %}
+    <table class="sl-table"><tbody>
+      {% for it in cheaper_online %}<tr><td class="vp-item">{{ it.name }}<small>{{ per(it.unit) }}</small></td><td>{{ it.online.channel }} <b class="vp-good">{{ vp(it.online.price_per_unit, it.unit) }}</b> <small class="sl-muted">{{ it.online.product }} · ₹{{ '%g'|format(it.online.price|float) }} for {{ '%g'|format(it.online.pack_qty|float) }} {{ it.online.pack_unit }}</small></td><td class="r">you paid {{ vp(it.last.price, it.unit) }} at {{ it.last.vendor }} · <b class="vp-good">{{ ((1 - it.online.price_per_unit / it.last.price) * 100)|round|int }}% less</b></td></tr>{% endfor %}
+    </tbody></table>
+    {% else %}<p class="sl-empty">Nothing was 10% cheaper online than what you last paid.</p>{% endif %}
+  </div>
+  {% else %}
+  <p class="sl-muted vp-note">Online prices appear here after the first Sunday price check (7 AM).</p>
+  {% endif %}
+
   <form class="vp-filters" method="get">
     <div class="sl-chips">{% for d in (30, 60, 90) %}<a class="sl-chip {{ 'on' if d == days }}" href="?days={{ d }}{{ '&cat=' ~ cat if cat }}">Last {{ d }} days</a>{% endfor %}</div>
     <select name="cat" onchange="this.form.submit()" aria-label="Category"><option value="">All categories</option>{% for c in categories %}<option {{ 'selected' if c == cat }}>{{ c }}</option>{% endfor %}</select>
@@ -39,7 +52,7 @@
             {% set cheap = it.vendors|map(attribute='avg')|min %}
             {% for v in it.vendors|sort(attribute='avg') %}
             <span class="vp-v {{ 'best' if v.avg == cheap }} {{ 'dear' if loop.last and v.avg > cheap * 1.2 }}"><b>{{ vp(v.avg, it.unit) }}</b> {{ v.vendor }} <small>{{ v.n }} buy{{ 's' if v.n > 1 }}{% if v.n > 1 and (v.last_price - v.avg)|abs > v.avg * 0.03 %} · {{ vp(v.last_price, it.unit) }} on {{ v.last_date.strftime('%d %b').lstrip('0') }}{% else %} · {{ v.last_date.strftime('%d %b').lstrip('0') }}{% endif %}</small></span>
-            {% endfor %}</div></td>
+            {% endfor %}{% if it.online %}<span class="vp-v online" title="{{ it.online.product }}"><b>{{ vp(it.online.price_per_unit, it.unit) }}</b> {{ it.online.channel }} <small>online · {{ it.online.day.strftime('%a %d %b') }}</small></span>{% endif %}</div></td>
           <td class="sl-hide-sm"><div class="vp-bar">{% for v in it.vendors|sort(attribute='share', reverse=true) %}<i class="c{{ loop.index if loop.index <= 3 else 3 }}" style="width:{{ v.share|round(1) }}%" title="{{ v.vendor }} {{ v.share|round|int }}%"></i>{% endfor %}</div>
             <span class="sl-muted">{{ it.top_share.share|round|int }}% {{ it.top_share.vendor }}</span></td>
           <td class="r">{% if it.over >= 1 %}<b class="vp-over">{{ rs(it.over) }}</b>{% else %}<span class="sl-muted">—</span>{% endif %}</td>

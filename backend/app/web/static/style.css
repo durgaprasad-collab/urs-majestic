@@ -2242,6 +2242,11 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .vp-bar i { display: block; height: 100%; }
 .vp-bar .c1 { background: #2F6E9E; } .vp-bar .c2 { background: #C2622D; } .vp-bar .c3 { background: #8A6BB8; }
 .vp-over { color: var(--sl-bad); }
+.vp-v.online { border-style: dashed; border-color: #9DB9D3; background: #F3F7FB; }
+.vp-v.online b { color: #2F6E9E; }
+.vp-good { color: var(--sl-good); }
+.vp-online { margin-bottom: 14px; }
+.vp-note { margin: 0 0 12px; }
 .vp-single { margin-top: 14px; padding: 12px 16px; }
 .vp-single summary { cursor: pointer; font-weight: 600; }
 .vp-single p { margin-top: 8px; line-height: 1.6; }

@@ -51,7 +51,7 @@ def buy_page(request: Request, db: Session = Depends(get_db)):
                    .order_by(User.is_admin, User.name).all())
     return _tmpl(request, "buy.html", {"user": user, **data, "bought": bought_this_week(db), "week": week_plan(db, keys),
                                        "item_options": item_options, "tz": business_tz(), "staff_users": staff_users,
-                                       "vendors": vendor_prices.compare(db)["items"]})
+                                       "vendors": vendor_prices.compare(db)["items"], "market": vendor_prices.market_latest(db)})
 
 
 @router.get("/buy/week/print", response_class=HTMLResponse)
