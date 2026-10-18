@@ -4,7 +4,7 @@
 {% block content %}
 {% set s = summary %}
 {% macro num(q) %}{% if q is none %}{% elif q == q|int %}{{ q|int }}{% else %}{{ '%g'|format(q|round(3)) }}{% endif %}{% endmacro %}
-{% macro rate(q) %}{% if q >= 100 %}{{ '%.0f'|format(q) }}{% elif q >= 10 %}{{ '%.1f'|format(q)|replace('.0','') }}{% else %}{{ '%.2f'|format(q) }}{% endif %}{% endmacro %}
+{% macro rate(q) %}{% if q >= 100 %}{{ '%.0f'|format(q) }}{% elif q >= 10 %}{{ '%.1f'|format(q)|replace('.0','') }}{% elif q >= 0.1 %}{{ '%.2f'|format(q) }}{% else %}{{ '%.2g'|format(q) }}{% endif %}{% endmacro %}
 {% macro use(i, short=false) %}{% set u = i.use %}{% if u %}<span class="sl-utag {{ u.kind }}">{{ u.kind }}</span><b>{{ rate(u.daily) }} {{ i.unit }}</b>{% if short %}/day{% if u.kind == 'buying' and u.every %} · every {{ u.every|round|int }} days{% endif %}{% else %}<small>{% if u.kind == 'sales' %}{% if u.peak %}7-day avg · busiest {{ rate(u.peak) }} {{ i.unit }} ({{ u.peak_day.strftime('%a') }}){% else %}from sales{% endif %}{% else %}{% if u.every %}bought every {{ u.every|round|int }} days{% else %}from buying pace{% endif %}{% endif %}</small>{% endif %}{% if u.gap %}<span class="sl-ugap">Buying pace {{ rate(u.gap.buy) }} {{ i.unit }}/day: {{ u.gap.pct }}% {{ 'lower' if u.gap.lower else 'higher' }}{% if u.gap.lower and u.gap.pct > 50 %}, so bills may be missing{% endif %}</span>{% endif %}{% elif not short %}<span class="sl-muted">—</span>{% endif %}{% endmacro %}
 {% set SRC = {'counted': 'Counted', 'sales': 'Est. from sales', 'purchase': 'After purchase', 'system': 'System'} %}
 <div class="sl">

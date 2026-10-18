@@ -40,7 +40,7 @@ _LIST_SQL = text("""
          group by p.ingredient_id
     )
     select i.id as ingredient_id, i.name, i.unit, i.category, i.pack_size_g,
-           s.on_hand_qty, s.counted_at, s.note,
+           s.on_hand_qty, s.stock_unit, s.counted_at, s.note,
            v.daily_consumption, v.avg_interval_days,
            -- A stock count goes stale the moment a purchase lands after it --
            -- the shelf now holds more than the count says. Same rule Order

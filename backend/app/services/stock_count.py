@@ -66,12 +66,25 @@ def is_full_count_day(day: datetime.date) -> bool:
 
 def _human_counts(db: Session) -> dict[int, dict]:
     rows = db.execute(text(f"""
-        SELECT DISTINCT ON (s.ingredient_id) s.ingredient_id, s.on_hand_qty, s.counted_at, u.name AS by_name
+        SELECT DISTINCT ON (s.ingredient_id) s.ingredient_id, s.on_hand_qty, s.unit::text AS unit, s.counted_at, u.name AS by_name
         FROM ingredient_stock s LEFT JOIN users u ON u.id = s.counted_by
         WHERE {HUMAN_ROW_SQL}
         ORDER BY s.ingredient_id, s.counted_at DESC
     """)).mappings().all()
     return {r["ingredient_id"]: dict(r) for r in rows}
+
+
+UNIT_FACTOR = {("kg", "g"): 1000.0, ("g", "kg"): 0.001, ("l", "ml"): 1000.0, ("ml", "l"): 0.001}
+
+
+def _in_item_unit(h: dict, r: dict, per_kg: float | None) -> float:
+    """A count row's qty in the item's unit (the row may predate a unit change)."""
+    q = float(h["on_hand_qty"])
+    if r["unit"] == "pcs" and r["pack_size_g"]:
+        return round(q * per_kg, 2) if h["unit"] != "pcs" else q
+    if h["unit"] == r["unit"]:
+        return q
+    return round(q * UNIT_FACTOR.get((h["unit"], r["unit"]), 1.0), 2)
 
 
 def stock_view(db: Session) -> list[dict]:
@@ -96,6 +109,11 @@ def stock_view(db: Session) -> list[dict]:
         # Pack-sized piece items are stocked in kg; show them in pieces (bottles,
         # bunches), the unit staff count in. record_stock converts back.
         per_kg = (1000.0 / float(r["pack_size_g"])) if (r["unit"] == "pcs" and r["pack_size_g"]) else None
+        # Stock is kept in the forecast unit, which can differ from the item's
+        # own unit (Briyani essence: item in g, stock in kg). Show it in the
+        # item's unit -- the unit edits are typed in (record_stock converts back).
+        if not per_kg:
+            per_kg = UNIT_FACTOR.get((r["stock_unit"], r["unit"]))
         if per_kg and qty is not None:
             qty = round(qty * per_kg, 2)
         # Uses / day: by sales for recipe items (and resale drinks), else by
@@ -125,7 +143,7 @@ def stock_view(db: Session) -> list[dict]:
             "pack": bool(r["pack_size_g"]),
             "qty": qty, "source": src, "estimated": src not in (None, "counted"),
             "cover": cover, "stale": bool(r["stock_stale"]), "use": use,
-            "last_qty": (round(float(h["on_hand_qty"]) * per_kg, 2) if per_kg else float(h["on_hand_qty"])) if h else None,
+            "last_qty": _in_item_unit(h, r, per_kg) if h else None,
             "ingest": ingest.get(r["ingredient_id"]),
             "last_at": h["counted_at"].astimezone(business_tz()) if h else None,
             "last_by": h["by_name"] if h else None,
