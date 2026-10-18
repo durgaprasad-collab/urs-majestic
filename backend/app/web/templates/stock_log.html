@@ -6,7 +6,7 @@
 {% macro num(q) %}{% if q is none %}{% elif q == q|int %}{{ q|int }}{% else %}{{ '%g'|format(q|round(3)) }}{% endif %}{% endmacro %}
 {% macro rate(q) %}{% if q >= 100 %}{{ '%.0f'|format(q) }}{% elif q >= 10 %}{{ '%.1f'|format(q)|replace('.0','') }}{% elif q >= 0.1 %}{{ '%.2f'|format(q) }}{% else %}{{ '%.2g'|format(q) }}{% endif %}{% endmacro %}
 {% macro use(i, short=false) %}{% set u = i.use %}{% if u %}<span class="sl-utag {{ u.kind }}">{{ u.kind }}</span><b>{{ rate(u.daily) }} {{ i.unit }}</b>{% if short %}/day{% if u.kind == 'buying' and u.every %} · every {{ u.every|round|int }} days{% endif %}{% else %}<small>{% if u.kind == 'sales' %}{% if u.peak %}7-day avg · busiest {{ rate(u.peak) }} {{ i.unit }} ({{ u.peak_day.strftime('%a') }}){% else %}from sales{% endif %}{% else %}{% if u.every %}bought every {{ u.every|round|int }} days{% else %}from buying pace{% endif %}{% endif %}</small>{% endif %}{% if u.gap %}<span class="sl-ugap">Buying pace {{ rate(u.gap.buy) }} {{ i.unit }}/day: {{ u.gap.pct }}% {{ 'lower' if u.gap.lower else 'higher' }}{% if u.gap.lower and u.gap.pct > 50 %}, so bills may be missing{% endif %}</span>{% endif %}{% elif not short %}<span class="sl-muted">—</span>{% endif %}{% endmacro %}
-{% set SRC = {'counted': 'Counted', 'sales': 'Est. from sales', 'purchase': 'After purchase', 'system': 'System'} %}
+{% set SRC = {'counted': 'Counted', 'sales': 'Est. from sales', 'pace': 'Est. from buying pace', 'purchase': 'After purchase', 'system': 'System'} %}
 <div class="sl">
 
   <div class="sl-head">
@@ -69,7 +69,7 @@
           <tr class="sl-cat"><td colspan="7">{{ 'Packaging' if cat == 'packaging' else cat }}<span>{{ rows|length }} items{% if cat == 'Other' %} · no category set{% endif %}</span></td></tr>
           {% for i in rows %}
           <tr data-sl-row data-name="{{ i.name|lower }}" data-flags="{{ 'low' if i.f_low }} {{ 'zero' if i.f_zero }} {{ 'recount' if i.f_recount }} {{ 'old' if i.f_old }} {{ 'never' if i.f_never }}">
-            <td class="sl-item">{{ i.name }}{% if i.ingest %}<small class="sl-ing">Sales off: {% for g in i.ingest %}<span class="{{ 'late' if g.behind is defined and g.behind }}" title="ran {{ g.ran.strftime('%a %d %b, %I:%M %p') }}">{{ g.label }} to {{ g.upto.strftime('%d %b') }}{% if g.never %} (not sold here){% elif g.last_sold %} (none since {{ g.last_sold.strftime('%d %b') }}){% endif %}</span>{{ ' · ' if not loop.last }}{% endfor %}</small>{% endif %}</td>
+            <td class="sl-item">{{ i.name }}{% if i.ingest %}<small class="sl-ing">Sales off: {% for g in i.ingest %}<span class="{{ 'late' if g.behind is defined and g.behind }}" title="ran {{ g.ran.strftime('%a %d %b, %I:%M %p') }}">{{ g.label }} to {{ g.upto.strftime('%d %b') }}{% if g.never %} (not sold here){% elif g.last_sold %} (none since {{ g.last_sold.strftime('%d %b') }}){% endif %}</span>{{ ' · ' if not loop.last }}{% endfor %}</small>{% elif i.pace_upto %}<small class="sl-ing"><span title="ran {{ i.pace_upto[1].strftime('%a %d %b, %I:%M %p') }}">Taken off at buying pace to {{ i.pace_upto[0].strftime('%d %b') }}</span></small>{% endif %}</td>
             <td>
               <span class="sl-qedit">
                 <input inputmode="decimal" data-sl-qty="{{ i.id }}" value="{{ num(i.qty) }}" placeholder="—" data-orig="{{ num(i.qty) }}" aria-label="On hand for {{ i.name }}">

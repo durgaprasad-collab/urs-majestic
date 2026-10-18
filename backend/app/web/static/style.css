@@ -1634,6 +1634,7 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .sl-src.counted { background: var(--sl-good-bg); color: var(--sl-good); }
 .sl-src.sales { background: #EEF1F7; color: #6B7FA6; }
 .sl-src.purchase { background: #EAF4F1; color: #2B7A68; }
+.sl-src.pace { background: #EAF1F7; color: #2F6E9E; }
 .sl-src.system { background: #F0EEE6; color: var(--sl-ink-2); }
 .sl-cov { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .sl-cov::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }

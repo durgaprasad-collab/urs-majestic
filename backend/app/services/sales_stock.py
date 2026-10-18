@@ -138,7 +138,7 @@ def calculate_ingredient_usage(db, sales) -> tuple[dict, set[str]]:
 
 # Every automatic stock row starts with one of these; anything else is a
 # physical count a person entered.
-AUTO_NOTE_PREFIXES = ("petpooja_usage:", "zomato_usage:", "swiggy_usage:", "purchase_auto:", "SYSTEM")
+AUTO_NOTE_PREFIXES = ("petpooja_usage:", "zomato_usage:", "swiggy_usage:", "pace_usage:", "purchase_auto:", "SYSTEM")
 CHANNEL_LEDGER = {"petpooja": "petpooja_usage", "zomato": "zomato_usage", "swiggy": "swiggy_usage"}
 
 Sale = namedtuple("Sale", "item_name qty sale_date")
@@ -241,6 +241,7 @@ def adjust_stock_for_sales(db, sales, ledger: str = "petpooja_usage", dates=None
                AND COALESCE(note, '') NOT LIKE 'petpooja_usage:%'
                AND COALESCE(note, '') NOT LIKE 'zomato_usage:%'
                AND COALESCE(note, '') NOT LIKE 'swiggy_usage:%'
+               AND COALESCE(note, '') NOT LIKE 'pace_usage:%'
                AND COALESCE(note, '') NOT LIKE 'purchase_auto:%'
                AND COALESCE(note, '') NOT LIKE 'SYSTEM%'
                AND (timezone(:business_timezone, counted_at) - interval '5 hours')::date >= :sale_date
@@ -319,3 +320,72 @@ def share_after(db, ledger: str, sale_date, at) -> Decimal:
 def date_from_iso(value: str):
     from datetime import date
     return date.fromisoformat(value)
+
+
+# Items sales can't take off stock (spices, packaging, milk, cleaning...) come
+# off at their buying pace instead, one day at a time with each Petpooja day,
+# so their estimate falls between counts rather than only ever rising with
+# purchases. Ledger: pace_usage:<date>:<qty>:<unit>, one row per item per day.
+PACE_FROM = date(2026, 10, 17)
+PACE_SKIP_CATEGORIES = {"Apparel", "Equipment", "Overhead", "Staff"}
+
+
+def adjust_stock_for_pace(db, dates) -> dict:
+    """Deduct one day's buying-pace use per item for each sales day. Items that
+    sales deducted in the last 30 days are skipped (they're covered). A count
+    made after the day already includes it; one made during the day takes
+    only the share after it. Idempotent per item and day. Caller commits."""
+    from app.services.buy_inbox import _resale_daily
+
+    dates = sorted({d for d in dates if d >= PACE_FROM})
+    if not dates:
+        return {"adjusted": 0}
+    by_sales = {r[0] for r in db.execute(text("""
+        SELECT DISTINCT ingredient_id FROM ingredient_stock
+         WHERE note ~ '^(petpooja|zomato|swiggy)_usage:' AND counted_at > now() - interval '30 days'
+    """))}
+    resale = _resale_daily(db)
+    items = db.execute(text("""
+        SELECT v.ingredient_id, v.daily_consumption, v.unit::text AS unit, i.category, i.name
+          FROM v_ingredient_reorder_forecast v JOIN ingredients i ON i.id = v.ingredient_id
+         WHERE i.is_active AND v.daily_consumption > 0
+    """)).mappings().all()
+    done = {(r[0], r[1]) for r in db.execute(text("""
+        SELECT ingredient_id, split_part(note, ':', 2) FROM ingredient_stock WHERE note LIKE 'pace_usage:%'
+    """))}
+    adjusted = 0
+    for it in items:
+        iid = it["ingredient_id"]
+        if iid in by_sales or (it["category"] or "") in PACE_SKIP_CATEGORIES or it["name"] == "Cooking Gas":
+            continue
+        rate = Decimal(str(resale.get(iid) or it["daily_consumption"]))
+        for d in dates:
+            if (iid, d.isoformat()) in done:
+                continue
+            latest = db.execute(text("""
+                SELECT on_hand_qty, unit::text AS unit FROM ingredient_stock
+                 WHERE ingredient_id = :i ORDER BY counted_at DESC, id DESC LIMIT 1 FOR UPDATE
+            """), {"i": iid}).mappings().first()
+            if latest is None or latest["unit"] != it["unit"]:
+                continue  # no baseline in this unit: nothing to deduct from
+            count = db.execute(text("""
+                SELECT counted_at, (timezone(:tz, counted_at) - interval '5 hours')::date AS count_day
+                  FROM ingredient_stock
+                 WHERE ingredient_id = :i AND counted_by IS NOT NULL
+                   AND NOT (COALESCE(note, '') ~ '^(petpooja_usage|zomato_usage|swiggy_usage|pace_usage|purchase_auto|SYSTEM)')
+                   AND (timezone(:tz, counted_at) - interval '5 hours')::date >= :d
+                 ORDER BY counted_at DESC LIMIT 1
+            """), {"i": iid, "d": d, "tz": settings.BUSINESS_TIMEZONE}).mappings().first()
+            if count is None:
+                share = Decimal("1")
+            elif count["count_day"] > d:
+                share = Decimal("0")
+            else:
+                share = share_after(db, "petpooja_usage", d, count["counted_at"])
+            balance = max(Decimal("0"), Decimal(str(latest["on_hand_qty"])) - rate * share)
+            db.execute(text("""
+                INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by, note)
+                VALUES (:i, :b, CAST(:u AS unit_type), NULL, :n)
+            """), {"i": iid, "b": balance, "u": it["unit"], "n": f"pace_usage:{d.isoformat()}:{format(rate.normalize(), 'f')}:{it['unit']}"})
+            adjusted += 1
+    return {"adjusted": adjusted}

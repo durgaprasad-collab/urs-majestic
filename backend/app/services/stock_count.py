@@ -6,6 +6,8 @@ Stock rows come from three places, and the UI must never confuse them:
   counted   a person entered it (stock log, staff app, admin correction)
   sales     petpooja_usage:* / zomato_usage:* / swiggy_usage:* - recipes x
             dishes sold (walk-in and delivery), deducted automatically
+  pace      pace_usage:*     - items sales can't deduct, taken off daily at
+            their buying pace
   purchase  purchase_auto:*  - added automatically when a purchase is logged
   system    SYSTEM-COMPUTED rows from one-off repairs
 """
@@ -34,10 +36,11 @@ CATEGORY_ORDER = [
     "Vegetables", "Dairy", "Frozen", "Dry Goods", "Spices", "Condiments", "Pulses", "Flour",
     "Utilities", "packaging", "Beverage - Resale",
 ]
-_AUTO = ("petpooja_usage", "zomato_usage", "swiggy_usage", "purchase_auto", "SYSTEM")
+_AUTO = ("petpooja_usage", "zomato_usage", "swiggy_usage", "pace_usage", "purchase_auto", "SYSTEM")
 # SQL filter for "a person entered this row" (keep in step with _AUTO).
 HUMAN_ROW_SQL = ("coalesce(s.note, '') NOT LIKE 'petpooja_usage%' AND coalesce(s.note, '') NOT LIKE 'zomato_usage%' "
-                 "AND coalesce(s.note, '') NOT LIKE 'swiggy_usage%' AND coalesce(s.note, '') NOT LIKE 'purchase_auto%' "
+                 "AND coalesce(s.note, '') NOT LIKE 'swiggy_usage%' AND coalesce(s.note, '') NOT LIKE 'pace_usage%' "
+                 "AND coalesce(s.note, '') NOT LIKE 'purchase_auto%' "
                  "AND coalesce(s.note, '') NOT LIKE 'SYSTEM%'")
 
 
@@ -45,6 +48,8 @@ def source_of(note: str | None) -> str:
     note = note or ""
     if note.startswith(("petpooja_usage", "zomato_usage", "swiggy_usage")):
         return "sales"
+    if note.startswith("pace_usage"):
+        return "pace"
     if note.startswith("purchase_auto"):
         return "purchase"
     if note.startswith("SYSTEM"):
@@ -98,6 +103,10 @@ def stock_view(db: Session) -> list[dict]:
     resale = _resale_daily(db)
     ingest = _item_ingestion(db)
     by_sales = sales_use(db)
+    pace = {r[0]: (datetime.date.fromisoformat(r[1]), r[2].astimezone(business_tz())) for r in db.execute(text("""
+        SELECT ingredient_id, max(split_part(note, ':', 2)), max(counted_at) FROM ingredient_stock
+         WHERE note LIKE 'pace_usage:%' GROUP BY 1
+    """))}
     items = []
     for r in _stock_rows(db):
         h = human.get(r["ingredient_id"])
@@ -144,7 +153,7 @@ def stock_view(db: Session) -> list[dict]:
             "qty": qty, "source": src, "estimated": src not in (None, "counted"),
             "cover": cover, "stale": bool(r["stock_stale"]), "use": use,
             "last_qty": _in_item_unit(h, r, per_kg) if h else None,
-            "ingest": ingest.get(r["ingredient_id"]),
+            "ingest": ingest.get(r["ingredient_id"]), "pace_upto": pace.get(r["ingredient_id"]),
             "last_at": h["counted_at"].astimezone(business_tz()) if h else None,
             "last_by": h["by_name"] if h else None,
             "last_days": (tonight - h_day).days if h_day else None,
@@ -153,7 +162,7 @@ def stock_view(db: Session) -> list[dict]:
         }
         # Packaging isn't taken off stock by sales, so between counts its
         # "days left" only grows with purchases. Without a recent count, say so.
-        if cat in ("Utilities", "packaging") and src != "counted" and (item["last_days"] is None or item["last_days"] > STALE_COUNT_DAYS):
+        if cat in ("Utilities", "packaging") and src not in ("counted", "pace") and (item["last_days"] is None or item["last_days"] > STALE_COUNT_DAYS):
             cover = item["cover"] = None
             item["pack_uncounted"] = True
         item["f_low"] = cover is not None and cover < LOW_COVER_DAYS

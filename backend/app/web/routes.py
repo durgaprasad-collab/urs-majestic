@@ -21,7 +21,7 @@ from app.services.uploads.petpooja_order_listing import (
 )
 from app.models.item_sale import ItemSale
 from app.models.upload_log import UploadLog
-from app.services.sales_stock import adjust_stock_for_sales
+from app.services.sales_stock import adjust_stock_for_pace, adjust_stock_for_sales
 from app.services.order_derived_stock import sync_order_derived_stock
 from app.web.deps import _tmpl, require_user
 
@@ -113,6 +113,7 @@ async def upload_post(
         resolver = build_resolver(seed, menu_map, pos_alias_map(db))
         imported_sales, _unmatched = load_sales(db, raw_rows, resolver)
         adjust_stock_for_sales(db, imported_sales)
+        adjust_stock_for_pace(db, {s.sale_date for s in imported_sales})
         try:
             with db.begin_nested():
                 sync_order_derived_stock(db)
