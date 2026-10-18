@@ -12,6 +12,7 @@
       <p class="sl-sub">Every bill, grouped by supplier. One bill at a time with all its lines; units follow how each item is tracked, and each price is checked against what you usually pay.</p>
     </div>
     <div class="sl-btns">
+      <a class="sl-btn" href="/purchases/vendors">Vendor prices</a>
       {% if deleted_count %}<a class="sl-btn" href="/purchases?show_deleted=1">Deleted ({{ deleted_count }})</a>{% endif %}
       <a class="sl-btn sl-btn-p" href="#new-bill" data-pu-focus>+ New bill</a>
     </div>

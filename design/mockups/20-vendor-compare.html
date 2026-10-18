@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 20 · Vendor prices</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;--blue:#2F6E9E;--blue-bg:#EAF1F7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.55}.mk b{color:#fff}
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 20px 60px}
+  h1{font:700 24px Cinzel,serif;color:var(--ground);margin-bottom:2px}
+  h2{font:700 13px Inter;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;margin:26px 0 10px}
+  .sub{color:var(--ink-2);font-size:13px;max-width:820px;line-height:1.5;margin-bottom:12px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .tabs{display:flex;gap:18px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  .tabs span{padding:8px 2px;font-weight:600;color:var(--ink-2)}.tabs .on{color:var(--ground);border-bottom:2px solid var(--gold)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  .k{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px;border-top:3px solid var(--line)}
+  .k.warn{border-top-color:var(--warn)}.k.bad{border-top-color:var(--bad)}.k.good{border-top-color:var(--good)}
+  .k .l{display:block;font-size:11px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+  .k .v{font:800 22px Inter;color:var(--ground)}.k .s{display:block;font-size:12px;color:var(--ink-2);margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);font-weight:600;background:#FBFAF6}
+  td{padding:10px 12px;border-bottom:1px solid #F0EEE6;vertical-align:top}
+  .r{text-align:right}
+  .nm{font-weight:600}.nm small{display:block;font-weight:400;font-size:11px;color:var(--ink-3)}
+  .vs{display:flex;flex-wrap:wrap;gap:6px}
+  .v{display:inline-flex;gap:6px;align-items:baseline;border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px;background:#fff}
+  .v b{font-weight:700}.v small{color:var(--ink-3);font-size:10.5px}
+  .v.best{border-color:#A9D8BF;background:var(--good-bg)}.v.best b{color:var(--good)}
+  .v.dear b{color:var(--bad)}
+  .over{color:var(--bad);font-weight:700}
+  .muted{color:var(--ink-3);font-size:12px}
+  .bar{display:flex;height:8px;border-radius:4px;overflow:hidden;width:130px;gap:2px;background:#F0EEE6}
+  .bar i{display:block;height:100%}
+  .c1{background:#2F6E9E}.c2{background:#C2622D}.c3{background:#8A6BB8}
+  /* Buy hint */
+  .byrow{display:grid;grid-template-columns:24px 1fr auto auto auto;gap:6px 14px;padding:12px 14px;border-bottom:1px solid #F0EEE6;align-items:center}
+  .cb{width:16px;height:16px;border-radius:4px;background:var(--ground)}
+  .hint{grid-column:2 / -1;font-size:12px;color:var(--ink-2)}
+  .hint b{color:var(--good)}.hint .dear{color:var(--bad);font-weight:600}
+  .q{display:inline-flex;align-items:center;gap:4px}.q input{width:64px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font:600 13px Inter;text-align:right}
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;background:var(--good-bg);color:var(--good);margin-right:4px}
+  .note{background:#FFFBEF;border:1px dashed #E5D29A;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.6;margin-top:16px;color:#5B4A16}
+  .note b{color:#3F3209}
+  .phone{width:390px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:10px;margin-top:8px}
+  .two{display:grid;grid-template-columns:1fr 410px;gap:20px;align-items:start}
+  @media(max-width:1000px){.two{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 20 · Vendor prices.</b> Real purchases, last 60 days, food and packaging bought "for the menu". Prices are per kg / litre / piece, so a 500 g pack and a 5 kg sack compare fairly. Delivery and handling lines aren't spread over the items. (A) a one-line hint under each item on <b>Buy</b>; (B) a <b>Vendors</b> tab on <b>Purchases</b>.</div>
+<div class="wrap">
+
+  <h2>A · Buy page: one line under each item</h2>
+  <div class="two">
+  <div class="card">
+    <div class="byrow"><span class="cb"></span><span class="nm">Gobi</span><span class="muted">Left 6.3 kg</span><span class="q"><input value="3"> kg</span><b>₹141</b>
+      <div class="hint">Cheapest lately: <b>Farmers Factory ₹37/kg</b> (16 Oct) · Nellai ₹73 · Zomato ₹102 · Vinayaka ₹110 · Zepto ₹173 · <span class="dear">last bought at Nellai, 2× the cheapest</span></div></div>
+    <div class="byrow"><span class="cb"></span><span class="nm">Onion</span><span class="muted">Left 7.7 kg</span><span class="q"><input value="15"> kg</span><b>₹849</b>
+      <div class="hint">Cheapest lately: <b>Hyperpure ₹56.6/kg</b> (16 Oct) · SMK Vinayaga ₹58 · Zepto ₹78</div></div>
+    <div class="byrow"><span class="cb"></span><span class="nm">Tomato</span><span class="muted">Left 1.0 kg</span><span class="q"><input value="4"> kg</span><b>₹120</b>
+      <div class="hint">Cheapest lately: <b>Nellai ₹30/kg</b> (18 Oct) · Vinayaka ₹34 · Farmers Factory ₹36 · Hyperpure ₹36.5</div></div>
+    <div class="byrow"><span class="cb"></span><span class="nm">Oil</span><span class="muted">Left 9.8 l</span><span class="q"><input value="15"> l</span><b>₹2,615</b>
+      <div class="hint">Cheapest lately: <b>Zepto ₹162/l</b> (4 Oct, once) · Hyperpure ₹174 (16 buys) · Zomato ₹186</div></div>
+    <div class="byrow"><span class="cb"></span><span class="nm">Paneer</span><span class="muted">Left 2.0 kg</span><span class="q"><input value="4"> kg</span><b>₹1,080</b>
+      <div class="hint muted">One vendor so far (Cash memo, ₹270/kg)</div></div>
+  </div>
+  <div>
+    <div class="phone">
+      <div class="byrow" style="grid-template-columns:24px 1fr auto auto"><span class="cb"></span><span class="nm">Gobi</span><span class="q"><input value="3"> kg</span><b>₹141</b>
+        <div class="hint">Cheapest: <b>Farmers Factory ₹37/kg</b> · Nellai ₹73 · +3 more <span class="dear">· last at 2×</span></div></div>
+      <div class="byrow" style="grid-template-columns:24px 1fr auto auto"><span class="cb"></span><span class="nm">Tomato</span><span class="q"><input value="4"> kg</span><b>₹120</b>
+        <div class="hint">Cheapest: <b>Nellai ₹30/kg</b> · Vinayaka ₹34 · +2 more</div></div>
+    </div>
+  </div>
+  </div>
+
+  <h2>B · Purchases page: Vendors tab</h2>
+  <h1>Purchases</h1>
+  <div class="tabs"><span>Log a bill</span><span>Ledger</span><span class="on">Vendors</span></div>
+  <div class="kpis">
+    <div class="k"><span class="l">Items you can compare</span><span class="v">38</span><span class="s">bought from 2+ vendors · last 60 days</span></div>
+    <div class="k warn"><span class="l">Paid over the cheapest</span><span class="v">₹7,850</span><span class="s">if each was bought at its cheapest vendor's average</span></div>
+    <div class="k bad"><span class="l">Biggest gaps</span><span class="v">Oil · Basmati</span><span class="s">₹2,791 and ₹1,398 of it</span></div>
+    <div class="k"><span class="l">No vendor named</span><span class="v">233</span><span class="s">lines · ₹1.04 lakh · can't be compared</span></div>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Item</th><th>Price by vendor <span class="muted">(avg · buys · last)</span></th><th>Where you bought</th><th class="r">Paid over cheapest</th></tr></thead>
+      <tbody>
+        <tr><td class="nm">Oil<small>per litre · Condiments</small></td>
+          <td><div class="vs"><span class="v best"><b>₹162</b> Zepto <small>1 buy · 4 Oct</small></span><span class="v"><b>₹178</b> Hyperpure <small>16 · ₹174 on 16 Oct</small></span><span class="v dear"><b>₹186</b> Zomato <small>1 · 3 Sep</small></span></div></td>
+          <td><div class="bar"><i class="c1" style="width:96%"></i><i class="c2" style="width:3%"></i><i class="c3" style="width:1%"></i></div><span class="muted">96% Hyperpure</span></td><td class="r over">₹2,791</td></tr>
+        <tr><td class="nm">Rice / Basmati<small>per kg · Dry Goods</small></td>
+          <td><div class="vs"><span class="v best"><b>₹101</b> Zepto <small>2 · 11 Oct</small></span><span class="v"><b>₹110</b> Hyperpure <small>5 · ₹111 on 12 Oct</small></span></div></td>
+          <td><div class="bar"><i class="c1" style="width:96%"></i><i class="c2" style="width:4%"></i></div><span class="muted">96% Hyperpure</span></td><td class="r over">₹1,398</td></tr>
+        <tr><td class="nm">Onion<small>per kg · Vegetables</small></td>
+          <td><div class="vs"><span class="v best"><b>₹58</b> SMK Vinayaga <small>1 · 11 Oct</small></span><span class="v"><b>₹60.5</b> Hyperpure <small>17 · ₹56.6 on 16 Oct</small></span><span class="v dear"><b>₹78</b> Zepto <small>1 · 6 Oct</small></span></div></td>
+          <td><div class="bar"><i class="c1" style="width:95%"></i><i class="c2" style="width:4%"></i><i class="c3" style="width:1%"></i></div><span class="muted">95% Hyperpure</span></td><td class="r over">₹741</td></tr>
+        <tr><td class="nm">Gobi<small>per kg · Vegetables</small></td>
+          <td><div class="vs"><span class="v best"><b>₹47</b> Farmers Factory <small>6 · ₹37 on 16 Oct</small></span><span class="v"><b>₹86</b> Nellai <small>3</small></span><span class="v"><b>₹102</b> Zomato <small>1</small></span><span class="v"><b>₹110</b> Vinayaka <small>1</small></span><span class="v dear"><b>₹173</b> Zepto <small>1</small></span></div></td>
+          <td><div class="bar"><i class="c1" style="width:59%"></i><i class="c2" style="width:27%"></i><i class="c3" style="width:14%"></i></div><span class="muted">59% Farmers Factory · 27% Nellai</span></td><td class="r over">₹687</td></tr>
+        <tr><td class="nm">Round Container 300ml<small>per piece · Packaging</small></td>
+          <td><div class="vs"><span class="v best"><b>₹4.40</b> Sri Lakshmi <small>1 · 17 Oct</small></span><span class="v dear"><b>₹5.93</b> Hyperpure <small>3 · 6 Oct</small></span></div></td>
+          <td><div class="bar"><i class="c1" style="width:83%"></i><i class="c2" style="width:17%"></i></div><span class="muted">83% Hyperpure</span></td><td class="r over">₹382</td></tr>
+        <tr><td class="nm">Tomato<small>per kg · Vegetables</small></td>
+          <td><div class="vs"><span class="v best"><b>₹27</b> Nellai <small>2 · ₹30 on 18 Oct</small></span><span class="v"><b>₹34</b> Vinayaka <small>1</small></span><span class="v"><b>₹36</b> Farmers Factory <small>1</small></span><span class="v"><b>₹36.5</b> Hyperpure <small>1</small></span></div></td>
+          <td><div class="bar"><i class="c1" style="width:39%"></i><i class="c2" style="width:31%"></i><i class="c3" style="width:30%"></i></div><span class="muted">39% Hyperpure · 31% Nellai</span></td><td class="r over">₹156</td></tr>
+        <tr><td class="nm">Milk<small>per litre · Dairy</small></td>
+          <td><div class="vs"><span class="v best"><b>₹40</b> Zepto <small>2</small></span><span class="v best"><b>₹40</b> Zomato <small>2</small></span></div></td>
+          <td><div class="bar"><i class="c1" style="width:57%"></i><i class="c2" style="width:43%"></i></div><span class="muted">57% Zepto</span></td><td class="r muted">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" style="margin-top:8px">Sorted by "paid over cheapest". Filters above the table: category, vendor, last 30 / 60 / 90 days. Tap an item for every purchase line.</p>
+
+  <div class="note"><b>Read with care:</b> a vendor's cheapest price may be a one-off (Oil at Zepto was bought once, probably a small pack on offer), and quick-commerce apps add delivery or handling that isn't counted here. Hyperpure's delivery averages about ₹58 an order. So "paid over cheapest" is a ceiling, not money lost. It's most useful where you buy often and the gap is steady: Gobi at Nellai vs Farmers Factory, and containers at Hyperpure vs Sri Lakshmi.
+  <br><b>To make this better:</b> make the vendor box required when logging a purchase (233 lines worth ₹1.04 lakh have no vendor, or just "Cash memo").</div>
+</div>
+</body>
+</html>

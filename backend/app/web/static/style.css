@@ -2219,3 +2219,37 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .sl-ingest small { color: var(--sl-ink-3); }
 .sl-ingest .late, .sl-ingest .late small { color: var(--sl-warn); }
 .sl-ing { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--sl-ink-3); }
+
+/* Vendor prices (Purchases) + Buy hint */
+.by-vhint { margin: 2px 0 4px; font-size: 12px; color: var(--sl-ink-2); line-height: 1.45; }
+.by-vhint b { color: var(--sl-good); }
+.by-vhint .dear { color: var(--sl-bad); font-weight: 600; }
+.by-vhint.muted { color: var(--sl-ink-3); }
+.vp-kpis { grid-template-columns: repeat(4, 1fr); }
+.vp-top { font-size: 18px; }
+.vp-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 12px; }
+.vp-filters select { padding: 7px 9px; border: 1px solid var(--sl-line); border-radius: 8px; font: 13px Inter, sans-serif; background: #fff; }
+.vp-table td { vertical-align: top; }
+.vp-item a { font-weight: 600; color: var(--sl-ink); text-decoration: none; }
+.vp-item small { display: block; font-size: 11px; color: var(--sl-ink-3); }
+.vp-vs { display: flex; flex-wrap: wrap; gap: 6px; }
+.vp-v { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 8px; border: 1px solid var(--sl-line); border-radius: 8px; font-size: 12px; background: #fff; }
+.vp-v small { font-size: 10.5px; color: var(--sl-ink-3); }
+.vp-v.best { border-color: #A9D8BF; background: var(--sl-good-bg); }
+.vp-v.best b { color: var(--sl-good); }
+.vp-v.dear b { color: var(--sl-bad); }
+.vp-bar { display: flex; gap: 2px; width: 130px; height: 8px; margin-bottom: 3px; overflow: hidden; border-radius: 4px; background: #F0EEE6; }
+.vp-bar i { display: block; height: 100%; }
+.vp-bar .c1 { background: #2F6E9E; } .vp-bar .c2 { background: #C2622D; } .vp-bar .c3 { background: #8A6BB8; }
+.vp-over { color: var(--sl-bad); }
+.vp-single { margin-top: 14px; padding: 12px 16px; }
+.vp-single summary { cursor: pointer; font-weight: 600; }
+.vp-single p { margin-top: 8px; line-height: 1.6; }
+@media (max-width: 900px) { .vp-kpis { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) {
+  .vp-table thead { display: none; }
+  .vp-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 10px 12px; border-bottom: 1px solid #F0EEE6; }
+  .vp-table td { padding: 0; border: 0; }
+  .vp-table td:nth-child(2) { grid-row: 2; grid-column: 1 / -1; }
+  .vp-table td.sl-empty { grid-column: 1 / -1; }
+}

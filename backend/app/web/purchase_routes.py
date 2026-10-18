@@ -24,7 +24,7 @@ from app.models.ingredient import Ingredient
 from app.models.purchase import Purchase
 from app.models.user import User
 from app.services.order_derived_stock import sync_order_derived_stock
-from app.services import purchases_page
+from app.services import purchases_page, vendor_prices
 from app.web.audit import log_change, log_field_diffs, resync_derived_costs
 from app.web.deps import _tmpl, require_user
 import logging
@@ -228,6 +228,21 @@ def _count_deleted(db: Session, filter_id: int | None) -> int:
     if filter_id:
         q = q.filter(Purchase.ingredient_id == filter_id)
     return int(q.scalar() or 0)
+
+
+@router.get("/purchases/vendors", response_class=HTMLResponse)
+def vendor_prices_page(request: Request, db: Session = Depends(get_db)):
+    """Each item's price by vendor, per kg / litre / piece, last 30-90 days."""
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    raw = request.query_params.get("days", "")
+    days = int(raw) if raw in ("30", "60", "90") else vendor_prices.DAYS
+    cat = request.query_params.get("cat") or ""
+    data = vendor_prices.page(db, days)
+    if cat:
+        data["rows"] = [r for r in data["rows"] if (r["category"] or "Other") == cat]
+    return _tmpl(request, "purchases_vendors.html", {"user": user, **data, "cat": cat})
 
 
 @router.get("/purchases/new")

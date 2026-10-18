@@ -22,6 +22,7 @@ from app.models.ingredient import Ingredient
 from app.models.requisition import Requisition, RequisitionStatus
 from app.models.user import User
 from app.services import request_check
+from app.services import vendor_prices
 from app.services.buy_inbox import OWNER_NOTE, WEEK_NOTE, bought_this_week, inbox, week_plan
 from app.web.deps import _tmpl, require_user
 
@@ -49,7 +50,8 @@ def buy_page(request: Request, db: Session = Depends(get_db)):
     staff_users = (db.query(User).filter(User.is_active.is_(True), User.username != "claude_bot")
                    .order_by(User.is_admin, User.name).all())
     return _tmpl(request, "buy.html", {"user": user, **data, "bought": bought_this_week(db), "week": week_plan(db, keys),
-                                       "item_options": item_options, "tz": business_tz(), "staff_users": staff_users})
+                                       "item_options": item_options, "tz": business_tz(), "staff_users": staff_users,
+                                       "vendors": vendor_prices.compare(db)["items"]})
 
 
 @router.get("/buy/week/print", response_class=HTMLResponse)

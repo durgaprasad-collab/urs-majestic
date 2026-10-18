@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Vendor prices — URS Majestic{% endblock %}
+
+{% block content %}
+{% macro rs(v) %}₹{{ '{:,.0f}'.format(v or 0) }}{% endmacro %}
+{% macro vp(v, u) %}{% if u == 'g' %}₹{{ '{:,.0f}'.format(v * 1000) }}{% elif u == 'ml' %}₹{{ '{:,.0f}'.format(v * 1000) }}{% elif v >= 10 %}₹{{ '{:,.1f}'.format(v)|replace('.0', '') }}{% else %}₹{{ '%.2f'|format(v) }}{% endif %}{% endmacro %}
+{% macro per(u) %}{% if u == 'g' or u == 'kg' %}per kg{% elif u == 'ml' or u == 'l' %}per litre{% else %}per piece{% endif %}{% endmacro %}
+{% macro lakh(v) %}{% if v >= 100000 %}₹{{ '%.2f'|format(v / 100000) }} lakh{% else %}{{ rs(v) }}{% endif %}{% endmacro %}
+<div class="sl pu vp">
+  <div class="sl-head">
+    <div>
+      <h1 class="sl-title">Vendor prices</h1>
+      <p class="sl-sub">What each vendor charged per kg, litre or piece over the last {{ days }} days, for items bought for the menu. Delivery and handling are separate lines and aren't added in, so "paid over cheapest" is a ceiling, not money lost.</p>
+    </div>
+    <div class="sl-btns"><a class="sl-btn" href="/purchases">← Purchases</a></div>
+  </div>
+
+  <div class="sl-kpis vp-kpis">
+    <div class="sl-k"><span class="l">Items you can compare</span><span class="v">{{ rows|length if not cat else rows|length }}</span><span class="s">bought from 2+ vendors · last {{ days }} days</span></div>
+    <div class="sl-k warn"><span class="l">Paid over the cheapest</span><span class="v">{{ rs(over_total) }}</span><span class="s">if each was bought at its cheapest vendor's average</span></div>
+    <div class="sl-k bad"><span class="l">Biggest gaps</span>{% if top %}<span class="v vp-top">{{ top|map(attribute='name')|join(' · ') }}</span><span class="s">{% for t in top %}{{ rs(t.over) }}{{ ' and ' if not loop.last }}{% endfor %} of it</span>{% else %}<span class="v">—</span>{% endif %}</div>
+    <div class="sl-k"><span class="l">No vendor named</span><span class="v">{{ unnamed.n }}</span><span class="s">lines · {{ lakh(unnamed.spend) }} · can't be compared</span></div>
+  </div>
+
+  <form class="vp-filters" method="get">
+    <div class="sl-chips">{% for d in (30, 60, 90) %}<a class="sl-chip {{ 'on' if d == days }}" href="?days={{ d }}{{ '&cat=' ~ cat if cat }}">Last {{ d }} days</a>{% endfor %}</div>
+    <select name="cat" onchange="this.form.submit()" aria-label="Category"><option value="">All categories</option>{% for c in categories %}<option {{ 'selected' if c == cat }}>{{ c }}</option>{% endfor %}</select>
+    <input type="hidden" name="days" value="{{ days }}">
+  </form>
+
+  <div class="sl-card">
+    <table class="sl-table vp-table">
+      <thead><tr><th>Item</th><th>Price by vendor <small>· average price, cheapest first · buys · latest</small></th><th class="sl-hide-sm">Where you bought</th><th class="r">Paid over cheapest</th></tr></thead>
+      <tbody>
+      {% for it in rows %}
+        <tr>
+          <td class="vp-item"><a href="/purchases?ingredient_id={{ it.id }}">{{ it.name }}</a><small>{{ per(it.unit) }} · {{ it.category or 'Other' }}</small></td>
+          <td><div class="vp-vs">
+            {% set cheap = it.vendors|map(attribute='avg')|min %}
+            {% for v in it.vendors|sort(attribute='avg') %}
+            <span class="vp-v {{ 'best' if v.avg == cheap }} {{ 'dear' if loop.last and v.avg > cheap * 1.2 }}"><b>{{ vp(v.avg, it.unit) }}</b> {{ v.vendor }} <small>{{ v.n }} buy{{ 's' if v.n > 1 }}{% if v.n > 1 and (v.last_price - v.avg)|abs > v.avg * 0.03 %} · {{ vp(v.last_price, it.unit) }} on {{ v.last_date.strftime('%d %b').lstrip('0') }}{% else %} · {{ v.last_date.strftime('%d %b').lstrip('0') }}{% endif %}</small></span>
+            {% endfor %}</div></td>
+          <td class="sl-hide-sm"><div class="vp-bar">{% for v in it.vendors|sort(attribute='share', reverse=true) %}<i class="c{{ loop.index if loop.index <= 3 else 3 }}" style="width:{{ v.share|round(1) }}%" title="{{ v.vendor }} {{ v.share|round|int }}%"></i>{% endfor %}</div>
+            <span class="sl-muted">{{ it.top_share.share|round|int }}% {{ it.top_share.vendor }}</span></td>
+          <td class="r">{% if it.over >= 1 %}<b class="vp-over">{{ rs(it.over) }}</b>{% else %}<span class="sl-muted">—</span>{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="sl-empty">No item was bought from two vendors in this period.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if single and not cat %}
+  <details class="sl-card vp-single">
+    <summary>{{ single|length }} items from one vendor only</summary>
+    <p class="sl-muted">{% for it in single %}{{ it.name }} ({{ it.best.vendor }}, {{ vp(it.best.last_price, it.unit) }} {{ per(it.unit) }}){{ ' · ' if not loop.last }}{% endfor %}</p>
+  </details>
+  {% endif %}
+</div>
+{% endblock %}
