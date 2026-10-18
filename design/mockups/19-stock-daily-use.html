@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 19 · Daily use</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;--blue:#2F6E9E;--blue-bg:#EAF1F7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.55}.mk b{color:#fff}
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 20px 60px}
+  h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  h2{font-size:14px;color:var(--ground);margin:18px 0 8px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-weight:600;background:#FBFAF6}
+  td{padding:9px 10px;border-bottom:1px solid #F0EEE6;vertical-align:top}
+  .cat td{background:#F7F5EE;font-weight:700;font-size:12px;color:var(--ground)}
+  .nm{font-weight:600}.ing{display:block;font-size:11px;color:var(--ink-3);margin-top:2px}
+  .q{display:inline-flex;gap:6px;align-items:center}.q input{width:70px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font:600 13px Inter}
+  .src{font-size:10.5px;padding:1px 6px;border-radius:5px;background:#EEF0EC;color:var(--ink-2)}
+  .use b{font-weight:700}.use small{display:block;font-size:11px;color:var(--ink-3);margin-top:1px}
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-right:4px;vertical-align:1px}
+  .tag.s{background:var(--good-bg);color:var(--good)}.tag.b{background:var(--blue-bg);color:var(--blue)}
+  .gap{display:block;font-size:11px;color:var(--warn);margin-top:2px}
+  .cov{display:inline-block;font-weight:700;font-size:12px;padding:2px 8px;border-radius:999px}
+  .cov.red{background:var(--bad-bg);color:var(--bad)}.cov.orange{background:var(--warn-bg);color:var(--warn)}.cov.green{background:var(--good-bg);color:var(--good)}
+  .muted{color:var(--ink-3);font-size:12px}
+  .phone{width:390px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:12px;margin-top:6px}
+  .crow{border-bottom:1px solid #F0EEE6;padding:10px 2px;display:grid;grid-template-columns:1fr auto;gap:6px}
+  .crow .meta{font-size:12px;color:var(--ink-2);margin-top:2px}
+  .note{background:#FFFBEF;border:1px dashed #E5D29A;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.6;margin-top:16px;color:#5B4A16}
+  .note b{color:#3F3209}
+  .two{display:grid;grid-template-columns:1fr 410px;gap:20px;align-items:start}
+  @media(max-width:1000px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 19 · Stock Log: daily use next to each item.</b> Real figures (sales 11–17 Oct, purchases since June). New "Uses / day" column. <b>By sales</b> = recipe grams × dishes sold, average of the last 7 sales days. <b>By buying</b> = how much is bought ÷ days between purchases, for items sales can't measure (spices bucket, packaging, milk, staff food). Cover days use the figure shown.</div>
+<div class="wrap">
+  <h1>Stock Log</h1>
+  <div class="two">
+  <div>
+  <h2>Desktop</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Item</th><th>On hand now</th><th>Uses / day</th><th>Cover</th><th>Why it's flagged</th></tr></thead>
+      <tbody>
+        <tr class="cat"><td colspan="5">Dairy</td></tr>
+        <tr><td><span class="nm">Paneer</span><span class="ing">Sales off: Petpooja to 17 Oct · Zomato to 17 Oct</span></td><td><span class="q"><input value="1.97"> kg <span class="src">counted</span></span></td>
+          <td class="use"><span class="tag s">sales</span><b>1.92 kg</b><small>7-day avg · busiest 3.7 kg (Sun)</small><span class="gap">Buying pace 1.34 kg/day: 30% lower</span></td><td><span class="cov red">1.0 days</span></td><td class="muted">low cover</td></tr>
+        <tr><td><span class="nm">Milk</span></td><td><span class="q"><input value="1"> l <span class="src">estimate</span></span></td>
+          <td class="use"><span class="tag b">buying</span><b>0.13 l</b><small>bought every 9 days · no dish uses it</small></td><td><span class="cov green">8.0 days</span></td><td class="muted"></td></tr>
+        <tr class="cat"><td colspan="5">Vegetables</td></tr>
+        <tr><td><span class="nm">Onion</span><span class="ing">Sales off: Petpooja to 17 Oct · Zomato to 17 Oct</span></td><td><span class="q"><input value="7.69"> kg <span class="src">counted</span></span></td>
+          <td class="use"><span class="tag s">sales</span><b>4.60 kg</b><small>7-day avg · busiest 8.1 kg (Sun)</small></td><td><span class="cov red">1.7 days</span></td><td class="muted">low cover</td></tr>
+        <tr><td><span class="nm">Gobi</span><span class="ing">Sales off: Petpooja to 17 Oct · Zomato to 17 Oct</span></td><td><span class="q"><input value="6.26"> kg <span class="src">estimate</span></span></td>
+          <td class="use"><span class="tag s">sales</span><b>2.23 kg</b><small>7-day avg</small><span class="gap">Buying pace 0.99 kg/day: 55% lower, so bills may be missing</span></td><td><span class="cov orange">2.8 days</span></td><td class="muted"></td></tr>
+        <tr class="cat"><td colspan="5">Condiments</td></tr>
+        <tr><td><span class="nm">Green chilli sauce</span><span class="ing">Sales off: Petpooja to 17 Oct · Zomato to 17 Oct</span></td><td><span class="q"><input value="8226"> ml <span class="src">estimate</span></span></td>
+          <td class="use"><span class="tag s">sales</span><b>177 ml</b><small>7-day avg</small></td><td><span class="cov green">46 days</span></td><td class="muted"></td></tr>
+        <tr class="cat"><td colspan="5">Spices</td></tr>
+        <tr><td><span class="nm">Salt</span></td><td><span class="q"><input value="5.09"> kg <span class="src">counted</span></span></td>
+          <td class="use"><span class="tag b">buying</span><b>0.30 kg</b><small>bought every 16 days · spices aren't taken off by sales</small></td><td><span class="cov green">16.8 days</span></td><td class="muted"></td></tr>
+        <tr class="cat"><td colspan="5">Packaging</td></tr>
+        <tr><td><span class="nm">Disposable Spoons</span></td><td><span class="q"><input value="2320"> pcs <span class="src">counted</span></span></td>
+          <td class="use"><span class="tag b">buying</span><b>52 pcs</b><small>bought every 8 days · ≈87/day by dishes sent with a spoon</small></td><td><span class="cov green">45 days</span></td><td class="muted"></td></tr>
+      </tbody>
+    </table>
+  </div>
+  </div>
+  <div>
+    <h2>Phone (390 px)</h2>
+    <div class="phone">
+      <div class="crow"><div><div class="nm">Paneer</div><div class="meta">On hand <b>1.97 kg</b> · uses <b>1.92 kg/day</b> <span class="tag s">sales</span></div><div class="meta" style="color:var(--warn)">Buying pace 1.34 kg/day: 30% lower</div></div><span class="cov red">1.0 d</span></div>
+      <div class="crow"><div><div class="nm">Onion</div><div class="meta">On hand <b>7.69 kg</b> · uses <b>4.60 kg/day</b> <span class="tag s">sales</span></div></div><span class="cov red">1.7 d</span></div>
+      <div class="crow"><div><div class="nm">Salt</div><div class="meta">On hand <b>5.09 kg</b> · uses <b>0.30 kg/day</b> <span class="tag b">buying</span> every 16 days</div></div><span class="cov green">17 d</span></div>
+      <div class="crow"><div><div class="nm">Disposable Spoons</div><div class="meta">On hand <b>2320 pcs</b> · uses <b>52/day</b> <span class="tag b">buying</span> every 8 days</div></div><span class="cov green">45 d</span></div>
+    </div>
+  </div>
+  </div>
+  <div class="note"><b>How it works:</b> items that recipes cover show daily use <b>by sales</b> (green tag), the average of the last 7 sales days, with the busiest day. Everything else shows <b>by buying</b> (blue tag): how much is bought ÷ days between bills, with "bought every N days". When the two disagree by more than 25%, a line under it says so: buying slower than sales often means bills weren't logged; buying faster means waste, staff use, or recipe grams set too low. <b>Cover</b> switches to the sales figure for recipe items, so Paneer shows 1.0 days instead of 1.5.</div>
+</div>
+</body>
+</html>

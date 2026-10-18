@@ -4,6 +4,8 @@
 {% block content %}
 {% set s = summary %}
 {% macro num(q) %}{% if q is none %}{% elif q == q|int %}{{ q|int }}{% else %}{{ '%g'|format(q|round(3)) }}{% endif %}{% endmacro %}
+{% macro rate(q) %}{% if q >= 100 %}{{ '%.0f'|format(q) }}{% elif q >= 10 %}{{ '%.1f'|format(q)|replace('.0','') }}{% else %}{{ '%.2f'|format(q) }}{% endif %}{% endmacro %}
+{% macro use(i, short=false) %}{% set u = i.use %}{% if u %}<span class="sl-utag {{ u.kind }}">{{ u.kind }}</span><b>{{ rate(u.daily) }} {{ i.unit }}</b>{% if short %}/day{% if u.kind == 'buying' and u.every %} · every {{ u.every|round|int }} days{% endif %}{% else %}<small>{% if u.kind == 'sales' %}{% if u.peak %}7-day avg · busiest {{ rate(u.peak) }} {{ i.unit }} ({{ u.peak_day.strftime('%a') }}){% else %}from sales{% endif %}{% else %}{% if u.every %}bought every {{ u.every|round|int }} days{% else %}from buying pace{% endif %}{% endif %}</small>{% endif %}{% if u.gap %}<span class="sl-ugap">Buying pace {{ rate(u.gap.buy) }} {{ i.unit }}/day: {{ u.gap.pct }}% {{ 'lower' if u.gap.lower else 'higher' }}{% if u.gap.lower and u.gap.pct > 50 %}, so bills may be missing{% endif %}</span>{% endif %}{% elif not short %}<span class="sl-muted">—</span>{% endif %}{% endmacro %}
 {% set SRC = {'counted': 'Counted', 'sales': 'Est. from sales', 'purchase': 'After purchase', 'system': 'System'} %}
 <div class="sl">
 
@@ -61,10 +63,10 @@
     </div>
     <div class="sl-card">
       <table class="sl-table">
-        <thead><tr><th>Item</th><th>On hand now <small>· type to correct</small></th><th class="sl-hide-sm">Last real count</th><th>Cover</th><th class="sl-hide-sm">Why it's flagged</th><th></th></tr></thead>
+        <thead><tr><th>Item</th><th>On hand now <small>· type to correct</small></th><th>Uses / day</th><th class="sl-hide-sm">Last real count</th><th>Cover</th><th class="sl-hide-sm">Why it's flagged</th><th></th></tr></thead>
         {% for cat, rows in categories %}
         <tbody data-sl-cat>
-          <tr class="sl-cat"><td colspan="6">{{ 'Packaging' if cat == 'packaging' else cat }}<span>{{ rows|length }} items{% if cat == 'Other' %} · no category set{% endif %}</span></td></tr>
+          <tr class="sl-cat"><td colspan="7">{{ 'Packaging' if cat == 'packaging' else cat }}<span>{{ rows|length }} items{% if cat == 'Other' %} · no category set{% endif %}</span></td></tr>
           {% for i in rows %}
           <tr data-sl-row data-name="{{ i.name|lower }}" data-flags="{{ 'low' if i.f_low }} {{ 'zero' if i.f_zero }} {{ 'recount' if i.f_recount }} {{ 'old' if i.f_old }} {{ 'never' if i.f_never }}">
             <td class="sl-item">{{ i.name }}{% if i.ingest %}<small class="sl-ing">Sales off: {% for g in i.ingest %}<span class="{{ 'late' if g.behind is defined and g.behind }}" title="ran {{ g.ran.strftime('%a %d %b, %I:%M %p') }}">{{ g.label }} to {{ g.upto.strftime('%d %b') }}{% if g.never %} (not sold here){% elif g.last_sold %} (none since {{ g.last_sold.strftime('%d %b') }}){% endif %}</span>{{ ' · ' if not loop.last }}{% endfor %}</small>{% endif %}</td>
@@ -76,6 +78,7 @@
                 <span class="sl-ok" data-sl-ok hidden>✓ saved</span>
               </span>
             </td>
+            <td class="sl-use">{{ use(i) }}</td>
             <td class="sl-hide-sm sl-muted" data-sl-last>{% if i.last_at %}{{ num(i.last_qty) }} {{ i.unit }} · {{ i.last_at.strftime('%d %b') }}{% if i.last_by %} · {{ i.last_by }}{% endif %}{% else %}never{% endif %}</td>
             <td>
               {% if i.cover is not none %}<span class="sl-cov {{ 'red' if i.cover < 3 else ('orange' if i.cover < 7 else 'green') }} {{ 'est' if i.estimated }}">{{ '%.1f'|format(i.cover) }} days</span>
@@ -122,7 +125,7 @@
         <div class="sl-card sl-sec first-sec" data-sl-section="first">
           <div class="sl-sechead"><h3>Count these first</h3><p>Top {{ first|length }} of {{ s.first_total }}: estimates at zero, low cover, or bought since the last count</p></div>
           {% for i in first %}
-          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %} · <span class="dn">{{ i.why[0] }}</span></div>{% if i.ingest %}<small class="sl-ing">Sales off: {% for g in i.ingest %}<span class="{{ 'late' if g.behind is defined and g.behind }}" title="ran {{ g.ran.strftime('%a %d %b, %I:%M %p') }}">{{ g.label }} to {{ g.upto.strftime('%d %b') }}{% if g.never %} (not sold here){% elif g.last_sold %} (none since {{ g.last_sold.strftime('%d %b') }}){% endif %}</span>{{ ' · ' if not loop.last }}{% endfor %}</small>{% endif %}</div>
+          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %}{% if i.use %} · uses {{ use(i, true) }}{% endif %} · <span class="dn">{{ i.why[0] }}</span></div>{% if i.ingest %}<small class="sl-ing">Sales off: {% for g in i.ingest %}<span class="{{ 'late' if g.behind is defined and g.behind }}" title="ran {{ g.ran.strftime('%a %d %b, %I:%M %p') }}">{{ g.label }} to {{ g.upto.strftime('%d %b') }}{% if g.never %} (not sold here){% elif g.last_sold %} (none since {{ g.last_sold.strftime('%d %b') }}){% endif %}</span>{{ ' · ' if not loop.last }}{% endfor %}</small>{% endif %}</div>
             <div class="sl-entry"><input inputmode="decimal" data-sl-qty="{{ i.id }}" placeholder="{{ num(i.qty) if i.qty is not none else 'qty' }}" aria-label="Count for {{ i.name }}"><span class="u">{{ i.unit }}</span><span class="sl-ok" data-sl-ok hidden>✓</span></div></div>
           {% endfor %}
         </div>
@@ -130,7 +133,7 @@
         <div class="sl-card sl-sec" data-sl-section="{{ loop.index }}" hidden>
           <div class="sl-sechead"><h3>{{ 'Packaging' if cat == 'packaging' else cat }}</h3><p>{{ rows|length }} items</p></div>
           {% for i in rows %}
-          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %}</div>{% if i.ingest %}<small class="sl-ing">Sales off: {% for g in i.ingest %}<span class="{{ 'late' if g.behind is defined and g.behind }}" title="ran {{ g.ran.strftime('%a %d %b, %I:%M %p') }}">{{ g.label }} to {{ g.upto.strftime('%d %b') }}{% if g.never %} (not sold here){% elif g.last_sold %} (none since {{ g.last_sold.strftime('%d %b') }}){% endif %}</span>{{ ' · ' if not loop.last }}{% endfor %}</small>{% endif %}</div>
+          <div class="sl-crow"><div><div class="nm">{{ i.name }}</div><div class="meta">{% if i.last_at %}Last counted <b>{{ num(i.last_qty) }} {{ i.unit }}</b> on {{ i.last_at.strftime('%d %b') }}{% else %}<b>Never counted</b>{% endif %}{% if i.estimated and i.qty is not none %} · estimate now <b>{{ num(i.qty) }} {{ i.unit }}</b>{% endif %}{% if i.use %} · uses {{ use(i, true) }}{% endif %}</div>{% if i.ingest %}<small class="sl-ing">Sales off: {% for g in i.ingest %}<span class="{{ 'late' if g.behind is defined and g.behind }}" title="ran {{ g.ran.strftime('%a %d %b, %I:%M %p') }}">{{ g.label }} to {{ g.upto.strftime('%d %b') }}{% if g.never %} (not sold here){% elif g.last_sold %} (none since {{ g.last_sold.strftime('%d %b') }}){% endif %}</span>{{ ' · ' if not loop.last }}{% endfor %}</small>{% endif %}</div>
             <div class="sl-entry"><input inputmode="decimal" data-sl-qty="{{ i.id }}" placeholder="{{ num(i.qty) if i.qty is not none else 'qty' }}" aria-label="Count for {{ i.name }}"><span class="u">{{ i.unit }}</span><span class="sl-ok" data-sl-ok hidden>✓</span></div></div>
           {% endfor %}
         </div>

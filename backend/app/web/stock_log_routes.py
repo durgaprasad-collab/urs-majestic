@@ -41,7 +41,7 @@ _LIST_SQL = text("""
     )
     select i.id as ingredient_id, i.name, i.unit, i.category, i.pack_size_g,
            s.on_hand_qty, s.counted_at, s.note,
-           v.daily_consumption,
+           v.daily_consumption, v.avg_interval_days,
            -- A stock count goes stale the moment a purchase lands after it --
            -- the shelf now holds more than the count says. Same rule Order
            -- Forecast uses (reorder_routes.py::_enrich) so the two pages

@@ -84,6 +84,7 @@ def stock_view(db: Session) -> list[dict]:
     human = _human_counts(db)
     resale = _resale_daily(db)
     ingest = _item_ingestion(db)
+    by_sales = sales_use(db)
     items = []
     for r in _stock_rows(db):
         h = human.get(r["ingredient_id"])
@@ -97,13 +98,33 @@ def stock_view(db: Session) -> list[dict]:
         per_kg = (1000.0 / float(r["pack_size_g"])) if (r["unit"] == "pcs" and r["pack_size_g"]) else None
         if per_kg and qty is not None:
             qty = round(qty * per_kg, 2)
+        # Uses / day: by sales for recipe items (and resale drinks), else by
+        # buying pace (purchases / days between bills) from the forecast view.
+        k = per_kg or 1.0
+        sales = by_sales.get(r["ingredient_id"])
+        buy_daily = float(r["daily_consumption"]) if r["daily_consumption"] else None
+        use = None
+        if sales:
+            use = {"kind": "sales", "daily": sales["daily"] * k, "peak": sales["peak"] * k, "peak_day": sales["peak_day"]}
+            if r["on_hand_qty"] is not None and not resale.get(r["ingredient_id"]):
+                cover = float(r["on_hand_qty"]) / sales["daily"]
+        elif resale.get(r["ingredient_id"]):
+            use = {"kind": "sales", "daily": resale[r["ingredient_id"]] * k}
+        elif buy_daily:
+            use = {"kind": "buying", "daily": buy_daily * k}
+        if use and buy_daily:
+            use["every"] = float(r["avg_interval_days"]) if r.get("avg_interval_days") else None
+            if use["kind"] == "sales":
+                diff = (buy_daily * k - use["daily"]) / use["daily"]
+                if abs(diff) > USE_GAP:
+                    use["gap"] = {"buy": buy_daily * k, "pct": round(abs(diff) * 100), "lower": diff < 0}
         src = source_of(r["note"]) if qty is not None else None
         h_day = count_day(h["counted_at"]) if h else None
         item = {
             "id": r["ingredient_id"], "name": r["name"], "category": cat, "unit": r["unit"],
             "pack": bool(r["pack_size_g"]),
             "qty": qty, "source": src, "estimated": src not in (None, "counted"),
-            "cover": cover, "stale": bool(r["stock_stale"]),
+            "cover": cover, "stale": bool(r["stock_stale"]), "use": use,
             "last_qty": (round(float(h["on_hand_qty"]) * per_kg, 2) if per_kg else float(h["on_hand_qty"])) if h else None,
             "ingest": ingest.get(r["ingredient_id"]),
             "last_at": h["counted_at"].astimezone(business_tz()) if h else None,
@@ -264,4 +285,44 @@ def _item_ingestion(db: Session) -> dict[int, list[dict]]:
                      "last_sold": last.get(lab) if last.get(lab) and last.get(lab) < g["upto"] else None,
                      "never": lab not in last}
                     for lab, g in chans.items()]
+    return out
+
+
+USE_DAYS = 7          # sales days averaged for "uses / day"
+USE_GAP = 0.25        # sales vs buying pace differ by more than this -> say so
+
+
+def sales_use(db: Session) -> dict[int, dict]:
+    """{ingredient_id: {daily, peak, peak_day}} in the stock unit, from what
+    sales took off stock (recipe grams x dishes sold) over the last USE_DAYS
+    Petpooja sales days, all channels. The latest ledger note per
+    channel/day/item is the applied figure (re-runs overwrite)."""
+    rows = db.execute(text("""
+        SELECT DISTINCT ON (ingredient_id, ch, d) ingredient_id, d, q FROM (
+            SELECT ingredient_id, split_part(note, '_usage:', 1) AS ch, split_part(note, ':', 2) AS d,
+                   split_part(note, ':', 3) AS q, counted_at, id
+              FROM ingredient_stock
+             WHERE note ~ '^(petpooja|zomato|swiggy)_usage:' AND counted_at > now() - interval '30 days'
+        ) x ORDER BY ingredient_id, ch, d, counted_at DESC, id DESC
+    """)).mappings().all()
+    days = sorted({r["d"] for r in rows})[-USE_DAYS:]
+    if not days:
+        return {}
+    per: dict[int, dict[str, float]] = {}
+    for r in rows:
+        if r["d"] in days:
+            try:
+                q = float(r["q"])
+            except ValueError:
+                continue
+            per.setdefault(r["ingredient_id"], {}).setdefault(r["d"], 0.0)
+            per[r["ingredient_id"]][r["d"]] += q
+    out = {}
+    for iid, by_day in per.items():
+        total = sum(by_day.values())
+        if total <= 0:
+            continue
+        peak_d = max(by_day, key=by_day.get)
+        out[iid] = {"daily": total / len(days), "peak": by_day[peak_d],
+                    "peak_day": datetime.date.fromisoformat(peak_d)}
     return out
