@@ -1619,6 +1619,8 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .sl-utag.sales { background: var(--sl-good-bg); color: var(--sl-good); }
 .sl-utag.buying { background: #EAF1F7; color: #2F6E9E; }
 .sl-ugap { display: block; margin-top: 2px; font-size: 11px; color: var(--sl-warn); white-space: normal; max-width: 240px; }
+.by-use { white-space: nowrap; font-size: 12.5px; }
+.by-use .sl-ugap { margin-left: auto; text-align: right; }
 .sl-empty { padding: 20px; color: var(--sl-ink-3); }
 .sl-qedit { display: inline-flex; align-items: center; gap: 6px; }
 .sl-qedit input { width: 86px; padding: 6px 8px; border: 1.5px solid transparent; border-radius: 8px; background: #F7F6F0; text-align: right; font: 700 13.5px Inter, sans-serif; color: var(--sl-ink); }
@@ -2153,6 +2155,10 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
   .by-table tr[data-by-row] > td:nth-child(5) { grid-row: 2; grid-column: 3; }
   .by-table tr[data-by-row] > td:nth-child(7) { grid-row: 2; grid-column: 4; min-width: 56px; }
   .by-table tr[data-by-row] > td:nth-child(3)::before { content: "Left "; color: var(--sl-ink-3); font-size: 11px; }
+  .by-table tr[data-by-row] > td.by-use { grid-row: 3; grid-column: 2 / -1; text-align: left; white-space: normal; }
+  .by-table tr[data-bw-row] > td.by-use { grid-row: 4; grid-column: 2 / -1; text-align: left; white-space: normal; }
+  .by-table td.by-use::before { content: "Uses/day "; color: var(--sl-ink-3); font-size: 11px; }
+  .by-table td.by-use .sl-ugap { display: inline; margin-left: 6px; }
   /* Next 7 days: In stock · Runs out | Order | Cost */
   .by-table tr[data-bw-row] > td:nth-child(3) { grid-row: 2; grid-column: 2; text-align: left; }
   .by-table tr[data-bw-row] > td:nth-child(5) { grid-row: 3; grid-column: 2; }

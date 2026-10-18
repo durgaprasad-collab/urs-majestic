@@ -78,8 +78,25 @@ def _load_forecast(db: Session) -> dict[int, dict]:
         if f is None or not per_day:
             continue
         f["daily_consumption"] = Decimal(str(round(per_day, 3)))
+        f["use_kind"] = "sales"
         if f["on_hand_qty"] is not None:
             f["stock_days_cover_left"] = (Decimal(f["on_hand_qty"]) / f["daily_consumption"]).quantize(Decimal("0.1"))
+    # Recipe items: daily use from what sales took off stock (last 7 sales
+    # days), the same figure the Stock Log shows; the rest keep the buying pace.
+    from app.services.stock_count import sales_use, USE_GAP
+    for iid, u in sales_use(db).items():
+        f = out.get(iid)
+        if f is None or f.get("use_kind") == "sales":
+            continue
+        buy = float(f["daily_consumption"]) if f["daily_consumption"] else None
+        f["daily_consumption"] = Decimal(str(round(u["daily"], 4)))
+        f["use_kind"] = "sales"
+        if buy and abs(buy - u["daily"]) / u["daily"] > USE_GAP:
+            f["use_gap"] = {"buy": buy, "pct": round(abs(buy - u["daily"]) / u["daily"] * 100), "lower": buy < u["daily"]}
+        if f["on_hand_qty"] is not None:
+            f["stock_days_cover_left"] = (Decimal(f["on_hand_qty"]) / f["daily_consumption"]).quantize(Decimal("0.1"))
+    for f in out.values():
+        f.setdefault("use_kind", "buying" if f["daily_consumption"] else None)
     return out
 
 
@@ -102,12 +119,13 @@ def _resale_daily(db: Session) -> dict[int, float]:
 
 def _row(f: dict | None, today: datetime.date) -> dict:
     if f is None:
-        return {"ingredient_id": None, "unit": None, "on_hand": None, "cover": None, "per_day": None,
+        return {"ingredient_id": None, "unit": None, "on_hand": None, "cover": None, "per_day": None, "use_kind": None, "use_gap": None,
                 "qty": None, "unit_cost": None, "last": None, "days_since": None, "category": None}
     last = f["last_purchase"]
     return {
         "ingredient_id": f["ingredient_id"], "unit": f["unit"], "category": f["category"],
         "on_hand": f["on_hand_qty"], "cover": f["stock_days_cover_left"], "per_day": f["daily_consumption"],
+        "use_kind": f.get("use_kind"), "use_gap": f.get("use_gap"),
         "qty": _suggested(f), "unit_cost": f["avg_unit_cost"],
         "last": last, "days_since": (today - last).days if last else None,
     }
@@ -248,6 +266,7 @@ def week_plan(db: Session, today_keys: set[str] | None = None) -> dict:
         lines.append({
             "ingredient_id": iid, "name": f["name"], "category": f["category"], "unit": f["unit"],
             "group": where_bought(f["category"]), "on_hand": on_hand, "per_day": per_day,
+            "use_kind": f.get("use_kind"), "use_gap": f.get("use_gap"),
             "cover": cover, "day": day, "runout": today + datetime.timedelta(days=day),
             "qty": qty, "unit_cost": f["avg_unit_cost"],
             "cost": (Decimal(str(f["avg_unit_cost"])) * qty) if f["avg_unit_cost"] else None,

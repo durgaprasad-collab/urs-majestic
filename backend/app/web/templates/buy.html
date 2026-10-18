@@ -4,6 +4,8 @@
 {% block content %}
 {% macro num(q, d=2) %}{% if q is none %}{% elif q == q|int %}{{ '{:,}'.format(q|int) }}{% else %}{{ ('%.' ~ d ~ 'f')|format(q)|float }}{% endif %}{% endmacro %}
 {% macro amt(q, u) %}{% if q is none %}—{% elif u == 'g' and q >= 1000 %}{{ num(q / 1000) }} kg{% elif u == 'ml' and q >= 1000 %}{{ num(q / 1000) }} L{% else %}{{ num(q) }} {{ u }}{% endif %}{% endmacro %}
+{% macro rate(q) %}{% set q = q|float %}{% if q >= 100 %}{{ '%.0f'|format(q) }}{% elif q >= 10 %}{{ '%.1f'|format(q)|replace('.0','') }}{% elif q >= 0.1 %}{{ '%.2f'|format(q) }}{% else %}{{ '%.2g'|format(q) }}{% endif %}{% endmacro %}
+{% macro useday(x) %}{% if x.per_day %}<span class="sl-utag {{ x.use_kind }}">{{ x.use_kind }}</span>{{ rate(x.per_day) }} {{ x.unit }}{% if x.use_gap %}<small class="sl-ugap">buying {{ rate(x.use_gap.buy) }}: {{ x.use_gap.pct }}% {{ 'lower' if x.use_gap.lower else 'higher' }}</small>{% endif %}{% else %}<span class="sl-muted">—</span>{% endif %}{% endmacro %}
 {% macro rs(v) %}₹{{ '{:,.0f}'.format(v or 0) }}{% endmacro %}
 {% macro price(i) %}{% if not i.unit_cost %}—{% elif i.unit in ('g', 'ml') %}₹{{ '{:,.0f}'.format(i.unit_cost * 1000) }}/{{ 'kg' if i.unit == 'g' else 'L' }}{% else %}₹{{ '{:,.0f}'.format(i.unit_cost) }}/{{ i.unit }}{% endif %}{% endmacro %}
 {% set tab = request.query_params.get('tab', 'buy') %}
@@ -53,7 +55,7 @@
     <div class="sl-card">
       {% if groups %}
       <table class="sl-table by-table">
-        <thead><tr><th class="by-cbcol"></th><th>Item</th><th class="r">Left</th><th class="r sl-hide-sm">Uses / day</th><th class="r">Buy</th><th class="r sl-hide-sm">Avg price</th><th class="r">Cost</th><th class="sl-hide-sm">Last bought</th></tr></thead>
+        <thead><tr><th class="by-cbcol"></th><th>Item</th><th class="r">Left</th><th class="r">Uses / day</th><th class="r">Buy</th><th class="r sl-hide-sm">Avg price</th><th class="r">Cost</th><th class="sl-hide-sm">Last bought</th></tr></thead>
         {% for g, rows in groups %}
         <tbody data-by-group="{{ g }}">
           <tr class="sl-cat"><td colspan="8">{{ g }}<span data-by-gsum>{{ rows|length }} items</span><button type="button" class="by-selall" data-by-selall>select all</button></td></tr>
@@ -79,7 +81,7 @@
               {% endif %}
             </td>
             <td class="r by-left">{{ amt(i.on_hand, i.unit) if i.on_hand is not none else '—' }}{% if i.low %}<small>{{ '%.1f'|format(i.cover) }} days</small>{% endif %}</td>
-            <td class="r sl-hide-sm sl-muted">{{ amt(i.per_day, i.unit) if i.per_day else '—' }}</td>
+            <td class="r by-use">{{ useday(i) }}</td>
             <td class="r">
               <span class="sl-qedit">
                 <input inputmode="decimal" data-by-qty value="{{ '%g'|format(i.qty|float) if i.qty is not none }}" placeholder="qty" aria-label="Quantity of {{ i.name }}">
@@ -146,7 +148,7 @@
         <div class="sl-btns"><button type="button" class="sl-btn by-wa" data-bw-share>Share on WhatsApp</button><button type="button" class="sl-btn" data-bw-print>Supplier sheet</button></div></div>
       {% if week.lines %}
       <table class="sl-table by-table">
-        <thead><tr><th class="by-cbcol"></th><th>Item</th><th class="r">In stock</th><th class="r sl-hide-sm">Uses / day</th><th>Runs out</th><th class="r">Order</th><th class="r">Cost</th></tr></thead>
+        <thead><tr><th class="by-cbcol"></th><th>Item</th><th class="r">In stock</th><th class="r">Uses / day</th><th>Runs out</th><th class="r">Order</th><th class="r">Cost</th></tr></thead>
         {% for g, lines in week.groups %}
         <tbody data-bw-group>
           <tr class="sl-cat"><td colspan="7">{{ g }}<span data-bw-gsum>{{ lines|length }} items</span><button type="button" class="by-selall" data-bw-selall>select all</button></td></tr>
@@ -156,7 +158,7 @@
             <td><span class="sl-item">{{ l.name }}</span>
               {% if l.approved %}<span class="by-pill req">approved, waiting</span>{% elif l.on_today %}<span class="by-pill req">also on today's list</span>{% endif %}</td>
             <td class="r {{ '' if l.on_hand > 0 else 'by-zero' }}">{{ amt(l.on_hand, l.unit) }}</td>
-            <td class="r sl-hide-sm sl-muted">{{ amt(l.per_day, l.unit) }}</td>
+            <td class="r by-use">{{ useday(l) }}</td>
             <td><span class="by-run {{ 'r0' if l.cover < 1 else ('r1' if l.cover < 3 else 'r2') }}">{{ 'Out now' if l.on_hand <= 0 else ('Today' if l.day == 0 else ('Tomorrow' if l.day == 1 else l.runout.strftime('%a %d'))) }}</span></td>
             <td class="r"><span class="sl-qedit"><input inputmode="decimal" data-bw-qty value="{{ '%g'|format(l.qty|float) }}" {{ 'disabled' if l.approved }} aria-label="Order {{ l.name }}"><span class="u">{{ l.unit }}</span></span></td>
             <td class="r"><b data-bw-cost>{{ rs(l.cost) if l.cost else '—' }}</b></td>
