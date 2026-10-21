@@ -25,6 +25,7 @@ _MAP_SQL = text("""
       JOIN ingredients i ON i.id = m.ingredient_id
       LEFT JOIN v_ingredient_reorder_forecast v ON v.ingredient_id = i.id
      WHERE i.is_active
+       AND NOT m.stock_from_batch  -- gravy batch basis (2026-10-20): these leave stock when the batch is logged, not per plate
 """)
 
 _COMBO_SQL = text("""
