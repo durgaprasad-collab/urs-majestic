@@ -189,6 +189,7 @@ async def proxy_requests(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/buy?proxy_error=Type+or+paste+at+least+one+item", status_code=303)
     added, skipped, unmatched = [], [], []
     for name, hint in items:
+        name, shelf = request_check.split_shelf(name)
         iid = request_check.match_ingredient(db, name)
         ing = db.get(Ingredient, iid) if iid else None
         shown = ing.name if ing else name
@@ -197,7 +198,8 @@ async def proxy_requests(request: Request, db: Session = Depends(get_db)):
         if q.first():
             skipped.append(shown)
             continue
-        note = f"Entered by {user.name} for {staff.name}" + (f" · asked {hint}" if hint else "")
+        note = (f"Entered by {user.name} for {staff.name}" + (f" · asked {hint}" if hint else "")
+                + (f" · {shelf} left on shelf" if shelf else ""))
         db.add(Requisition(requested_by_user_id=staff.id, item_name=name if not ing else ing.name,
                            ingredient_id=iid, note=note[:250]))
         added.append(shown)
@@ -254,16 +256,28 @@ def ask_check(requisition_id: int, request: Request, db: Session = Depends(get_d
 
 @router.post("/buy/requests/{requisition_id}/match")
 async def rematch(requisition_id: int, request: Request, db: Session = Depends(get_db)):
-    """Owner picks which item a typed request name means."""
+    """Owner picks which item a typed request name means. The typed name is
+    remembered, so the same wording is matched by itself next time, and any
+    other open request typed the same way is linked now too."""
     user, redir = require_user(request, db)
     if redir:
         return redir
     form = await request.form()
     req = db.get(Requisition, requisition_id)
     raw = str(form.get("ingredient_id") or "")
-    if req and req.status == RequisitionStatus.pending and raw.isdigit():
-        req.ingredient_id = int(raw)
+    open_states = [RequisitionStatus.pending, RequisitionStatus.approved]
+    if req and req.status in open_states and raw.isdigit() and db.get(Ingredient, int(raw)):
+        iid = int(raw)
+        typed = req.item_name
+        req.ingredient_id = iid
+        if form.get("remember", "1") == "1":
+            request_check.learn_alias(db, typed, iid, user.id)
+            same = (db.query(Requisition).filter(Requisition.status.in_(open_states), Requisition.ingredient_id.is_(None),
+                                                 Requisition.item_name.ilike(typed), Requisition.id != req.id).all())
+            for other in same:
+                other.ingredient_id = iid
         db.commit()
+        log.info("request %s '%s' mapped to item %s by %s", req.id, typed, iid, user.username)
     return RedirectResponse(url="/buy", status_code=303)
 
 

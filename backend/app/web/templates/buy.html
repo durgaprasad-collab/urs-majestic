@@ -75,7 +75,11 @@
                 {% elif i.cadence %}<span class="by-pill low">Usually bought by now</span>{% endif %}
                 {% if i.unlogged %}<span class="by-pill log">No buy logged for {{ i.days_since }} days — bought outside the log?</span>{% endif %}
               </div>
-              {% if i.requests and i.ingredient_id is none %}<div class="sl-muted">Not in the item list, so there's no stock, price or check for it.</div>{% endif %}
+              {% if i.requests and i.ingredient_id is none %}<div class="sl-muted">Not matched to an item yet, so there's no stock, price or check for it.</div>
+              {% for r in i.requests %}<form method="post" action="/buy/requests/{{ r.id }}/match" class="rq-match rq-map">Map "<b>{{ r.asked }}</b>" to
+                <select name="ingredient_id" required aria-label="Item for {{ r.asked }}"><option value="">Pick item…</option>{% for o in item_options %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}</select>
+                <input type="hidden" name="remember" value="0"><label class="sl-muted"><input type="checkbox" name="remember" value="1" checked> remember this wording</label>
+                <button type="submit" class="by-link">Map</button></form>{% endfor %}{% endif %}
               {% if i.requests %}<div class="rq-acts">{% for r in i.requests %}<form method="post" action="/buy/requests/{{ r.id }}/ask-check"><button type="submit" class="by-link">Ask to check</button></form><form method="post" action="/buy/requests/{{ r.id }}/reject" data-by-reject="{{ i.name }}"><button type="submit" class="by-link">Reject request</button></form>{% endfor %}</div>{% endif %}
               {% set c = i.check %}
               {% if c %}

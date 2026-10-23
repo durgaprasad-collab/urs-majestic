@@ -51,7 +51,48 @@ LOCAL_NAMES = {
     "master oil": "Mustard oil", "sarson tel": "Mustard oil",
     "jeera": "Jeera Whole (cumin seed)", "tata salt": "Salt", "white paper powder": "White pepper powder",
     "fork spoon": "Disposable Spoons", "ajinomoto": "Monosodium Glutamate (Ajinomoto)",
+    "aata": "Wheat Flour", "mada": "Maida", "chini": "Sugar", "cheeni": "Sugar", "sakkarai": "Sugar",
+    "dhanya powder": "Coriander powder", "dhaniya powder": "Coriander powder", "dhania powder": "Coriander powder",
+    "malli powder": "Coriander powder",
 }
+
+# "Aata 7kg balance", "Oil 2 packet left": what's on the shelf, not the item name.
+SHELF_RE = re.compile(r"\s*[-:,]?\s*(\d+(?:[.,]\d+)?\s*[a-z]*)\s+(?:balance|bal|left|remaining|stock|irukku)\s*$", re.I)
+
+
+def split_shelf(name: str) -> tuple[str, str]:
+    """('Aata 7kg balance') -> ('Aata', '7kg'). Shelf part is '' when absent."""
+    m = SHELF_RE.search(name or "")
+    if not m or m.start() == 0:
+        return (name or "").strip(), ""
+    return name[:m.start()].strip(" -:,"), m.group(1).strip()
+
+
+def learned_alias(db: Session, name: str) -> int | None:
+    key = re.sub(r"\s+", " ", (name or "").strip().lower())
+    if not key:
+        return None
+    try:
+        with db.begin_nested():
+            row = db.execute(text("SELECT a.ingredient_id FROM requisition_aliases a JOIN ingredients i ON i.id = a.ingredient_id "
+                                  "WHERE a.alias = :a AND i.is_active"), {"a": key}).first()
+    except Exception:  # table not created yet
+        return None
+    return row[0] if row else None
+
+
+def learn_alias(db: Session, name: str, ingredient_id: int, user_id: int | None) -> None:
+    key = re.sub(r"\s+", " ", split_shelf(name)[0].strip().lower())
+    if not key:
+        return
+    try:
+        with db.begin_nested():
+            db.execute(text("INSERT INTO requisition_aliases (alias, ingredient_id, created_by_user_id) VALUES (:a, :i, :u) "
+                            "ON CONFLICT (alias) DO UPDATE SET ingredient_id = EXCLUDED.ingredient_id, "
+                            "created_by_user_id = EXCLUDED.created_by_user_id, created_at = now()"),
+                       {"a": key, "i": ingredient_id, "u": user_id})
+    except Exception:
+        pass
 
 
 def match_ingredient(db: Session, name: str) -> int | None:
@@ -59,9 +100,12 @@ def match_ingredient(db: Session, name: str) -> int | None:
     "Dhanya" -> Coriander), exact (any case), then the same words in any order
     ("Basmati rice" -> "Rice/Basmati"), then the one item whose name holds
     every typed word. None when it's ambiguous or nothing fits."""
-    name = (name or "").strip()
+    name = split_shelf(name)[0]
     if not name:
         return None
+    learned = learned_alias(db, name)
+    if learned:
+        return learned
     local = LOCAL_NAMES.get(re.sub(r"\s+", " ", name.lower()))
     if local:
         name = local
