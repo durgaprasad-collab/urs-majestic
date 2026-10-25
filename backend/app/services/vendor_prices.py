@@ -138,9 +138,11 @@ def market_latest(db: Session, offers: dict | None = None) -> dict:
 
 def page(db: Session, days: int = DAYS) -> dict:
     data = compare(db, days)
-    market = market_latest(db, market_offers(db, data["items"]))
+    offers = market_offers(db, data["items"])
+    market = market_latest(db, offers)
     for it in data["items"].values():
         it["online"] = market.get(it["id"])
+        it["apps"] = offers.get(it["id"])
     rows = sorted((it for it in data["items"].values() if it["n_vendors"] > 1), key=lambda it: -it["over"])
     single = sorted((it for it in data["items"].values() if it["n_vendors"] == 1), key=lambda it: it["name"].lower())
     return {

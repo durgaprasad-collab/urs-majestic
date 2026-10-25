@@ -52,7 +52,13 @@
             {% set cheap = it.vendors|map(attribute='avg')|min %}
             {% for v in it.vendors|sort(attribute='avg') %}
             <span class="vp-v {{ 'best' if v.avg == cheap }} {{ 'dear' if loop.last and v.avg > cheap * 1.2 }}"><b>{{ vp(v.avg, it.unit) }}</b> {{ v.vendor }} <small>{{ v.n }} buy{{ 's' if v.n > 1 }}{% if v.n > 1 and (v.last_price - v.avg)|abs > v.avg * 0.03 %} · {{ vp(v.last_price, it.unit) }} on {{ v.last_date.strftime('%d %b').lstrip('0') }}{% else %} · {{ v.last_date.strftime('%d %b').lstrip('0') }}{% endif %}</small></span>
-            {% endfor %}{% if it.online %}<span class="vp-v online" title="{{ it.online.product }}"><b>{{ vp(it.online.price_per_unit, it.unit) }}</b> {{ it.online.channel }} <small>online · {{ it.online.day.strftime('%a %d %b') }}</small></span>{% endif %}</div></td>
+            {% endfor %}{% if it.online %}<span class="vp-v online" title="{{ it.online.product }}"><b>{{ vp(it.online.price_per_unit, it.unit) }}</b> {{ it.online.channel }} <small>online · {{ it.online.day.strftime('%a %d %b') }}</small></span>{% endif %}</div>
+            {% if it.apps %}<details class="by-apps"><summary>Prices by app · {{ it.apps.offers|length }} · checked {{ it.apps.day.strftime('%d %b').lstrip('0') }}</summary>
+              <div class="by-apps-list">{% for o in it.apps.offers %}<div class="by-app {{ 'best' if o.best }} {{ 'off' if not o.in_stock or o.small }}">
+                <b class="ch">{{ o.channel }}</b>
+                <span class="pp">{{ vp(o.ppu, it.unit) }}{% if o.vs_paid is not none and o.in_stock and not o.small %}<small class="{{ 'up' if o.vs_paid > 5 else ('down' if o.vs_paid < -5 else '') }}">{{ '%+.0f'|format(o.vs_paid) }}% vs paid</small>{% endif %}</span>
+                <span class="pk">₹{{ '%g'|format(o.price) }} for {{ '%g'|format(o.pack_qty) }} {{ o.pack_unit }}{% if not o.in_stock %} · <i>out of stock</i>{% elif o.small %} · <i>small pack, dearer per unit</i>{% endif %}{% if o.approx %} · <i>ml/g assumed equal</i>{% endif %}</span>
+                <span class="pn">{{ o.product }}</span></div>{% endfor %}</div></details>{% endif %}</td>
           <td class="sl-hide-sm"><div class="vp-bar">{% for v in it.vendors|sort(attribute='share', reverse=true) %}<i class="c{{ loop.index if loop.index <= 3 else 3 }}" style="width:{{ v.share|round(1) }}%" title="{{ v.vendor }} {{ v.share|round|int }}%"></i>{% endfor %}</div>
             <span class="sl-muted">{{ it.top_share.share|round|int }}% {{ it.top_share.vendor }}</span></td>
           <td class="r">{% if it.over >= 1 %}<b class="vp-over">{{ rs(it.over) }}</b>{% else %}<span class="sl-muted">—</span>{% endif %}</td>
