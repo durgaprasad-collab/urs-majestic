@@ -69,7 +69,7 @@ _LIST_SQL = text("""
         select on_hand_qty, unit::text as stock_unit, counted_at, note
         from ingredient_stock
         where ingredient_id = i.id
-        order by counted_at desc
+        order by counted_at desc, id desc
         limit 1
     ) s on true
     left join v_ingredient_reorder_forecast v on v.ingredient_id = i.id

@@ -111,7 +111,7 @@ _MANUAL_REORDER_SQL = text("""
           SELECT on_hand_qty, counted_at, note
             FROM ingredient_stock
            WHERE ingredient_id = i.id
-           ORDER BY counted_at DESC
+           ORDER BY counted_at DESC, id DESC
            LIMIT 1
       ) s ON true
       LEFT JOIN LATERAL (
