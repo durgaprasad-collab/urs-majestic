@@ -269,7 +269,10 @@ def adjust_stock_for_sales(db, sales, ledger: str = "petpooja_usage", dates=None
             initialized_zero += 1
             balance = Decimal("0")
         else:
-            balance = max(Decimal("0"), Decimal(str(latest["on_hand_qty"])) - delta * share)
+            # No zero floor (2026-10-25): clipping at 0 silently lost usage, and the next
+            # purchase then restored a stock level that never existed. A negative balance
+            # is a visible shortfall: a missing purchase bill or an overstated portion.
+            balance = Decimal(str(latest["on_hand_qty"])) - delta * share
         db.execute(text("""
             INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by, note)
             VALUES (:ingredient_id, :balance, CAST(:unit AS unit_type), NULL, :note)
@@ -383,7 +386,7 @@ def adjust_stock_for_pace(db, dates) -> dict:
                 share = Decimal("0")
             else:
                 share = share_after(db, "petpooja_usage", d, count["counted_at"])
-            balance = max(Decimal("0"), Decimal(str(latest["on_hand_qty"])) - rate * share)
+            balance = Decimal(str(latest["on_hand_qty"])) - rate * share  # no zero floor, see above
             db.execute(text("""
                 INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by, note)
                 VALUES (:i, :b, CAST(:u AS unit_type), NULL, :n)
