@@ -49,9 +49,11 @@ def buy_page(request: Request, db: Session = Depends(get_db)):
                     .order_by(Ingredient.name).all()) if data["n_requests"] else []
     staff_users = (db.query(User).filter(User.is_active.is_(True), User.username != "claude_bot")
                    .order_by(User.is_admin, User.name).all())
+    vendor_items = vendor_prices.compare(db)["items"]
+    offers = vendor_prices.market_offers(db, vendor_items)
     return _tmpl(request, "buy.html", {"user": user, **data, "bought": bought_this_week(db), "week": week_plan(db, keys),
                                        "item_options": item_options, "tz": business_tz(), "staff_users": staff_users,
-                                       "vendors": vendor_prices.compare(db)["items"], "market": vendor_prices.market_latest(db)})
+                                       "vendors": vendor_items, "market": vendor_prices.market_latest(db, offers), "offers": offers})
 
 
 @router.get("/buy/week/print", response_class=HTMLResponse)

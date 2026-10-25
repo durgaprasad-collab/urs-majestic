@@ -7,6 +7,12 @@
 {% macro rate(q) %}{% set q = q|float %}{% if q >= 100 %}{{ '%.0f'|format(q) }}{% elif q >= 10 %}{{ '%.1f'|format(q)|replace('.0','') }}{% elif q >= 0.1 %}{{ '%.2f'|format(q) }}{% else %}{{ '%.2g'|format(q) }}{% endif %}{% endmacro %}
 {% macro useday(x) %}{% if x.per_day %}<span class="sl-utag {{ x.use_kind }}">{{ x.use_kind }}</span>{{ rate(x.per_day) }} {{ x.unit }}{% if x.use_gap %}<small class="sl-ugap">buying {{ rate(x.use_gap.buy) }}: {{ x.use_gap.pct }}% {{ 'lower' if x.use_gap.lower else 'higher' }}</small>{% endif %}{% else %}<span class="sl-muted">—</span>{% endif %}{% endmacro %}
 {% macro vp(v, u) %}{% if u == 'g' %}₹{{ '{:,.0f}'.format(v * 1000) }}/kg{% elif u == 'ml' %}₹{{ '{:,.0f}'.format(v * 1000) }}/L{% elif v >= 10 %}₹{{ '{:,.1f}'.format(v)|replace('.0', '') }}{% if u != 'pcs' %}/{{ u }}{% endif %}{% else %}₹{{ '%.2f'|format(v) }}{% endif %}{% endmacro %}
+{% macro appprices(iid) %}{% set mo = offers.get(iid) if iid else none %}{% if mo %}<details class="by-apps"><summary>Prices by app · {{ mo.offers|length }} · checked {{ mo.day.strftime('%d %b').lstrip('0') }}</summary>
+  <div class="by-apps-list">{% for o in mo.offers %}<div class="by-app {{ 'best' if o.best }} {{ 'off' if not o.in_stock or o.small }}">
+    <b class="ch">{{ o.channel }}</b>
+    <span class="pp">{{ vp(o.ppu, mo.unit) }}{% if o.vs_paid is not none and o.in_stock and not o.small %}<small class="{{ 'up' if o.vs_paid > 5 else ('down' if o.vs_paid < -5 else '') }}">{{ '%+.0f'|format(o.vs_paid) }}% vs paid</small>{% endif %}</span>
+    <span class="pk">₹{{ '%g'|format(o.price) }} for {{ '%g'|format(o.pack_qty) }} {{ o.pack_unit }}{% if not o.in_stock %} · <i>out of stock</i>{% elif o.small %} · <i>small pack, dearer per unit</i>{% endif %}{% if o.approx %} · <i>ml/g assumed equal</i>{% endif %}</span>
+    <span class="pn">{{ o.product }}</span></div>{% endfor %}</div></details>{% endif %}{% endmacro %}
 {% macro vhint(iid) %}{% set h = vendors.get(iid) if iid else none %}{% if h and h.n_vendors > 1 %}<div class="by-vhint">Cheapest lately: <b>{{ h.best.vendor }} {{ vp(h.best.last_price, h.unit) }}</b> ({{ h.best.last_date.strftime('%d %b').lstrip('0') }}){% for v in h.vendors[1:4] %} · {{ v.vendor.split(' ')[0] }} {{ vp(v.last_price, h.unit) }}{% endfor %}{% if h.n_vendors > 4 %} · +{{ h.n_vendors - 4 }} more{% endif %}{% set m = market.get(iid) %}{% if m %} · online {{ m.channel }} {{ vp(m.price_per_unit, h.unit) }}{% endif %}{% if h.dear %} · <span class="dear">last bought at {{ h.last.vendor.split(' ')[0] }}, {{ '%.1f'|format(h.dear)|replace('.0','') }}× the cheapest</span>{% endif %}</div>{% elif h %}<div class="by-vhint muted">One vendor so far ({{ h.best.vendor }}, {{ vp(h.best.last_price, h.unit) }})</div>{% endif %}{% endmacro %}
 {% macro rs(v) %}₹{{ '{:,.0f}'.format(v or 0) }}{% endmacro %}
 {% macro price(i) %}{% if not i.unit_cost %}—{% elif i.unit in ('g', 'ml') %}₹{{ '{:,.0f}'.format(i.unit_cost * 1000) }}/{{ 'kg' if i.unit == 'g' else 'L' }}{% else %}₹{{ '{:,.0f}'.format(i.unit_cost) }}/{{ i.unit }}{% endif %}{% endmacro %}
@@ -67,7 +73,7 @@
             <td><input type="checkbox" class="by-cb" checked data-by-cb aria-label="Buy {{ i.name }}"></td>
             <td>
               <div class="sl-item">{{ i.name }}</div>
-              {{ vhint(i.ingredient_id) }}
+              {{ vhint(i.ingredient_id) }}{{ appprices(i.ingredient_id) }}
               <div class="by-why">
                 {% for r in i.requests %}<span class="by-pill req">Requested by {{ r.by }} · {{ r.at.strftime('%d %b, %I:%M %p').replace(' 0', ' ') }}</span>{% if r.proxy %} <span class="by-pill own" title="{{ r.proxy }}">{{ r.proxy.split(' for ')[0] }}{% if ' · asked ' in r.proxy %} · asked {{ r.proxy.split(' · asked ')[1] }}{% endif %}</span>{% endif %}{% endfor %}
                 {% if i.out %}<span class="by-pill out">Out</span>
@@ -162,7 +168,7 @@
           {% for l in lines %}
           <tr data-bw-row data-name="{{ l.name }}" data-group="{{ g }}" data-iid="{{ l.ingredient_id }}" data-unit="{{ l.unit }}" data-uc="{{ l.unit_cost or '' }}" {{ 'data-approved=1' if l.approved }}>
             <td>{% if not l.approved %}<input type="checkbox" class="by-cb" checked data-bw-cb aria-label="Order {{ l.name }}">{% endif %}</td>
-            <td><span class="sl-item">{{ l.name }}</span>{{ vhint(l.ingredient_id) }}
+            <td><span class="sl-item">{{ l.name }}</span>{{ vhint(l.ingredient_id) }}{{ appprices(l.ingredient_id) }}
               {% if l.approved %}<span class="by-pill req">approved, waiting</span>{% elif l.on_today %}<span class="by-pill req">also on today's list</span>{% endif %}</td>
             <td class="r {{ '' if l.on_hand > 0 else 'by-zero' }}">{{ amt(l.on_hand, l.unit) }}</td>
             <td class="r by-use">{{ useday(l) }}</td>

@@ -55,7 +55,7 @@ def compare(db: Session, days: int = DAYS) -> dict:
         v["spend"] += float(r["total_price"])
         v["n"] += 1
         v["last_price"], v["last_date"] = price, r["purchase_date"]
-        it["last"] = {"vendor": vendor, "price": price, "date": r["purchase_date"]}
+        it["last"] = {"vendor": vendor, "price": price, "date": r["purchase_date"], "qty": q}
     for it in items.values():
         vs = list(it["vendors"].values())
         total_qty = sum(v["qty"] for v in vs)
@@ -75,27 +75,70 @@ def compare(db: Session, days: int = DAYS) -> dict:
     return {"items": items, "unnamed": {"n": unnamed_n, "spend": unnamed_rs}, "days": days}
 
 
-def market_latest(db: Session) -> dict:
-    """The latest Sunday price check: {ingredient_id: cheapest in-stock offer},
-    plus {"_day": date} -- empty before the first check."""
+SMALL_PACK = 0.25  # a pack under this share of what you usually buy is a "small pack": dearer per unit, not a fair comparison
+
+
+def market_offers(db: Session, items: dict | None = None) -> dict:
+    """Every app's offer for each item from the latest price check:
+    {ingredient_id: {"day", "unit", "offers": [..]}} (+ "_day"). Offers are
+    ordered fair-comparison first (cheapest per unit), then small packs, then
+    out of stock. `small` = the pack is under SMALL_PACK of the last quantity
+    bought; `approx` = the pack is in a different unit family than the item
+    (ml vs g, assumed 1:1)."""
     day = db.execute(text("SELECT max(checked_on) FROM market_prices")).scalar()
     if not day:
         return {}
+    items = items if items is not None else compare(db)["items"]
+    last_qty = {iid: it["last"]["qty"] for iid, it in items.items() if it["last"]}
+    paid = {iid: it["last"]["price"] for iid, it in items.items() if it["last"]}
     rows = db.execute(text("""
-        SELECT DISTINCT ON (ingredient_id) ingredient_id, channel, product, price, pack_qty, pack_unit, price_per_unit,
-               (SELECT count(DISTINCT channel) FROM market_prices m2
-                 WHERE m2.ingredient_id = m.ingredient_id AND m2.checked_on = m.checked_on AND m2.in_stock) AS n
-          FROM market_prices m WHERE checked_on = :d AND in_stock
-         ORDER BY ingredient_id, price_per_unit
+        SELECT m.ingredient_id, m.channel, m.product, m.pack_qty, m.pack_unit, m.price, m.price_per_unit, m.in_stock, m.url,
+               i.unit::text AS item_unit, i.pack_size_g
+          FROM market_prices m JOIN ingredients i ON i.id = m.ingredient_id WHERE m.checked_on = :d
     """), {"d": day}).mappings().all()
-    out = {r["ingredient_id"]: {**dict(r), "price_per_unit": float(r["price_per_unit"]), "day": day} for r in rows}
+    out: dict = {}
+    for r in rows:
+        iid = r["ingredient_id"]
+        pack = to_item_unit(float(r["pack_qty"]), r["pack_unit"], r["item_unit"], r["pack_size_g"])
+        ppu = float(r["price_per_unit"])
+        family = lambda u: "w" if u in ("kg", "g") else ("v" if u in ("l", "ml") else "p")  # noqa: E731
+        small = bool(pack and last_qty.get(iid) and pack < last_qty[iid] * SMALL_PACK)
+        o = {"channel": r["channel"], "product": r["product"], "pack_qty": float(r["pack_qty"]), "pack_unit": r["pack_unit"],
+             "price": float(r["price"]), "ppu": ppu, "in_stock": bool(r["in_stock"]), "url": r["url"], "small": small,
+             "approx": family(r["pack_unit"]) != family(r["item_unit"]),
+             "vs_paid": (ppu / paid[iid] - 1) * 100 if paid.get(iid) else None}
+        out.setdefault(iid, {"day": day, "unit": r["item_unit"], "offers": []})["offers"].append(o)
+    for v in out.values():
+        v["offers"].sort(key=lambda o: (not o["in_stock"], o["small"], o["ppu"]))
+        first = next((o for o in v["offers"] if o["in_stock"] and not o["small"]), None)
+        if first:
+            first["best"] = True
+        v["n_fair"] = sum(1 for o in v["offers"] if o["in_stock"] and not o["small"])
     out["_day"] = day
+    return out
+
+
+def market_latest(db: Session, offers: dict | None = None) -> dict:
+    """The latest check: {ingredient_id: cheapest fair in-stock offer} (a small
+    pack only when nothing else is in stock), plus {"_day": date}; empty
+    before the first check."""
+    offers = offers if offers is not None else market_offers(db)
+    if not offers:
+        return {}
+    out: dict = {"_day": offers["_day"]}
+    for iid, v in offers.items():
+        if iid == "_day":
+            continue
+        pick = next((o for o in v["offers"] if o["in_stock"] and not o["small"]), None) or next((o for o in v["offers"] if o["in_stock"]), None)
+        if pick:
+            out[iid] = {"channel": pick["channel"], "product": pick["product"], "price": pick["price"], "pack_qty": pick["pack_qty"],
+                        "pack_unit": pick["pack_unit"], "price_per_unit": pick["ppu"], "n": v["n_fair"], "day": v["day"], "small": pick["small"]}
     return out
 
 
 def page(db: Session, days: int = DAYS) -> dict:
     data = compare(db, days)
-    market = market_latest(db)
+    market = market_latest(db, market_offers(db, data["items"]))
     for it in data["items"].values():
         it["online"] = market.get(it["id"])
     rows = sorted((it for it in data["items"].values() if it["n_vendors"] > 1), key=lambda it: -it["over"])
@@ -106,7 +149,7 @@ def page(db: Session, days: int = DAYS) -> dict:
         "top": rows[:2],
         "categories": sorted({it["category"] or "Other" for it in rows}),
         "market_day": market.get("_day"),
-        "cheaper_online": sorted((it for it in data["items"].values() if it.get("online") and it["last"]
+        "cheaper_online": sorted((it for it in data["items"].values() if it.get("online") and not it["online"]["small"] and it["last"]
                                   and it["online"]["price_per_unit"] < it["last"]["price"] * 0.9),
                                  key=lambda it: it["online"]["price_per_unit"] / it["last"]["price"]),
     }
