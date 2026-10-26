@@ -71,6 +71,8 @@
         const row = box.closest('tr');
         const last = row && row.querySelector('[data-sl-last]');
         if (last) last.textContent = `${qty} ${body.unit} · today · ${body.by}`;
+        const upd = row && row.querySelector('[data-sl-upd]');
+        if (upd) upd.textContent = `Updated just now · ${body.by}`;
       });
       // Done in "count these first": fade it and move it to the bottom.
       const firstSec = document.querySelector('[data-sl-section="first"]');

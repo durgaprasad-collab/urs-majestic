@@ -156,6 +156,8 @@ def stock_view(db: Session) -> list[dict]:
             "ingest": ingest.get(r["ingredient_id"]), "pace_upto": pace.get(r["ingredient_id"]),
             "last_at": h["counted_at"].astimezone(business_tz()) if h else None,
             "last_by": h["by_name"] if h else None,
+            # Last update of any kind (count, sales, purchase, batch) -- not just a real count.
+            "upd_at": r["counted_at"], "upd_by": r.get("updated_by"),
             "last_days": (tonight - h_day).days if h_day else None,
             "counted_tonight": h_day == tonight,
             "stockable": cat not in NON_STOCK_CATEGORIES and r["name"] not in NON_STOCK_NAMES,

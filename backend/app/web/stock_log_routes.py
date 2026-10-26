@@ -40,7 +40,7 @@ _LIST_SQL = text("""
          group by p.ingredient_id
     )
     select i.id as ingredient_id, i.name, i.unit, i.category, i.pack_size_g,
-           s.on_hand_qty, s.stock_unit, s.counted_at, s.note,
+           s.on_hand_qty, s.stock_unit, s.counted_at, s.note, s.updated_by,
            v.daily_consumption, v.avg_interval_days,
            -- A stock count goes stale the moment a purchase lands after it --
            -- the shelf now holds more than the count says. Same rule Order
@@ -66,10 +66,14 @@ _LIST_SQL = text("""
            smc.order_derived_qty, smc.order_derived_unit, smc.pct_diff
     from ingredients i
     left join lateral (
-        select on_hand_qty, unit::text as stock_unit, counted_at, note
-        from ingredient_stock
-        where ingredient_id = i.id
-        order by counted_at desc, id desc
+        -- Latest stock row of any kind, plus who wrote it -- shown on the
+        -- Stock Log as "Updated <date> · <name>" under the on-hand figure.
+        select st.on_hand_qty, st.unit::text as stock_unit, st.counted_at, st.note,
+               uu.name as updated_by
+        from ingredient_stock st
+        left join users uu on uu.id = st.counted_by
+        where st.ingredient_id = i.id
+        order by st.counted_at desc, st.id desc
         limit 1
     ) s on true
     left join v_ingredient_reorder_forecast v on v.ingredient_id = i.id
