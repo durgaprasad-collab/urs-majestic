@@ -43,7 +43,8 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
         mins = wait // 60 + 1
         raise HTTPException(429, f"Too many failed attempts. Try again in {mins} minute(s).")
 
-    user = db.query(User).filter(User.username == payload.username, User.is_active.is_(True)).first()
+    # Usernames are stored lowercase; a phone keyboard often capitalises the first letter or adds a space.
+    user = db.query(User).filter(User.username == (payload.username or "").strip().lower(), User.is_active.is_(True)).first()
     if not user or not verify_password(payload.password, user.password_hash):
         record_failure(ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username or password")

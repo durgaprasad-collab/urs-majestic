@@ -47,7 +47,8 @@ async def login_post(
             status_code=429,
         )
 
-    user = db.query(User).filter(User.username == username, User.is_active.is_(True)).first()
+    # Usernames are stored lowercase; a phone keyboard often capitalises the first letter or adds a space.
+    user = db.query(User).filter(User.username == (username or "").strip().lower(), User.is_active.is_(True)).first()
     if not user or not verify_password(password, user.password_hash):
         record_failure(ip)
         return _tmpl(request, "login.html", {"error": "Invalid username or password."}, status_code=401)
