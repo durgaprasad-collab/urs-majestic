@@ -29,11 +29,16 @@
     else set('none', 'Paused');
     if (d.notice) { notice.textContent = d.notice; notice.hidden = false; }
     if (d.status === 'stale') { notice.textContent = 'The last reading is ' + ago(d.age_min) + '. The numbers below are as of ' + clock(d.read_at) + ', not now. Is Chrome open on the Petpooja item report?'; notice.hidden = false; }
+    if (d.status === 'live' && d.still_min >= 20) {
+      notice.textContent = 'No new sales since ' + clock(d.still_since) + ' (at least ' + Math.round(d.still_min) + ' min). It may just be quiet, or Petpooja may be behind: its dashboard shows "Orders synced … ago". The numbers below are only as current as Petpooja\'s own sync.';
+      notice.hidden = false;
+    }
     $('[data-ls-lr]').textContent = clock(d.read_at);
     $('[data-ls-k1]').textContent = Math.round(d.dishes);
     $('[data-ls-k1s]').textContent = '₹' + Math.round(d.amount).toLocaleString('en-IN') + ' so far (walk-in)';
     $('[data-ls-k2]').textContent = clock(d.read_at);
-    $('[data-ls-k2s]').textContent = ago(d.age_min) + ' · ' + d.reads_today + ' read' + (d.reads_today === 1 ? '' : 's') + ' today';
+    $('[data-ls-k2s]').textContent = ago(d.age_min) + ' · ' + d.reads_today + ' read' + (d.reads_today === 1 ? '' : 's') + ' today'
+      + (d.still_min >= 20 ? ' · no new sales since ' + clock(d.still_since) : '');
     $('[data-ls-k3]').textContent = d.tight;
     $('[data-ls-k4]').textContent = d.out;
     const rows = d.rows || [];

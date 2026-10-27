@@ -175,7 +175,18 @@ def snapshot(db: Session) -> dict:
         hours[h] = hours.get(h, 0.0) + max(float(rd["dishes"]) - prev, 0.0)
         prev = float(rd["dishes"])
 
+    # How long the totals have stood still: Petpooja syncs its orders to the cloud in batches and can
+    # run well behind the till, so "read just now" doesn't mean "sales up to now".
+    still_since = last["read_at"]
+    for rd in reversed(reads[:-1]):
+        if float(rd["dishes"]) == float(last["dishes"]) and float(rd["amount"]) == float(last["amount"]):
+            still_since = rd["read_at"]
+        else:
+            break
+    still_min = max(0.0, (last["read_at"] - still_since).total_seconds() / 60)
+
     out = {**base, "status": status, "read_at": _fmt_dt(last["read_at"]), "age_min": round(age_min, 1),
+           "still_since": _fmt_dt(still_since), "still_min": round(still_min, 1),
            "reads_today": len(reads), "dishes": dishes, "amount": float(last["amount"]), "top": top,
            "unmapped": unmapped, "hours": [{"h": h, "n": round(n, 1)} for h, n in sorted(hours.items())],
            "rows": [], "notice": None, "tight": 0, "out": 0}
