@@ -5,9 +5,14 @@ About every 10 minutes, **only during the restaurant's hours**, it:
    which pulls the latest orders in so the reports aren't behind;
 2. opens **Item Report: Day Wise With Time**, sets its date range to today's business day (1 AM to 1 AM)
    and presses the report's Search button;
-3. reads the rows and sends them to **admin.ursmajestic.com → Live stock**.
+3. reads the rows and sends them to **admin.ursmajestic.com → Live stock**;
+4. opens **Zomato's partner "Order history"** (zomato.com/partners), scrolls the list, and sends today's
+   orders (rejected / cancelled ones are left out by the server). Untick **Include Zomato** in the add-on to skip this.
 
-Read only: the only buttons it presses are Refresh and Search. It never submits or changes anything in Petpooja.
+Read only: the only buttons it presses are Petpooja's Refresh and Search; on Zomato it only scrolls the list.
+It never submits or changes anything on either site.
+
+You must be signed in to **both Petpooja and Zomato** in this Chrome.
 
 ## Restaurant hours
 Default **12:00 PM to 1:00 AM** (PC's local time), set in the add-on's window under **Opens / Closes**.

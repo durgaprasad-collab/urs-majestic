@@ -12,6 +12,8 @@
   #st { margin-top: 10px; padding: 8px; border-radius: 6px; background: #F3F2EC; }
   #st.ok { background: #E8F5EE; color: #1E8A5A; } #st.bad { background: #FBEAE6; color: #C2412D; }
   small { color: #777; }
+  label.chk { display: flex; gap: 6px; align-items: flex-start; font-weight: 500; margin: 10px 0 0; }
+  label.chk input { width: auto; margin-top: 3px; }
   .row { display: flex; gap: 10px; } .row > div { flex: 1; } input[type=time] { font: 13px system-ui; }
 </style>
 </head>
@@ -24,6 +26,7 @@
     <div><label for="open">Opens</label><input id="open" type="time"></div>
     <div><label for="close">Closes</label><input id="close" type="time"></div>
   </div>
+  <label class="chk"><input id="zomato" type="checkbox" checked> Include Zomato orders (Chrome must be signed in to Zomato)</label>
   <button id="save">Save &amp; test</button><button id="run" class="alt">Read now</button>
   <div id="st">Loading…</div>
   <script src="popup.js"></script>

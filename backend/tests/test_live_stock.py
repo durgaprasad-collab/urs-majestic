@@ -1,3 +1,4 @@
+import datetime
 import unittest
 
 from app.services import live_stock
@@ -21,6 +22,44 @@ class CleanRowsTests(unittest.TestCase):
     def test_too_many_rows(self):
         with self.assertRaises(ValueError):
             live_stock.clean_rows([["A", "d", "1", "1"]] * (live_stock.MAX_ROWS + 1))
+
+
+class ZomatoTests(unittest.TestCase):
+    DAY = datetime.date(2026, 10, 27)
+
+    def orders(self, *rows):
+        return live_stock.clean_orders([{"id": i, "status": s, "placed": p, "items": it, "total": t} for i, s, p, it, t in rows])
+
+    def test_counts_delivered_and_in_progress_not_rejected(self):
+        rows, n, amount = live_stock.zomato_rows(self.orders(
+            ("1", "DELIVERED", "2026-10-27T13:00", "2 x Butter Naan (1 No), 1 x Chilli Parotta", 300),
+            ("2", "READY", "2026-10-27T21:36", "1 x Chilli Parotta", 171),
+            ("3", "REJECTED", "2026-10-27T14:41", "1 x Chilli Parotta, 1 x Veg Noodles", 307),
+            ("4", "CANCELLED", "2026-10-27T15:00", "1 x Veg Noodles", 100)), self.DAY)
+        self.assertEqual(n, 2)
+        self.assertEqual(amount, 471)
+        self.assertEqual({r["name"]: r["qty"] for r in rows}, {"Butter Naan (1 No)": 2.0, "Chilli Parotta": 2.0})
+
+    def test_business_day_is_1am_to_1am(self):
+        _, n, _ = live_stock.zomato_rows(self.orders(
+            ("1", "DELIVERED", "2026-10-27T00:49", "1 x A", 10),    # still the 26th's business day
+            ("2", "DELIVERED", "2026-10-27T01:00", "1 x A", 10),    # first minute of the 27th
+            ("3", "DELIVERED", "2026-10-28T00:30", "1 x A", 10),    # after midnight: still the 27th
+            ("4", "DELIVERED", "2026-10-28T01:00", "1 x A", 10)), self.DAY)  # the 28th
+        self.assertEqual(n, 2)
+
+    def test_empty_list_is_fine(self):
+        self.assertEqual(live_stock.zomato_rows([], self.DAY), ([], 0, 0.0))
+
+    def test_rejects_junk(self):
+        for bad in ([{"id": "x", "placed": "2026-10-27T12:00", "items": "1 x A", "total": 1}],
+                    [{"id": "1", "placed": "nope", "items": "1 x A", "total": 1}], "x"):
+            with self.assertRaises((ValueError, TypeError)):
+                live_stock.clean_orders(bad)
+
+    def test_unknown_channel(self):
+        with self.assertRaises(ValueError):
+            live_stock.save_read(None, None, [], channel="swiggy")
 
 
 class ClassifyTests(unittest.TestCase):

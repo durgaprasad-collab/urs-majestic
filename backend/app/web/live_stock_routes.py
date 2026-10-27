@@ -68,10 +68,11 @@ async def feed(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"error": "Helper code not recognised"}, status_code=401)
     try:
         body = await request.json()
-        saved = live_stock.save_read(db, tok["id"], body.get("rows"), body.get("read_at"))
+        saved = live_stock.save_read(db, tok["id"], body.get("rows"), body.get("read_at"),
+                                     channel=body.get("channel") or "petpooja", orders_raw=body.get("orders"))
     except (ValueError, TypeError, KeyError, AttributeError) as exc:
         db.rollback()
         return JSONResponse({"error": str(exc) or "Not saved"}, status_code=400)
     db.commit()
-    log.info("live feed: %s rows, %s dishes", saved["rows"], saved["dishes"])
+    log.info("live feed (%s): %s rows, %s dishes", saved["channel"], saved["rows"], saved["dishes"])
     return JSONResponse({"ok": True, **saved})

@@ -33,11 +33,13 @@
       notice.textContent = 'No new sales since ' + clock(d.still_since) + ' (at least ' + Math.round(d.still_min) + ' min). It may just be quiet, or Petpooja may be behind. The add-on presses Refresh on Petpooja\'s home page before every read, but the numbers are only as current as what Petpooja has received from the till.';
       notice.hidden = false;
     }
-    $('[data-ls-lr]').textContent = clock(d.read_at);
+    const w = d.walkin, z = d.zomato;
+    $('[data-ls-lr]').textContent = [w && 'Petpooja ' + clock(w.read_at), z && 'Zomato ' + clock(z.read_at)].filter(Boolean).join(' · ');
     $('[data-ls-k1]').textContent = Math.round(d.dishes);
-    $('[data-ls-k1s]').textContent = '₹' + Math.round(d.amount).toLocaleString('en-IN') + ' so far (walk-in)';
+    $('[data-ls-k1s]').textContent = '₹' + Math.round(d.amount).toLocaleString('en-IN') + ' so far'
+      + (w ? ' · walk-in ' + Math.round(w.dishes) : '') + (z ? ' · Zomato ' + Math.round(z.dishes) + ' (' + z.orders + ' orders)' : ' · no Zomato read yet');
     $('[data-ls-k2]').textContent = clock(d.read_at);
-    $('[data-ls-k2s]').textContent = ago(d.age_min) + ' · ' + d.reads_today + ' read' + (d.reads_today === 1 ? '' : 's') + ' today'
+    $('[data-ls-k2s]').textContent = [w && 'Petpooja ' + ago(w.age_min), z && 'Zomato ' + ago(z.age_min)].filter(Boolean).join(' · ')
       + (d.still_min >= 20 ? ' · no new sales since ' + clock(d.still_since) : '');
     $('[data-ls-k3]').textContent = d.tight;
     $('[data-ls-k4]').textContent = d.out;

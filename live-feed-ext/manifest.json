@@ -6,7 +6,8 @@
   "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": [
     "https://admin.ursmajestic.com/*",
-    "https://billing.petpooja.com/*"
+    "https://billing.petpooja.com/*",
+    "https://www.zomato.com/*"
   ],
   "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_title": "URS Live Stock Feed" },
@@ -25,6 +26,11 @@
     {
       "matches": ["https://billing.petpooja.com/users/dashboard*"],
       "js": ["dash.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.zomato.com/partners/onlineordering/orderHistory/*"],
+      "js": ["zomato.js"],
       "run_at": "document_idle"
     }
   ]
