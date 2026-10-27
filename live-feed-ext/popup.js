@@ -2,21 +2,28 @@ const $ = (id) => document.getElementById(id);
 const st = $('st');
 const show = (txt, cls = '') => { st.textContent = txt; st.className = cls; };
 const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m + ' min ago'; };
+const clock = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; };
 
 async function status() {
+  const hrs = await chrome.runtime.sendMessage({ cmd: 'hours' });
+  $('open').value = hrs.open;
+  $('close').value = hrs.close;
   const s = await chrome.storage.local.get(['code', 'lastAt', 'lastOk', 'lastMsg']);
-  if (!s.code) return show('Paste your helper code, then press Save & test.');
+  const when = `Runs ${clock(hrs.open)} to ${clock(hrs.close)}.`;
+  if (!s.code) return show('Paste your helper code, then press Save & test. ' + when);
   $('code').placeholder = 'Code saved (hidden)';
-  if (!s.lastAt) return show('Code saved. The first read happens within a minute or so (10:30 AM to midnight).');
-  show(`${s.lastOk ? '✓' : '⚠'} ${s.lastMsg} · ${ago(s.lastAt)}`, s.lastOk ? 'ok' : 'bad');
+  if (!s.lastAt) return show(`Code saved. ${when} The first read happens within a few minutes of opening.`);
+  show(`${s.lastOk ? '✓' : '⚠'} ${s.lastMsg} · ${ago(s.lastAt)}. ${when}`, s.lastOk ? 'ok' : 'bad');
 }
 
 $('save').addEventListener('click', async () => {
   const code = $('code').value.trim();
-  if (code) await chrome.storage.local.set({ code });
+  const save = { open: $('open').value || '12:00', close: $('close').value || '01:00' };
+  if (code) save.code = code;
+  await chrome.storage.local.set(save);
   show('Testing…');
   const r = await chrome.runtime.sendMessage({ cmd: 'test' });
-  show(r && r.ok ? '✓ Connected to admin.ursmajestic.com' : '⚠ ' + ((r && r.error) || 'Test failed'), r && r.ok ? 'ok' : 'bad');
+  show(r && r.ok ? `✓ Connected to admin.ursmajestic.com. Hours: ${clock(save.open)} to ${clock(save.close)}` : '⚠ ' + ((r && r.error) || 'Test failed'), r && r.ok ? 'ok' : 'bad');
   $('code').value = '';
 });
 

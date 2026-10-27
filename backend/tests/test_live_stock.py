@@ -6,7 +6,7 @@ from app.services import live_stock
 class CleanRowsTests(unittest.TestCase):
     def test_report_table_rows(self):
         rows = live_stock.clean_rows([["Mushroom 65", "2026-10-27", "1.00", "119.00"], ["Parcel", "2026-10-27", "11.00", "110.00"]])
-        self.assertEqual(rows[0], {"name": "Mushroom 65", "qty": 1.0, "amount": 119.0})
+        self.assertEqual(rows[0], {"name": "Mushroom 65", "qty": 1.0, "amount": 119.0, "date": "2026-10-27"})
         self.assertEqual(rows[1]["qty"], 11.0)
 
     def test_objects_and_thousands_separator(self):

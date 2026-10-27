@@ -1,14 +1,32 @@
-// URS Live Stock Feed: every ~10 minutes (10:30 AM to midnight) refresh Petpooja's
-// Item Report: Day Wise, read today's rows and send them to the admin's Live
-// stock tab. Read only: it never clicks anything on Petpooja except reloading
-// the report page, and it never writes to Petpooja.
+// URS Live Stock Feed: every ~10 minutes, during the restaurant's hours only, read
+// Petpooja's Item Report (Day Wise With Time) for today's business day (1 AM to
+// 1 AM) and send the rows to the admin's Live stock tab. Read only: it reloads the
+// report page and presses its Search button, and never writes to Petpooja.
 const BASE = 'https://admin.ursmajestic.com';
-const REPORT_URL = 'https://billing.petpooja.com/custom_reports/view_report/54';
+const REPORT_URL = 'https://billing.petpooja.com/custom_reports/view_report/55';
 const REPORT_PATTERN = 'https://billing.petpooja.com/custom_reports/view_report/*';
-const OPEN_FROM = 10 * 60 + 30;  // 10:30 AM, local time
-const OPEN_TO = 24 * 60 - 1;     // midnight: the report's date rolls over then, and the nightly upload covers the last hour
+const DEFAULT_OPEN = '12:00';   // restaurant hours, PC's local time (orders run ~12:30 PM to ~12:30 AM)
+const DEFAULT_CLOSE = '01:00';  // Petpooja's business day also ends at 1 AM
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const toMins = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + (m || 0); };
+const pad = (n) => String(n).padStart(2, '0');
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+// Inside opening hours? Handles hours that run past midnight (12:00 to 01:00).
+function inHours(now, open, close) {
+  const m = now.getHours() * 60 + now.getMinutes(), o = toMins(open), c = toMins(close);
+  return o <= c ? (m >= o && m < c) : (m >= o || m < c);
+}
+
+// Petpooja's business day runs 1 AM to 1 AM, so 12:20 AM still belongs to yesterday.
+function businessRange(now) {
+  const start = new Date(now);
+  if (now.getHours() < 1) start.setDate(start.getDate() - 1);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { day: ymd(start), from: `${ymd(start)} 01:00:00`, to: `${ymd(end)} 01:00:00` };
+}
 const save = (o) => chrome.storage.local.set(o);
 const load = (keys) => chrome.storage.local.get(keys);
 
@@ -45,10 +63,10 @@ async function reportTab() {
   return tab.id;
 }
 
-async function readRows(tabId) {
+async function readRows(tabId, range) {
   for (let i = 0; i < 4; i++) {            // the page script may need a moment to come up
     try {
-      const res = await chrome.tabs.sendMessage(tabId, { cmd: 'read' });
+      const res = await chrome.tabs.sendMessage(tabId, { cmd: 'read', range });
       if (res) return res;
     } catch (_) { /* not ready yet */ }
     await sleep(3000);
@@ -57,14 +75,13 @@ async function readRows(tabId) {
 }
 
 async function run(force = false) {
-  const { code } = await load(['code']);
+  const { code, open, close } = await load(['code', 'open', 'close']);
   if (!code) return fail('No helper code saved yet');
-  const d = new Date();
-  const mins = d.getHours() * 60 + d.getMinutes();
-  if (!force && (mins < OPEN_FROM || mins > OPEN_TO)) return { ok: true, skipped: 'outside opening hours' };
+  const now = new Date();
+  if (!force && !inHours(now, open || DEFAULT_OPEN, close || DEFAULT_CLOSE)) return { ok: true, skipped: 'outside restaurant hours' };
 
   const tabId = await reportTab();
-  const res = await readRows(tabId);
+  const res = await readRows(tabId, businessRange(now));
   if (!res.ok) return fail(res.error || 'Read failed');
   if (!res.rows || !res.rows.length) {
     await save({ lastAt: Date.now(), lastOk: true, lastMsg: res.note || 'No sales in the report yet', lastDishes: 0 });
@@ -107,4 +124,5 @@ chrome.alarms.onAlarm.addListener((a) => { if (a.name === 'urs-live') run(false)
 chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
   if (msg && msg.cmd === 'run-now') { run(true).then(sendResponse); return true; }
   if (msg && msg.cmd === 'test') { ping().then(sendResponse); return true; }
+  if (msg && msg.cmd === 'hours') { load(['open', 'close']).then((s) => sendResponse({ open: s.open || DEFAULT_OPEN, close: s.close || DEFAULT_CLOSE })); return true; }
 });

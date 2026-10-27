@@ -79,13 +79,19 @@ def clean_rows(raw) -> list[dict]:
         qty, amount = float(str(qty).replace(",", "")), float(str(amount or 0).replace(",", ""))
         if not name or not math.isfinite(qty) or not math.isfinite(amount) or qty < 0 or len(name) > 300:
             raise ValueError(f"bad row: {name[:40]!r}")
-        out.append({"name": name, "qty": qty, "amount": amount})
+        row = {"name": name, "qty": qty, "amount": amount}
+        if isinstance(r, (list, tuple)) and len(r) >= 4 and str(r[1])[:4].isdigit():
+            row["date"] = str(r[1])[:10]  # the report's date column: the business day these sales belong to
+        out.append(row)
     return out
 
 
 def save_read(db: Session, token_id: int | None, rows_raw, client_read_at: str | None = None) -> dict:
     rows = clean_rows(rows_raw)
     day = count_day(business_now())
+    dates = {r["date"] for r in rows if r.get("date")}
+    if dates and dates != {day.isoformat()}:  # e.g. the report rolled over to a new date
+        raise ValueError(f"The report is for {', '.join(sorted(dates))}, not today's business day {day.isoformat()}")
     dishes = sum(r["qty"] for r in rows)
     amount = sum(r["amount"] for r in rows)
     client_at = None

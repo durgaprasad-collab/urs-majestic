@@ -12,13 +12,18 @@
   #st { margin-top: 10px; padding: 8px; border-radius: 6px; background: #F3F2EC; }
   #st.ok { background: #E8F5EE; color: #1E8A5A; } #st.bad { background: #FBEAE6; color: #C2412D; }
   small { color: #777; }
+  .row { display: flex; gap: 10px; } .row > div { flex: 1; } input[type=time] { font: 13px system-ui; }
 </style>
 </head>
 <body>
   <h1>URS Live Stock Feed</h1>
-  <small>Reads Petpooja's item report about every 10 minutes (10:30 AM to midnight) and sends it to the Live stock tab. Read only.</small>
+  <small>Reads Petpooja's item report about every 10 minutes, <b>only during the restaurant's hours below</b>, and sends it to the Live stock tab. Read only.</small>
   <label for="code">Helper code</label>
   <input id="code" type="password" placeholder="urslf_..." autocomplete="off">
+  <div class="row">
+    <div><label for="open">Opens</label><input id="open" type="time"></div>
+    <div><label for="close">Closes</label><input id="close" type="time"></div>
+  </div>
   <button id="save">Save &amp; test</button><button id="run" class="alt">Read now</button>
   <div id="st">Loading…</div>
   <script src="popup.js"></script>
