@@ -21,6 +21,11 @@
       "matches": ["https://billing.petpooja.com/custom_reports/view_report/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://billing.petpooja.com/users/dashboard*"],
+      "js": ["dash.js"],
+      "run_at": "document_idle"
     }
   ]
 }

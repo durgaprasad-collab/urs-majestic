@@ -30,7 +30,7 @@
     if (d.notice) { notice.textContent = d.notice; notice.hidden = false; }
     if (d.status === 'stale') { notice.textContent = 'The last reading is ' + ago(d.age_min) + '. The numbers below are as of ' + clock(d.read_at) + ', not now. Is Chrome open on the Petpooja item report?'; notice.hidden = false; }
     if (d.status === 'live' && d.still_min >= 20) {
-      notice.textContent = 'No new sales since ' + clock(d.still_since) + ' (at least ' + Math.round(d.still_min) + ' min). It may just be quiet, or Petpooja may be behind: its dashboard shows "Orders synced … ago". The numbers below are only as current as Petpooja\'s own sync.';
+      notice.textContent = 'No new sales since ' + clock(d.still_since) + ' (at least ' + Math.round(d.still_min) + ' min). It may just be quiet, or Petpooja may be behind. The add-on presses Refresh on Petpooja\'s home page before every read, but the numbers are only as current as what Petpooja has received from the till.';
       notice.hidden = false;
     }
     $('[data-ls-lr]').textContent = clock(d.read_at);

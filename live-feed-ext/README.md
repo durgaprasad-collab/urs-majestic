@@ -1,9 +1,13 @@
 # URS Live Stock Feed (Chrome helper)
 
-Reads Petpooja's **Item Report: Day Wise With Time** about every 10 minutes, **only during the
-restaurant's hours**, and sends today's rows to **admin.ursmajestic.com → Live stock**.
-Read only: it reloads the report page, sets the report's own date range to today's business day
-(1 AM to 1 AM) and presses the report's Search button. It never submits or changes anything in Petpooja.
+About every 10 minutes, **only during the restaurant's hours**, it:
+1. opens Petpooja's **home page** and presses its **Refresh** button (the circular arrow beside the date),
+   which pulls the latest orders in so the reports aren't behind;
+2. opens **Item Report: Day Wise With Time**, sets its date range to today's business day (1 AM to 1 AM)
+   and presses the report's Search button;
+3. reads the rows and sends them to **admin.ursmajestic.com → Live stock**.
+
+Read only: the only buttons it presses are Refresh and Search. It never submits or changes anything in Petpooja.
 
 ## Restaurant hours
 Default **12:00 PM to 1:00 AM** (PC's local time), set in the add-on's window under **Opens / Closes**.

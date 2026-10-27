@@ -2288,7 +2288,15 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .ls-notice { margin-bottom: 12px; }
 .ls-src { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 12px; padding: 9px 14px; border: 1px solid var(--sl-line); border-radius: 12px; background: #fff; font-size: 12px; color: var(--sl-ink-2); }
 .ls-src b { color: var(--sl-ink); }
-.ls-grid { display: grid; grid-template-columns: 1fr 290px; gap: 12px; align-items: start; }
+.ls-grid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 12px; align-items: start; }
+.ls-grid > * { min-width: 0; }
+.ls-table th, .ls-table td { white-space: nowrap; }
+.ls-table td.ls-item { white-space: normal; min-width: 110px; }
+@media (max-width: 1320px) {
+  .ls-grid { grid-template-columns: minmax(0, 1fr); }
+  .ls-sidecol { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; align-items: start; }
+  .ls-sidecol .ls-side { margin-bottom: 0; }
+}
 .ls-side { margin-bottom: 12px; padding-bottom: 6px; }
 .ls .sl-table th.r, .ls .sl-table td.r { text-align: right; }
 .ls-item { font-weight: 600; }

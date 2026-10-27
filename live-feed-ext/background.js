@@ -1,10 +1,13 @@
-// URS Live Stock Feed: every ~10 minutes, during the restaurant's hours only, read
-// Petpooja's Item Report (Day Wise With Time) for today's business day (1 AM to
-// 1 AM) and send the rows to the admin's Live stock tab. Read only: it reloads the
-// report page and presses its Search button, and never writes to Petpooja.
+// URS Live Stock Feed: every ~10 minutes, during the restaurant's hours only:
+//   1. press Refresh on Petpooja's home page (so its reports aren't behind),
+//   2. open the Item Report (Day Wise With Time) for today's business day (1 AM to 1 AM),
+//   3. read its rows and send them to the admin's Live stock tab.
+// Read only: it presses those two buttons (Refresh, Search) and never writes to Petpooja.
 const BASE = 'https://admin.ursmajestic.com';
 const REPORT_URL = 'https://billing.petpooja.com/custom_reports/view_report/55';
 const REPORT_PATTERN = 'https://billing.petpooja.com/custom_reports/view_report/*';
+const DASHBOARD_URL = 'https://billing.petpooja.com/users/dashboard';
+const DASHBOARD_PATTERN = 'https://billing.petpooja.com/users/dashboard*';
 const DEFAULT_OPEN = '12:00';   // restaurant hours, PC's local time (orders run ~12:30 PM to ~12:30 AM)
 const DEFAULT_CLOSE = '01:00';  // Petpooja's business day also ends at 1 AM
 
@@ -50,17 +53,34 @@ function waitComplete(tabId, timeoutMs = 30000) {
   });
 }
 
-async function reportTab() {
-  const tabs = await chrome.tabs.query({ url: REPORT_PATTERN });
-  if (tabs.length) {
-    const tab = tabs[0];
-    await chrome.tabs.reload(tab.id);          // a fresh load: today's date, newest rows
-    await waitComplete(tab.id);
-    return tab.id;
-  }
-  const tab = await chrome.tabs.create({ url: REPORT_URL, active: false, pinned: true });
+// Take the helper's one Petpooja tab to a page and wait for it to finish loading.
+async function goto(tabId, url) {
+  const loaded = waitComplete(tabId);
+  await chrome.tabs.update(tabId, { url });   // same URL = a fresh load
+  await loaded;
+}
+
+async function helperTab() {
+  const tabs = await chrome.tabs.query({ url: [REPORT_PATTERN, DASHBOARD_PATTERN] });
+  if (tabs.length) return tabs[0].id;
+  const tab = await chrome.tabs.create({ url: DASHBOARD_URL, active: false, pinned: true });
   await waitComplete(tab.id);
   return tab.id;
+}
+
+// Before reading the report, press Refresh on Petpooja's home page: it pulls the latest
+// orders in, so the item report isn't behind. If it can't be pressed we still read the
+// report and say so.
+async function refreshHome(tabId) {
+  await goto(tabId, DASHBOARD_URL);
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await chrome.tabs.sendMessage(tabId, { cmd: 'refresh' });
+      if (res) return res;
+    } catch (_) { /* the page script may need a moment */ }
+    await sleep(3000);
+  }
+  return { ok: false, error: "Couldn't press Refresh on Petpooja's home page" };
 }
 
 async function readRows(tabId, range) {
@@ -80,9 +100,12 @@ async function run(force = false) {
   const now = new Date();
   if (!force && !inHours(now, open || DEFAULT_OPEN, close || DEFAULT_CLOSE)) return { ok: true, skipped: 'outside restaurant hours' };
 
-  const tabId = await reportTab();
-  const res = await readRows(tabId, businessRange(now));
+  const tabId = await helperTab();
+  const refreshed = await refreshHome(tabId);                 // 1. Refresh on the home page
+  await goto(tabId, REPORT_URL);                              // 2. then the item report
+  const res = await readRows(tabId, businessRange(now));      // 3. read its rows
   if (!res.ok) return fail(res.error || 'Read failed');
+  const note = refreshed.ok ? '' : ` (${refreshed.error})`;
   if (!res.rows || !res.rows.length) {
     await save({ lastAt: Date.now(), lastOk: true, lastMsg: res.note || 'No sales in the report yet', lastDishes: 0 });
     setBadge(true);
@@ -100,7 +123,7 @@ async function run(force = false) {
   }
   const body = await resp.json().catch(() => ({}));
   if (!resp.ok) return fail(resp.status === 401 ? 'The helper code was not recognised. Make a new one on the Live stock page.' : (body.error || `Server said ${resp.status}`));
-  await save({ lastAt: Date.now(), lastOk: true, lastMsg: `Sent ${body.rows} items, ${Math.round(body.dishes)} dishes`, lastDishes: body.dishes });
+  await save({ lastAt: Date.now(), lastOk: true, lastMsg: `Sent ${body.rows} items, ${Math.round(body.dishes)} dishes${note}`, lastDishes: body.dishes });
   setBadge(true);
   return { ok: true, ...body };
 }
