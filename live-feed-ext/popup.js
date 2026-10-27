@@ -29,7 +29,7 @@ $('save').addEventListener('click', async () => {
 });
 
 $('run').addEventListener('click', async () => {
-  show('Reading Petpooja' + ($('zomato').checked ? ' and Zomato' : '') + '… this takes about a minute and a half. You can close this window.');
+  show('Reading Petpooja' + ($('zomato').checked ? ' and Zomato' : '') + '… this takes about half a minute. You can close this window.');
   try {
     const r = await chrome.runtime.sendMessage({ cmd: 'run-now' });
     if (r && r.ok) show('✓ ' + (r.msg || 'Sent'), 'ok');

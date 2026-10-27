@@ -3,7 +3,7 @@
 //   2. open Petpooja's Item Report (Day Wise With Time) for today's business day (1 AM to
 //      1 AM), read its rows and send them to the admin's Live stock tab,
 //   3. open Zomato's Order history, read today's orders and send them too.
-// Read only: it presses Petpooja's Refresh and Search buttons, scrolls Zomato's order list,
+// Read only: it presses Petpooja's Refresh and Search buttons, reads Zomato's order history,
 // and never writes anything on either site.
 const BASE = 'https://admin.ursmajestic.com';
 const REPORT_URL = 'https://billing.petpooja.com/custom_reports/view_report/55';
@@ -132,7 +132,7 @@ async function petpoojaPart(tabId, code, range) {
   return { ok: true, rows: sent.rows, dishes: sent.dishes, msg: `Petpooja: ${sent.rows} items, ${Math.round(sent.dishes)} dishes${refreshed.ok ? '' : ` (${refreshed.error})`}` };
 }
 
-// Zomato orders: the order history list, scrolled and read.
+// Zomato orders: today's order history, fetched by the page itself (zomato_page.js).
 async function zomatoPart(tabId, code, range) {
   await goto(tabId, ZOMATO_URL);
   const res = await ask(tabId, { cmd: 'zread', day: range.day }, 2);
