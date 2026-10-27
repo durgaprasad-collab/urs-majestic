@@ -29,10 +29,14 @@ $('save').addEventListener('click', async () => {
 });
 
 $('run').addEventListener('click', async () => {
-  show('Reading Petpooja' + ($('zomato').checked ? ' and Zomato' : '') + '… this takes about a minute');
-  const r = await chrome.runtime.sendMessage({ cmd: 'run-now' });
-  if (r && r.ok) show('✓ ' + (r.msg || 'Sent'), 'ok');
-  else show('⚠ ' + ((r && (r.msg || r.error)) || 'Failed'), 'bad');
+  show('Reading Petpooja' + ($('zomato').checked ? ' and Zomato' : '') + '… this takes about a minute and a half. You can close this window.');
+  try {
+    const r = await chrome.runtime.sendMessage({ cmd: 'run-now' });
+    if (r && r.ok) show('✓ ' + (r.msg || 'Sent'), 'ok');
+    else show('⚠ ' + ((r && (r.msg || r.error)) || 'Failed'), 'bad');
+  } catch (e) {
+    show('The add-on was interrupted. Open this window again in a minute to see the result.', 'bad');
+  }
 });
 
 status();

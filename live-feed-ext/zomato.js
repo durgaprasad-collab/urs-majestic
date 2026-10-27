@@ -57,10 +57,13 @@
     const to = `${next.getFullYear()}-${p(next.getMonth() + 1)}-${p(next.getDate())}T01:00`;
     // The list loads a few seconds after the page does.
     let sc = null;
-    for (let i = 0; i < 50 && !sc; i++) { sc = findScroller(); if (!sc) await sleep(500); }
+    for (let i = 0; i < 100 && !sc; i++) { sc = findScroller(); if (!sc) await sleep(500); }   // up to ~50 s: the list is slow to appear
     if (!sc) {
-      if (/No orders|no orders/.test(document.body.innerText)) return { ok: true, orders: [] };
-      return { ok: false, error: "Couldn't find Zomato's order list. Is Zomato signed in in this Chrome?" };
+      const t = document.body.innerText;
+      if (/No orders|no orders/.test(t)) return { ok: true, orders: [] };
+      const where = location.pathname.slice(0, 60);
+      const why = /log ?in|sign ?in|password|otp/i.test(t.slice(0, 600)) ? 'it looks like a sign-in page' : 'the list never appeared';
+      return { ok: false, error: `Couldn't find Zomato's order list (${why}; page ${where}).` };
     }
     const found = {};
     for (let i = 0; i < 5 && sc.scrollTop > 0; i++) { sc.scrollTop = 0; await sleep(700); sc = findScroller() || sc; }  // start from the newest order

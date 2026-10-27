@@ -64,25 +64,44 @@ async function goto(tabId, url) {
   await loaded;
 }
 
+// The helper uses its own pinned tab and remembers it, so it never takes over a Petpooja or
+// Zomato tab you have open yourself.
 async function helperTab() {
-  const tabs = await chrome.tabs.query({ url: [REPORT_PATTERN, DASHBOARD_PATTERN, ZOMATO_PATTERN] });
-  if (tabs.length) return tabs[0].id;
+  const { helperTabId } = await load(['helperTabId']);
+  if (helperTabId) {
+    try { await chrome.tabs.get(helperTabId); return helperTabId; } catch (_) { /* closed: make a new one */ }
+  }
   const tab = await chrome.tabs.create({ url: DASHBOARD_URL, active: false, pinned: true });
+  await save({ helperTabId: tab.id });
   await waitComplete(tab.id);
   return tab.id;
 }
 
 // Ask the page's script for something; it may need a moment to come up after a load.
+// Returns its answer, or {ok:false, error} saying what was wrong (and which page the tab was on).
 async function ask(tabId, message, tries = 4) {
+  let why = '';
   for (let i = 0; i < tries; i++) {
     try {
       const res = await chrome.tabs.sendMessage(tabId, message);
       if (res) return res;
-    } catch (_) { /* not ready yet */ }
+      why = 'the page script gave no answer';
+    } catch (e) { why = String((e && e.message) || e).slice(0, 90); }
     await sleep(3000);
   }
-  return null;
+  let where = '';
+  try { const t = await chrome.tabs.get(tabId); where = ` The tab was on ${String(t.url || '').split('?')[0].slice(0, 90)}.`; } catch (_) { /* tab gone */ }
+  return { ok: false, error: `no answer from the page (${why}).${where}` };
 }
+
+// Chrome stops an add-on's background worker after ~30 s without activity; a read takes longer than
+// that, so poke an extension API while it runs.
+function keepAlive() {
+  const t = setInterval(() => { try { chrome.runtime.getPlatformInfo(() => {}); } catch (_) { /* ignore */ } }, 20000);
+  return () => clearInterval(t);
+}
+
+async function progress(msg) { await save({ lastAt: Date.now(), lastOk: true, lastMsg: msg }); }
 
 async function post(code, body) {
   let resp;
@@ -103,9 +122,9 @@ async function post(code, body) {
 // Petpooja walk-in sales: Refresh on the home page, then the item report.
 async function petpoojaPart(tabId, code, range) {
   await goto(tabId, DASHBOARD_URL);
-  const refreshed = (await ask(tabId, { cmd: 'refresh' }, 3)) || { ok: false, error: "Couldn't press Refresh on Petpooja's home page" };
+  const refreshed = await ask(tabId, { cmd: 'refresh' }, 3);
   await goto(tabId, REPORT_URL);
-  const res = (await ask(tabId, { cmd: 'read', range })) || { ok: false, error: 'Could not read the report. Is Petpooja signed in?' };
+  const res = await ask(tabId, { cmd: 'read', range });
   if (!res.ok) return { ok: false, msg: `Petpooja: ${res.error || 'read failed'}` };
   if (!res.rows || !res.rows.length) return { ok: true, empty: true, msg: 'Petpooja: no sales yet' };
   const sent = await post(code, { channel: 'petpooja', rows: res.rows });
@@ -116,29 +135,45 @@ async function petpoojaPart(tabId, code, range) {
 // Zomato orders: the order history list, scrolled and read.
 async function zomatoPart(tabId, code, range) {
   await goto(tabId, ZOMATO_URL);
-  const res = (await ask(tabId, { cmd: 'zread', day: range.day }, 3)) || { ok: false, error: "Couldn't read Zomato. Is it signed in in this Chrome?" };
+  const res = await ask(tabId, { cmd: 'zread', day: range.day }, 2);
   if (!res.ok) return { ok: false, msg: `Zomato: ${res.error || 'read failed'}` };
   const sent = await post(code, { channel: 'zomato', orders: res.orders || [] });
   if (!sent.ok) return { ok: false, msg: `Zomato: ${sent.error}` };
   return { ok: true, orders: sent.orders, dishes: sent.dishes, msg: `Zomato: ${sent.orders} orders, ${Math.round(sent.dishes)} dishes` };
 }
 
+let running = false;
+
 async function run(force = false) {
   const { code, open, close, zomato } = await load(['code', 'open', 'close', 'zomato']);
   if (!code) return fail('No helper code saved yet');
   const now = new Date();
   if (!force && !inHours(now, open || DEFAULT_OPEN, close || DEFAULT_CLOSE)) return { ok: true, skipped: 'outside restaurant hours' };
+  if (running) return { ok: false, error: 'A read is already running. Give it a minute or two.', msg: 'A read is already running. Give it a minute or two.' };
 
-  const range = businessRange(now);
-  const tabId = await helperTab();
-  const parts = [await petpoojaPart(tabId, code, range)];    // each part is independent: one failing doesn't stop the other
-  if (zomato !== false) parts.push(await zomatoPart(tabId, code, range));
-  const ok = parts.every((p) => p.ok);
-  const msg = parts.map((p) => p.msg).join(' · ');
-  const dishes = parts.reduce((s, p) => s + (p.dishes || 0), 0);
-  await save({ lastAt: Date.now(), lastOk: ok, lastMsg: msg, lastDishes: dishes });
-  setBadge(ok);
-  return { ok, msg, error: ok ? undefined : msg, dishes, parts };
+  running = true;
+  const stop = keepAlive();
+  try {
+    const range = businessRange(now);
+    const tabId = await helperTab();
+    await progress('Reading Petpooja…');
+    const parts = [await petpoojaPart(tabId, code, range)];    // each part is independent: one failing doesn't stop the other
+    if (zomato !== false) {
+      await progress(parts[0].msg + ' · reading Zomato…');
+      parts.push(await zomatoPart(tabId, code, range));
+    }
+    const ok = parts.every((p) => p.ok);
+    const msg = parts.map((p) => p.msg).join(' · ');
+    const dishes = parts.reduce((s, p) => s + (p.dishes || 0), 0);
+    await save({ lastAt: Date.now(), lastOk: ok, lastMsg: msg, lastDishes: dishes });
+    setBadge(ok);
+    return { ok, msg, error: ok ? undefined : msg, dishes, parts };
+  } catch (e) {
+    return fail(`Stopped by an error: ${String((e && e.message) || e).slice(0, 120)}`);
+  } finally {
+    running = false;
+    stop();
+  }
 }
 
 async function ping() {
