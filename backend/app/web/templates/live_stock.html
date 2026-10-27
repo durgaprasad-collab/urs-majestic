@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Live stock — URS Majestic{% endblock %}
+
+{% block content %}
+<div class="sl ls" data-ls>
+  <div class="sl-head">
+    <div>
+      <h1 class="sl-title">Live stock</h1>
+      <p class="sl-sub">What the kitchen has used so far today, from Petpooja's live Item Report, and what that leaves on the shelf. A view only: it is <b>not</b> written to stock, so tonight's upload still makes it final and nothing is counted twice. Walk-in and counter sales only; Zomato and Swiggy join after their uploads.</p>
+    </div>
+    <span class="ls-chip" data-ls-chip>Loading…</span>
+  </div>
+
+  <p class="sl-flash ls-notice" data-ls-notice hidden></p>
+
+  <div class="ls-src">
+    <span>Source: <b>Petpooja · Item Report, today</b></span>
+    <span>Read about every <b>10 min</b> while open</span>
+    <span>Last read <b data-ls-lr>—</b></span>
+    <span>Stock before today's sales: <b>last night's close + today's purchases</b>; a count you enter today wins</span>
+  </div>
+
+  <div class="sl-kpis ls-kpis">
+    <div class="sl-k"><span class="l">Dishes sold</span><span class="v" data-ls-k1>—</span><span class="s" data-ls-k1s></span></div>
+    <div class="sl-k"><span class="l">Last read</span><span class="v" data-ls-k2>—</span><span class="s" data-ls-k2s></span></div>
+    <div class="sl-k warn"><span class="l">Tight at close</span><span class="v" data-ls-k3>—</span><span class="s">under a day left after tonight</span></div>
+    <div class="sl-k bad"><span class="l">Out before close</span><span class="v" data-ls-k4>—</span><span class="s">order before the end of service</span></div>
+  </div>
+
+  <div class="ls-grid">
+    <div class="sl-card">
+      <div class="sl-sechead"><h3>Stock now, item by item</h3><p data-ls-note>Stock before today's sales minus use so far, at the current recipe grams. "At close" assumes the rest of today follows the usual evening pattern.</p></div>
+      <div class="ls-scroll"><table class="sl-table ls-table"><thead><tr><th>Item</th><th class="r sl-hide-sm">Before today</th><th class="r">Used so far</th><th class="r">On hand now</th><th class="r sl-hide-sm">Rest of today</th><th class="r sl-hide-sm">At close</th><th>Status</th></tr></thead>
+        <tbody data-ls-body><tr><td colspan="7" class="sl-empty">Loading…</td></tr></tbody></table></div>
+    </div>
+    <div>
+      <div class="sl-card ls-side"><div class="sl-sechead"><h3>Dishes by hour</h3><p>from the reads today</p></div><div class="ls-hrs" data-ls-hrs></div><div class="ls-hl" data-ls-hl></div></div>
+      <div class="sl-card ls-side"><div class="sl-sechead"><h3>Selling now</h3><p>dishes so far today</p></div><div data-ls-top></div></div>
+      <div class="sl-card ls-side" data-ls-unm-card hidden><div class="sl-sechead"><h3>Not matched to a menu item</h3><p>These sales are left out. Link them on Menu Analysis.</p></div><div data-ls-unm></div></div>
+    </div>
+  </div>
+
+  <details class="sl-card ls-helper" {{ '' if helpers else 'open' }}>
+    <summary>Chrome helper{% if helpers %} · {{ helpers|length }} set up{% else %} · not set up yet{% endif %}</summary>
+    <div class="ls-helper-body">
+      <p>A small Chrome add-on on the restaurant PC opens Petpooja's item report in the background, refreshes it every ~10 minutes while you're open, and sends the rows here. It needs a helper code from this page.</p>
+      <ol>
+        <li>On the PC, open Chrome → <b>chrome://extensions</b> → turn on <b>Developer mode</b> → <b>Load unpacked</b> → choose the <b>live-feed-ext</b> folder (from the project folder).</li>
+        <li>Press <b>Create helper code</b> below and copy the code (it's shown once).</li>
+        <li>Click the add-on's icon, paste the code, press <b>Save &amp; test</b>.</li>
+        <li>Leave a Chrome tab open on <b>Petpooja → Reports → Other Reports → Item Report: Day Wise</b> during service. The add-on does the rest.</li>
+      </ol>
+      <p><button type="button" class="sl-btn sl-btn-p" data-ls-code>Create helper code</button> <span class="ls-code" data-ls-codebox hidden></span></p>
+      {% if helpers %}<p class="sl-muted">Codes in use: {% for h in helpers %}{{ h.label }} (made {{ h.created_at.strftime('%d %b') }}{% if h.last_used_at %}, last used {{ h.last_used_at.strftime('%d %b %I:%M %p') }}{% else %}, not used yet{% endif %}){{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+    </div>
+  </details>
+</div>
+<script src="/static/live_stock.js?v=1" defer></script>
+{% endblock %}

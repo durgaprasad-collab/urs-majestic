@@ -8,7 +8,7 @@
   <link rel="icon" href="/static/img/logo-circle-360.jpg" />
   <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/fonts/fonts.css?v=1" />
-  <link rel="stylesheet" href="/static/style.css?v=75" />
+  <link rel="stylesheet" href="/static/style.css?v=76" />
   <script src="/static/app.js?v=3" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
@@ -20,6 +20,7 @@
   {% set run_items = [
     ('/buy', 'Buy', 'req', '/buy', b.requisitions, 'bad'),
     ('/stock-log', 'Stock Log', 'stock', '/stock-log', b.stock, 'bad'),
+    ('/live-stock', 'Live stock', 'trend', '/live-stock', None, None),
     ('/gas-log', 'Gas', 'flame', '/gas-log', b.gas, 'bad'),
     ('/purchases', 'Purchases', 'receipt', '/purchases', b.purchases, 'warn'),
     ('/catering-orders', 'Catering', 'cater', '/catering-orders', None, None),
@@ -113,6 +114,7 @@
       <div class="command-results" data-command-results>
         <a href="/purchases/new" data-command-item data-keywords="add create log expense bill receipt purchase"><b>＋ Purchase bill</b><small>Log a bill, many lines</small></a>
         <a href="/stock-log" data-command-item data-keywords="stock inventory count update"><b>▦ Stock count</b><small>Update inventory</small></a>
+        <a href="/live-stock" data-command-item data-keywords="live stock today sales so far kitchen used running out petpooja"><b>◔ Live stock</b><small>Today's use against stock, as it happens</small></a>
         <a href="/buy" data-command-item data-keywords="buy order requisition approve staff request running out shopping list"><b>✓ Buy</b><small>Staff requests and items running out</small></a>
         <a href="/gas-log" data-command-item data-keywords="gas cylinder weight reading"><b>◉ Gas</b><small>Cylinders weighed nightly</small></a>
         <a href="/upload" data-command-item data-keywords="upload report petpooja zomato swiggy sales"><b>⇧ Upload sales report</b><small>Refresh channel data</small></a>

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 21 · Live stock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#062013;--gold:#D4A62A;--bg:#F3F2EC;--ink:#14201B;--ink-2:#56645D;--ink-3:#98A39D;--line:#E4E1D6;
+    --good:#1E8A5A;--good-bg:#E8F5EE;--warn:#B7791F;--warn-bg:#FDF5E1;--bad:#C2412D;--bad-bg:#FBEAE6;--blue:#2F6E9E;--blue-bg:#EAF1F7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .mk{background:#1B1F1D;color:#cfd6d2;font-size:12px;padding:10px 20px;line-height:1.55}.mk b{color:#fff}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px 20px 60px}
+  .head{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px}
+  h1{font:700 26px Cinzel,serif;color:var(--ground)}
+  .sub{color:var(--ink-2);font-size:13px;max-width:760px;line-height:1.5;margin-top:2px}
+  .live{display:inline-flex;gap:7px;align-items:center;background:var(--good-bg);color:var(--good);border-radius:999px;padding:5px 12px;font-weight:700;font-size:12.5px}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--good);animation:p 1.4s infinite}
+  @keyframes p{50%{opacity:.25}}
+  .src{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink-2);background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 14px;margin-bottom:12px}
+  .src b{color:var(--ink)}
+  .replay{background:#fff;border:1px dashed #C9C3B0;border-radius:12px;padding:10px 14px;margin-bottom:12px}
+  .replay label{font-size:12px;color:var(--ink-2);font-weight:600}
+  .replay input{width:100%;accent-color:var(--ground);margin-top:6px}
+  .replay .t{font:800 20px Inter;color:var(--ground)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  .k{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 14px;border-top:3px solid var(--line)}
+  .k.bad{border-top-color:var(--bad)}.k.warn{border-top-color:var(--warn)}.k.good{border-top-color:var(--good)}
+  .k .l{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:600}
+  .k .v{font:800 24px Inter;color:var(--ground)}.k .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .k .s{display:block;font-size:12px;color:var(--ink-2);margin-top:1px}
+  .grid{display:grid;grid-template-columns:1fr 290px;gap:12px;align-items:start}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card h3{font-size:14px;color:var(--ground);padding:12px 14px 4px}
+  .card p.n{font-size:12px;color:var(--ink-3);padding:0 14px 8px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);text-align:right;padding:7px 10px;border-bottom:1px solid var(--line);background:#FBFAF6;font-weight:600}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:9px 10px;border-bottom:1px solid #F0EEE6;text-align:right;vertical-align:middle}
+  td:first-child{font-weight:600}
+  .bar{height:7px;border-radius:4px;background:#EEECE4;overflow:hidden;margin-top:4px;min-width:90px}.bar i{display:block;height:100%;background:var(--good)}
+  .pill{display:inline-block;font-weight:700;font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .pill.ok{background:var(--good-bg);color:var(--good)}.pill.tight{background:var(--warn-bg);color:var(--warn)}.pill.out{background:var(--bad-bg);color:var(--bad)}
+  .num{font-variant-numeric:tabular-nums}
+  .used{color:var(--bad)}
+  .dish{display:flex;justify-content:space-between;padding:7px 14px;border-top:1px solid #F0EEE6;font-size:13px}.dish b{font-variant-numeric:tabular-nums}
+  .hrs{display:flex;align-items:flex-end;gap:3px;height:58px;padding:0 14px 6px}
+  .hrs i{flex:1;background:#CFE3D8;border-radius:3px 3px 0 0;min-height:2px}.hrs i.on{background:var(--ground)}
+  .hl{display:flex;gap:3px;padding:0 14px 10px;font-size:9.5px;color:var(--ink-3)}.hl span{flex:1;text-align:center}
+  .note{background:#FFFBEF;border:1px dashed #E5D29A;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.6;margin-top:14px;color:#5B4A16}.note b{color:#3F3209}
+  .cards{display:none}
+  @media(max-width:900px){.kpis{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.hide-sm{display:none}}
+  @media(max-width:640px){table.big{display:none}.cards{display:block}
+    .rc{padding:10px 14px;border-top:1px solid #F0EEE6}.rc .top{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+    .rc .m{font-size:12px;color:var(--ink-2);margin-top:3px;line-height:1.5}}
+</style>
+</head>
+<body>
+<div class="mk"><b>Mockup 21 · Live stock (new sidebar tab).</b> <b>Demo data:</b> Saturday 24 Oct's real sales (140 dishes, 54 orders) replayed against today's real stock. Drag the time slider to see how the tab would look at any point in the evening. Nothing is built or connected yet. Petpooja's live Item Report has since been checked: it can be read, and all of today's item names map to your menu.</div>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Live stock</h1>
+      <p class="sub">What the kitchen has used so far today, from Petpooja's live item report, and what that leaves on the shelf. A view only: it is <b>not</b> written to stock. Tonight's upload makes it final, so nothing is counted twice.</p>
+    </div>
+    <span class="live"><i></i> Live · read <span id="ago">just now</span></span>
+  </div>
+
+  <div class="src">
+    <span>Source: <b>Petpooja · Item Report, today</b></span>
+    <span>Read every <b>10 min</b> while open (11 AM – 1 AM)</span>
+    <span>Last read <b id="lr">8:40 PM</b></span>
+    <span>Opening stock: <b>last night's close</b> (counts + sales + purchases)</span>
+    <span id="purch" style="color:var(--blue)">Purchases logged today are added in</span>
+  </div>
+
+  <div class="replay"><label>Demo replay · move the time</label>
+    <div class="t" id="tl">8:40 PM</div>
+    <input type="range" id="sl" min="0" max="76" value="52" step="1" aria-label="Time of day">
+  </div>
+
+  <div class="kpis">
+    <div class="k"><span class="l">Orders so far</span><span class="v" id="k1">31</span><span class="s" id="k1s">of ~54 expected today</span></div>
+    <div class="k"><span class="l">Dishes sold</span><span class="v" id="k2">80</span><span class="s" id="k2s">Mini Meal 7 · Power Combo 8 · Butter Naan 6</span></div>
+    <div class="k warn"><span class="l">Tight at close</span><span class="v" id="k3">2</span><span class="s" id="k3s">under a day left tonight</span></div>
+    <div class="k bad"><span class="l">Out before close</span><span class="v" id="k4">0</span><span class="s" id="k4s">nothing runs out tonight</span></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Stock now, item by item</h3>
+      <p class="n">Opening − used so far, using the 7-day recipe grams. "Runs out" assumes the rest of today follows a normal Saturday.</p>
+      <table class="big"><thead><tr><th>Item</th><th>Opening</th><th>Used so far</th><th>On hand now</th><th class="hide-sm">Rest of today</th><th>At close</th><th>Status</th></tr></thead><tbody id="tb"></tbody></table>
+      <div class="cards" id="cd"></div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px"><h3>Orders by hour</h3><p class="n">dark = reached so far</p><div class="hrs" id="hrs"></div><div class="hl" id="hl"></div></div>
+      <div class="card"><h3>Selling now</h3><p class="n">dishes so far (counter + delivery)</p><div id="dishes"></div></div>
+    </div>
+  </div>
+
+  <div class="note"><b>How it works:</b> a scheduled Claude task opens Petpooja's Item Report for today in your Chrome every 10 minutes, reads the dish quantities, and sends them to the admin. The admin turns them into ingredient use with the same recipes as the nightly stock run, subtracts it from last night's closing stock (and adds today's purchases), and shows the result here. The sales are <b>never</b> written into stock until tonight's normal upload, and a count you enter always wins. <br><b>Needs:</b> your PC on with Chrome signed in to Petpooja during service. If a read fails or is over 30 minutes old, this tab says so in red instead of showing old numbers as live. <br><b>Honest limits:</b> the recipe grams are the same estimates as everywhere (butter, peas, spring onion and so on are still being tuned), and anything you sell without it being in the item report (staff meals, waste) isn't counted until the next count.</div>
+</div>
+<script>
+// real: Sat 24 Oct. open = current stock; full = whole-day use at the current recipe grams
+const ITEMS=[["Paneer","kg",3.08,2.42],["Mushroom","kg",1.31,0.77],["Rice/Basmati","kg",5.98,3.08],["Curd","kg",3.10,1.03],["Oil","l",11.28,3.67],
+ ["Gobi","kg",5.39,1.21],["Capsicum","kg",1.95,0.58],["Carrot","kg",2.81,0.72],["Butter","kg",2.39,0.41],["Lemon","kg",0.39,0.09],
+ ["Chinese Garlic","kg",0.40,0.07],["Green peas","kg",0.89,0.14],["Water Bottle (1L)","pcs",58,16],["Schezwan chutney","kg",0.02,0.05]];
+const DISHES=[["Water Bottle",16],["Combo 02 · Paneer Power Combo",14],["Combo 01 · Mini North Indian Meal",13],["Butter Naan",10],["Chappati (2) with Channa",8],["Phulka (2 Nos)",6],["Chilli Parotta",5],["Masala Kulcha",4]];
+const HOURS=[[13,4],[14,6],[15,3],[16,3],[17,1],[18,3],[19,9],[20,4],[21,8],[22,5],[23,6],[24,2]]; // orders per hour (real)
+const TOT=54;
+const fmt=(v,u)=>u==='pcs'?Math.round(v):(Math.abs(v)>=100?v.toFixed(0):Math.abs(v)>=10?v.toFixed(1):v.toFixed(2));
+const hm=m=>{let h=Math.floor(m/60)%24,mm=m%60;const ap=h>=12?'PM':'AM';let h12=h%12||12;return h12+':'+String(mm).padStart(2,'0')+' '+ap};
+// slider 0..66 -> 12:00 PM + 10 min steps (to 11:00 PM)... map to minutes since 12:00
+function minsOf(v){return 12*60+v*10}
+function share(m){let c=0;for(const [h,n] of HOURS){const s=h*60,e=s+60;if(m>=e)c+=n;else if(m>s)c+=n*(m-s)/60}return c/TOT}
+function build(){
+  const v=+sl.value, m=minsOf(v), s=share(m);
+  tl.textContent=hm(m); lr.textContent=hm(m);
+  const orders=Math.round(s*TOT), dishes=Math.round(s*140);
+  k1.textContent=orders; k1s.textContent='of ~'+TOT+' expected today';
+  k2.textContent=dishes;
+  const top=DISHES.slice(1,4).map(d=>d[0].replace(/^Combo 0\d · /,'').replace(' Combo','')+' '+Math.round(d[1]*s)).join(' · ');
+  k2s.textContent=top;
+  let rows='',cards='',tight=0,out=0;
+  for(const [n,u,open,full] of ITEMS){
+    const used=full*s, now=open-used, rest=full-used, close=open-full;
+    let st='ok',lab='OK';
+    if(now<=0||close<0){st='out';lab=now<=0?'Out now':'Out before close';out++}
+    else if(close<full){st='tight';lab='Under a day at close';tight++}
+    rows+=`<tr><td>${n}</td><td class="num">${fmt(open,u)} ${u}</td><td class="num used">−${fmt(used,u)}</td><td class="num"><b>${fmt(Math.max(now,0),u)}</b> ${u}<div class="bar"><i style="width:${Math.max(0,Math.min(100,now/open*100))}%"></i></div></td><td class="num hide-sm">${fmt(rest,u)}</td><td class="num">${fmt(Math.max(close,0),u)}</td><td><span class="pill ${st}">${lab}</span></td></tr>`;
+    cards+=`<div class="rc"><div class="top"><span>${n}</span><span class="pill ${st}">${lab}</span></div><div class="m">Now <b>${fmt(Math.max(now,0),u)} ${u}</b> (opened ${fmt(open,u)}, used ${fmt(used,u)}) · at close ${fmt(Math.max(close,0),u)}</div></div>`;
+  }
+  tb.innerHTML=rows; cd.innerHTML=cards;
+  k3.textContent=tight; k3s.textContent=tight?'under a day left after tonight':'all fine for tomorrow';
+  k4.textContent=out; k4s.textContent=out?'order before close':'nothing runs out tonight';
+  hrs.innerHTML=HOURS.map(([h,n])=>`<i class="${m>=h*60+30?'on':''}" style="height:${n/9*100}%" title="${hm(h*60)}: ${n} orders"></i>`).join('');
+  dishesEl.innerHTML=DISHES.map(([n,q])=>`<div class="dish"><span>${n}</span><b>${Math.round(q*s)}</b></div>`).join('');
+  ago.textContent=(v%2?'3 min ago':'just now');
+}
+const dishesEl=document.getElementById('dishes');
+hl.innerHTML=HOURS.map(([h])=>`<span>${h%12||12}</span>`).join('');
+sl.addEventListener('input',build); build();
+</script>
+</body>
+</html>
