@@ -17,10 +17,8 @@
       if (/api\.zomato\.com\/merchant-gw\//.test(this.__ursU || '') && this.__ursH && Object.keys(this.__ursH).some((k) => /csrf/i.test(k))) {
         st.headers = Object.assign({}, this.__ursH);
       }
-      if (typeof b === 'string') {
-        const m = b.match(/"res_[Ii]d"\s*:\s*"?(\d+)/);
-        if (m) st.resId = m[1];
-      }
+      const m = (typeof b === 'string' ? b : '').match(/"res_?[Ii]d"\s*:\s*"?(\d+)/) || (this.__ursU || '').match(/[?&]res_?[Ii]d=(\d+)/);
+      if (m) st.resId = m[1];
     } catch (_) { /* never get in the page's way */ }
     return os.apply(this, arguments);
   };
@@ -62,7 +60,11 @@
   }
 
   async function read(day, resIdHint) {
-    for (let i = 0; i < 40 && !st.headers; i++) await sleep(500);   // the app makes its first request ~3 s in
+    // The app makes its first requests a few seconds in (slower in a background tab, where
+    // Chrome slows timers), so wait by the clock. The restaurant id comes from the add-on's
+    // memory (resIdHint) or from the page's own order-history request.
+    const until = Date.now() + 30000;
+    while (Date.now() < until && !(st.headers && (st.resId || resIdHint))) await sleep(500);
     if (!st.headers) return { ok: false, error: "the page didn't make its usual requests (signed in?)" };
     const resId = st.resId || resIdHint;
     if (!resId) return { ok: false, error: 'restaurant id not known yet' };

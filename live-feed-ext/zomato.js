@@ -3,7 +3,7 @@
 // Zomato's own order-history data in a few seconds) and hands back the answer.
 // Read only: nothing on Zomato is changed.
 (() => {
-  const ask = (day, timeoutMs = 45000) => new Promise((resolve) => {
+  const ask = (day, resId, timeoutMs = 50000) => new Promise((resolve) => {
     const id = Math.random().toString(36).slice(2);
     const on = (ev) => {
       if (ev.source !== window || !ev.data || ev.data.type !== 'urs-z-data' || ev.data.id !== id) return;
@@ -13,11 +13,13 @@
     };
     const t = setTimeout(() => { window.removeEventListener('message', on); resolve({ ok: false, error: 'the page took too long to answer' }); }, timeoutMs);
     window.addEventListener('message', on);
-    window.postMessage({ type: 'urs-z-read', id, day }, '*');
+    window.postMessage({ type: 'urs-z-read', id, day, resId }, '*');
   });
 
   async function readOrders(day) {
-    const res = await ask(day);
+    const { zomatoResId } = await chrome.storage.local.get(['zomatoResId']);   // remembered from an earlier read
+    const res = await ask(day, zomatoResId);
+    if (res.ok && res.resId && res.resId !== zomatoResId) await chrome.storage.local.set({ zomatoResId: res.resId });
     if (!res.ok) {
       const t = document.body ? document.body.innerText.slice(0, 600) : '';
       const hint = /log ?in|sign ?in|password|otp/i.test(t) ? ' It looks like a sign-in page.' : '';

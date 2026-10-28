@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "URS Live Stock Feed",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Reads Petpooja's live Item Report about every 10 minutes and sends it to admin.ursmajestic.com (Live stock tab). Read only.",
   "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": [

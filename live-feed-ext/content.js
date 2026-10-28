@@ -7,7 +7,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   const timer = setTimeout(() => {
     window.removeEventListener('message', onMsg);
     sendResponse({ ok: false, error: 'The report did not answer in time' });
-  }, 40000);
+  }, 60000);
   function onMsg(ev) {
     if (ev.source !== window || !ev.data || ev.data.type !== 'urs-live-data' || ev.data.id !== id) return;
     clearTimeout(timer);

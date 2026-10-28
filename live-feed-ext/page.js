@@ -33,8 +33,10 @@
         if (!same || !tableRows()?.length) { search.click(); await sleep(2500); }
       }
     }
-    // The report fills in a moment after it loads or is searched.
-    for (let i = 0; i < 40; i++) {
+    // The report fills in a moment after it loads or is searched. Wait by the clock, not by a
+    // count: in a background tab Chrome slows timers down, so 40 short waits can take a minute.
+    const until = Date.now() + 15000;
+    while (Date.now() < until) {
       const rows = tableRows();
       if (rows && rows.length && (!day || forDay(rows, day))) {
         return { ok: true, rows: rows.map((r) => [String(r[0]).trim(), String(r[1]), String(r[2]), String(r[3])]) };
