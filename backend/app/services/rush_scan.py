@@ -7,6 +7,7 @@ import base64
 import io
 import json
 import re
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -57,13 +58,15 @@ def _key(name: str) -> str:
 
 
 def parse_slip(text: str, menu: list[dict]) -> dict:
+    # OCR may return full-width brackets/digits in otherwise English receipts.
+    text = unicodedata.normalize("NFKC", text)
     lines = [s.strip() for s in text.splitlines() if s.strip()]
     menu_keys: dict[str, list[dict]] = {}
     for item in menu:
         menu_keys.setdefault(_key(item["name"]), []).append(item)
     warnings, items = [], []
     kot = re.search(r"\bK\s*O\s*T\s*(?:No\.?|Number|#)?\s*[:.#-]?\s*(\d+)\b", text, re.I)
-    bill = re.search(r"\bBill\s*(?:No\.?|Number|#)\s*[:.#-]?\s*(\d+)\b", text, re.I)
+    bill = re.search(r"\bB[i1l]ll\s*(?:No\.?|Number|#)\s*[:.#-]?\s*(\d+)\b", text, re.I)
     date = re.search(r"\bDate\s*:\s*([^\r\n]+)", text, re.I)
     # Invoice: item block follows Cashier / separator and ends before totals.
     # KOT: item block follows an Item/Qty heading. Unknown layouts stay visible

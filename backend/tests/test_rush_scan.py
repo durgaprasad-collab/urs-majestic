@@ -29,6 +29,14 @@ Grand Total : 156.00
 
 
 class ParseTests(unittest.TestCase):
+    def test_oct29_photo_ocr_bill_typo_and_full_width_quantity(self):
+        raw = "Retail Invoice\nDate: 29-10-2026 20:24\nPick Up\nB1ll No.: 13\nCashier: biller\nChappati (2) With Channa\n\uff08Q\uff09 1.0 x 89.0 =89.0\nTotal Qty : 1.0\nSub Total : 89.00"
+        r = parse_slip(raw, [{"id": 4, "name": "Chappati (2) With Channa"}])
+        self.assertEqual(r["bill_no"], "13")
+        self.assertEqual(r["kot_no"], "")
+        self.assertEqual(r["order_type"], "Dine-in")
+        self.assertEqual(r["items"], [{"name": "Chappati (2) With Channa", "qty": 1, "menu_item_id": 4}])
+
     def test_sample_bill_is_dine_in_and_bill_is_not_kot(self):
         r = parse_slip(SAMPLE, MENU)
         self.assertEqual(r["kot_no"], "")
