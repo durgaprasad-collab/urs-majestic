@@ -29,6 +29,21 @@ Grand Total : 156.00
 
 
 class ParseTests(unittest.TestCase):
+    def test_all_established_combo_descriptions_stay_one_combo(self):
+        import json
+        seed = Path(__file__).parents[1] / "data/menu_seed.json"
+        aliases = json.loads(seed.read_text(encoding="utf-8"))["pos_name_map"]
+        for printed, canonical in aliases.items():
+            if not canonical.startswith("Combo "):
+                continue
+            with self.subTest(combo=canonical):
+                raw = f"Bill No.: 20\nCashier: biller\n{printed}\n(Q) 2.0 x 149.0 = 298.0\nTotal Qty : 2.0"
+                r = parse_slip(raw, [{"id": 50, "name": canonical}])
+                self.assertEqual(len(r["items"]), 1)
+                self.assertEqual(r["items"][0]["menu_item_id"], 50)
+                self.assertEqual(r["items"][0]["qty"], 2)
+                self.assertEqual(r["order_type"], "Dine-in")
+
     def test_combo_bill_maps_pos_description_to_one_combo(self):
         raw = "Retail Invoice\nDate: 29-10-2026 20:51\nPick Up\nBill No.: 14\nCashier: biller\nRoti, Dal Tadka Jeera Rice, Paneer Subzi S Al Ad\n(Q) 1.0 x 149.0 = 149.0\nTotal Qty : 1.0\nGrand Total : 156.00"
         r = parse_slip(raw, [{"id": 10, "name": "Combo 01 - Mini North Indian Meal"}])
