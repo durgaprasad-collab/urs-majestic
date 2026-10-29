@@ -5,15 +5,31 @@ printing works. Logic lives in app/services/rush.py.
 """
 import json
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.services import rush
+from app.core.config import settings
+from app.services import rush, rush_scan
 from app.web.deps import _tmpl, require_user
 
 router = APIRouter(tags=["rush"])
+
+
+@router.post("/rush/scan")
+def scan(request: Request, photo: UploadFile = File(...), db: Session = Depends(get_db)):
+    if not _owner(request, db):
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    limit = min(settings.UPLOAD_MAX_MB, 10) * 1024 * 1024
+    data = photo.file.read(limit + 1)
+    if len(data) > limit:
+        return JSONResponse({"error": "Photo is too large. Crop it to the slip."}, status_code=413)
+    try:
+        draft = rush_scan.parse_slip(rush_scan.read_photo(data, settings.OCR_SPACE_API_KEY), rush.menu(db))
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    return JSONResponse(draft)
 
 
 def _owner(request: Request, db: Session):

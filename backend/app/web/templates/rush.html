@@ -40,6 +40,14 @@
   .qty button { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; }
   .send { width: 100%; margin-top: 10px; padding: 14px; border: 0; border-radius: 12px; background: var(--gold); color: var(--g); font: 800 16px Inter, sans-serif; }
   .send:disabled { opacity: .4; }
+  .scanbox { border: 1px dashed var(--gold); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  .scanbox p { margin: 6px 0; font-size: 13px; color: var(--ink2); }
+  .scanbox img { width: 100%; max-height: 380px; object-fit: contain; }
+  .scanrow { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .scanrow select { width: 100%; padding: 10px; margin: 5px 0; }
+  .scanrow input { width: 80px; padding: 8px; }
+  .scanrow.need { background: #FFF8E1; }
+  #scantext { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
   .sw { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; font-size: 13px; color: var(--ink2); line-height: 1.35; }
   .sw input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: #062013; }
   .err { margin-top: 8px; color: var(--bad); font-size: 14px; }
@@ -103,11 +111,28 @@
 <nav class="tabs"><button data-tab="live" class="on">Live</button><button data-tab="hist">History</button></nav>
 <main>
  <div id="live">
-  <p class="note">Use this in <b>Chrome</b> on your phone. <b>Send</b> prints that order's station slips; <b>Print all</b> prints the full board (every open order, pooled). Enter the <b>Petpooja KOT number</b> for every order. Tap <b>Ready</b> on each dish as it comes off the station; ready dishes drop off the slips. Each order is due 12 minutes after it's sent. Pick your printer in Chrome's print screen; a Bluetooth thermal printer needs its Android print service installed.</p>
+  <p class="note">Use this in <b>Chrome</b> on your phone. Scan a KOT / bill or enter an order manually. Keep a bill reference labelled <b>Bill</b>. <b>Send</b> prints station slips; <b>Print all</b> prints the full board. Tap <b>Ready</b> as each dish comes off the station. Each order is due 12 minutes after it's sent. A Bluetooth thermal printer needs its Android print service installed.</p>
   <section class="card">
     <h2>New order</h2>
     <div class="types" id="types"></div>
-    <div class="row"><input id="kot" placeholder="Petpooja KOT no." inputmode="numeric" autocomplete="off"><input id="ref" placeholder="Table / ref" autocomplete="off"></div>
+    <div class="scanbox">
+      <button class="ghost" id="scanphoto">Take photo of KOT / bill</button>
+      <button class="ghost" id="choosephoto">Choose photo</button>
+      <input id="photo" type="file" accept="image/jpeg,image/png" capture="environment" hidden>
+      <input id="photofile" type="file" accept="image/jpeg,image/png" hidden>
+      <p>Review the dishes before sending. A Parcel item means takeaway; otherwise dine-in. Photos are sent to OCR.space to read the printed text.</p>
+      <p id="scanstatus" role="status" aria-live="polite"></p>
+      <div id="scanreview" hidden>
+        <img id="scanpreview" alt="Slip being reviewed">
+        <p id="scanmeta"></p><p id="scanwarnings"></p>
+        <div id="scanrows"></div>
+        <details><summary>Read text</summary><pre id="scantext"></pre></details>
+        <label class="sw"><input type="checkbox" id="scanchecked"><span>I checked every dish and quantity against the photo.</span></label>
+        <button class="ghost" id="usescan">Use reviewed order</button>
+        <button class="ghost" id="cancelscan">Discard scan</button>
+      </div>
+    </div>
+    <div class="row"><input id="kot" placeholder="KOT no. / Bill reference" autocomplete="off"><input id="ref" placeholder="Table / ref" autocomplete="off"></div>
     <div class="row"><input id="q" placeholder="Search dish" autocomplete="off"></div>
     <div class="chips" id="chips"></div>
     <div class="cart" id="cart" hidden></div>
@@ -144,7 +169,9 @@
   const $ = s => document.querySelector(s);
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const short = n => n.replace(' (2 Nos)', ' (2)').replace(' (1 No)', '').replace(/^Combo (\d+\w?) - /, 'C$1 · ');
+  const orderLabel = n => /^Bill\s/i.test(String(n)) ? String(n) : `KOT ${n}`;
   let type = D.types[0], cart = [], board = null;
+  let scanning = false, scanDraft = null;
 
   function tick() { $('#clock').textContent = new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); }
   tick(); setInterval(tick, 15000);
@@ -171,9 +198,62 @@
   function drawCart() {
     $('#cart').hidden = !cart.length;
     $('#cart').innerHTML = cart.map(c => `<div class="line"><span>${esc(c.name)}</span><span class="qty"><button data-d="-1" data-id="${c.id}">−</button><b>${c.qty}</b><button data-d="1" data-id="${c.id}">+</button></span></div>`).join('');
-    $('#send').disabled = !cart.length;
+    $('#send').disabled = !cart.length || scanning || !!scanDraft;
   }
   $('#cart').onclick = e => { const b = e.target.closest('[data-d]'); if (b) add(+b.dataset.id, +b.dataset.d); };
+
+  $('#scanphoto').onclick = () => $('#photo').click();
+  $('#choosephoto').onclick = () => $('#photofile').click();
+  function closeScan() {
+    scanDraft = null; $('#scanreview').hidden = true; $('#scanchecked').checked = false;
+    $('#scanpreview').removeAttribute('src'); drawCart();
+  }
+  $('#cancelscan').onclick = () => { closeScan(); $('#scanstatus').textContent = 'Scan discarded. Your previous draft is unchanged.'; };
+  async function scanPhoto(e) {
+    const file = e.target.files[0]; e.target.value = ''; if (!file || scanning) return;
+    if (file.size > 10 * 1024 * 1024) { $('#scanstatus').textContent = 'Photo must be under 10 MB. Crop it to the slip.'; return; }
+    closeScan(); scanning = true; drawCart();
+    $('#scanphoto').disabled = $('#choosephoto').disabled = true;
+    $('#scanstatus').textContent = 'Reading the slip…';
+    const reader = new FileReader(); reader.onload = () => { $('#scanpreview').src = reader.result; }; reader.readAsDataURL(file);
+    const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 50000);
+    try {
+      const form = new FormData(); form.append('photo', file);
+      const res = await fetch('/rush/scan', {method: 'POST', credentials: 'same-origin', body: form, signal: controller.signal});
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(r.error || 'Could not read photo. Try again.');
+      scanDraft = r; $('#scanreview').hidden = false;
+      $('#scanmeta').textContent = `${r.kot_no ? 'KOT ' + r.kot_no : r.bill_no ? 'Bill ' + r.bill_no : 'No order number found'} · ${r.order_type}${r.printed_date ? ' · printed ' + r.printed_date : ''}`;
+      $('#scanwarnings').textContent = r.warnings.join(' ');
+      $('#scantext').textContent = r.raw_text;
+      $('#scanrows').innerHTML = r.items.map((it, i) => `<div class="scanrow ${!it.menu_item_id || !it.qty ? 'need' : ''}" data-row="${i}">
+        <b>${esc(it.name)}</b><select aria-label="Menu dish for ${esc(it.name)}"><option value="">Choose matching dish</option>${D.menu.map(m => `<option value="${m.id}" ${m.id === it.menu_item_id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select>
+        <label>Qty <input type="number" min="1" max="999" step="1" value="${it.qty ?? ''}" aria-label="Quantity"></label> <button class="ghost" data-remove="${i}">Remove line</button></div>`).join('');
+      $('#scanstatus').textContent = 'Check every line. Use the reviewed order, then send it to the kitchen.';
+    } catch (err) { $('#scanstatus').textContent = err.name === 'AbortError' ? 'Reading timed out. Try again or enter manually.' : err.message; }
+    finally { clearTimeout(timeout); scanning = false; $('#scanphoto').disabled = $('#choosephoto').disabled = false; drawCart(); }
+  }
+  $('#photo').onchange = $('#photofile').onchange = scanPhoto;
+  $('#scanrows').onclick = e => { const b = e.target.closest('[data-remove]'); if (b) { b.closest('.scanrow').remove(); $('#scanchecked').checked = false; } };
+  $('#scanrows').onchange = () => { $('#scanchecked').checked = false; };
+  $('#usescan').onclick = () => {
+    if (!scanDraft || !$('#scanchecked').checked) { $('#scanstatus').textContent = 'Check the photo and tick the review box first.'; return; }
+    const rows = [...document.querySelectorAll('#scanrows .scanrow')], next = [];
+    for (const row of rows) {
+      const id = Number(row.querySelector('select').value), qty = Number(row.querySelector('input').value);
+      const m = D.menu.find(m => m.id === id);
+      if (!m || !Number.isInteger(qty) || qty < 1 || qty > 999) { $('#scanstatus').textContent = 'Choose a dish and whole-number quantity for every line, or remove the line.'; return; }
+      const found = next.find(c => c.id === id);
+      if (found) found.qty += qty; else next.push({id, name: m.name, qty});
+    }
+    if (!next.length) { $('#scanstatus').textContent = 'No dishes captured. Enter this slip manually or retake the photo.'; return; }
+    if (cart.length && !confirm('Replace the current draft with this scanned order?')) return;
+    cart = next; type = scanDraft.order_type;
+    document.querySelectorAll('#types button').forEach(b => b.classList.toggle('on', b.dataset.t === type));
+    $('#kot').value = scanDraft.kot_no || (scanDraft.bill_no ? 'Bill ' + scanDraft.bill_no : '');
+    $('#ref').value = ''; closeScan();
+    $('#scanstatus').textContent = 'Draft ready. Check the order number, then send to kitchen.';
+  };
 
   async function call(url, body) {
     const res = await fetch(url, { method: body === undefined ? 'GET' : 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: body === undefined ? undefined : JSON.stringify(body) });
@@ -184,7 +264,7 @@
 
   function slipHtml(sl, title, printed) {
     return `<div class="slip"><div class="slip-h">${esc(sl.label.toUpperCase())}</div><div class="slip-m">${esc(title)} · ${printed}</div>
-      ${sl.batches.map(bt => `<div class="slip-l"><span class="slip-t ${bt.now ? 'now' : ''}">${bt.now ? 'NOW' : bt.start}</span><span><b>${esc(bt.dish)} ${esc(bt.qty)}</b><small>for KOT ${(bt.tags || bt.kots || bt.orders).map(esc).join(' · ')}</small></span></div>`).join('')}</div>`;
+      ${sl.batches.map(bt => `<div class="slip-l"><span class="slip-t ${bt.now ? 'now' : ''}">${bt.now ? 'NOW' : bt.start}</span><span><b>${esc(bt.dish)} ${esc(bt.qty)}</b><small>for ${(bt.tags || bt.kots || bt.orders).map(esc).join(' · ')}</small></span></div>`).join('')}</div>`;
   }
   function drawBoard(b) {
     board = b;
@@ -195,7 +275,7 @@
     $('#orders').innerHTML = b.orders.length ? b.orders.map(o => {
       const all = o.total && o.ready === o.total;
       return `<div class="ord ${all ? 'allready' : o.mins_left < 0 ? 'late' : o.mins_left <= 3 ? 'soon' : ''}">
-        <div class="otop"><b>KOT ${esc(o.kot || o.id)} · ${esc(o.type)}${o.ref ? ' · ' + esc(o.ref) : ''}</b><span class="due">due ${o.due} · ${o.mins_left < 0 ? `${-o.mins_left} min late` : `${o.mins_left} min`}</span></div>
+        <div class="otop"><b>${esc(orderLabel(o.kot || o.id))} · ${esc(o.type)}${o.ref ? ' · ' + esc(o.ref) : ''}</b><span class="due">due ${o.due} · ${o.mins_left < 0 ? `${-o.mins_left} min late` : `${o.mins_left} min`}</span></div>
         <div class="rdy">${all ? 'All ready · pack it' : `${o.ready} of ${o.total} ready`}</div>
         <div class="items">${o.items.map(i => `<div class="il ${i.ready ? 'done' : ''}"><span>${i.qty}× ${esc(i.name)}</span><button class="rd ${i.ready ? 'on' : ''}" data-item="${i.id}" data-ready="${i.ready ? 1 : 0}">${i.ready ? '✓ Ready' : 'Food ready'}</button></div>`).join('')}</div>
         <div class="acts"><button class="pk" data-act="packed" data-id="${o.id}">${all ? 'Packed · out' : 'Packed'}</button><button data-act="cancel" data-id="${o.id}">Cancel</button></div>
@@ -213,16 +293,17 @@
     $('#printarea').hidden = false;
     $('#printarea').innerHTML = s.slips.map(sl => slipHtml(sl, title, 'printed ' + s.printed)).join('')
       + `<div class="slip"><div class="slip-h">PACK / PASS</div><div class="slip-m">target ${s.promise_min} min</div>
-      ${s.pack.map(o => `<div class="slip-o"><b>KOT ${esc(o.kot || o.id)} ${esc(o.type)}${o.ref ? ' ' + esc(o.ref) : ''}</b> <span class="slip-due">due ${o.due}</span>${o.items.map(i => `<div>${i.ready ? '☑' : '□'} ${i.qty}× ${esc(i.name)}</div>`).join('')}</div>`).join('')}</div>`;
+      ${s.pack.map(o => `<div class="slip-o"><b>${esc(orderLabel(o.kot || o.id))} ${esc(o.type)}${o.ref ? ' ' + esc(o.ref) : ''}</b> <span class="slip-due">due ${o.due}</span>${o.items.map(i => `<div>${i.ready ? '☑' : '□'} ${i.qty}× ${esc(i.name)}</div>`).join('')}</div>`).join('')}</div>`;
     // In the Rush app (Android WebView) window.print does nothing; the app adds a print bridge.
     setTimeout(() => (window.URSPrint && window.URSPrint.print) ? window.URSPrint.print(document.title) : window.print(), 200);
   }
 
   $('#send').onclick = async () => {
+    if (scanning || scanDraft) return;
     const kot = $('#kot').value.trim();
     if (!kot) {
       $('#kot').classList.add('need'); $('#kot').focus();
-      $('#err').textContent = 'Enter the Petpooja KOT number first.'; $('#err').hidden = false; return;
+      $('#err').textContent = 'Enter the KOT number or a labelled bill reference (e.g. Bill 7).'; $('#err').hidden = false; return;
     }
     const btn = $('#send'); btn.disabled = true; $('#err').hidden = true;
     try {
@@ -230,7 +311,7 @@
       cart = []; drawCart(); $('#ref').value = ''; $('#kot').value = ''; $('#kot').classList.remove('need'); $('#q').value = ''; chips();
       drawBoard(r.board);
       if ($('#noprint').checked) document.getElementById('board').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      else print(r.slips, `KOT ${kot}`);
+      else print(r.slips, orderLabel(kot));
     } catch (err) { $('#err').textContent = err.message; $('#err').hidden = false; btn.disabled = false; }
   };
   $('#printall').onclick = () => board && print(board, 'All open orders');
@@ -255,7 +336,7 @@
         const head = o.day !== day ? `<div class="hday">${esc(o.day)}</div>` : ''; day = o.day;
         const cx = o.status === 'cancelled';
         return head + `<div class="ho ${cx ? 'cx' : o.on_time ? '' : 'late'}">
-          <div class="t"><b>KOT ${esc(o.kot || o.id)} · ${esc(o.type)}${o.ref ? ' · ' + esc(o.ref) : ''}</b>
+          <div class="t"><b>${esc(orderLabel(o.kot || o.id))} · ${esc(o.type)}${o.ref ? ' · ' + esc(o.ref) : ''}</b>
             <span class="m">${cx ? 'Cancelled' : `${o.mins} min${o.on_time ? '' : ' · late'}`}</span></div>
           <div class="i">${o.items.map(i => `${i.qty}× ${esc(i.name)}${i.ready_min != null ? ` <small>ready ${i.ready_min}m</small>` : ''}`).join(' · ')}</div>
           <div class="s">sent ${o.taken}${o.packed ? ` · packed ${o.packed}` : ''}${o.by ? ` · ${esc(o.by)}` : ''}</div></div>`;

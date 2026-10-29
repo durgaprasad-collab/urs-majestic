@@ -57,7 +57,7 @@ def create_order(db: Session, user_id: int, order_type: str, ref: str | None, it
         raise ValueError("Pick dine-in, parcel, Zomato or Swiggy")
     kot_no = (kot_no or "").strip()[:20]
     if not kot_no:
-        raise ValueError("Enter the Petpooja KOT number")
+        raise ValueError("Enter the KOT number or labelled bill reference")
     clean = [(int(i["menu_item_id"]), int(i["qty"])) for i in items if int(i.get("qty") or 0) > 0]
     if not clean:
         raise ValueError("Add at least one dish")
