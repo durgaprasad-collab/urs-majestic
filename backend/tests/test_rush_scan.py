@@ -29,6 +29,18 @@ Grand Total : 156.00
 
 
 class ParseTests(unittest.TestCase):
+    def test_order_reference_handles_ocr_label_variations(self):
+        for label in ("Bill No.: 015", "B1ll N0.: 015", "Bi11 No : 015", "B i l l No. : 015", "B|ll No.\n015"):
+            with self.subTest(label=label):
+                r = parse_slip(label + "\nCashier: biller\n", MENU)
+                self.assertEqual(r["order_reference"], "Bill 015")
+        self.assertEqual(parse_slip("KOT No.: 42\nBill No.: 15", MENU)["order_reference"], "42")
+
+    def test_missing_reference_never_uses_other_numbers(self):
+        r = parse_slip("Bill No.:\nDate: 29-10-2026\nCashier: biller\nGobi Fried Rice\n(Q) 1.0 x 149.0 = 149.0", MENU)
+        self.assertEqual(r["order_reference"], "")
+        self.assertTrue(any("Order number not read" in w for w in r["warnings"]))
+
     def test_all_established_combo_descriptions_stay_one_combo(self):
         import json
         seed = Path(__file__).parents[1] / "data/menu_seed.json"

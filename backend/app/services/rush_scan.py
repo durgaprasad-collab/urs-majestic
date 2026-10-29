@@ -78,8 +78,11 @@ def parse_slip(text: str, menu: list[dict]) -> dict:
                 if all(m["id"] != targets[0]["id"] for m in matches):
                     matches.append(targets[0])
     warnings, items = [], []
-    kot = re.search(r"\bK\s*O\s*T\s*(?:No\.?|Number|#)?\s*[:.#-]?\s*(\d+)\b", text, re.I)
-    bill = re.search(r"\bB[i1l]ll\s*(?:No\.?|Number|#)\s*[:.#-]?\s*(\d+)\b", text, re.I)
+    # Limit number lookup to its label's line (or the immediately following
+    # line), so a missing reference never picks up a date, price or quantity.
+    number = r"[ \t]*(?:Number|N[o0]\.?|#)?[ \t]*[:.#-]*[ \t]*(?:\r?\n[ \t]*)?(\d+)\b"
+    kot = re.search(r"^[ \t]*K[ \t]*O[ \t]*T" + number, text, re.I | re.M)
+    bill = re.search(r"^[ \t]*B[ \t]*[i1l|!][ \t]*[i1l|!][ \t]*[i1l|!]" + number, text, re.I | re.M)
     date = re.search(r"\bDate\s*:\s*([^\r\n]+)", text, re.I)
     # Invoice: item block follows Cashier / separator and ends before totals.
     # KOT: item block follows an Item/Qty heading. Unknown layouts stay visible
@@ -145,6 +148,9 @@ def parse_slip(text: str, menu: list[dict]) -> dict:
     total = re.search(r"Total\s*Qty\s*:\s*(\d+(?:\.\d+)?)", text, re.I)
     if total:
         warnings.append("Printed total quantity: " + total.group(1) + ". Check all lines, including packaging, against the photo.")
-    return {"kot_no": kot.group(1) if kot else "", "bill_no": bill.group(1) if bill else "",
+    reference = kot.group(1) if kot else "Bill " + bill.group(1) if bill else ""
+    if not reference:
+        warnings.append("Order number not read. Enter the KOT number or labelled bill reference above.")
+    return {"kot_no": kot.group(1) if kot else "", "bill_no": bill.group(1) if bill else "", "order_reference": reference,
             "printed_date": date.group(1).strip() if date else "", "order_type": "Parcel" if parcel else "Dine-in",
             "items": items, "warnings": warnings, "raw_text": text[:20000]}

@@ -115,6 +115,7 @@
   <section class="card">
     <h2>New order</h2>
     <div class="types" id="types"></div>
+    <div class="row"><input id="kot" aria-label="KOT number or bill reference" placeholder="KOT no. / Bill reference" autocomplete="off"><input id="ref" placeholder="Table / ref" autocomplete="off"></div>
     <div class="scanbox">
       <button class="ghost" id="scanphoto">Take photo of KOT / bill</button>
       <button class="ghost" id="choosephoto">Choose photo</button>
@@ -133,7 +134,6 @@
         <button class="ghost" id="cancelscan">Discard scan</button>
       </div>
     </div>
-    <div class="row"><input id="kot" placeholder="KOT no. / Bill reference" autocomplete="off"><input id="ref" placeholder="Table / ref" autocomplete="off"></div>
     <div class="row"><input id="q" placeholder="Search dish" autocomplete="off"></div>
     <div class="chips" id="chips"></div>
     <div class="cart" id="cart" hidden></div>
@@ -172,7 +172,7 @@
   const short = n => n.replace(' (2 Nos)', ' (2)').replace(' (1 No)', '').replace(/^Combo (\d+\w?) - /, 'C$1 · ');
   const orderLabel = n => /^Bill\s/i.test(String(n)) ? String(n) : `KOT ${n}`;
   let type = D.types[0], cart = [], board = null;
-  let scanning = false, scanDraft = null;
+  let scanning = false, scanDraft = null, previousReference = null;
 
   function tick() { $('#clock').textContent = new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); }
   tick(); setInterval(tick, 15000);
@@ -205,7 +205,9 @@
 
   $('#scanphoto').onclick = () => $('#photo').click();
   $('#choosephoto').onclick = () => $('#photofile').click();
-  function closeScan() {
+  function closeScan(keepReference = false) {
+    if (!keepReference && previousReference !== null) $('#kot').value = previousReference;
+    previousReference = null;
     scanDraft = null; $('#scanreview').hidden = true; $('#scanchecked').checked = false;
     $('#scanpreview').removeAttribute('src'); drawCart();
   }
@@ -224,13 +226,16 @@
       const r = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(r.error || 'Could not read photo. Try again.');
       scanDraft = r; $('#scanreview').hidden = false;
+      previousReference = $('#kot').value;
+      $('#kot').value = r.order_reference ?? (r.kot_no || (r.bill_no ? 'Bill ' + r.bill_no : ''));
+      $('#kot').classList.toggle('need', !$('#kot').value);
       $('#scanmeta').textContent = `${r.kot_no ? 'KOT ' + r.kot_no : r.bill_no ? 'Bill ' + r.bill_no : 'No order number found'} · ${r.order_type}${r.printed_date ? ' · printed ' + r.printed_date : ''}`;
       $('#scanwarnings').textContent = r.warnings.join(' ');
       $('#scantext').textContent = r.raw_text;
       $('#scanrows').innerHTML = r.items.map((it, i) => `<div class="scanrow ${!it.menu_item_id || !it.qty ? 'need' : ''}" data-row="${i}">
         <b>${esc(it.name)}</b><select aria-label="Menu dish for ${esc(it.name)}"><option value="">Choose matching dish</option>${D.menu.map(m => `<option value="${m.id}" ${m.id === it.menu_item_id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select>
         <label>Qty <input type="number" min="1" max="999" step="1" value="${it.qty ?? ''}" aria-label="Quantity"></label> <button class="ghost" data-remove="${i}">Remove line</button></div>`).join('');
-      $('#scanstatus').textContent = 'Check every line. Use the reviewed order, then send it to the kitchen.';
+      $('#scanstatus').textContent = $('#kot').value ? `Captured ${orderLabel($('#kot').value)}. Check every line, then use the reviewed order.` : 'Order number not read. Enter it above and check the dishes.';
     } catch (err) { $('#scanstatus').textContent = err.name === 'AbortError' ? 'Reading timed out. Try again or enter manually.' : err.message; }
     finally { clearTimeout(timeout); scanning = false; $('#scanphoto').disabled = $('#choosephoto').disabled = false; drawCart(); }
   }
@@ -251,8 +256,7 @@
     if (cart.length && !confirm('Replace the current draft with this scanned order?')) return;
     cart = next; type = scanDraft.order_type;
     document.querySelectorAll('#types button').forEach(b => b.classList.toggle('on', b.dataset.t === type));
-    $('#kot').value = scanDraft.kot_no || (scanDraft.bill_no ? 'Bill ' + scanDraft.bill_no : '');
-    $('#ref').value = ''; closeScan();
+    $('#ref').value = ''; closeScan(true);
     $('#scanstatus').textContent = 'Draft ready. Check the order number, then send to kitchen.';
   };
 

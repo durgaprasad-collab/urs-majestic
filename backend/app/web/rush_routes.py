@@ -44,12 +44,12 @@ def page(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         # Come back here after signing in (the Rush app opens straight on /rush).
-        return RedirectResponse("/login?next=/rush", status_code=302, headers={"X-Rush-UI-Version": "1.3"})
+        return RedirectResponse("/login?next=/rush", status_code=302, headers={"X-Rush-UI-Version": "1.4"})
     response = _tmpl(request, "rush.html", {
         "user": user,
         "data_json": json.dumps({"menu": rush.menu(db), "types": rush.ORDER_TYPES, "promise": rush.PROMISE_MIN}),
     })
-    response.headers["X-Rush-UI-Version"] = "1.3"
+    response.headers["X-Rush-UI-Version"] = "1.4"
     return response
 
 
