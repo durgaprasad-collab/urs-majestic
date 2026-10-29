@@ -77,13 +77,13 @@ def parse_slip(text: str, menu: list[dict]) -> dict:
                 matches = menu_keys.setdefault(key, [])
                 if all(m["id"] != targets[0]["id"] for m in matches):
                     matches.append(targets[0])
-    warnings, items = [], []
+    warnings, items, unassigned = [], [], []
     # Limit number lookup to its label's line (or the immediately following
     # line), so a missing reference never picks up a date, price or quantity.
     number = r"[ \t]*(?:Number|N[o0]\.?|#)?[ \t]*[:.#-]*[ \t]*(?:\r?\n[ \t]*)?(\d+)\b"
     kot = re.search(r"^[ \t]*K[ \t]*O[ \t]*T" + number, text, re.I | re.M)
     bill = re.search(r"^[ \t]*B[ \t]*[i1l|!][ \t]*[i1l|!][ \t]*[i1l|!]" + number, text, re.I | re.M)
-    date = re.search(r"\bDate\s*:\s*([^\r\n]+)", text, re.I)
+    date = re.search(r"\bDate\s*:\s*([^\r\n\t]+)", text, re.I)
     # Invoice: item block follows Cashier / separator and ends before totals.
     # KOT: item block follows an Item/Qty heading. Unknown layouts stay visible
     # as raw text and require manual entry rather than inventing an order.
@@ -100,31 +100,46 @@ def parse_slip(text: str, menu: list[dict]) -> dict:
         block = lines[start:end]
     pending = []
     parcel = False
+    parcel_qty = 0
 
-    def append_item(name, qty):
-        nonlocal parcel
+    def append_item(name, qty, quantity_seen=True):
+        nonlocal parcel, parcel_qty
         name = name.strip()
         if _key(name) == "parcel":
             parcel = True
+            parcel_qty += qty or 0
             return
         matches = menu_keys.get(_key(name), [])
+        if not quantity_seen and not matches:
+            # A loose header/separator fragment is not evidence of an item.
+            # Keep it visible separately rather than inventing a cooking row.
+            unassigned.append(name)
+            return
         items.append({"name": name, "qty": qty, "menu_item_id": matches[0]["id"] if len(matches) == 1 else None})
 
     for line in block:
         if re.fullmatch(r"[\s=_.\-]+", line):
             continue
         # Retail invoice example: (Q) 1.0 x 149.0 = 149.0.
-        q = re.match(r"(?:\(\s*Q\s*\)\s*)?(\d+(?:\.\d+)?)\s*[x×]\s*\d", line, re.I)
-        if q and pending:
+        q = re.search(r"(?:\(\s*[QO0]\s*\)\s*)?(\d+(?:\.\d+)?)\s*[x×]\s*\d", line, re.I)
+        if q:
+            prefix = line[:q.start()].strip()
+            if pending and prefix and (_key(prefix) in menu_keys or _key(prefix) == "parcel"):
+                append_item(" ".join(pending), None, quantity_seen=False)
+                pending = []
+            name = " ".join(pending + ([prefix] if prefix else []))
             n = float(q.group(1))
-            append_item(" ".join(pending), int(n) if n.is_integer() and 0 < n <= 999 else None)
+            if name:
+                append_item(name, int(n) if n.is_integer() and 0 < n <= 999 else None)
+            else:
+                unassigned.append(line)
             pending = []
             continue
         # KOT table with item name followed by quantity (no currency guessing).
         q = re.match(r"^(.+?[A-Za-z].*?)\s{2,}(\d+(?:\.\d+)?)$", line)
         if q:
             if pending:
-                append_item(" ".join(pending), None)
+                append_item(" ".join(pending), None, quantity_seen=False)
                 pending = []
             n = float(q.group(2))
             append_item(q.group(1), int(n) if n.is_integer() and 0 < n <= 999 else None)
@@ -132,7 +147,7 @@ def parse_slip(text: str, menu: list[dict]) -> dict:
         if re.search(r"[A-Za-z]", line):
             # Exact known name on its own begins a new row, not a continuation.
             if pending and (_key(line) in menu_keys or _key(line) == "parcel"):
-                append_item(" ".join(pending), None)
+                append_item(" ".join(pending), None, quantity_seen=False)
                 pending = []
             pending.append(line)
         elif re.fullmatch(r"\d+(?:\.\d+)?", line) and pending:
@@ -140,7 +155,9 @@ def parse_slip(text: str, menu: list[dict]) -> dict:
             append_item(" ".join(pending), int(n) if n.is_integer() and 0 < n <= 999 else None)
             pending = []
     if pending:
-        append_item(" ".join(pending), None)
+        append_item(" ".join(pending), None, quantity_seen=False)
+    if unassigned:
+        warnings.append("Some OCR text could not be assigned to an item. Check the unassigned text and photo for any missing dish.")
     if not kot and bill:
         warnings.append("This is a bill number, not a KOT number. It is labelled Bill in the order reference.")
     if any(i["menu_item_id"] is None or i["qty"] is None for i in items):
@@ -148,9 +165,12 @@ def parse_slip(text: str, menu: list[dict]) -> dict:
     total = re.search(r"Total\s*Qty\s*:\s*(\d+(?:\.\d+)?)", text, re.I)
     if total:
         warnings.append("Printed total quantity: " + total.group(1) + ". Check all lines, including packaging, against the photo.")
+        counted = sum(i["qty"] or 0 for i in items) + parcel_qty
+        if counted != float(total.group(1)):
+            warnings.append(f"Quantity mismatch: captured {counted:g}, printed {total.group(1)}. Correct missing or extra items before sending.")
     reference = kot.group(1) if kot else "Bill " + bill.group(1) if bill else ""
     if not reference:
         warnings.append("Order number not read. Enter the KOT number or labelled bill reference above.")
     return {"kot_no": kot.group(1) if kot else "", "bill_no": bill.group(1) if bill else "", "order_reference": reference,
             "printed_date": date.group(1).strip() if date else "", "order_type": "Parcel" if parcel else "Dine-in",
-            "items": items, "warnings": warnings, "raw_text": text[:20000]}
+            "items": items, "unassigned_text": unassigned, "warnings": warnings, "raw_text": text[:20000]}

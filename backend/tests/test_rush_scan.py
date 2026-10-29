@@ -29,6 +29,27 @@ Grand Total : 156.00
 
 
 class ParseTests(unittest.TestCase):
+    def test_bill20_inline_quantity_and_ocr_fragments(self):
+        menu = [{"id": 1, "name": "Combo 02 - Paneer Power Combo"}, {"id": 2, "name": "Phulka (2 Nos)"}, {"id": 3, "name": "Water Bottle"}]
+        for combo in ("Butter Naan Butter Masala Paneer 65 (5 Pcs)\t(Q) 2.0 x 169.0 = 338.0",
+                      "Butter Naan Butter Masala Paneer 65 (5 Pcs)\n(Q) 2.0 x 169.0 = 338.0"):
+            with self.subTest(combo=combo):
+                raw = f"Bill No.: 20\nCashier: biller\nO.: 18 r: bi\n{combo}\noor 1Q\nPhulka (2 Nos)\n(Q) 1.0 x 35 = 35\nWater Bottle\n(Q) 1.0 x 20 = 20\nSub Total : 393.00\tTotal Qty : 4.0\nGrand Total: 410.00"
+                r = parse_slip(raw, menu)
+                self.assertEqual([(i["menu_item_id"], i["qty"]) for i in r["items"]], [(1, 2), (2, 1), (3, 1)])
+                self.assertEqual(r["unassigned_text"], ["O.: 18 r: bi", "oor 1Q"])
+                self.assertFalse(any("Quantity mismatch" in w for w in r["warnings"]))
+                self.assertEqual(r["order_reference"], "Bill 20")
+
+    def test_unmapped_dish_with_quantity_still_needs_review(self):
+        r = parse_slip("Cashier: biller\nNew Special\t(Q) 2 x 100 = 200\nTotal Qty : 2", MENU)
+        self.assertEqual(r["items"], [{"name": "New Special", "qty": 2, "menu_item_id": None}])
+
+    def test_unpaired_unknown_text_visible_with_missing_quantity_warning(self):
+        r = parse_slip("Cashier: biller\nUnreadable Special\nTotal Qty : 1", MENU)
+        self.assertEqual(r["unassigned_text"], ["Unreadable Special"])
+        self.assertTrue(any("Quantity mismatch" in w for w in r["warnings"]))
+
     def test_order_reference_handles_ocr_label_variations(self):
         for label in ("Bill No.: 015", "B1ll N0.: 015", "Bi11 No : 015", "B i l l No. : 015", "B|ll No.\n015"):
             with self.subTest(label=label):

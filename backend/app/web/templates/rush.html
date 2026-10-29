@@ -128,6 +128,7 @@
         <img id="scanpreview" alt="Slip being reviewed">
         <p id="scanmeta"></p><p id="scanwarnings"></p>
         <div id="scanrows"></div>
+        <p id="scanunassigned" hidden></p>
         <details><summary>Read text</summary><pre id="scantext"></pre></details>
         <label class="sw"><input type="checkbox" id="scanchecked"><span>I checked every dish and quantity against the photo.</span></label>
         <button class="ghost" id="usescan">Use reviewed order</button>
@@ -231,6 +232,8 @@
       $('#kot').classList.toggle('need', !$('#kot').value);
       $('#scanmeta').textContent = `${r.kot_no ? 'KOT ' + r.kot_no : r.bill_no ? 'Bill ' + r.bill_no : 'No order number found'} · ${r.order_type}${r.printed_date ? ' · printed ' + r.printed_date : ''}`;
       $('#scanwarnings').textContent = r.warnings.join(' ');
+      $('#scanunassigned').hidden = !(r.unassigned_text || []).length;
+      $('#scanunassigned').textContent = 'Unassigned OCR text (not added as dishes): ' + (r.unassigned_text || []).join(' · ') + '. Check the photo; add any missing dish manually after using this draft.';
       $('#scantext').textContent = r.raw_text;
       $('#scanrows').innerHTML = r.items.map((it, i) => `<div class="scanrow ${!it.menu_item_id || !it.qty ? 'need' : ''}" data-row="${i}">
         <b>${esc(it.name)}</b><select aria-label="Menu dish for ${esc(it.name)}"><option value="">Choose matching dish</option>${D.menu.map(m => `<option value="${m.id}" ${m.id === it.menu_item_id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select>
