@@ -122,7 +122,7 @@
       <!-- Capacitor's Android file chooser requires image/* to launch camera capture. -->
       <input id="photo" type="file" accept="image/*" capture="environment" hidden>
       <input id="photofile" type="file" accept="image/jpeg,image/png" hidden>
-      <p>Review the dishes before sending. A Parcel item means takeaway; otherwise dine-in. Photos are sent to OCR.space to read the printed text.</p>
+      <p id="scanhint">Review the dishes before sending. A Parcel item means takeaway; otherwise dine-in. Photos are sent to OCR.space to read the printed text.</p>
       <p id="scanstatus" role="status" aria-live="polite"></p>
       <button class="ghost" id="retryscan" hidden>Retry same photo</button>
       <div id="scanreview" hidden>
@@ -175,6 +175,23 @@
   const orderLabel = n => /^Bill\s/i.test(String(n)) ? String(n) : `KOT ${n}`;
   let type = D.types[0], cart = [], board = null;
   let scanning = false, scanDraft = null, previousReference = null, lastScanPhoto = null;
+  const localOCR = !!(window.URSOCR && window.URSOCR.recognize);
+  let nativePending = null, nativeSequence = 0, cachedText = '', cachedFile = null;
+  if (localOCR) $('#scanhint').textContent = 'Fast phone reader: the photo stays on this phone; only the read text goes to Rush. Review before sending. A Parcel item means takeaway; otherwise dine-in.';
+  window.__rushOCRResult = (id, result) => {
+    if (!nativePending || nativePending.id !== id) return;
+    const pending = nativePending; nativePending = null; clearTimeout(pending.timer);
+    if (result.error) pending.reject(new Error(result.error)); else pending.resolve(result.text);
+  };
+  function readOnPhone(data) {
+    return new Promise((resolve, reject) => {
+      const id = 'rush-' + (++nativeSequence);
+      const timer = setTimeout(() => { nativePending = null; reject(new Error('Phone reader timed out. Retry the same photo.')); }, 20000);
+      nativePending = {id, resolve, reject, timer};
+      try { window.URSOCR.recognize(data, id); }
+      catch (err) { clearTimeout(timer); nativePending = null; reject(new Error('Phone reader could not start. Reopen Rush and retry.')); }
+    });
+  }
 
   function tick() { $('#clock').textContent = new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); }
   tick(); setInterval(tick, 15000);
@@ -224,15 +241,29 @@
     lastScanPhoto = file; $('#retryscan').hidden = true;
     closeScan(); scanning = true; drawCart();
     $('#scanphoto').disabled = $('#choosephoto').disabled = true;
-    $('#scanstatus').textContent = 'Reading the slip…';
-    const reader = new FileReader(); reader.onload = () => { $('#scanpreview').src = reader.result; }; reader.readAsDataURL(file);
+    $('#scanstatus').textContent = localOCR ? 'Reading on this phone…' : 'Reading the slip…';
     const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 50000);
     try {
-      const form = new FormData(); form.append('photo', file);
-      const res = await fetch('/rush/scan', {method: 'POST', credentials: 'same-origin', body: form, signal: controller.signal});
+      const photoData = await new Promise((resolve, reject) => {
+        const reader = new FileReader(); reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Could not open photo. Choose it again.')); reader.readAsDataURL(file);
+      });
+      $('#scanpreview').src = photoData;
+      let url = '/rush/scan', body, headers;
+      if (localOCR) {
+        if (cachedFile !== file || !cachedText) {
+          cachedText = await readOnPhone(photoData); cachedFile = file;
+        }
+        $('#scanstatus').textContent = 'Matching dishes in Rush…';
+        url = '/rush/scan-text'; body = JSON.stringify({text: cachedText}); headers = {'Content-Type': 'application/json'};
+      } else {
+        body = new FormData(); body.append('photo', file);
+      }
+      const res = await fetch(url, {method: 'POST', credentials: 'same-origin', body, headers, signal: controller.signal});
       const r = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(r.error || 'Could not read photo. Try again.');
       lastScanPhoto = null;
+      cachedText = ''; cachedFile = null;
       scanDraft = r; $('#scanreview').hidden = false;
       previousReference = $('#kot').value;
       $('#kot').value = r.order_reference ?? (r.kot_no || (r.bill_no ? 'Bill ' + r.bill_no : ''));

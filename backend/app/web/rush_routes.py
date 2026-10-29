@@ -17,6 +17,25 @@ from app.web.deps import _tmpl, require_user
 router = APIRouter(tags=["rush"])
 
 
+@router.post("/rush/scan-text")
+async def scan_text(request: Request, db: Session = Depends(get_db)):
+    if not _owner(request, db):
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw.extend(chunk)
+        if len(raw) > 65536:
+            return JSONResponse({"error": "Too much text. Crop to one slip."}, status_code=413)
+    try:
+        body = json.loads(raw)
+        text = body.get("text") if isinstance(body, dict) else None
+        if not isinstance(text, str) or not text.strip() or len(text) > 20000:
+            raise ValueError()
+    except (ValueError, UnicodeError):
+        return JSONResponse({"error": "No usable text. Retake the photo."}, status_code=400)
+    return JSONResponse(rush_scan.parse_slip(text, rush.menu(db)))
+
+
 @router.post("/rush/scan")
 def scan(request: Request, photo: UploadFile = File(...), db: Session = Depends(get_db)):
     if not _owner(request, db):
@@ -44,12 +63,12 @@ def page(request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
     if redir:
         # Come back here after signing in (the Rush app opens straight on /rush).
-        return RedirectResponse("/login?next=/rush", status_code=302, headers={"X-Rush-UI-Version": "1.6"})
+        return RedirectResponse("/login?next=/rush", status_code=302, headers={"X-Rush-UI-Version": "1.7"})
     response = _tmpl(request, "rush.html", {
         "user": user,
         "data_json": json.dumps({"menu": rush.menu(db), "types": rush.ORDER_TYPES, "promise": rush.PROMISE_MIN}),
     })
-    response.headers["X-Rush-UI-Version"] = "1.6"
+    response.headers["X-Rush-UI-Version"] = "1.7"
     return response
 
 

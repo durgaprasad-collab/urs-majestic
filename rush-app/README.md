@@ -15,6 +15,21 @@ only; **Send to kitchen** still creates the order and starts the 12-minute clock
 
 ## Server dependency
 
+App 1.3 bundles Google's Latin-script ML Kit model (Android 6+). The existing
+camera/file picker supplies the photo to the local native bridge; the photo is
+not uploaded by this path. Only recognised text is posted to `/rush/scan-text`
+for menu matching. The image is decoded off the UI thread, sampled to a bounded
+size and EXIF-oriented before recognition. The review, reference, combo and
+pass rules use the same server parser. Native OCR errors do not silently upload
+the image to another service. Network retries reuse the extracted text.
+
+Install `URS-Rush-1.3.apk` over the existing app. Test a few restaurant bills:
+speed and accuracy have not been measured on the actual restaurant phone.
+The page says **Fast phone reader** when the local bridge is active. The app
+still needs internet to load Rush, match dishes and save kitchen orders.
+
+Older app versions and ordinary browsers retain the hosted path below.
+
 Uses the existing `OCR_SPACE_API_KEY` setting and Pillow, with no new Python
 dependencies or database migration. The default shared demo key may be rate
 limited; configure an outlet key for regular use. Photos are sent to OCR.space
@@ -33,5 +48,7 @@ Test capture on the restaurant phone; automated checks cannot verify its camera.
 ## Checks
 
 From `backend/`: `python -m unittest discover -s tests -p test_rush_scan.py -v`.
+All Rush checks: `python -m unittest discover -s tests -p 'test_rush*.py'`.
+UI flows: `node tests/test_rush_ui.cjs` and `node tests/test_rush_ui.cjs --native`.
 The supplied 9 October invoice was also read through the configured OCR service:
 Bill 7, Gobi Fried Rice (Regular) x 1, Dine-in. No kitchen order was created.
