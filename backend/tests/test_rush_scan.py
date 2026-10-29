@@ -29,6 +29,36 @@ Grand Total : 156.00
 
 
 class ParseTests(unittest.TestCase):
+    def test_photo_reader_recovers_from_one_connection_failure(self):
+        import urllib.error
+        data = io.BytesIO()
+        Image.new("RGB", (20, 20)).save(data, format="PNG")
+        reply = io.BytesIO(b'{"ParsedResults":[{"FileParseExitCode":1,"ParsedText":"Bill No.: 15"}]}')
+        with patch("urllib.request.urlopen", side_effect=[urllib.error.URLError("temporary"), reply]) as request, \
+             patch("app.services.rush_scan.time.sleep"):
+            self.assertEqual(read_photo(data.getvalue(), "test"), "Bill No.: 15")
+            self.assertEqual(request.call_count, 2)
+
+    def test_photo_reader_stops_after_two_connection_failures(self):
+        import urllib.error
+        data = io.BytesIO()
+        Image.new("RGB", (20, 20)).save(data, format="PNG")
+        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("temporary")) as request, \
+             patch("app.services.rush_scan.time.sleep"):
+            with self.assertRaisesRegex(ValueError, "after two attempts"):
+                read_photo(data.getvalue(), "test")
+            self.assertEqual(request.call_count, 2)
+
+    def test_rate_limit_and_rejected_key_are_not_retried(self):
+        import urllib.error
+        data = io.BytesIO()
+        Image.new("RGB", (20, 20)).save(data, format="PNG")
+        for status, message in ((429, "usage limit"), (403, "access was refused")):
+            with self.subTest(status=status), patch("urllib.request.urlopen", side_effect=urllib.error.HTTPError("https://api.ocr.space", status, "unavailable", {}, None)) as request:
+                with self.assertRaisesRegex(ValueError, message):
+                    read_photo(data.getvalue(), "test")
+                self.assertEqual(request.call_count, 1)
+
     def test_bill20_inline_quantity_and_ocr_fragments(self):
         menu = [{"id": 1, "name": "Combo 02 - Paneer Power Combo"}, {"id": 2, "name": "Phulka (2 Nos)"}, {"id": 3, "name": "Water Bottle"}]
         for combo in ("Butter Naan Butter Masala Paneer 65 (5 Pcs)\t(Q) 2.0 x 169.0 = 338.0",

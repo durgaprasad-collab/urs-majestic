@@ -124,6 +124,7 @@
       <input id="photofile" type="file" accept="image/jpeg,image/png" hidden>
       <p>Review the dishes before sending. A Parcel item means takeaway; otherwise dine-in. Photos are sent to OCR.space to read the printed text.</p>
       <p id="scanstatus" role="status" aria-live="polite"></p>
+      <button class="ghost" id="retryscan" hidden>Retry same photo</button>
       <div id="scanreview" hidden>
         <img id="scanpreview" alt="Slip being reviewed">
         <p id="scanmeta"></p><p id="scanwarnings"></p>
@@ -173,7 +174,7 @@
   const short = n => n.replace(' (2 Nos)', ' (2)').replace(' (1 No)', '').replace(/^Combo (\d+\w?) - /, 'C$1 · ');
   const orderLabel = n => /^Bill\s/i.test(String(n)) ? String(n) : `KOT ${n}`;
   let type = D.types[0], cart = [], board = null;
-  let scanning = false, scanDraft = null, previousReference = null;
+  let scanning = false, scanDraft = null, previousReference = null, lastScanPhoto = null;
 
   function tick() { $('#clock').textContent = new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); }
   tick(); setInterval(tick, 15000);
@@ -215,7 +216,12 @@
   $('#cancelscan').onclick = () => { closeScan(); $('#scanstatus').textContent = 'Scan discarded. Your previous draft is unchanged.'; };
   async function scanPhoto(e) {
     const file = e.target.files[0]; e.target.value = ''; if (!file || scanning) return;
+    return scanFile(file);
+  }
+  $('#retryscan').onclick = () => lastScanPhoto && !scanning && scanFile(lastScanPhoto);
+  async function scanFile(file) {
     if (file.size > 10 * 1024 * 1024) { $('#scanstatus').textContent = 'Photo must be under 10 MB. Crop it to the slip.'; return; }
+    lastScanPhoto = file; $('#retryscan').hidden = true;
     closeScan(); scanning = true; drawCart();
     $('#scanphoto').disabled = $('#choosephoto').disabled = true;
     $('#scanstatus').textContent = 'Reading the slip…';
@@ -226,6 +232,7 @@
       const res = await fetch('/rush/scan', {method: 'POST', credentials: 'same-origin', body: form, signal: controller.signal});
       const r = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(r.error || 'Could not read photo. Try again.');
+      lastScanPhoto = null;
       scanDraft = r; $('#scanreview').hidden = false;
       previousReference = $('#kot').value;
       $('#kot').value = r.order_reference ?? (r.kot_no || (r.bill_no ? 'Bill ' + r.bill_no : ''));
@@ -239,7 +246,7 @@
         <b>${esc(it.name)}</b><select aria-label="Menu dish for ${esc(it.name)}"><option value="">Choose matching dish</option>${D.menu.map(m => `<option value="${m.id}" ${m.id === it.menu_item_id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select>
         <label>Qty <input type="number" min="1" max="999" step="1" value="${it.qty ?? ''}" aria-label="Quantity"></label> <button class="ghost" data-remove="${i}">Remove line</button></div>`).join('');
       $('#scanstatus').textContent = $('#kot').value ? `Captured ${orderLabel($('#kot').value)}. Check every line, then use the reviewed order.` : 'Order number not read. Enter it above and check the dishes.';
-    } catch (err) { $('#scanstatus').textContent = err.name === 'AbortError' ? 'Reading timed out. Try again or enter manually.' : err.message; }
+    } catch (err) { $('#retryscan').hidden = false; $('#scanstatus').textContent = err.name === 'AbortError' ? 'Reading timed out. Retry the same photo or enter manually.' : err.message; }
     finally { clearTimeout(timeout); scanning = false; $('#scanphoto').disabled = $('#choosephoto').disabled = false; drawCart(); }
   }
   $('#photo').onchange = $('#photofile').onchange = scanPhoto;

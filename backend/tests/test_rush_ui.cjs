@@ -23,15 +23,22 @@ const document = {
   getElementById: id => node('#' + id), querySelector: node,
   querySelectorAll: s => s === '#scanrows .scanrow' ? [row] : [],
 };
+let failNextScan = false, uploads = 0;
 const sandbox = {document, navigator: {userAgent: 'URSRushApp'},
   window: {scrollTo() {}}, localStorage: {getItem() {}, setItem() {}},
   setTimeout() {}, clearTimeout() {}, setInterval() {}, AbortController,
   FileReader: class {readAsDataURL() {this.result = 'data:image/jpeg;base64,AA'; this.onload();}},
   FormData: class {append() {}}, confirm: () => true,
-  fetch: async url => ({ok: true, json: async () => url === '/rush/scan' ? {
+  fetch: async url => {
+    if (url === '/rush/scan') {
+      uploads++;
+      if (failNextScan) { failNextScan = false; throw new Error('Photo reader unavailable'); }
+    }
+    return {ok: true, json: async () => url === '/rush/scan' ? {
     kot_no: '', bill_no: '15', order_reference: 'Bill 15', order_type: 'Dine-in',
     items: [{name: 'Veg Fried Rice', menu_item_id: 1, qty: 1}], warnings: [], raw_text: '',
-  } : board}),
+  } : board};
+  },
 };
 vm.runInNewContext(source, sandbox);
 async function scan() {
@@ -50,5 +57,14 @@ async function scan() {
   node('#usescan').onclick();
   assert.equal(node('#kot').value, 'Bill 16', 'manual correction survives accepting the scan');
   assert.equal(node('#send').disabled, false);
+  failNextScan = true;
+  await scan();
+  assert.equal(node('#retryscan').hidden, false);
+  const beforeRetry = uploads;
+  await node('#retryscan').onclick();
+  assert.equal(uploads, beforeRetry + 1, 'retry reuses the photo without choosing another file');
+  assert.equal(node('#kot').value, 'Bill 15');
+  assert.equal(node('#retryscan').hidden, true);
+  assert.equal(node('#send').disabled, true, 'retry still requires review');
   console.log('Rush UI: immediate number capture, discard, correction and review checks passed');
 })().catch(e => {console.error(e); process.exitCode = 1;});

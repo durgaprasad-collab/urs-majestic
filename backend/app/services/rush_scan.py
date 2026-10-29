@@ -6,7 +6,9 @@ visible for review, including missing quantities and unmatched names.
 import base64
 import io
 import json
+import logging
 import re
+import time
 import unicodedata
 from pathlib import Path
 import urllib.error
@@ -14,6 +16,8 @@ import urllib.parse
 import urllib.request
 
 from PIL import Image, ImageOps, UnidentifiedImageError
+
+logger = logging.getLogger(__name__)
 
 
 def read_photo(data: bytes, api_key: str) -> str:
@@ -38,13 +42,34 @@ def read_photo(data: bytes, api_key: str) -> str:
     }).encode()
     req = urllib.request.Request("https://api.ocr.space/parse/image", data=body,
                                  headers={"apikey": api_key, "Content-Type": "application/x-www-form-urlencoded"})
-    try:
-        with urllib.request.urlopen(req, timeout=35) as response:
-            result = json.load(response)
-    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
-        raise ValueError("Photo reader is unavailable. Try again or enter the order manually.") from exc
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=18) as response:
+                result = json.load(response)
+            if not isinstance(result, dict):
+                raise ValueError("Invalid OCR response")
+            break
+        except urllib.error.HTTPError as exc:
+            exc.close()
+            logger.warning("Rush OCR HTTP status=%s attempt=%s", exc.code, attempt + 1)
+            if exc.code == 429:
+                raise ValueError("Photo reader has reached its usage limit. Try later or enter the order manually.") from exc
+            if exc.code in (401, 403):
+                raise ValueError("Photo reader access was refused. The server's OCR API key needs checking.") from exc
+            if exc.code not in (408, 500, 502, 503, 504) or attempt == 1:
+                raise ValueError("Photo-reading service could not accept the request. Retry the same photo or enter manually.") from exc
+        except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
+            logger.warning("Rush OCR connection failure type=%s attempt=%s", type(exc).__name__, attempt + 1)
+            if attempt == 1:
+                raise ValueError("Could not connect to the photo reader after two attempts. Retry the same photo or enter manually.") from exc
+        time.sleep(0.5)
     pages = result.get("ParsedResults") or []
     if result.get("IsErroredOnProcessing") or any(p.get("FileParseExitCode") != 1 for p in pages):
+        errors = str(result.get("ErrorMessage", "")).lower()
+        if any(word in errors for word in ("limit", "quota", "maximum number of requests")):
+            raise ValueError("Photo reader has reached its usage limit. Try later or enter the order manually.")
+        if any(word in errors for word in ("api key", "apikey")):
+            raise ValueError("Photo reader setup needs attention. The server's OCR API key needs checking.")
         raise ValueError("Couldn't read the whole slip. Retake a clear, straight photo.")
     text = "\n".join(p.get("ParsedText", "") for p in pages).strip()
     if not text:
