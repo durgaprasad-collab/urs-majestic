@@ -183,7 +183,7 @@
   function chips() {
     const q = $('#q').value.trim().toLowerCase();
     const list = (q ? D.menu.filter(m => m.name.toLowerCase().includes(q)) : D.menu).slice(0, q ? 40 : 24);
-    $('#chips').innerHTML = list.map(m => `<button class="chip" data-id="${m.id}">${esc(short(m.name))}${m.parts ? `<small>${m.parts.map(p => esc(short(p.name))).join(' + ')}</small>` : ''}</button>`).join('');
+    $('#chips').innerHTML = list.map(m => `<button class="chip" data-id="${m.id}">${esc(short(m.name))}${m.pass_only ? '<small>Pass checklist · no cooking</small>' : m.parts ? `<small>${m.parts.map(p => esc(short(p.name))).join(' + ')}</small>` : ''}</button>`).join('');
   }
   chips();
   $('#q').oninput = chips;
@@ -278,7 +278,7 @@
       return `<div class="ord ${all ? 'allready' : o.mins_left < 0 ? 'late' : o.mins_left <= 3 ? 'soon' : ''}">
         <div class="otop"><b>${esc(orderLabel(o.kot || o.id))} · ${esc(o.type)}${o.ref ? ' · ' + esc(o.ref) : ''}</b><span class="due">due ${o.due} · ${o.mins_left < 0 ? `${-o.mins_left} min late` : `${o.mins_left} min`}</span></div>
         <div class="rdy">${all ? 'All ready · pack it' : `${o.ready} of ${o.total} ready`}</div>
-        <div class="items">${o.items.map(i => `<div class="il ${i.ready ? 'done' : ''}"><span>${i.qty}× ${esc(i.name)}</span><button class="rd ${i.ready ? 'on' : ''}" data-item="${i.id}" data-ready="${i.ready ? 1 : 0}">${i.ready ? '✓ Ready' : 'Food ready'}</button></div>`).join('')}</div>
+        <div class="items">${o.items.map(i => `<div class="il ${i.ready ? 'done' : ''}"><span>${i.qty}× ${esc(i.name)}${i.pass_only ? ' · pass' : ''}</span><button class="rd ${i.ready ? 'on' : ''}" data-item="${i.id}" data-ready="${i.ready ? 1 : 0}">${i.pass_only ? (i.ready ? '✓ Included' : 'Include') : (i.ready ? '✓ Ready' : 'Food ready')}</button></div>`).join('')}</div>
         <div class="acts"><button class="pk" data-act="packed" data-id="${o.id}">${all ? 'Packed · out' : 'Packed'}</button><button data-act="cancel" data-id="${o.id}">Cancel</button></div>
       </div>`; }).join('') : '<p class="muted">No open orders.</p>';
   }

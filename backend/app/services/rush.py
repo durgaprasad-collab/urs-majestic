@@ -28,15 +28,16 @@ OPEN_HOURS = 4  # an open order older than this drops off the board
 def menu(db: Session) -> list[dict]:
     """Dishes the captain can tap, most-sold first, with how each one splits."""
     rows = db.execute(text("""
-        SELECT mi.id, mi.name, mi.category, mi.kitchen_station AS st, mi.cook_minutes AS cook,
+        SELECT mi.id, mi.name, mi.category, mi.is_food, mi.kitchen_station AS st, mi.cook_minutes AS cook,
                coalesce((SELECT sum(qty) FROM item_sales s WHERE s.item_name = mi.name AND s.sale_date > current_date - 30), 0) AS sold
           FROM menu_items mi
-         WHERE mi.is_active AND mi.is_food
+         WHERE mi.is_active AND lower(trim(mi.name)) <> 'parcel'
          ORDER BY sold DESC, mi.name
     """)).mappings().all()
     parts = _combo_parts(db)
     return [{"id": r["id"], "name": r["name"], "category": r["category"], "station": r["st"],
-             "cook": r["cook"], "sold": float(r["sold"]), "parts": parts.get(r["id"])} for r in rows]
+             "cook": r["cook"], "sold": float(r["sold"]), "parts": parts.get(r["id"]),
+             "pass_only": not r["is_food"]} for r in rows]
 
 
 def _combo_parts(db: Session) -> dict[int, list[dict]]:
@@ -105,7 +106,7 @@ def board(db: Session, only_order: int | None = None) -> dict:
     """), {"h": OPEN_HOURS}).mappings().all()
     ids = [o["id"] for o in orders]
     lines = db.execute(text("""
-        SELECT ki.id AS line_id, ki.order_id, ki.qty, ki.ready_at, mi.id, mi.name, mi.kitchen_station AS st, mi.cook_minutes AS cook
+        SELECT ki.id AS line_id, ki.order_id, ki.qty, ki.ready_at, mi.id, mi.name, mi.is_food, mi.kitchen_station AS st, mi.cook_minutes AS cook
           FROM kitchen_order_items ki JOIN menu_items mi ON mi.id = ki.menu_item_id
          WHERE ki.order_id = ANY(:ids) ORDER BY ki.id
     """), {"ids": ids or [0]}).mappings().all()
@@ -120,10 +121,11 @@ def board(db: Session, only_order: int | None = None) -> dict:
                            "taken": _clock(o["created_at"]), "due": _clock(due),
                            "mins_left": round((due - now).total_seconds() / 60),
                            "ready": sum(1 for l in mine if l["ready_at"]), "total": len(mine),
-                           "items": [{"id": l["line_id"], "name": l["name"], "qty": l["qty"], "ready": bool(l["ready_at"])}
+                           "items": [{"id": l["line_id"], "name": l["name"], "qty": l["qty"], "ready": bool(l["ready_at"]),
+                                      "pass_only": not l["is_food"]}
                                      for l in mine]})
     for l in lines:
-        if l["ready_at"]:
+        if l["ready_at"] or not l["is_food"]:
             continue  # food ready: off the station slips
         o = by_id[l["order_id"]]
         due = o["created_at"] + datetime.timedelta(minutes=PROMISE_MIN)
