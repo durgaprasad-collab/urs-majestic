@@ -118,7 +118,8 @@
     <div class="scanbox">
       <button class="ghost" id="scanphoto">Take photo of KOT / bill</button>
       <button class="ghost" id="choosephoto">Choose photo</button>
-      <input id="photo" type="file" accept="image/jpeg,image/png" capture="environment" hidden>
+      <!-- Capacitor's Android file chooser requires image/* to launch camera capture. -->
+      <input id="photo" type="file" accept="image/*" capture="environment" hidden>
       <input id="photofile" type="file" accept="image/jpeg,image/png" hidden>
       <p>Review the dishes before sending. A Parcel item means takeaway; otherwise dine-in. Photos are sent to OCR.space to read the printed text.</p>
       <p id="scanstatus" role="status" aria-live="polite"></p>

@@ -22,9 +22,13 @@ over HTTPS for recognition and are not saved by this feature. The full photo
 can contain customer details, so crop to the required slip area when possible.
 The page displays the external photo-reading service before capture.
 
-Deploy the backend/template changes to update the page. Test camera capture
-on the actual restaurant phone; the Android shell uses the system file chooser.
-Chrome's **Choose photo** provides a fallback if direct capture is unavailable.
+Deploy the backend/template changes to update the page. The camera input must
+use `accept="image/*"` with `capture="environment"`: Capacitor only launches
+image capture for this MIME wildcard. **Choose photo** stays a separate picker.
+Android app 1.2 also declares camera-intent visibility so Android 11+ can find
+the camera during Capacitor's `resolveActivity` check. Install this update over
+1.1; no direct CAMERA permission is needed to delegate to the system camera.
+Test capture on the restaurant phone; automated checks cannot verify its camera.
 
 ## Checks
 

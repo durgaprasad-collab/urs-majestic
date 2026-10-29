@@ -1,5 +1,7 @@
 import io
 import unittest
+from pathlib import Path
+from html.parser import HTMLParser
 from unittest.mock import patch
 
 from PIL import Image
@@ -112,6 +114,35 @@ class ScanRouteTests(unittest.TestCase):
             response = rush_routes.scan(None, UploadFile(file=io.BytesIO(b"x" * (1024 * 1024 + 1))), None)
             self.assertEqual(response.status_code, 413)
             read.assert_not_called()
+
+
+class CameraInputTests(unittest.TestCase):
+    def test_native_camera_input_uses_capacitor_capture_type(self):
+        class Inputs(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.inputs = {}
+
+            def handle_starttag(self, tag, attrs):
+                if tag == "input":
+                    attrs = dict(attrs)
+                    self.inputs[attrs.get("id")] = attrs
+
+        parser = Inputs()
+        template = Path(__file__).parents[1] / "app/web/templates/rush.html"
+        parser.feed(template.read_text(encoding="utf-8"))
+        photo = parser.inputs["photo"]
+        self.assertEqual(photo["accept"], "image/*")
+        self.assertEqual(photo["capture"], "environment")
+        self.assertNotIn("capture", parser.inputs["photofile"])
+
+    def test_android_can_find_system_camera(self):
+        import xml.etree.ElementTree as ET
+        manifest = Path(__file__).parents[2] / "rush-app/android/app/src/main/AndroidManifest.xml"
+        root = ET.parse(manifest).getroot()
+        actions = root.findall("queries/intent/action")
+        name = "{http://schemas.android.com/apk/res/android}name"
+        self.assertIn("android.media.action.IMAGE_CAPTURE", [a.get(name) for a in actions])
 
 
 if __name__ == "__main__":
