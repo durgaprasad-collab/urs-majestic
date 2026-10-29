@@ -29,6 +29,15 @@ Grand Total : 156.00
 
 
 class ParseTests(unittest.TestCase):
+    def test_combo_bill_maps_pos_description_to_one_combo(self):
+        raw = "Retail Invoice\nDate: 29-10-2026 20:51\nPick Up\nBill No.: 14\nCashier: biller\nRoti, Dal Tadka Jeera Rice, Paneer Subzi S Al Ad\n(Q) 1.0 x 149.0 = 149.0\nTotal Qty : 1.0\nGrand Total : 156.00"
+        r = parse_slip(raw, [{"id": 10, "name": "Combo 01 - Mini North Indian Meal"}])
+        self.assertEqual(r["bill_no"], "14")
+        self.assertEqual(r["order_type"], "Dine-in")
+        self.assertEqual(len(r["items"]), 1)
+        self.assertEqual(r["items"][0]["menu_item_id"], 10)
+        self.assertEqual(r["items"][0]["qty"], 1)
+
     def test_oct29_photo_ocr_bill_typo_and_full_width_quantity(self):
         raw = "Retail Invoice\nDate: 29-10-2026 20:24\nPick Up\nB1ll No.: 13\nCashier: biller\nChappati (2) With Channa\n\uff08Q\uff09 1.0 x 89.0 =89.0\nTotal Qty : 1.0\nSub Total : 89.00"
         r = parse_slip(raw, [{"id": 4, "name": "Chappati (2) With Channa"}])

@@ -8,6 +8,7 @@ import io
 import json
 import re
 import unicodedata
+from pathlib import Path
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -64,6 +65,18 @@ def parse_slip(text: str, menu: list[dict]) -> dict:
     menu_keys: dict[str, list[dict]] = {}
     for item in menu:
         menu_keys.setdefault(_key(item["name"]), []).append(item)
+    # Reuse the restaurant's explicit POS names, including combo descriptions.
+    # Never split these names at commas or guess a dish from its price.
+    seed_path = Path(__file__).resolve().parents[2] / "data/menu_seed.json"
+    if seed_path.is_file():
+        aliases = json.loads(seed_path.read_text(encoding="utf-8"))["pos_name_map"]
+        for printed, canonical in aliases.items():
+            targets = [m for m in menu if m["name"] == canonical]
+            if len(targets) == 1:
+                key = _key(printed)
+                matches = menu_keys.setdefault(key, [])
+                if all(m["id"] != targets[0]["id"] for m in matches):
+                    matches.append(targets[0])
     warnings, items = [], []
     kot = re.search(r"\bK\s*O\s*T\s*(?:No\.?|Number|#)?\s*[:.#-]?\s*(\d+)\b", text, re.I)
     bill = re.search(r"\bB[i1l]ll\s*(?:No\.?|Number|#)\s*[:.#-]?\s*(\d+)\b", text, re.I)
