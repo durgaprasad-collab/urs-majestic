@@ -34,6 +34,25 @@ def read_bill(data, api_key):
 
 _NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 _HSN = re.compile(r"\(?\bHSN\b[-\s:]*\d+\)?", re.I)
+_CELL = re.compile(r"-?\d[\d,]*(?:\.\d+)?%?")
+_PACK = re.compile(r"(\d+(?:\.\d+)?)\s*(kg|g|gm|ml|ltr|l)\b", re.I)
+
+
+def _pack_total(description, count):
+    """'Capsicum 250 g' x 4 -> (1.0, 'kg'). Ledger quantities are by weight/volume,
+    so a bill's pack count is multiplied by the pack size in its description.
+    Returns None when the description has no size."""
+    sizes = _PACK.findall(description)
+    if not sizes:
+        return None
+    size, unit = sizes[-1]
+    unit = {"gm": "g", "ltr": "l"}.get(unit.lower(), unit.lower())
+    total = round(float(size) * count, 3)
+    if unit == "g" and total >= 1000:
+        total, unit = round(total / 1000, 3), "kg"
+    elif unit == "ml" and total >= 1000:
+        total, unit = round(total / 1000, 3), "l"
+    return total, unit
 
 
 def _gst_invoice_rows(rows):
@@ -64,6 +83,30 @@ def _gst_invoice_rows(rows):
         found.append((text, qty, total))
         used.update(range(j + 1, i + 1))
         used.update(range(i + 1, i + 12))
+    # Tables that print a bare HSN code line after the description and then 13 cells:
+    # qty, unit price, unit taxable, gross, discount, other charges, taxable,
+    # CGST %, CGST, SGST %, SGST, cess, total (BigBasket). Same sum check.
+    for i, row in enumerate(rows):
+        if i in used or not re.fullmatch(r"\d{4,8}", row):
+            continue
+        cells, k = [], i + 1
+        while k < len(rows) and _CELL.fullmatch(rows[k]):
+            cells.append(float(rows[k].replace(",", "").rstrip("%")))
+            k += 1
+        if len(cells) < 13:
+            continue
+        qty, taxable, cgst, sgst, cess, total = cells[0], cells[6], cells[8], cells[10], cells[11], cells[12]
+        if qty <= 0 or abs(taxable + cgst + sgst + cess - total) > 0.06:
+            continue
+        desc, j = [], i - 1
+        while j >= 0 and re.search(r"[A-Za-z]", rows[j]) and not re.match(r"^(item description|total|si|no\.?)\b", rows[j], re.I):
+            desc.insert(0, rows[j])
+            j -= 1
+        text = " ".join(desc).strip(" -")
+        if not text:
+            continue
+        found.append((text, qty, total))
+        used.update(range(j + 1, i + 14))
     # "Delivery and other charges" row: '-' cells, then taxable, CGST %, CGST,
     # SGST %, SGST, cess %, cess, total. Logged as one charge of the total incl. GST.
     for i, row in enumerate(rows):
@@ -91,10 +134,10 @@ def _gst_invoice_rows(rows):
 
 def _bill_header(content):
     out = {}
-    m = re.search(r"Invoice Date\W*(\d{4}-\d{2}-\d{2})", content, re.I)
+    m = re.search(r"Invoice Date\W*(?:Invoice Date\W*)*(\d{4}-\d{2}-\d{2})", content, re.I)
     if m:
         out["date"] = m.group(1)
-    m = re.search(r"Invoice (?:Number|No\.?)\W*([A-Z0-9][A-Z0-9/-]{5,})", content, re.I)
+    m = re.search(r"Invoice (?:Number|No\.?)\W*(?:Invoice (?:Number|No\.?)\W*)*(?=[A-Z0-9/-]*\d)([A-Z0-9][A-Z0-9/-]{5,})", content, re.I)
     if m:
         out["bill_ref"] = m.group(1)
     return out
@@ -113,13 +156,18 @@ def parse_bill(content, ingredients):
         k = key(text)
         # An item whose name sits inside the printed description ("Sunflower Oil" in
         # "Be Rite Refined Sunflower Oil (Pouch)") is chosen only when exactly one does.
-        inside = [c[0] for n, c in names.items() if n and len(c) == 1 and f" {n} " in f" {k} "]
-        item = inside[0] if len(inside) == 1 else None
+        hits = {n: c[0] for n, c in names.items() if n and len(c) == 1 and f" {n} " in f" {k} "}
+        # Several hits ("Salt" and "Iodised Salt"): the longest wins only if it contains the rest.
+        longest = max(hits, key=len) if hits else None
+        item = hits[longest] if longest and all(n in longest for n in hits) else None
         if re.match(r"^(delivery|shipping|handling)\b", text, re.I):
             # The ledger's one item for these charges, quantity 1.
             item = (names.get("vendor delivery charge") or [None])[0] if len(names.get("vendor delivery charge", [])) == 1 else None
-        # Quick-commerce bills give pieces, not weight: unit is left as pcs for the buyer to confirm.
-        lines.append({"name": item.name if item else text, "qty": qty, "unit": "pcs", "amount": total})
+        # A size in the description gives weight/volume (4 x 250 g = 1 kg); otherwise the
+        # bill gives pieces only and the unit is left as pcs for the buyer to confirm.
+        pack = None if re.match(r"^(delivery|shipping|handling)\b", text, re.I) else _pack_total(text, qty)
+        lines.append({"name": item.name if item else text, "qty": pack[0] if pack else qty,
+                      "unit": pack[1] if pack else "pcs", "amount": total})
     # Unit may touch the quantity ("3kg"), "pes"/"pc" are OCR/shorthand for pcs, and
     # handwriting adds trailing marks ("72-", "72/-"). A line with no unit stays
     # unparsed on purpose: the quantity could be kg or pieces.

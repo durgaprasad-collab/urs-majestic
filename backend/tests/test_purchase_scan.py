@@ -39,6 +39,28 @@ class PurchaseScanTests(unittest.TestCase):
         bad = parse_bill("\n".join(cells).replace("492.00", "500.00"), [])
         self.assertEqual([l["name"] for l in bad["lines"]], ["Delivery and other charges"])
 
+    def test_bigbasket_invoice_bare_hsn_pack_sizes_and_doubled_headers(self):
+        def row(*c):
+            return list(c)
+        cells = ["Invoice Number", "Invoice Number", "IBNTN26IODO01341", "Invoice Date", "Invoice Date", "2026-10-30",
+                 "SI", "SI", "No.", "No.", "Item Description", "Item Description", "HSN", "HSN", "TOTAL", "TOTAL", "Value", "Value"]
+        cells += row("1", "fresho! Lemon 250 g", "08051000", "1", "57.50", "46.44", "46.44", "0.00", "0.44", "46.44", "0.00%", "0.00", "0.00%", "0.00", "0.00", "46.44")
+        cells += row("2", "fresho! Capsicum - Green", "250 g", "07099920", "4", "31.25", "18.68", "74.70", "0.00", "0.70", "74.70", "0.00%", "0.00", "0.00%", "0.00", "0.00", "74.70")
+        cells += row("3", "Tata Salt Vacuum", "Evaporated Iodised Salt 1", "kg Pouch", "25010020", "2", "32.00", "31.30", "62.59", "0.00", "0.59", "62.59", "0.00%", "0.00", "0.00%", "0.00", "0.00", "62.59")
+        cells += row("4", "Eastern Kashmiri Chilli", "Powder 250 g Pouch", "09042229", "2", "295.00", "155.99", "327.58", "0.00", "3.08", "311.98", "2.50%", "7.80", "2.50%", "7.80", "0.00", "327.58")
+        cells += row("5", "Amul Curd - Creamy &", "Tasty 900 g Pouch", "04039090", "4", "58.00", "55.76", "234.20", "0.00", "2.20", "223.04", "2.50%", "5.58", "2.50%", "5.58", "0.00", "234.20")
+        cells += ["7.01", "718.75", "745.51", "Handling Charge", "Handling Charge", "Rs.", "7.00"]
+        items = [SimpleNamespace(name=n) for n in ("Lemon", "Capsicum", "Salt", "Iodised Salt", "Chilli Powder", "Curd")]
+        result = parse_bill("\n".join(cells), items)
+        self.assertEqual([(l["name"], l["qty"], l["unit"], l["amount"]) for l in result["lines"]], [
+            ("Lemon", 250.0, "g", 46.44), ("Capsicum", 1.0, "kg", 74.7), ("Iodised Salt", 2.0, "kg", 62.59),
+            ("Chilli Powder", 500.0, "g", 327.58), ("Curd", 3.6, "kg", 234.2)])
+        self.assertEqual(result["date"], "2026-10-30")
+        self.assertEqual(result["bill_ref"], "IBNTN26IODO01341")
+        # The handling charge is already inside the item totals (their "other charges"
+        # column sums to it), so it is not added as a second line.
+        self.assertIn("Handling Charge", result["unparsed"])
+
     def test_duplicate_names_are_not_silently_chosen(self):
         result = parse_bill("RICE 2 kg 80", [SimpleNamespace(name="Rice"), SimpleNamespace(name="rice")])
         self.assertEqual(result["lines"][0]["name"], "RICE")
