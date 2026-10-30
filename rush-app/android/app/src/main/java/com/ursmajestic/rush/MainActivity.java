@@ -61,7 +61,7 @@ public class MainActivity extends BridgeActivity {
         private boolean trustedPage() {
             Uri uri = Uri.parse(web.getUrl() == null ? "" : web.getUrl());
             return "https".equals(uri.getScheme()) && "admin.ursmajestic.com".equals(uri.getHost())
-                && "/rush".equals(uri.getPath());
+                && ("/rush".equals(uri.getPath()) || "/purchases".equals(uri.getPath()));
         }
 
         private void reply(String id, String text, String error) {

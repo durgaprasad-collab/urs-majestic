@@ -10,10 +10,11 @@ A purchase row is a financial record. Three rules hold everywhere below:
    carries a frozen cost snapshot that does not recompute on its own.
 """
 import re
+import math
 from datetime import date, timedelta
 import json
 from urllib.parse import urlencode
-from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
@@ -163,6 +164,7 @@ def _snapshot(p: Purchase) -> dict:
         "purchase_date": p.purchase_date,
         "usage_type": p.usage_type,
         "notes": p.notes,
+        "storage_location": p.storage_location,
     }
 
 
@@ -275,6 +277,11 @@ async def save_bill(request: Request, db: Session = Depends(get_db)):
     usage = body.get("usage_type") or "menu"
     if usage not in _SELECTABLE_USAGE:
         return JSONResponse({"error": "Unknown usage type."}, status_code=400)
+    storage = body.get("storage_location")
+    if storage not in ("home", "restaurant"):
+        return JSONResponse({"error": "Choose where the goods are stored."}, status_code=400)
+    if body.get("ocr_text") and body.get("items_confirmed") is not True:
+        return JSONResponse({"error": "Review and confirm the extracted items first."}, status_code=400)
     vendor = (body.get("vendor") or "").strip()[:120] or None
     bill_ref = (body.get("bill_ref") or "").strip()[:80] or None
     lines = []
@@ -284,7 +291,7 @@ async def save_bill(request: Request, db: Session = Depends(get_db)):
         except (KeyError, TypeError, ValueError):
             return JSONResponse({"error": f"Line {n}: item, quantity and amount are all needed."}, status_code=400)
         unit = raw.get("unit")
-        if qty <= 0 or amount < 0 or unit not in _UNITS or not db.get(Ingredient, iid):
+        if not math.isfinite(qty) or not math.isfinite(amount) or qty <= 0 or amount < 0 or unit not in _UNITS or not db.get(Ingredient, iid):
             return JSONResponse({"error": f"Line {n}: check the quantity, unit and amount."}, status_code=400)
         lines.append((iid, qty, unit, amount))
     if not lines:
@@ -308,15 +315,33 @@ async def save_bill(request: Request, db: Session = Depends(get_db)):
         # same memo keyed twice (two people logged one cash memo on 10 Oct).
         return JSONResponse({"duplicates": dups, "whole_bill": matched_lines == len(lines)}, status_code=409)
 
+    # A purchase dated on or before the item's latest physical count is already
+    # on the shelf in that count, so the stock trigger skips it: the purchase is
+    # recorded but never reaches the stock log. Say so before saving.
+    covered = []
+    if usage == "menu" and not body.get("ack_covered"):
+        for iid, qty, unit, amount in lines:
+            ing = db.get(Ingredient, iid)
+            if ing.category == "Staff":
+                continue
+            if db.execute(text("SELECT purchase_covered_by_count(:i, :d)"), {"i": iid, "d": pdate}).scalar():
+                covered.append(f"{ing.name}: {qty:g} {unit}")
+        if covered:
+            return JSONResponse({"covered": covered, "date": pdate.isoformat()}, status_code=409)
+
     note = " \u00b7 ".join(x for x in (vendor, bill_ref) if x) or None
     created = []
     try:
+        receipt_id = None
+        if body.get("ocr_text"):
+            receipt_id = db.execute(text("INSERT INTO purchase_receipts (ocr_text, uploaded_by) VALUES (:t, :u) RETURNING id"),
+                                    {"t": str(body["ocr_text"])[:60000], "u": user.id}).scalar_one()
         for iid, qty, unit, amount in lines:
             # Staff-meal items (Drumstick, Ladies Finger, ...) never count as
             # food cost or kitchen stock, whatever the bill's "For" says.
             line_usage = "others_personal" if (db.get(Ingredient, iid).category == "Staff") else usage
             p = Purchase(ingredient_id=iid, qty=qty, unit=unit, total_price=amount, purchase_date=pdate,
-                         usage_type=line_usage, entered_by_user_id=user.id, vendor=vendor, bill_ref=bill_ref, notes=note)
+                         usage_type=line_usage, storage_location=storage, purchase_receipt_id=receipt_id, entered_by_user_id=user.id, vendor=vendor, bill_ref=bill_ref, notes=note)
             db.add(p)
             db.flush()
             created.append(p.id)
@@ -405,6 +430,7 @@ async def purchases_edit_post(
     usage_type: str = Form(...),
     reason: str = Form(default=""),
     notes: str = Form(default=""),
+    storage_location: str = Form(default=""),
     row_version: int = Form(...),
     db: Session = Depends(get_db),
 ):
@@ -457,6 +483,9 @@ async def purchases_edit_post(
         purchase.total_price = float(total_price)
         purchase.purchase_date = date.fromisoformat(purchase_date)
         purchase.usage_type = usage_type
+        if storage_location not in ("", "home", "restaurant"):
+            raise ValueError("Unknown storage location")
+        purchase.storage_location = storage_location or None
         purchase.notes = notes.strip() or None
         db.flush()
 
@@ -628,3 +657,36 @@ def _receipt_filename(db: Session, user, original: str | None) -> str:
                      {"n": name}).first():
         name, n = f"{base}_{n}{ext}", n + 1
     return name
+
+
+@router.post("/purchases/scan-text")
+async def purchase_scan_text(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    from app.services.purchase_scan import parse_bill
+    try:
+        body = await request.json()
+    except (ValueError, TypeError):
+        return JSONResponse({"error": "Provide bill text as JSON."}, status_code=400)
+    content = body.get("text") if isinstance(body, dict) else None
+    if not isinstance(content, str) or not content.strip() or len(content) > 60000:
+        return JSONResponse({"error": "Provide bill text (up to 60,000 characters)."}, status_code=400)
+    return parse_bill(content, _ingredient_options(db))
+
+
+@router.post("/purchases/scan")
+def purchase_scan(request: Request, bill: UploadFile = File(...), db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    from app.services.purchase_scan import parse_bill, read_bill
+    from app.core.config import settings
+    data = bill.file.read(10_000_001)
+    if len(data) > 10_000_000:
+        return JSONResponse({"error": "Use a bill smaller than 10 MB."}, status_code=400)
+    try:
+        content = read_bill(data, settings.OCR_SPACE_API_KEY)
+        return parse_bill(content, _ingredient_options(db))
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)

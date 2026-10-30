@@ -106,6 +106,7 @@
     if (!it) { chk.textContent = 'Not in the item list'; chk.classList.add('bad'); return; }
     if (!(q > 0) || !(a >= 0)) return;
     const qi = toItemUnit(q, sel.value, it);
+    if (!Number.isFinite(qi) || qi <= 0) { chk.textContent = 'Choose a compatible unit'; chk.classList.add('bad'); return; }
     let pre = sel.value !== it.unit ? `= ${+qi.toFixed(3)} ${it.unit} · ` : '';
     const p = a / qi;
     if (!it.usual) { chk.textContent = pre + perLabel(p, it.unit) + ' · no price history'; return; }
@@ -159,7 +160,79 @@
   $('[data-pu-focus]').addEventListener('click', () => setTimeout(() => body.querySelector('[data-l-item]').focus(), 50));
   $('[data-pu-add-item]').addEventListener('click', e => { e.preventDefault(); const f = $('[data-pu-quick]'); f.hidden = !f.hidden; if (!f.hidden) f.querySelector('input').focus(); });
 
-  async function save(override) {
+  let scannedText = '';
+  const scanStatus = $('[data-pu-scan-status]');
+  function reviewDraft(j) {
+    scannedText = j.text;
+    $('[data-pu-text]').value = j.text;
+    $('[data-pu-review]').hidden = false;
+    $('[data-pu-confirm]').checked = false;
+    for (const line of j.lines) {
+      const tr = addLine(false);
+      tr.querySelector('[data-l-item]').value = line.name;
+      check(tr);
+      const unit = tr.querySelector('[data-l-unit]');
+      if (![...unit.options].some(o => o.value === line.unit)) unit.add(new Option(line.unit + ' — check unit', line.unit));
+      unit.value = line.unit;
+      tr.querySelector('[data-l-qty]').value = line.qty;
+      tr.querySelector('[data-l-amt]').value = line.amount;
+      check(tr);
+    }
+    const skipped = $('[data-pu-unparsed]');
+    skipped.hidden = !j.unparsed.length;
+    skipped.textContent = 'Not added automatically — check these lines: ' + j.unparsed.join(' · ');
+    scanStatus.textContent = `${j.lines.length} candidate items. Review and correct before submitting.`;
+    total();
+  }
+  async function scanResponse(res) {
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || 'Could not read the bill.');
+    reviewDraft(j);
+  }
+  $('[data-pu-parse]').addEventListener('click', async () => {
+    try {
+      await scanResponse(await fetch('/purchases/scan-text', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text: $('[data-pu-text]').value})}));
+    } catch (e) { scanStatus.textContent = e.message; }
+  });
+  body.addEventListener('input', () => { $('[data-pu-confirm]').checked = false; });
+  body.addEventListener('change', () => { $('[data-pu-confirm]').checked = false; });
+  let nativePending = null;
+  window.__rushOCRResult = (id, result) => {
+    if (!nativePending || nativePending.id !== id) return;
+    clearTimeout(nativePending.timer);
+    result.error ? nativePending.reject(new Error(result.error)) : nativePending.resolve(result.text);
+    nativePending = null;
+  };
+  for (const input of root.querySelectorAll('[data-pu-camera], [data-pu-upload]')) input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 10000000) { scanStatus.textContent = 'Use a file smaller than 10 MB.'; return; }
+    const controls = [...root.querySelectorAll('[data-pu-camera], [data-pu-upload], [data-pu-parse], [data-pu-save]')];
+    controls.forEach(c => c.disabled = true);
+    scanStatus.textContent = 'Reading bill…';
+    try {
+      if (window.URSOCR && file.type.startsWith('image/')) {
+        const photo = await new Promise((resolve, reject) => {
+          const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file);
+        });
+        const text = await new Promise((resolve, reject) => {
+          const id = 'purchase-' + Date.now();
+          const timer = setTimeout(() => { nativePending = null; reject(new Error('Reading timed out. Try again.')); }, 60000);
+          nativePending = {id, resolve, reject, timer}; window.URSOCR.recognize(photo, id);
+        });
+        await scanResponse(await fetch('/purchases/scan-text', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text})}));
+      } else {
+        const form = new FormData(); form.append('bill', file);
+        await scanResponse(await fetch('/purchases/scan', {method: 'POST', body: form}));
+      }
+    } catch (e) { scanStatus.textContent = e.message; }
+    finally { controls.forEach(c => c.disabled = false); input.value = ''; }
+  });
+
+  async function save(override, ackCovered) {
+    if (!$('[data-pu-storage]').value) { alert('Choose where the goods are stored.'); return; }
+    if (scannedText && !$('[data-pu-confirm]').checked) { alert('Check the bill items and tick the confirmation.'); return; }
     const lines = [];
     for (const tr of body.querySelectorAll('tr')) {
       const name = tr.querySelector('[data-l-item]').value.trim();
@@ -169,6 +242,7 @@
       if (!it) { alert(`"${name}" isn't in the item list. Pick it from the suggestions or add it.`); return; }
       if (!(parseFloat(q) > 0) || !(parseFloat(a) >= 0)) { alert(`${it.name}: type the quantity and the amount.`); return; }
       const qi = toItemUnit(parseFloat(q), tr.querySelector('[data-l-unit]').value, it);
+      if (!Number.isFinite(qi) || qi <= 0) { alert(`${it.name}: check the unit.`); return; }
       lines.push({ ingredient_id: it.id, qty: +qi.toFixed(4), unit: it.unit, amount: parseFloat(a) });
     }
     if (!lines.length) { alert('Add at least one line.'); return; }
@@ -179,9 +253,15 @@
       const res = await fetch('/purchases/bill', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: $('[data-pu-date]').value, vendor: $('[data-pu-vendor]').value, bill_ref: $('[data-pu-ref]').value,
-          usage_type: $('[data-pu-usage]').value, override: !!override, lines }),
+          storage_location: $('[data-pu-storage]').value, ocr_text: scannedText, items_confirmed: $('[data-pu-confirm]').checked,
+          usage_type: $('[data-pu-usage]').value, override: !!override, ack_covered: !!ackCovered, lines }),
       });
       const j = await res.json().catch(() => ({}));
+      if (res.status === 409 && j.covered) {
+        const list = `\n\n• ${j.covered.join('\n• ')}`;
+        if (!confirm(`A stock count already covers the bill date (${j.date}) for:${list}\n\nThe purchase will be saved and costed, but it will NOT be added to the stock log. Save anyway?`)) return;
+        btn.disabled = false; return save(override, true);
+      }
       if (res.status === 409 && j.duplicates) {
         const list = `\n\n• ${j.duplicates.join('\n• ')}`;
         if (j.whole_bill) {
@@ -189,7 +269,7 @@
           if (!confirm(`This bill looks ALREADY LOGGED. Every line matches a purchase that's already saved:${list}\n\nPress Cancel to stop (recommended). Press OK only if you really bought all of this again.`)) return;
           if (!confirm('Are you sure? Saving it again doubles these purchases and the stock.')) return;
         } else if (!confirm(`Some lines look already logged:${list}\n\nSave the bill anyway?`)) return;
-        btn.disabled = false; return save(true);
+        btn.disabled = false; return save(true, ackCovered);
       }
       if (!res.ok) { alert(j.error || 'Not saved'); return; }
       location.href = `/purchases?notice=${encodeURIComponent(`Bill saved: ${j.created} line${j.created > 1 ? 's' : ''}.`)}`;

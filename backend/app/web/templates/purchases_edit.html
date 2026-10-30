@@ -58,6 +58,12 @@
       {% endif %}
     </select>
 
+    <label class="form-label">Stored at</label>
+    <select name="storage_location" class="form-input">
+      {% for value, label in [('', 'Not recorded'), ('home', 'Home'), ('restaurant', 'Restaurant')] %}
+      <option value="{{ value }}" {% if (purchase.storage_location or '') == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
     <label for="notes" class="form-label">Notes (optional)</label>
     <input id="notes" name="notes" type="text" class="form-input"
            value="{{ purchase.notes or '' }}" placeholder="e.g. Nilgiris, bulk discount" />

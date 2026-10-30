@@ -163,7 +163,7 @@ def recent_bills(db: Session, days: int = BILL_DAYS) -> list[dict]:
     since = business_now().date() - datetime.timedelta(days=days)
     rows = db.execute(text("""
         SELECT p.id, p.purchase_date, p.vendor, p.bill_ref, p.qty, p.unit::text AS unit, p.total_price,
-               p.notes, p.row_version, p.usage_type::text AS usage_type, i.name, i.unit::text AS item_unit,
+               p.storage_location, p.notes, p.row_version, p.usage_type::text AS usage_type, i.name, i.unit::text AS item_unit,
                i.pack_size_g, coalesce(u.name, '—') AS by_name, p.created_at
           FROM purchases p JOIN ingredients i ON i.id = p.ingredient_id
           LEFT JOIN users u ON u.id = p.entered_by_user_id

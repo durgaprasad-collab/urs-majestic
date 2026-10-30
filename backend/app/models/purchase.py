@@ -30,6 +30,7 @@ class Purchase(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Supplier and bill/order number, so lines entered together read as one
     # bill (0044). Optional: local market buys often have neither.
+    storage_location: Mapped[str | None] = mapped_column(Text, nullable=True)
     vendor: Mapped[str | None] = mapped_column(Text, nullable=True)
     bill_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Set when the purchase was created from an uploaded receipt: links back to the

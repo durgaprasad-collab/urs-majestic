@@ -36,10 +36,22 @@
   {# ── NEW BILL ── #}
   <div class="pu-nb" id="new-bill">
     <div class="pu-nb-top">
+      <label>Take bill photo<input type="file" accept="image/*" capture="environment" data-pu-camera></label>
+      <label>Upload PDF / photo<input type="file" accept="application/pdf,image/*" data-pu-upload></label>
+      <span role="status" data-pu-scan-status></span>
+    </div>
+    <details><summary>Bill text / phone OCR</summary>
+      <textarea data-pu-text aria-label="Bill text" rows="6" maxlength="60000" placeholder="Paste text copied with your phone scanner, or check extracted text here."></textarea>
+      <button type="button" class="sl-btn" data-pu-parse>Read text into items</button>
+    </details>
+    <p data-pu-unparsed hidden></p>
+    <label data-pu-review hidden><input type="checkbox" data-pu-confirm> I checked every item, quantity, unit and amount, including lines not extracted.</label>
+    <div class="pu-nb-top">
       <label>Date<input type="date" data-pu-date value="{{ today }}" max="{{ today }}"></label>
       <label class="pu-grow">Supplier<input data-pu-vendor list="pu-vendors" placeholder="Hyperpure, Farmers Factory, local market…" autocomplete="off"></label>
       <datalist id="pu-vendors">{% for v in vendors %}<option>{{ v }}</option>{% endfor %}<option>Local market</option></datalist>
       <label>Bill / order no.<input data-pu-ref placeholder="optional"></label>
+      <label>Stored at<select data-pu-storage><option value="">Choose location…</option><option value="home">Home</option><option value="restaurant">Restaurant</option></select></label>
       <label>For<select data-pu-usage><option value="menu">Menu / kitchen</option><option value="others_personal">Personal / other</option></select></label>
     </div>
     <table class="sl-table pu-lines">
@@ -100,7 +112,7 @@
       </summary>
       <table class="sl-table"><tbody>
         {% for l in b.lines %}
-        <tr><td>{{ l.name }}{% if l.unconvertible %} <span class="pu-flag">{{ l.unit }}, tracked in {{ l.item_unit }}</span>{% endif %}{% if l.usage_type != 'menu' %} <span class="sl-muted">· personal</span>{% endif %}{% if l.total_price < 0 %} <span class="pu-flag">Refund</span>{% endif %}</td>
+        <tr><td>{{ l.name }} <small class="sl-muted">· {{ l.storage_location or "Location not recorded" }}</small>{% if l.unconvertible %} <span class="pu-flag">{{ l.unit }}, tracked in {{ l.item_unit }}</span>{% endif %}{% if l.usage_type != 'menu' %} <span class="sl-muted">· personal</span>{% endif %}{% if l.total_price < 0 %} <span class="pu-flag">Refund</span>{% endif %}</td>
           <td class="r">{{ '%g'|format((l.qty|float)|abs) }} {{ l.unit }}{% if l.total_price < 0 %} <small class="sl-muted">returned</small>{% endif %}</td><td class="r">{% if l.total_price < 0 %}−{{ rs(-l.total_price) }}{% else %}{{ rs(l.total_price) }}{% endif %}</td>
           <td class="r pu-acts"><a href="/purchases/{{ l.id }}/edit">Edit</a>
             <details><summary>Delete</summary>
@@ -118,5 +130,5 @@
   </div>
 </div>
 <script id="pu-data" type="application/json">{"items": {{ items_json|safe }}, "sel": {{ sel or 'null' }}}</script>
-<script src="/static/purchases.js?v=3" defer></script>
+<script src="/static/purchases.js?v=5" defer></script>
 {% endblock %}
