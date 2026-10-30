@@ -167,6 +167,8 @@
     $('[data-pu-text]').value = j.text;
     $('[data-pu-review]').hidden = false;
     $('[data-pu-confirm]').checked = false;
+    if (j.date) $('[data-pu-date]').value = j.date;
+    if (j.bill_ref && !$('[data-pu-ref]').value) $('[data-pu-ref]').value = j.bill_ref;
     for (const line of j.lines) {
       const tr = addLine(false);
       tr.querySelector('[data-l-item]').value = line.name;
