@@ -59,12 +59,20 @@ def balances_in_item_unit(db: Session, ingredient_id: int) -> dict:
 
 
 def move_to_restaurant(db: Session, ingredient_id: int, qty: float, user_id: int, note: str | None) -> dict:
+    return _move(db, "move_home_to_restaurant", ingredient_id, qty, user_id, note)
+
+
+def move_to_home(db: Session, ingredient_id: int, qty: float, user_id: int, note: str | None) -> dict:
+    return _move(db, "move_restaurant_to_home", ingredient_id, qty, user_id, note)
+
+
+def _move(db: Session, function: str, ingredient_id: int, qty: float, user_id: int, note: str | None) -> dict:
     item = _item(db, ingredient_id)
     if item is None:
         raise StockMoveError("Item not found")
     try:
         transfer_id = db.execute(
-            text("SELECT move_home_to_restaurant(:i, :q, :u, :by, :n)"),
+            text(f"SELECT {function}(:i, :q, :u, :by, :n)"),
             {"i": ingredient_id, "q": qty, "u": item["unit"], "by": user_id, "n": note},
         ).scalar_one()
         db.commit()

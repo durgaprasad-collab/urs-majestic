@@ -86,7 +86,22 @@
                   <span class="u">{{ i.unit }}</span>
                   <span class="sl-ok" data-sl-home-ok hidden>✓ saved</span>
                 </span>
-                <button type="button" class="sl-move" data-sl-move="{{ i.id }}"{% if not i.home %} disabled{% endif %}>Move to restaurant →</button>
+                <button type="button" class="sl-move" data-sl-move="{{ i.id }}">Move some ⇄</button>
+                <span class="sl-xfer" data-sl-xfer="{{ i.id }}" hidden>
+                  <span class="sl-dir">
+                    <button type="button" class="on" data-sl-dir="restaurant">Home → Restaurant</button>
+                    <button type="button" data-sl-dir="home">Restaurant → Home</button>
+                  </span>
+                  <span class="sl-xrow">
+                    <input inputmode="decimal" data-sl-xqty placeholder="Qty" aria-label="Quantity to move for {{ i.name }}">
+                    <span class="u">{{ i.unit }}</span>
+                    <button type="button" class="sl-all" data-sl-all>All</button>
+                    <button type="button" class="sl-go" data-sl-go>Move</button>
+                    <button type="button" class="sl-x" data-sl-cancel aria-label="Cancel">✕</button>
+                  </span>
+                  <small class="sl-avail" data-sl-avail></small>
+                  <small class="sl-err" data-sl-err hidden></small>
+                </span>
                 <small class="sl-upd" data-sl-home-upd>{% if i.home_upd_at %}Home updated {{ i.home_upd_at.strftime('%d %b, %I:%M %p') }} · {{ i.home_upd_by or 'auto' }}{% endif %}</small>
               </span>
             </td>
@@ -156,5 +171,5 @@
   </section>
 </div>
 <script type="application/json" id="sl-data">{{ {"tonight": tonight_ids, "done": s.todo_done, "total": s.todo_total}|tojson }}</script>
-<script src="/static/stock_log.js?v=3" defer></script>
+<script src="/static/stock_log.js?v=4" defer></script>
 {% endblock %}

@@ -9,7 +9,7 @@ Stock rows come from three places, and the UI must never confuse them:
   pace      pace_usage:*     - items sales can't deduct, taken off daily at
             their buying pace
   purchase  purchase_auto:*  - added automatically when a purchase is logged
-  transfer  transfer_in:*    - moved in from home (stock_transfers)
+  transfer  transfer_in:*, transfer_out:* - moved between home and restaurant (stock_transfers)
   system    SYSTEM-COMPUTED rows from one-off repairs
 """
 import datetime
@@ -37,12 +37,12 @@ CATEGORY_ORDER = [
     "Vegetables", "Dairy", "Frozen", "Dry Goods", "Spices", "Condiments", "Pulses", "Flour",
     "Utilities", "packaging", "Beverage - Resale",
 ]
-_AUTO = ("petpooja_usage", "zomato_usage", "swiggy_usage", "pace_usage", "purchase_auto", "transfer_in", "SYSTEM")
+_AUTO = ("petpooja_usage", "zomato_usage", "swiggy_usage", "pace_usage", "purchase_auto", "transfer_in", "transfer_out", "SYSTEM")
 # SQL filter for "a person entered this row" (keep in step with _AUTO).
 HUMAN_ROW_SQL = ("coalesce(s.note, '') NOT LIKE 'petpooja_usage%' AND coalesce(s.note, '') NOT LIKE 'zomato_usage%' "
                  "AND coalesce(s.note, '') NOT LIKE 'swiggy_usage%' AND coalesce(s.note, '') NOT LIKE 'pace_usage%' "
                  "AND coalesce(s.note, '') NOT LIKE 'purchase_auto%' "
-                 "AND coalesce(s.note, '') NOT LIKE 'transfer_in%' "
+                 "AND coalesce(s.note, '') NOT LIKE 'transfer_in%' AND coalesce(s.note, '') NOT LIKE 'transfer_out%' "
                  "AND coalesce(s.note, '') NOT LIKE 'SYSTEM%'")
 
 
@@ -54,7 +54,7 @@ def source_of(note: str | None) -> str:
         return "pace"
     if note.startswith("purchase_auto"):
         return "purchase"
-    if note.startswith("transfer_in"):
+    if note.startswith(("transfer_in", "transfer_out")):
         return "transfer"
     if note.startswith("SYSTEM"):
         return "system"

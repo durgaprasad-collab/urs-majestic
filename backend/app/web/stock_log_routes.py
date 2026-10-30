@@ -55,14 +55,16 @@ _LIST_SQL = text("""
               and s.stock_unit = v.unit::text
               and (pe.event_at is null or s.counted_at > pe.event_at
                    or coalesce(s.note, '') like 'purchase_auto:%'
-                   or coalesce(s.note, '') like 'transfer_in:%')
+                   or coalesce(s.note, '') like 'transfer_in:%'
+                   or coalesce(s.note, '') like 'transfer_out:%')
              then s.on_hand_qty / v.daily_consumption
              else null
            end as cover_days,
            (pe.event_at is not null and s.counted_at is not null
             and s.counted_at <= pe.event_at
             and coalesce(s.note, '') not like 'purchase_auto:%'
-            and coalesce(s.note, '') not like 'transfer_in:%') as stock_stale,
+            and coalesce(s.note, '') not like 'transfer_in:%'
+            and coalesce(s.note, '') not like 'transfer_out:%') as stock_stale,
            -- Order-derived qty comparison (v_stock_model_comparison, pre-existing
            -- view, not modified here). LEFT JOIN so a miss (e.g. non-'recipe'
            -- cost_role ingredients, which that view excludes) yields NULL, not 0 --
@@ -211,8 +213,10 @@ async def move_to_restaurant(ingredient_id: int, request: Request, db: Session =
         return err
     if qty <= 0:
         return JSONResponse({"error": "Enter a quantity above zero"}, status_code=400)
+    # "to" says where the quantity goes; it defaults to the restaurant (the original behaviour).
+    move = home_stock.move_to_home if body.get("to") == "home" else home_stock.move_to_restaurant
     try:
-        result = home_stock.move_to_restaurant(db, ingredient_id, qty, user.id, (body.get("note") or "")[:200])
+        result = move(db, ingredient_id, qty, user.id, (body.get("note") or "")[:200])
     except home_stock.StockMoveError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
     shell_pulse.invalidate()

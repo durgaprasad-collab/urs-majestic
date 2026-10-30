@@ -119,8 +119,8 @@
     });
     const home = document.querySelector(`[data-sl-home="${id}"]`);
     if (home) { home.value = fmt(body.home); home.dataset.orig = fmt(body.home); }
-    const mv = document.querySelector(`[data-sl-move="${id}"]`);
-    if (mv) mv.disabled = !(body.home > 0);
+    const panel = document.querySelector(`[data-sl-xfer="${id}"]`);
+    if (panel) panel.dispatchEvent(new Event('refresh'));
     const box = document.querySelector(`[data-sl-homebox="${id}"]`);
     const upd = box && box.querySelector('[data-sl-home-upd]');
     if (upd) upd.textContent = `Home updated just now · ${body.by}`;
@@ -148,25 +148,53 @@
     });
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
   });
-  document.querySelectorAll('[data-sl-move]').forEach((btn) => btn.addEventListener('click', async () => {
-    const id = btn.dataset.slMove;
-    const box = document.querySelector(`[data-sl-homebox="${id}"]`);
-    const home = document.querySelector(`[data-sl-home="${id}"]`);
-    const raw = window.prompt(`Move how many ${box.dataset.unit} of ${box.dataset.name} from home to the restaurant?\n(At home now: ${home.value || 0} ${box.dataset.unit})`);
-    if (raw === null || raw.trim() === '') return;
-    const qty = Number(raw);
-    if (!(qty > 0)) { window.alert('Enter a quantity above zero.'); return; }
-    btn.disabled = true;
-    try {
-      const body = await postQty(`/stock-log/item/${id}/move`, { qty });
-      showBalances(id, body);
-      const row = btn.closest('tr');
-      const src = row && row.querySelector('[data-sl-src]');
-      if (src) { src.textContent = 'Moved from home'; src.className = 'sl-src transfer'; }
-      const upd = row && row.querySelector('[data-sl-upd]');
-      if (upd) upd.textContent = `Updated just now · ${body.by}`;
-    } catch (err) { window.alert(err.message); btn.disabled = !(Number(home.value) > 0); }
-  }));
+  // "Move some": pick a direction and a quantity (any amount up to what is there).
+  document.querySelectorAll('[data-sl-xfer]').forEach((panel) => {
+    const id = panel.dataset.slXfer;
+    const homeBox = document.querySelector(`[data-sl-homebox="${id}"]`);
+    const home = homeBox.querySelector('[data-sl-home]');
+    const rest = panel.closest('tr').querySelector('[data-sl-qty]');
+    const qty = panel.querySelector('[data-sl-xqty]');
+    const err = panel.querySelector('[data-sl-err]');
+    const avail = panel.querySelector('[data-sl-avail]');
+    const go = panel.querySelector('[data-sl-go]');
+    let to = 'restaurant';
+    const unit = homeBox.dataset.unit;
+    const have = () => Number((to === 'restaurant' ? home : rest).value) || 0;
+    function refresh() {
+      panel.querySelectorAll('[data-sl-dir]').forEach((d) => d.classList.toggle('on', d.dataset.slDir === to));
+      avail.textContent = `${to === 'restaurant' ? 'At home' : 'At restaurant'} now: ${fmt(have()) || 0} ${unit}`;
+      err.hidden = true;
+    }
+    panel.addEventListener('refresh', refresh);
+    panel.querySelectorAll('[data-sl-dir]').forEach((d) => d.addEventListener('click', () => { to = d.dataset.slDir; refresh(); }));
+    panel.querySelector('[data-sl-all]').addEventListener('click', () => { qty.value = fmt(have()); });
+    panel.querySelector('[data-sl-cancel]').addEventListener('click', () => { panel.hidden = true; });
+    document.querySelector(`[data-sl-move="${id}"]`).addEventListener('click', () => {
+      panel.hidden = !panel.hidden;
+      if (!panel.hidden) { refresh(); qty.focus(); }
+    });
+    qty.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go.click(); } });
+    go.addEventListener('click', async () => {
+      const n = Number(qty.value);
+      err.hidden = true;
+      if (!(n > 0)) { err.textContent = 'Enter a quantity above zero.'; err.hidden = false; return; }
+      if (n > have() + 0.0001) { err.textContent = `Only ${fmt(have()) || 0} ${unit} there.`; err.hidden = false; return; }
+      go.disabled = true;
+      try {
+        const body = await postQty(`/stock-log/item/${id}/move`, { qty: n, to: to === 'home' ? 'home' : 'restaurant' });
+        showBalances(id, body);
+        const row = panel.closest('tr');
+        const src = row.querySelector('[data-sl-src]');
+        if (src) { src.textContent = to === 'home' ? 'Moved to home' : 'Moved from home'; src.className = 'sl-src transfer'; }
+        const upd = row.querySelector('[data-sl-upd]');
+        if (upd) upd.textContent = `Updated just now · ${body.by}`;
+        qty.value = '';
+        panel.hidden = true;
+      } catch (e) { err.textContent = e.message; err.hidden = false; }
+      finally { go.disabled = false; }
+    });
+  });
 
   // ── Count tab sections
   document.querySelectorAll('[data-sl-sec]').forEach((a) => a.addEventListener('click', () => {

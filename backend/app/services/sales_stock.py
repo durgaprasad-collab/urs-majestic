@@ -139,7 +139,7 @@ def calculate_ingredient_usage(db, sales) -> tuple[dict, set[str]]:
 
 # Every automatic stock row starts with one of these; anything else is a
 # physical count a person entered.
-AUTO_NOTE_PREFIXES = ("petpooja_usage:", "zomato_usage:", "swiggy_usage:", "pace_usage:", "purchase_auto:", "transfer_in:", "SYSTEM")
+AUTO_NOTE_PREFIXES = ("petpooja_usage:", "zomato_usage:", "swiggy_usage:", "pace_usage:", "purchase_auto:", "transfer_in:", "transfer_out:", "SYSTEM")
 CHANNEL_LEDGER = {"petpooja": "petpooja_usage", "zomato": "zomato_usage", "swiggy": "swiggy_usage"}
 
 Sale = namedtuple("Sale", "item_name qty sale_date")
@@ -245,6 +245,7 @@ def adjust_stock_for_sales(db, sales, ledger: str = "petpooja_usage", dates=None
                AND COALESCE(note, '') NOT LIKE 'pace_usage:%'
                AND COALESCE(note, '') NOT LIKE 'purchase_auto:%'
                AND COALESCE(note, '') NOT LIKE 'transfer_in:%'
+               AND COALESCE(note, '') NOT LIKE 'transfer_out:%'
                AND COALESCE(note, '') NOT LIKE 'SYSTEM%'
                AND (timezone(:business_timezone, counted_at) - interval '5 hours')::date >= :sale_date
              ORDER BY counted_at DESC LIMIT 1
@@ -377,7 +378,7 @@ def adjust_stock_for_pace(db, dates) -> dict:
                 SELECT counted_at, (timezone(:tz, counted_at) - interval '5 hours')::date AS count_day
                   FROM ingredient_stock
                  WHERE ingredient_id = :i AND counted_by IS NOT NULL
-                   AND NOT (COALESCE(note, '') ~ '^(petpooja_usage|zomato_usage|swiggy_usage|pace_usage|purchase_auto|transfer_in|SYSTEM)')
+                   AND NOT (COALESCE(note, '') ~ '^(petpooja_usage|zomato_usage|swiggy_usage|pace_usage|purchase_auto|transfer_in|transfer_out|SYSTEM)')
                    AND (timezone(:tz, counted_at) - interval '5 hours')::date >= :d
                  ORDER BY counted_at DESC LIMIT 1
             """), {"i": iid, "d": d, "tz": settings.BUSINESS_TIMEZONE}).mappings().first()
