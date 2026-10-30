@@ -64,6 +64,28 @@ def _gst_invoice_rows(rows):
         found.append((text, qty, total))
         used.update(range(j + 1, i + 1))
         used.update(range(i + 1, i + 12))
+    # "Delivery and other charges" row: '-' cells, then taxable, CGST %, CGST,
+    # SGST %, SGST, cess %, cess, total. Logged as one charge of the total incl. GST.
+    for i, row in enumerate(rows):
+        if i in used or not re.match(r"^(delivery|shipping|handling)\b.*\bcharges?\b", row, re.I):
+            continue
+        k = i + 1
+        while k < len(rows) and rows[k] in ("-", ""):
+            k += 1
+        nums = []
+        while k < len(rows) and _NUM.fullmatch(rows[k]):
+            nums.append(float(rows[k].replace(",", "")))
+            k += 1
+        if len(nums) < 8:
+            continue
+        taxable, _, cgst, _, sgst, _, cess, total = nums[:8]
+        if total <= 0 or abs(taxable + cgst + sgst + cess - total) > 0.06:
+            continue
+        found.append((row, 1.0, total))
+        used.update(range(i, k))
+        while i > 0 and rows[i - 1] in ("-", ""):
+            i -= 1
+            used.add(i)
     return found, used
 
 
@@ -93,6 +115,9 @@ def parse_bill(content, ingredients):
         # "Be Rite Refined Sunflower Oil (Pouch)") is chosen only when exactly one does.
         inside = [c[0] for n, c in names.items() if n and len(c) == 1 and f" {n} " in f" {k} "]
         item = inside[0] if len(inside) == 1 else None
+        if re.match(r"^(delivery|shipping|handling)\b", text, re.I):
+            # The ledger's one item for these charges, quantity 1.
+            item = (names.get("vendor delivery charge") or [None])[0] if len(names.get("vendor delivery charge", [])) == 1 else None
         # Quick-commerce bills give pieces, not weight: unit is left as pcs for the buyer to confirm.
         lines.append({"name": item.name if item else text, "qty": qty, "unit": "pcs", "amount": total})
     # Unit may touch the quantity ("3kg"), "pes"/"pc" are OCR/shorthand for pcs, and

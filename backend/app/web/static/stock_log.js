@@ -111,6 +111,63 @@
     });
   });
 
+  // ── Stock kept at home: type a count, or move some of it to the restaurant.
+  const fmt = (n) => (n === null || n === undefined ? '' : String(Math.round(n * 1000) / 1000));
+  function showBalances(id, body) {
+    document.querySelectorAll(`[data-sl-qty="${id}"]`).forEach((box) => {
+      box.value = fmt(body.restaurant); box.dataset.orig = fmt(body.restaurant);
+    });
+    const home = document.querySelector(`[data-sl-home="${id}"]`);
+    if (home) { home.value = fmt(body.home); home.dataset.orig = fmt(body.home); }
+    const mv = document.querySelector(`[data-sl-move="${id}"]`);
+    if (mv) mv.disabled = !(body.home > 0);
+    const box = document.querySelector(`[data-sl-homebox="${id}"]`);
+    const upd = box && box.querySelector('[data-sl-home-upd]');
+    if (upd) upd.textContent = `Home updated just now · ${body.by}`;
+  }
+  async function postQty(url, payload) {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || 'Could not save');
+    return body;
+  }
+  document.querySelectorAll('[data-sl-home]').forEach((input) => {
+    input.addEventListener('change', async () => {
+      const raw = input.value.trim();
+      if (raw === '' || raw === (input.dataset.orig || '')) return;
+      const qty = Number(raw);
+      if (Number.isNaN(qty) || qty < 0) { input.classList.add('bad'); return; }
+      input.classList.remove('bad'); input.disabled = true;
+      try {
+        const body = await postQty(`/stock-log/item/${input.dataset.slHome}/home-count`, { qty });
+        showBalances(input.dataset.slHome, body);
+        input.classList.add('saved');
+        const ok = input.parentElement.querySelector('[data-sl-home-ok]'); if (ok) ok.hidden = false;
+      } catch (err) { input.classList.add('bad'); input.title = err.message; }
+      finally { input.disabled = false; }
+    });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
+  });
+  document.querySelectorAll('[data-sl-move]').forEach((btn) => btn.addEventListener('click', async () => {
+    const id = btn.dataset.slMove;
+    const box = document.querySelector(`[data-sl-homebox="${id}"]`);
+    const home = document.querySelector(`[data-sl-home="${id}"]`);
+    const raw = window.prompt(`Move how many ${box.dataset.unit} of ${box.dataset.name} from home to the restaurant?\n(At home now: ${home.value || 0} ${box.dataset.unit})`);
+    if (raw === null || raw.trim() === '') return;
+    const qty = Number(raw);
+    if (!(qty > 0)) { window.alert('Enter a quantity above zero.'); return; }
+    btn.disabled = true;
+    try {
+      const body = await postQty(`/stock-log/item/${id}/move`, { qty });
+      showBalances(id, body);
+      const row = btn.closest('tr');
+      const src = row && row.querySelector('[data-sl-src]');
+      if (src) { src.textContent = 'Moved from home'; src.className = 'sl-src transfer'; }
+      const upd = row && row.querySelector('[data-sl-upd]');
+      if (upd) upd.textContent = `Updated just now · ${body.by}`;
+    } catch (err) { window.alert(err.message); btn.disabled = !(Number(home.value) > 0); }
+  }));
+
   // ── Count tab sections
   document.querySelectorAll('[data-sl-sec]').forEach((a) => a.addEventListener('click', () => {
     document.querySelectorAll('[data-sl-sec]').forEach((x) => x.classList.toggle('on', x === a));

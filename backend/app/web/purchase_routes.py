@@ -324,7 +324,9 @@ async def save_bill(request: Request, db: Session = Depends(get_db)):
             ing = db.get(Ingredient, iid)
             if ing.category == "Staff":
                 continue
-            if db.execute(text("SELECT purchase_covered_by_count(:i, :d)"), {"i": iid, "d": pdate}).scalar():
+            # Same 3-argument check the stock trigger runs: a count taken earlier the same
+            # day does not cover a bill entered now, so that bill still reaches stock.
+            if db.execute(text("SELECT purchase_covered_by_count(:i, :d, now())"), {"i": iid, "d": pdate}).scalar():
                 covered.append(f"{ing.name}: {qty:g} {unit}")
         if covered:
             return JSONResponse({"covered": covered, "date": pdate.isoformat()}, status_code=409)

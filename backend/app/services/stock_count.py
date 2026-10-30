@@ -9,6 +9,7 @@ Stock rows come from three places, and the UI must never confuse them:
   pace      pace_usage:*     - items sales can't deduct, taken off daily at
             their buying pace
   purchase  purchase_auto:*  - added automatically when a purchase is logged
+  transfer  transfer_in:*    - moved in from home (stock_transfers)
   system    SYSTEM-COMPUTED rows from one-off repairs
 """
 import datetime
@@ -36,11 +37,12 @@ CATEGORY_ORDER = [
     "Vegetables", "Dairy", "Frozen", "Dry Goods", "Spices", "Condiments", "Pulses", "Flour",
     "Utilities", "packaging", "Beverage - Resale",
 ]
-_AUTO = ("petpooja_usage", "zomato_usage", "swiggy_usage", "pace_usage", "purchase_auto", "SYSTEM")
+_AUTO = ("petpooja_usage", "zomato_usage", "swiggy_usage", "pace_usage", "purchase_auto", "transfer_in", "SYSTEM")
 # SQL filter for "a person entered this row" (keep in step with _AUTO).
 HUMAN_ROW_SQL = ("coalesce(s.note, '') NOT LIKE 'petpooja_usage%' AND coalesce(s.note, '') NOT LIKE 'zomato_usage%' "
                  "AND coalesce(s.note, '') NOT LIKE 'swiggy_usage%' AND coalesce(s.note, '') NOT LIKE 'pace_usage%' "
                  "AND coalesce(s.note, '') NOT LIKE 'purchase_auto%' "
+                 "AND coalesce(s.note, '') NOT LIKE 'transfer_in%' "
                  "AND coalesce(s.note, '') NOT LIKE 'SYSTEM%'")
 
 
@@ -52,6 +54,8 @@ def source_of(note: str | None) -> str:
         return "pace"
     if note.startswith("purchase_auto"):
         return "purchase"
+    if note.startswith("transfer_in"):
+        return "transfer"
     if note.startswith("SYSTEM"):
         return "system"
     return "counted"
@@ -100,6 +104,8 @@ def stock_view(db: Session) -> list[dict]:
 
     tonight = count_day()
     human = _human_counts(db)
+    from app.services.home_stock import _per_kg as _home_per_kg, home_balances  # same circular-import guard
+    home = home_balances(db)
     resale = _resale_daily(db)
     ingest = _item_ingestion(db)
     by_sales = sales_use(db)
@@ -147,7 +153,14 @@ def stock_view(db: Session) -> list[dict]:
                     use["gap"] = {"buy": buy_daily * k, "pct": round(abs(diff) * 100), "lower": diff < 0}
         src = source_of(r["note"]) if qty is not None else None
         h_day = count_day(h["counted_at"]) if h else None
+        hb = home.get(r["ingredient_id"])
+        home_qty = (_in_item_unit(hb, r, _home_per_kg({"unit": r["unit"], "pack_size_g": r["pack_size_g"]}, hb["unit"]))
+                    if hb else None)
         item = {
+            # Stock kept at home (home_stock); `qty` above is the restaurant balance.
+            "home": home_qty, "home_upd_at": hb["counted_at"].astimezone(business_tz()) if hb else None,
+            "home_upd_by": hb["by_name"] if hb else None,
+            "total": (qty or 0) + (home_qty or 0) if (qty is not None or home_qty is not None) else None,
             "id": r["ingredient_id"], "name": r["name"], "category": cat, "unit": r["unit"],
             "pack": bool(r["pack_size_g"]),
             "qty": qty, "source": src, "estimated": src not in (None, "counted"),

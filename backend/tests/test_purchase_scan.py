@@ -27,15 +27,17 @@ class PurchaseScanTests(unittest.TestCase):
     def test_blinkit_gst_invoice_cells_on_separate_lines(self):
         cells = ["Invoice Number:", "C175222T27057314", "Invoice Date", ": 2026-10-30", "Sr.", "no", "Item Description", "MRP", "Total",
                  "1", "8906035030", "352", "Be Rite Refined Sunflower", "Oil(Pouch) (HSN-15121910)", "215.00", "153.00", "3", "468.57",
-                 "2.50", "11.71", "2.50", "11.71", "0.00", "0.00", "492.00", "-", "-", "Delivery and other charges", "Total", "3", "475.24"]
-        result = parse_bill("\n".join(cells), [SimpleNamespace(name="Sunflower Oil")])
-        self.assertEqual(result["lines"], [{"name": "Sunflower Oil", "qty": 3.0, "unit": "pcs", "amount": 492.0}])
+                 "2.50", "11.71", "2.50", "11.71", "0.00", "0.00", "492.00", "-", "-", "Delivery and other charges", "-", "-", "-", "6.67", "2.50", "0.17", "2.50", "0.17", "0.00", "0.00", "7.00",
+                 "Total", "3", "475.24"]
+        result = parse_bill("\n".join(cells), [SimpleNamespace(name="Sunflower Oil"), SimpleNamespace(name="Vendor delivery charge")])
+        self.assertEqual(result["lines"], [{"name": "Sunflower Oil", "qty": 3.0, "unit": "pcs", "amount": 492.0},
+                                           {"name": "Vendor delivery charge", "qty": 1.0, "unit": "pcs", "amount": 7.0}])
         self.assertEqual(result["date"], "2026-10-30")
         self.assertEqual(result["bill_ref"], "C175222T27057314")
         self.assertNotIn("492.00", result["unparsed"])
         # a row whose cells do not add up is left for the buyer
         bad = parse_bill("\n".join(cells).replace("492.00", "500.00"), [])
-        self.assertEqual(bad["lines"], [])
+        self.assertEqual([l["name"] for l in bad["lines"]], ["Delivery and other charges"])
 
     def test_duplicate_names_are_not_silently_chosen(self):
         result = parse_bill("RICE 2 kg 80", [SimpleNamespace(name="Rice"), SimpleNamespace(name="rice")])

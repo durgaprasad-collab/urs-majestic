@@ -206,7 +206,7 @@ def _enrich(row, activity=None) -> dict:
     purchase_event_at = activity.get("purchase_event_at") if activity else None
     stock_counted_at = activity.get("stock_counted_at") if activity else None
     stock_note = activity.get("stock_note") if activity else None
-    if stock_note and stock_note.startswith("purchase_auto:"):
+    if stock_note and stock_note.startswith(("purchase_auto:", "transfer_in:")):
         stock_fresh = True
     elif purchase_event_at is not None and stock_counted_at is not None:
         stock_fresh = stock_counted_at > purchase_event_at

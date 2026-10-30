@@ -6,7 +6,7 @@
 {% macro num(q) %}{% if q is none %}{% elif q == q|int %}{{ q|int }}{% else %}{{ '%g'|format(q|round(3)) }}{% endif %}{% endmacro %}
 {% macro rate(q) %}{% if q >= 100 %}{{ '%.0f'|format(q) }}{% elif q >= 10 %}{{ '%.1f'|format(q)|replace('.0','') }}{% elif q >= 0.1 %}{{ '%.2f'|format(q) }}{% else %}{{ '%.2g'|format(q) }}{% endif %}{% endmacro %}
 {% macro use(i, short=false) %}{% set u = i.use %}{% if u %}<span class="sl-utag {{ u.kind }}">{{ u.kind }}</span><b>{{ rate(u.daily) }} {{ i.unit }}</b>{% if short %}/day{% if u.kind == 'buying' and u.every %} · every {{ u.every|round|int }} days{% endif %}{% else %}<small>{% if u.kind == 'sales' %}{% if u.peak %}7-day avg · busiest {{ rate(u.peak) }} {{ i.unit }} ({{ u.peak_day.strftime('%a') }}){% else %}from sales{% endif %}{% else %}{% if u.every %}bought every {{ u.every|round|int }} days{% else %}from buying pace{% endif %}{% endif %}</small>{% endif %}{% if u.gap %}<span class="sl-ugap">Buying pace {{ rate(u.gap.buy) }} {{ i.unit }}/day: {{ u.gap.pct }}% {{ 'lower' if u.gap.lower else 'higher' }}{% if u.gap.lower and u.gap.pct > 50 %}, so bills may be missing{% endif %}</span>{% endif %}{% elif not short %}<span class="sl-muted">—</span>{% endif %}{% endmacro %}
-{% set SRC = {'counted': 'Counted', 'sales': 'Est. from sales', 'pace': 'Est. from buying pace', 'purchase': 'After purchase', 'system': 'System'} %}
+{% set SRC = {'counted': 'Counted', 'sales': 'Est. from sales', 'pace': 'Est. from buying pace', 'purchase': 'After purchase', 'transfer': 'Moved from home', 'system': 'System'} %}
 <div class="sl">
 
   <div class="sl-head">
@@ -63,7 +63,7 @@
     </div>
     <div class="sl-card">
       <table class="sl-table">
-        <thead><tr><th>Item</th><th>On hand now <small>· type to correct</small></th><th>Uses / day</th><th class="sl-hide-sm">Last real count</th><th>Cover</th><th class="sl-hide-sm">Why it's flagged</th><th></th></tr></thead>
+        <thead><tr><th>Item</th><th>In stock <small>· restaurant, and at home · type to correct</small></th><th>Uses / day</th><th class="sl-hide-sm">Last real count</th><th>Cover</th><th class="sl-hide-sm">Why it's flagged</th><th></th></tr></thead>
         {% for cat, rows in categories %}
         <tbody data-sl-cat>
           <tr class="sl-cat"><td colspan="7">{{ 'Packaging' if cat == 'packaging' else cat }}<span>{{ rows|length }} items{% if cat == 'Other' %} · no category set{% endif %}</span></td></tr>
@@ -72,12 +72,23 @@
             <td class="sl-item">{{ i.name }}{% if i.ingest %}<small class="sl-ing">Sales off: {% for g in i.ingest %}<span class="{{ 'late' if g.behind is defined and g.behind }}" title="ran {{ g.ran.strftime('%a %d %b, %I:%M %p') }}">{{ g.label }} to {{ g.upto.strftime('%d %b') }}{% if g.never %} (not sold here){% elif g.last_sold %} (none since {{ g.last_sold.strftime('%d %b') }}){% endif %}</span>{{ ' · ' if not loop.last }}{% endfor %}</small>{% elif i.pace_upto %}<small class="sl-ing"><span title="ran {{ i.pace_upto[1].strftime('%a %d %b, %I:%M %p') }}">Taken off at buying pace to {{ i.pace_upto[0].strftime('%d %b') }}</span></small>{% endif %}</td>
             <td>
               <span class="sl-qedit">
-                <input inputmode="decimal" data-sl-qty="{{ i.id }}" value="{{ num(i.qty) }}" placeholder="—" data-orig="{{ num(i.qty) }}" aria-label="On hand for {{ i.name }}">
+                <span class="sl-loc">Restaurant</span>
+                <input inputmode="decimal" data-sl-qty="{{ i.id }}" value="{{ num(i.qty) }}" placeholder="—" data-orig="{{ num(i.qty) }}" aria-label="On hand at the restaurant for {{ i.name }}">
                 <span class="u">{{ i.unit }}</span>
                 {% if i.source %}<span class="sl-src {{ i.source }}" data-sl-src>{{ SRC[i.source] }}</span>{% endif %}
                 <span class="sl-ok" data-sl-ok hidden>✓ saved</span>
               </span>
               <small class="sl-upd" data-sl-upd>{% if i.upd_at %}Updated {{ i.upd_at.strftime('%d %b, %I:%M %p') }} · {{ i.upd_by or 'auto' }}{% endif %}</small>
+              <span class="sl-home" data-sl-homebox="{{ i.id }}" data-unit="{{ i.unit }}" data-name="{{ i.name }}">
+                <span class="sl-qedit">
+                  <span class="sl-loc">At home</span>
+                  <input inputmode="decimal" data-sl-home="{{ i.id }}" value="{{ num(i.home) }}" placeholder="—" data-orig="{{ num(i.home) }}" aria-label="At home for {{ i.name }}">
+                  <span class="u">{{ i.unit }}</span>
+                  <span class="sl-ok" data-sl-home-ok hidden>✓ saved</span>
+                </span>
+                <button type="button" class="sl-move" data-sl-move="{{ i.id }}"{% if not i.home %} disabled{% endif %}>Move to restaurant →</button>
+                <small class="sl-upd" data-sl-home-upd>{% if i.home_upd_at %}Home updated {{ i.home_upd_at.strftime('%d %b, %I:%M %p') }} · {{ i.home_upd_by or 'auto' }}{% endif %}</small>
+              </span>
             </td>
             <td class="sl-use">{{ use(i) }}</td>
             <td class="sl-hide-sm sl-muted" data-sl-last>{% if i.last_at %}{{ num(i.last_qty) }} {{ i.unit }} · {{ i.last_at.strftime('%d %b') }}{% if i.last_by %} · {{ i.last_by }}{% endif %}{% else %}never{% endif %}</td>
@@ -145,5 +156,5 @@
   </section>
 </div>
 <script type="application/json" id="sl-data">{{ {"tonight": tonight_ids, "done": s.todo_done, "total": s.todo_total}|tojson }}</script>
-<script src="/static/stock_log.js?v=2" defer></script>
+<script src="/static/stock_log.js?v=3" defer></script>
 {% endblock %}

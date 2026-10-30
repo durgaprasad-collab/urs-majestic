@@ -5,6 +5,8 @@ already reads from. One checklist page writes counts for all items in one save,
 and /stock-log/history is the trace/audit log.
 """
 
+import math
+
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from sqlalchemy import text
@@ -13,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import business_today, business_tz
 from app.core.database import get_db
 from app.services.stock_log_pdf import build_low_cover_stock_pdf
-from app.services import shell_pulse, stock_count
+from app.services import home_stock, shell_pulse, stock_count
 from app.web.deps import _tmpl, require_user
 from app.web.reorder_routes import record_stock, _LATEST_GAS_SQL, _GAS_AVERAGE_SQL
 
@@ -52,13 +54,15 @@ _LIST_SQL = text("""
               and v.daily_consumption > 0
               and s.stock_unit = v.unit::text
               and (pe.event_at is null or s.counted_at > pe.event_at
-                   or coalesce(s.note, '') like 'purchase_auto:%')
+                   or coalesce(s.note, '') like 'purchase_auto:%'
+                   or coalesce(s.note, '') like 'transfer_in:%')
              then s.on_hand_qty / v.daily_consumption
              else null
            end as cover_days,
            (pe.event_at is not null and s.counted_at is not null
             and s.counted_at <= pe.event_at
-            and coalesce(s.note, '') not like 'purchase_auto:%') as stock_stale,
+            and coalesce(s.note, '') not like 'purchase_auto:%'
+            and coalesce(s.note, '') not like 'transfer_in:%') as stock_stale,
            -- Order-derived qty comparison (v_stock_model_comparison, pre-existing
            -- view, not modified here). LEFT JOIN so a miss (e.g. non-'recipe'
            -- cost_role ingredients, which that view excludes) yields NULL, not 0 --
@@ -182,6 +186,53 @@ async def save_one_count(ingredient_id: int, request: Request, db: Session = Dep
     db.commit()
     shell_pulse.invalidate()
     return JSONResponse({"ok": True, "qty": qty, "unit": unit, "by": user.name})
+
+
+async def _qty_body(request: Request):
+    try:
+        body = await request.json()
+        qty = float(body.get("qty"))
+    except (TypeError, ValueError, AttributeError):
+        return None, None, JSONResponse({"error": "Enter a number"}, status_code=400)
+    if not math.isfinite(qty) or qty < 0:
+        return None, None, JSONResponse({"error": "Enter a quantity of zero or more"}, status_code=400)
+    return qty, body, None
+
+
+@router.post("/stock-log/item/{ingredient_id}/move")
+async def move_to_restaurant(ingredient_id: int, request: Request, db: Session = Depends(get_db)):
+    """Home -> restaurant: debits the home balance and credits the kitchen's in one
+    transaction. Not a purchase: no cost, no expense."""
+    user, redir = require_user(request, db)
+    if redir:
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    qty, body, err = await _qty_body(request)
+    if err:
+        return err
+    if qty <= 0:
+        return JSONResponse({"error": "Enter a quantity above zero"}, status_code=400)
+    try:
+        result = home_stock.move_to_restaurant(db, ingredient_id, qty, user.id, (body.get("note") or "")[:200])
+    except home_stock.StockMoveError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    shell_pulse.invalidate()
+    return JSONResponse({"ok": True, "by": user.name, **result})
+
+
+@router.post("/stock-log/item/{ingredient_id}/home-count")
+async def save_home_count(ingredient_id: int, request: Request, db: Session = Depends(get_db)):
+    """Physical count of what is stored at home (also how opening home stock is set)."""
+    user, redir = require_user(request, db)
+    if redir:
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    qty, _, err = await _qty_body(request)
+    if err:
+        return err
+    try:
+        result = home_stock.set_home_count(db, ingredient_id, qty, user.id)
+    except home_stock.StockMoveError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    return JSONResponse({"ok": True, "by": user.name, **result})
 
 
 @router.post("/stock-log/item/{ingredient_id}/disable")

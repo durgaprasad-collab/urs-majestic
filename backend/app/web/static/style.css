@@ -1637,6 +1637,11 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .sl-src.purchase { background: #EAF4F1; color: #2B7A68; }
 .sl-src.pace { background: #EAF1F7; color: #2F6E9E; }
 .sl-src.system { background: #F0EEE6; color: var(--sl-ink-2); }
+.sl-src.transfer { background: #F1EDF8; color: #6B4FA3; }
+.sl-loc { min-width: 64px; font-size: 11px; font-weight: 600; color: var(--sl-ink-3); text-transform: uppercase; letter-spacing: .03em; }
+.sl-home { display: block; margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--sl-line); }
+.sl-move { margin: 4px 0 0 70px; padding: 5px 10px; border: 1px solid #D4A62A; border-radius: 8px; background: #FFF8E6; font: 600 12px Inter, sans-serif; color: #7A5A00; cursor: pointer; }
+.sl-move:disabled { opacity: .45; cursor: default; border-color: var(--sl-line); background: #F7F6F0; color: var(--sl-ink-3); }
 .sl-cov { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .sl-cov::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .sl-cov.red { background: var(--sl-bad-bg); color: var(--sl-bad); } .sl-cov.orange { background: var(--sl-warn-bg); color: var(--sl-warn); }
