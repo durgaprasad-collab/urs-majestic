@@ -279,7 +279,7 @@ def snapshot(db: Session) -> dict:
            "dishes": sum(p["dishes"] for p in live), "amount": sum(p["amount"] for p in live),
            "walkin": _summary(parts["petpooja"]), "zomato": _summary(parts["zomato"]),
            "still_since": _fmt_dt(freshest["still_since"]), "still_min": round(freshest["still_min"], 1),
-           "top": [{"name": n, "qty": q} for n, q in sorted(merged.items(), key=lambda kv: -kv[1])[:8]],
+           "top": [{"name": n, "qty": q} for n, q in sorted(merged.items(), key=lambda kv: -kv[1])],
            "unmapped": [u for p in live for u in p["unmapped"]],
            "hours": [{"h": h, "n": round(n, 1)} for h, n in sorted(hours.items())],
            "rows": [], "notice": None, "notices": notices, "tight": 0, "out": 0}

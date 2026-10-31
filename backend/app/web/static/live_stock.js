@@ -62,7 +62,13 @@
     const hrs = d.hours || [], mx = Math.max(1, ...hrs.map((h) => h.n));
     $('[data-ls-hrs]').innerHTML = hrs.map((h) => '<i style="height:' + Math.max(4, h.n / mx * 100) + '%" title="' + (h.h % 12 || 12) + (h.h % 24 >= 12 ? ' PM' : ' AM') + ': ' + h.n + ' dishes"></i>').join('');
     $('[data-ls-hl]').innerHTML = hrs.map((h) => '<span>' + (h.h % 12 || 12) + '</span>').join('');
-    $('[data-ls-top]').innerHTML = (d.top || []).map((t) => '<div class="ls-dish"><span>' + esc(t.name) + '</span><b>' + Math.round(t.qty) + '</b></div>').join('');
+    {
+      // Top 8 by name, then one row for the rest so the list adds up to "Dishes sold".
+      const all = d.top || [], shown = all.slice(0, 8), rest = all.slice(8);
+      const row = (n, q) => '<div class="ls-dish"><span>' + n + '</span><b>' + Math.round(q) + '</b></div>';
+      $('[data-ls-top]').innerHTML = shown.map((t) => row(esc(t.name), t.qty)).join('')
+        + (rest.length ? row('Other ' + rest.length + ' dish' + (rest.length === 1 ? '' : 'es'), rest.reduce((a, t) => a + t.qty, 0)) : '');
+    }
     const unm = d.unmapped || [];
     $('[data-ls-unm-card]').hidden = !unm.length;
     $('[data-ls-unm]').innerHTML = unm.map((t) => '<div class="ls-dish"><span>' + esc(t.name) + '</span><b>' + Math.round(t.qty) + '</b></div>').join('');
