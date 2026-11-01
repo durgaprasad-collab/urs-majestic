@@ -109,7 +109,7 @@ async def final(request: Request, db: Session = Depends(get_db)):
             source = f"live-feed order listing {day.isoformat()}"
         elif channel in ("swiggy", "zomato"):
             parse = swiggy_ingest.orders_from_feed if channel == "swiggy" else zomato_ingest.orders_from_feed
-            orders, unmapped = parse(body.get("day"), body.get("orders"), MenuIndex(db))
+            orders, _ = parse(body.get("day"), body.get("orders"), MenuIndex(db))
             day = datetime.date.fromisoformat(str(body["day"]))
             source = f"live-feed {channel} {day.isoformat()}"
         else:
@@ -144,4 +144,4 @@ async def final(request: Request, db: Session = Depends(get_db)):
     log.info("nightly upload %s: %s delivered, %s cancelled", source, result["delivered"], result["cancelled"])
     return JSONResponse({"ok": True, "day": day.isoformat(), **result,
                          "amount": float(sum(o.net for o in orders if o.status == "delivered")),
-                         "unmatched": sorted(unmapped)[:20]})
+                         "unmatched": result["unmatched"][:20]})

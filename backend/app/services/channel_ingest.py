@@ -4,6 +4,7 @@ import datetime
 import decimal
 import logging
 
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -22,6 +23,14 @@ def apply_channel_orders(db: Session, channel: str, day: datetime.date, orders: 
     orders, skipped_today = exclude_today_orders(orders, business_today())
     for order in orders:
         upsert_order(db, channel, order)
+    db.flush()
+    # The database resolves each line's menu item on insert (trigger resolve_order_item_menu_id, which also
+    # follows the links made on Menu Analysis), so the names still unresolved are the ones to report, not
+    # the names this module's own matcher could not place.
+    unmatched = sorted(r[0] for r in db.execute(text(
+        "SELECT DISTINCT oi.raw_name FROM order_items oi JOIN orders o ON o.id = oi.order_id "
+        "WHERE o.channel = :ch AND o.external_order_id = ANY(:ids) AND oi.menu_item_id IS NULL"),
+        {"ch": channel, "ids": [o.external_order_id for o in orders]}))
     days = upsert_daily_channel_sales(db, channel, orders, (day, day), source_file)
     if not any(o.status == "delivered" for o in orders):
         # A finished day with no delivered orders is a real zero, like the CSV's in-between days
@@ -44,5 +53,5 @@ def apply_channel_orders(db: Session, channel: str, day: datetime.date, orders: 
     except Exception:
         # Stock estimates must never block the sales upload itself.
         logging.getLogger(__name__).exception("%s stock deduction failed", channel)
-    return {"days": days, "delivered": sum(1 for o in orders if o.status == "delivered"),
+    return {"days": days, "unmatched": unmatched, "delivered": sum(1 for o in orders if o.status == "delivered"),
             "cancelled": sum(1 for o in orders if o.status != "delivered")}
