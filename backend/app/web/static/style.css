@@ -1533,6 +1533,33 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .td-alltasks summary { cursor: pointer; font-weight: 600; color: #0B3A2E; }
 .td-rolehead { margin: 10px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--td-ink-3); }
 
+/* Live band at the top of Today (static/today_live.js) */
+.td-live[hidden] { display: none; }
+.tl-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.tl-head h2 { margin: 0; }
+.tl-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.tl-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #EEECE4; color: var(--td-ink-2); white-space: nowrap; }
+.tl-chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--td-ink-3); }
+.tl-chip.ok { background: #E8F5EE; color: var(--td-good); } .tl-chip.ok i { background: var(--td-good); }
+.tl-chip.old { background: #FDF5E1; color: var(--td-warn); } .tl-chip.old i { background: var(--td-warn); }
+.tl-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.tl-split { display: flex; gap: 10px; align-items: center; }
+.tl-split span { display: inline-flex; align-items: center; gap: 4px; }
+.tl-split b { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.tl-mix { display: flex; gap: 2px; margin: 14px 0 4px; }
+.tl-mix i { height: 10px; display: block; border-radius: 2px; }
+.tl-mixtxt { margin: 0; font-size: 12px; color: var(--td-ink-2); }
+.tl-lower { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--td-line); }
+.tl-bars { display: flex; align-items: flex-end; gap: 5px; height: 64px; margin-top: 8px; }
+.tl-bars i { flex: 1; max-width: 28px; background: var(--td-walk); border-radius: 3px 3px 0 0; display: block; }
+.tl-attn { margin: 6px 0 0; font-size: 13px; color: var(--td-warn); font-weight: 600; }
+.tl-attn.ok { color: var(--td-good); }
+@media (max-width: 640px) {
+  .tl-tiles { grid-template-columns: 1fr 1fr; }
+  .tl-lower { grid-template-columns: 1fr; }
+  .tl-chip { font-size: 11px; padding: 3px 8px; }
+}
+
 @media (max-width: 1100px) {
   .td-c8, .td-c4, .td-c7, .td-c5 { grid-column: span 12; }
   #tasks .td-tasks { columns: 1; }

@@ -29,7 +29,7 @@ def daily_brief(request: Request, db: Session = Depends(get_db)):
     except ValueError:
         selected = None
     ctx = build_today(db, reporting_date=selected)
-    return _tmpl(request, "today.html", {**ctx, "user": user})
+    return _tmpl(request, "today.html", {**ctx, "user": user, "show_live": selected is None})  # the live band is for the current day only
 
 
 @router.post("/daily-brief/tasks/{task_id}/done")

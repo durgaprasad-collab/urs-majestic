@@ -13,6 +13,10 @@
 {% set v = verdict %}{% set m = month %}
 <div class="td">
 
+  {% if show_live %}
+  <section class="td-card td-live" data-td-live data-be="{{ v.be|round|int }}" aria-label="Live now" hidden></section>
+  {% endif %}
+
   <section class="td-card td-verdict" aria-label="Verdict">
     <div class="td-v-main {{ 'ok' if v.gap >= 0 else 'short' }}">
       <div class="td-k">
@@ -154,5 +158,6 @@
 </div>
 <script type="application/json" id="td-data">{{ {"bars": bars, "month": month}|tojson }}</script>
 <script src="/static/today.js?v=2" defer></script>
+{% if show_live %}<script src="/static/today_live.js?v=1" defer></script>{% endif %}
 {% endif %}
 {% endblock %}
