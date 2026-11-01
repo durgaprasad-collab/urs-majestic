@@ -61,6 +61,21 @@ class PurchaseScanTests(unittest.TestCase):
         # column sums to it), so it is not added as a second line.
         self.assertIn("Handling Charge", result["unparsed"])
 
+    def test_zepto_invoice_multiline_description_and_handling_fee(self):
+        cells = ["Invoice No.: 261133G000042516", "Date : 01-11-2026", "Amt.", "Total", "Amt.",
+                 "1", "Fortune", "Rozana", "Gold", "Basmati", "Rice 1 pack", "(5 kg)", "600.00", "10063020", "1", "571.41", "30.33%", "398.10",
+                 "2.50%", "2.50%", "9.95", "9.95", "0.00%", "+ 0.00", "0.00", "418.00",
+                 "2", "Be-Rite", "Refined", "Sunflower", "Oil 1 L 1", "pack (1 L)", "215.00", "15121910", "6", "204.76", "23.72%", "937.14",
+                 "2.50%", "2.50%", "23.43", "23.43", "0.00%", "+ 0.00", "0.00", "984.00",
+                 "1335.24", "33.38", "33.38", "0.00", "1402.00", "Item Total", "Handling Fee (Inclusive of Taxes)", "1402.00", "5.00",
+                 "Invoice Value", "1407.00", "Annexure", "Tax Rate", "Cess Rate", "Handling Fee", "Taxable Value", "5.00%"]
+        items = [SimpleNamespace(name=n) for n in ("Basmati Rice", "Sunflower Oil", "Vendor delivery charge")]
+        result = parse_bill("\n".join(cells), items)
+        self.assertEqual([(l["name"], l["qty"], l["unit"], l["amount"]) for l in result["lines"]], [
+            ("Basmati Rice", 5.0, "kg", 418.0), ("Sunflower Oil", 6.0, "l", 984.0), ("Vendor delivery charge", 1.0, "pcs", 5.0)])
+        self.assertEqual(result["date"], "2026-11-01")
+        self.assertEqual(result["bill_ref"], "261133G000042516")
+
     def test_duplicate_names_are_not_silently_chosen(self):
         result = parse_bill("RICE 2 kg 80", [SimpleNamespace(name="Rice"), SimpleNamespace(name="rice")])
         self.assertEqual(result["lines"][0]["name"], "RICE")

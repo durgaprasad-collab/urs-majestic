@@ -83,6 +83,30 @@ def _gst_invoice_rows(rows):
         found.append((text, qty, total))
         used.update(range(j + 1, i + 1))
         used.update(range(i + 1, i + 12))
+    # Zepto: the description (several lines) is followed by MRP, a bare HSN line, then
+    # qty, rate, disc %, taxable, CGST %, SGST %, CGST, SGST, cess %, "+ extra cess",
+    # cess, total. Same sum check.
+    for i, row in enumerate(rows):
+        if i in used or i < 2 or not re.fullmatch(r"\d{4,8}", row) or not _NUM.fullmatch(rows[i - 1]):
+            continue
+        cells, k = [], i + 1
+        while k < len(rows) and (_CELL.fullmatch(rows[k]) or re.fullmatch(r"\+\s*\d[\d,]*(?:\.\d+)?", rows[k])):
+            cells.append(float(rows[k].replace(",", "").replace("+", "").rstrip("%")))
+            k += 1
+        if len(cells) < 12:
+            continue
+        qty, taxable, cgst, sgst, extra, cess, total = cells[0], cells[3], cells[6], cells[7], cells[9], cells[10], cells[11]
+        if qty <= 0 or abs(taxable + cgst + sgst + extra + cess - total) > 0.06:
+            continue
+        desc, j = [], i - 2
+        while j >= 0 and re.search(r"[A-Za-z]", rows[j]) and not re.match(r"^(item|total|amt)\b", rows[j], re.I):
+            desc.insert(0, rows[j])
+            j -= 1
+        text = " ".join(desc).strip(" -")
+        if not text:
+            continue
+        found.append((text, qty, total))
+        used.update(range(j + 1, k))
     # Tables that print a bare HSN code line after the description and then 13 cells:
     # qty, unit price, unit taxable, gross, discount, other charges, taxable,
     # CGST %, CGST, SGST %, SGST, cess, total (BigBasket). Same sum check.
@@ -129,6 +153,18 @@ def _gst_invoice_rows(rows):
         while i > 0 and rows[i - 1] in ("-", ""):
             i -= 1
             used.add(i)
+    # "Handling Fee (Inclusive of Taxes)" then the item total and the fee (Zepto). The
+    # annexure's "Handling Fee" heading is followed by words, not numbers, so it is skipped.
+    for i, row in enumerate(rows):
+        if i in used or not re.match(r"^handling fee\b", row, re.I):
+            continue
+        nums, k = [], i + 1
+        while k < len(rows) and _NUM.fullmatch(rows[k]) and len(nums) < 2:
+            nums.append(float(rows[k].replace(",", "")))
+            k += 1
+        if len(nums) == 2 and 0 < nums[1] < nums[0]:
+            found.append((row, 1.0, nums[1]))
+            used.update(range(i, k))
     return found, used
 
 
@@ -137,6 +173,8 @@ def _bill_header(content):
     m = re.search(r"Invoice Date\W*(?:Invoice Date\W*)*(\d{4}-\d{2}-\d{2})", content, re.I)
     if m:
         out["date"] = m.group(1)
+    elif (m := re.search(r"^Date\s*:\s*(\d{2})-(\d{2})-(\d{4})\s*$", content, re.I | re.M)):
+        out["date"] = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
     m = re.search(r"Invoice (?:Number|No\.?)\W*(?:Invoice (?:Number|No\.?)\W*)*(?=[A-Z0-9/-]*\d)([A-Z0-9][A-Z0-9/-]{5,})", content, re.I)
     if m:
         out["bill_ref"] = m.group(1)
