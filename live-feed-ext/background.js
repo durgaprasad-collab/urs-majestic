@@ -2,9 +2,10 @@
 //   1. press Refresh on Petpooja's home page (so its reports aren't behind),
 //   2. open Petpooja's Item Report (Day Wise With Time) for today's business day (1 AM to
 //      1 AM), read its rows and send them to the admin's Live stock tab,
-//   3. open Zomato's Order history, read today's orders and send them too.
-// Read only: it presses Petpooja's Refresh and Search buttons, reads Zomato's order history,
-// and never writes anything on either site.
+//   3. open Zomato's Order history, read today's orders and send them too,
+//   4. open Swiggy's Past Orders, read today's orders and send them too.
+// Read only: it presses Petpooja's Refresh and Search buttons, reads Zomato's and Swiggy's order
+// history, and never writes anything on any of the three sites.
 const BASE = 'https://admin.ursmajestic.com';
 const REPORT_URL = 'https://billing.petpooja.com/custom_reports/view_report/55';
 const REPORT_PATTERN = 'https://billing.petpooja.com/custom_reports/view_report/*';
@@ -12,6 +13,8 @@ const DASHBOARD_URL = 'https://billing.petpooja.com/users/dashboard';
 const DASHBOARD_PATTERN = 'https://billing.petpooja.com/users/dashboard*';
 const ZOMATO_URL = 'https://www.zomato.com/partners/onlineordering/orderHistory/';
 const ZOMATO_PATTERN = 'https://www.zomato.com/partners/onlineordering/*';
+const SWIGGY_URL = 'https://partner.swiggy.com/food/pastorders/';   // + restaurant id
+const SWIGGY_RES_ID = '1389673';                                      // until the page tells the add-on its own
 const DEFAULT_OPEN = '12:00';   // restaurant hours, PC's local time (orders run ~12:30 PM to ~12:30 AM)
 const DEFAULT_CLOSE = '01:00';  // Petpooja's business day also ends at 1 AM
 
@@ -142,10 +145,21 @@ async function zomatoPart(tabId, code, range) {
   return { ok: true, orders: sent.orders, dishes: sent.dishes, msg: `Zomato: ${sent.orders} orders, ${Math.round(sent.dishes)} dishes` };
 }
 
+// Swiggy orders: today's Past Orders list, fetched by the page itself (swiggy_page.js).
+async function swiggyPart(tabId, code, range) {
+  const { swiggyResId } = await load(['swiggyResId']);
+  await goto(tabId, SWIGGY_URL + (swiggyResId || SWIGGY_RES_ID));
+  const res = await ask(tabId, { cmd: 'sread', day: range.day }, 2);
+  if (!res.ok) return { ok: false, msg: `Swiggy: ${res.error || 'read failed'}` };
+  const sent = await post(code, { channel: 'swiggy', orders: res.orders || [] });
+  if (!sent.ok) return { ok: false, msg: `Swiggy: ${sent.error}` };
+  return { ok: true, orders: sent.orders, dishes: sent.dishes, msg: `Swiggy: ${sent.orders} orders, ${Math.round(sent.dishes)} dishes` };
+}
+
 let running = false;
 
 async function run(force = false) {
-  const { code, open, close, zomato } = await load(['code', 'open', 'close', 'zomato']);
+  const { code, open, close, zomato, swiggy } = await load(['code', 'open', 'close', 'zomato', 'swiggy']);
   if (!code) return fail('No helper code saved yet');
   const now = new Date();
   if (!force && !inHours(now, open || DEFAULT_OPEN, close || DEFAULT_CLOSE)) return { ok: true, skipped: 'outside restaurant hours' };
@@ -161,6 +175,10 @@ async function run(force = false) {
     if (zomato !== false) {
       await progress(parts[0].msg + ' · reading Zomato…');
       parts.push(await zomatoPart(tabId, code, range));
+    }
+    if (swiggy !== false) {
+      await progress(parts.map((p) => p.msg).join(' · ') + ' · reading Swiggy…');
+      parts.push(await swiggyPart(tabId, code, range));
     }
     const ok = parts.every((p) => p.ok);
     const msg = parts.map((p) => p.msg).join(' · ');
@@ -196,7 +214,7 @@ chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
   if (msg && msg.cmd === 'run-now') { run(true).then(sendResponse); return true; }
   if (msg && msg.cmd === 'test') { ping().then(sendResponse); return true; }
   if (msg && msg.cmd === 'hours') {
-    load(['open', 'close', 'zomato']).then((s) => sendResponse({ open: s.open || DEFAULT_OPEN, close: s.close || DEFAULT_CLOSE, zomato: s.zomato !== false }));
+    load(['open', 'close', 'zomato', 'swiggy']).then((s) => sendResponse({ open: s.open || DEFAULT_OPEN, close: s.close || DEFAULT_CLOSE, zomato: s.zomato !== false, swiggy: s.swiggy !== false }));
     return true;
   }
 });

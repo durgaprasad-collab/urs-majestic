@@ -7,12 +7,14 @@ About every 10 minutes, **only during the restaurant's hours**, it:
    and presses the report's Search button;
 3. reads the rows and sends them to **admin.ursmajestic.com → Live stock**;
 4. opens **Zomato's partner "Order history"** (zomato.com/partners), scrolls the list, and sends today's
-   orders (rejected / cancelled ones are left out by the server). Untick **Include Zomato** in the add-on to skip this.
+   orders (rejected / cancelled ones are left out by the server). Untick **Include Zomato** in the add-on to skip this;
+5. opens Swiggy's partner portal **Past Orders** (partner.swiggy.com/food/pastorders/<restaurant id>) and sends today's
+   orders the same way. Untick **Include Swiggy** to skip this.
 
-Read only: the only buttons it presses are Petpooja's Refresh and Search; on Zomato it only scrolls the list.
-It never submits or changes anything on either site.
+Read only: the only buttons it presses are Petpooja's Refresh and Search; on Zomato and Swiggy it only fetches the order list.
+It never submits or changes anything on any of the sites.
 
-You must be signed in to **both Petpooja and Zomato** in this Chrome.
+You must be signed in to **Petpooja, Zomato and Swiggy's partner portal** in this Chrome.
 
 ## Restaurant hours
 Default **12:00 PM to 1:00 AM** (PC's local time), set in the add-on's window under **Opens / Closes**.
@@ -30,6 +32,6 @@ the *previous* business day, which is what Petpooja does until 1 AM.
 ## Notes
 - Chrome must be open and the PC awake during service.
 - The badge on the icon shows ✓ (last send worked) or ! (it didn't; open the popup for why).
-- Only walk-in / counter sales are in Petpooja's item report. Zomato and Swiggy join after their uploads.
+- Only walk-in / counter sales are in Petpooja's item report. Zomato and Swiggy orders are read from their own portals.
 - The server rejects a report that isn't for today's business day, so a stale or rolled-over report can't overwrite the numbers.
 - To stop it: remove the add-on, or revoke the helper code.

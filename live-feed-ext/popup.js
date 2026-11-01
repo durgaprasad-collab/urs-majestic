@@ -9,6 +9,7 @@ async function status() {
   $('open').value = hrs.open;
   $('close').value = hrs.close;
   $('zomato').checked = hrs.zomato;
+  $('swiggy').checked = hrs.swiggy;
   const s = await chrome.storage.local.get(['code', 'lastAt', 'lastOk', 'lastMsg']);
   const when = `Runs ${clock(hrs.open)} to ${clock(hrs.close)}.`;
   if (!s.code) return show('Paste your helper code, then press Save & test. ' + when);
@@ -19,17 +20,17 @@ async function status() {
 
 $('save').addEventListener('click', async () => {
   const code = $('code').value.trim();
-  const save = { open: $('open').value || '12:00', close: $('close').value || '01:00', zomato: $('zomato').checked };
+  const save = { open: $('open').value || '12:00', close: $('close').value || '01:00', zomato: $('zomato').checked, swiggy: $('swiggy').checked };
   if (code) save.code = code;
   await chrome.storage.local.set(save);
   show('Testing…');
   const r = await chrome.runtime.sendMessage({ cmd: 'test' });
-  show(r && r.ok ? `✓ Connected to admin.ursmajestic.com. Hours: ${clock(save.open)} to ${clock(save.close)}${save.zomato ? ', with Zomato' : ', Petpooja only'}` : '⚠ ' + ((r && r.error) || 'Test failed'), r && r.ok ? 'ok' : 'bad');
+  show(r && r.ok ? `✓ Connected to admin.ursmajestic.com. Hours: ${clock(save.open)} to ${clock(save.close)}${[save.zomato && 'Zomato', save.swiggy && 'Swiggy'].filter(Boolean).map((n) => ', with ' + n).join('') || ', Petpooja only'}` : '⚠ ' + ((r && r.error) || 'Test failed'), r && r.ok ? 'ok' : 'bad');
   $('code').value = '';
 });
 
 $('run').addEventListener('click', async () => {
-  show('Reading Petpooja' + ($('zomato').checked ? ' and Zomato' : '') + '… this takes about half a minute. You can close this window.');
+  show('Reading Petpooja' + ($('zomato').checked ? ' and Zomato' : '') + ($('swiggy').checked ? ' and Swiggy' : '') + '… this takes about half a minute. You can close this window.');
   try {
     const r = await chrome.runtime.sendMessage({ cmd: 'run-now' });
     if (r && r.ok) show('✓ ' + (r.msg || 'Sent'), 'ok');

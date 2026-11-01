@@ -4,7 +4,8 @@ Chrome helper) turned into ingredient use and shown against stock.
 
 A view only. Nothing here touches ingredient_stock: tonight's normal uploads
 take the day off stock for real, and a count entered today wins (only the
-sales after it come off). Swiggy joins after its own upload.
+sales after it come off). Swiggy's orders come from its partner portal's Past
+Orders list, read by the same helper.
 """
 import datetime
 import hashlib
@@ -27,10 +28,11 @@ STALE_MIN = 30           # a read older than this is shown as stale, not live
 MIN_PROJECT_SHARE = 0.25  # before this share of the day has passed, don't project the rest of it
 MAX_ROWS = 500
 KEEP_DAYS = 4
-CHANNELS = ("petpooja", "zomato")
-LEDGER = {"petpooja": "petpooja_usage", "zomato": "zomato_usage"}
-LABEL = {"petpooja": "Walk-in", "zomato": "Zomato"}
-_NOT_COUNTED = re.compile(r"reject|cancel|fail|declin", re.I)  # Zomato order statuses that never became sales
+CHANNELS = ("petpooja", "zomato", "swiggy")
+ORDER_CHANNELS = ("zomato", "swiggy")  # fed as whole orders, not as a Petpooja item report
+LEDGER = {"petpooja": "petpooja_usage", "zomato": "zomato_usage", "swiggy": "swiggy_usage"}
+LABEL = {"petpooja": "Walk-in", "zomato": "Zomato", "swiggy": "Swiggy"}
+_NOT_COUNTED = re.compile(r"reject|cancel|fail|declin", re.I)  # Zomato / Swiggy order statuses that never became sales
 _SEED = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "menu_seed.json"))
 
 
@@ -104,13 +106,18 @@ def clean_orders(raw) -> list[dict]:
         total = float(str(o.get("total") or 0).replace(",", ""))
         if not oid.isdigit() or not math.isfinite(total):
             raise ValueError(f"bad order: {oid[:20]!r}")
+        lines = []
+        for ln in (o.get("lines") or [])[:100]:  # Swiggy sends items already split: [{name, qty}]
+            name, q = str(ln.get("name") or "").strip()[:300], int(ln.get("qty") or 0)
+            if name and q > 0:
+                lines.append({"name": name, "qty": q})
         out.append({"id": oid, "status": str(o.get("status") or "").strip().upper()[:30], "placed": placed,
-                    "items": str(o.get("items") or "")[:2000], "total": total})
+                    "items": str(o.get("items") or "")[:2000], "lines": lines, "total": total})
     return out
 
 
-def zomato_rows(orders: list[dict], day: datetime.date) -> tuple[list[dict], int, float]:
-    """Items sold on Zomato for the business day (1 AM to 1 AM), skipping rejected / cancelled orders.
+def order_rows(orders: list[dict], day: datetime.date) -> tuple[list[dict], int, float]:
+    """Items sold on Zomato or Swiggy for the business day (1 AM to 1 AM), skipping rejected / cancelled orders.
     Returns ([{name, qty, amount}], orders kept, their total)."""
     start = datetime.datetime.combine(day, datetime.time(1, 0))
     end = start + datetime.timedelta(days=1)
@@ -121,6 +128,10 @@ def zomato_rows(orders: list[dict], day: datetime.date) -> tuple[list[dict], int
             continue
         kept += 1
         amount += o["total"]
+        if o["lines"]:
+            for ln in o["lines"]:
+                qty[ln["name"]] = qty.get(ln["name"], 0) + ln["qty"]
+            continue
         for tok in ITEM_SPLIT_RE.split(o["items"]):
             m = ITEM_TOKEN_RE.match(tok.strip())
             if m:
@@ -129,14 +140,17 @@ def zomato_rows(orders: list[dict], day: datetime.date) -> tuple[list[dict], int
     return [{"name": n, "qty": float(q), "amount": 0.0} for n, q in qty.items()], kept, amount
 
 
+zomato_rows = order_rows  # kept for callers that used the old name
+
+
 def save_read(db: Session, token_id: int | None, rows_raw=None, client_read_at: str | None = None,
               channel: str = "petpooja", orders_raw=None) -> dict:
     if channel not in CHANNELS:
         raise ValueError("unknown channel")
     day = count_day(business_now())
     orders_n = None
-    if channel == "zomato":
-        rows, orders_n, amount = zomato_rows(clean_orders(orders_raw), day)
+    if channel in ORDER_CHANNELS:
+        rows, orders_n, amount = order_rows(clean_orders(orders_raw), day)
         dishes = sum(r["qty"] for r in rows)
     else:
         rows = clean_rows(rows_raw)
@@ -202,7 +216,7 @@ def _resolvers(db: Session):
             canon = pos.get(name)
             item = menu.get(canon) if canon else None
         return (item.name, item) if item else (None, None)
-    return {"petpooja": petpooja, "zomato": zomato}
+    return {"petpooja": petpooja, "zomato": zomato, "swiggy": zomato}  # Swiggy's item names go through the same matcher
 
 
 def _part(ch: str, reads: list, resolve, now: datetime.datetime, today: datetime.date) -> dict | None:
@@ -263,7 +277,7 @@ def snapshot(db: Session) -> dict:
     resolvers = _resolvers(db)
     parts = {ch: _part(ch, [r for r in all_reads if r["channel"] == ch], resolvers[ch], now, today) for ch in CHANNELS}
     live = [p for p in parts.values() if p]
-    primary = parts["petpooja"] or parts["zomato"]
+    primary = parts["petpooja"] or parts["zomato"] or parts["swiggy"]
 
     merged: dict[str, float] = {}
     hours: dict[int, float] = {}
@@ -277,7 +291,7 @@ def snapshot(db: Session) -> dict:
     out = {**base, "status": primary["status"], "read_at": _fmt_dt(max(p["read_at"] for p in live)),
            "age_min": round(min(p["age_min"] for p in live), 1), "reads_today": sum(p["reads"] for p in live),
            "dishes": sum(p["dishes"] for p in live), "amount": sum(p["amount"] for p in live),
-           "walkin": _summary(parts["petpooja"]), "zomato": _summary(parts["zomato"]),
+           "walkin": _summary(parts["petpooja"]), "zomato": _summary(parts["zomato"]), "swiggy": _summary(parts["swiggy"]),
            "still_since": _fmt_dt(freshest["still_since"]), "still_min": round(freshest["still_min"], 1),
            "top": [{"name": n, "qty": q} for n, q in sorted(merged.items(), key=lambda kv: -kv[1])],
            "unmapped": [u for p in live for u in p["unmapped"]],

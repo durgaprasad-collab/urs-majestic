@@ -6,7 +6,7 @@
   <div class="sl-head">
     <div>
       <h1 class="sl-title">Live stock</h1>
-      <p class="sl-sub">What the kitchen has used so far today, and what that leaves on the shelf. Walk-in and counter sales come from Petpooja's live Item Report, Zomato orders from Zomato's order history. A view only: it is <b>not</b> written to stock, so tonight's uploads still make it final and nothing is counted twice. Swiggy joins after its upload.</p>
+      <p class="sl-sub">What the kitchen has used so far today, and what that leaves on the shelf. Walk-in and counter sales come from Petpooja's live Item Report, Zomato orders from Zomato's order history, Swiggy orders from the Past Orders list on Swiggy's partner portal. A view only: it is <b>not</b> written to stock, so tonight's uploads still make it final and nothing is counted twice.</p>
     </div>
     <span class="ls-chip" data-ls-chip>Loading…</span>
   </div>
@@ -14,7 +14,7 @@
   <p class="sl-flash ls-notice" data-ls-notice hidden></p>
 
   <div class="ls-src">
-    <span>Sources: <b>Petpooja Item Report</b> (walk-in) + <b>Zomato order history</b></span>
+    <span>Sources: <b>Petpooja Item Report</b> (walk-in) + <b>Zomato order history</b> + <b>Swiggy past orders</b></span>
     <span>Read about every <b>10 min</b>, only in restaurant hours (12 PM to 1 AM)</span>
     <span>Last read <b data-ls-lr>—</b></span>
     <span>Stock before today's sales: <b>last night's close + today's purchases</b>; a count you enter today wins</span>
@@ -48,12 +48,12 @@
         <li>On the PC, open Chrome → <b>chrome://extensions</b> → turn on <b>Developer mode</b> → <b>Load unpacked</b> → choose the <b>live-feed-ext</b> folder (from the project folder).</li>
         <li>Press <b>Create helper code</b> below and copy the code (it's shown once).</li>
         <li>Click the add-on's icon, paste the code, check <b>Opens / Closes</b> (default 12:00 PM to 1:00 AM) and press <b>Save &amp; test</b>.</li>
-        <li>Stay signed in to <b>Petpooja and Zomato</b> in that Chrome (untick "Include Zomato" in the add-on to skip Zomato). During opening hours the add-on uses one small pinned tab: it presses Refresh on Petpooja's home page, reads the item report, then reads Zomato's order history. Outside those hours it does nothing.</li>
+        <li>Stay signed in to <b>Petpooja, Zomato and Swiggy's partner portal</b> in that Chrome (untick "Include Zomato" or "Include Swiggy" in the add-on to skip one). During opening hours the add-on uses one small pinned tab: it presses Refresh on Petpooja's home page, reads the item report, then reads Zomato's order history and Swiggy's Past Orders. Outside those hours it does nothing.</li>
       </ol>
       <p><button type="button" class="sl-btn sl-btn-p" data-ls-code>Create helper code</button> <span class="ls-code" data-ls-codebox hidden></span></p>
       {% if helpers %}<p class="sl-muted">Codes in use: {% for h in helpers %}{{ h.label }} (made {{ h.created_at.strftime('%d %b') }}{% if h.last_used_at %}, last used {{ h.last_used_at.strftime('%d %b %I:%M %p') }}{% else %}, not used yet{% endif %}){{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
     </div>
   </details>
 </div>
-<script src="/static/live_stock.js?v=2" defer></script>
+<script src="/static/live_stock.js?v=3" defer></script>
 {% endblock %}
