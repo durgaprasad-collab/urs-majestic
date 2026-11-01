@@ -20,7 +20,8 @@ is no longer needed. The PC and Chrome must be on:
 - if the PC was off, the next run also catches up the three days before.
 Untick **Upload each finished day automatically** in the add-on to turn it off, or press **Upload yesterday now**.
 It also uploads **Swiggy's** finished day from the Past Orders list (replacing the Swiggy .csv upload): net sales, discounts,
-items and stock use, the same as the CSV. Zomato and the Order Listing are still uploaded manually for now.
+items and stock use, the same as the CSV. Likewise **Zomato's** finished day (replacing the Zomato .csv): the add-on reads each order's details from Zomato's order history
+(subtotal, the restaurant's discounts, items). Only the Petpooja Order Listing is still uploaded manually.
 
 Read only: the only buttons it presses are Petpooja's Refresh and Search; on Zomato and Swiggy it only fetches the order list.
 It never submits or changes anything on any of the sites.

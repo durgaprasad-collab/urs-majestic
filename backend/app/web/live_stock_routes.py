@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.upload_log import UploadLog
-from app.services import live_stock, pos_ingest, swiggy_ingest
+from app.services import channel_ingest, live_stock, pos_ingest, swiggy_ingest, zomato_ingest
 from app.services.uploads.item_matching import MenuIndex
 from app.services.task_engine import refresh_after_upload
 from app.web.deps import _tmpl, require_user
@@ -92,7 +92,7 @@ async def feed(request: Request, db: Session = Depends(get_db)):
 @router.post("/api/live-feed/final")
 async def final(request: Request, db: Session = Depends(get_db)):
     """The add-on's nightly upload of a finished day: Petpooja's item report (replaces the manual
-    Item Report Day Wise .xlsx) or Swiggy's orders (replaces the Past Orders .csv). Safe to send
+    Item Report Day Wise .xlsx), or Swiggy's or Zomato's orders (replace the .csv uploads). Safe to send
     again: a later read replaces that day."""
     tok = live_stock.check_token(db, request.headers.get("authorization"))
     if not tok:
@@ -103,10 +103,11 @@ async def final(request: Request, db: Session = Depends(get_db)):
         if channel == "petpooja":
             rows = pos_ingest.rows_from_feed(body.get("day"), body.get("rows"))
             day, source = rows[0]["sale_date"], f"live-feed {rows[0]['sale_date'].isoformat()}"
-        elif channel == "swiggy":
-            orders, unmapped = swiggy_ingest.orders_from_feed(body.get("day"), body.get("orders"), MenuIndex(db))
+        elif channel in ("swiggy", "zomato"):
+            parse = swiggy_ingest.orders_from_feed if channel == "swiggy" else zomato_ingest.orders_from_feed
+            orders, unmapped = parse(body.get("day"), body.get("orders"), MenuIndex(db))
             day = datetime.date.fromisoformat(str(body["day"]))
-            source = f"live-feed swiggy {day.isoformat()}"
+            source = f"live-feed {channel} {day.isoformat()}"
         else:
             raise ValueError("unknown channel")
     except (ValueError, TypeError, AttributeError, KeyError) as exc:
@@ -116,7 +117,7 @@ async def final(request: Request, db: Session = Depends(get_db)):
         if channel == "petpooja":
             result = pos_ingest.apply_item_sales(db, rows, source)
         else:
-            result = swiggy_ingest.apply_swiggy_orders(db, day, orders, source)
+            result = channel_ingest.apply_channel_orders(db, channel, day, orders, source)
         db.commit()
     except Exception as exc:  # noqa: BLE001 - reported to the add-on, which tries again later
         db.rollback()

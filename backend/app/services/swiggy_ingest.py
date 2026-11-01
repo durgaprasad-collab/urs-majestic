@@ -7,15 +7,8 @@ quantity, and anything not delivered counts as cancelled. Re-sending a day repla
 import datetime
 import decimal
 
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session
-
-from app.core.clock import as_business_time, business_date_of, business_today
-from app.models.daily_channel_sales import DailyChannelSales
-from app.services.sales_stock import adjust_stock_for_channel
-from app.services.uploads.channel_orders import (
-    ParsedItem, ParsedOrder, exclude_today_orders, upsert_daily_channel_sales, upsert_order, write_upload_log,
-)
+from app.core.clock import as_business_time, business_today
+from app.services.uploads.channel_orders import ParsedItem, ParsedOrder
 from app.services.uploads.item_matching import MenuIndex
 
 D = decimal.Decimal
@@ -78,35 +71,3 @@ def orders_from_feed(day: str, raw, menu_index: MenuIndex) -> tuple[list[ParsedO
             net=net, gross=(net + discount).quantize(CENT), restaurant_discount=discount.quantize(CENT),
             platform_discount=D("0"), items=items))
     return orders, unmapped
-
-
-def apply_swiggy_orders(db: Session, day: datetime.date, orders: list[ParsedOrder], source_file: str) -> dict:
-    """Flushes everything; the caller commits."""
-    orders, skipped_today = exclude_today_orders(orders, business_today())
-    for order in orders:
-        upsert_order(db, "swiggy", order)
-    days = upsert_daily_channel_sales(db, "swiggy", orders, (day, day), source_file)
-    if not any(o.status == "delivered" for o in orders):
-        # A finished day with no delivered orders is a real zero, like the CSV's in-between days
-        zero = pg_insert(DailyChannelSales).values(
-            business_date=day, channel="swiggy", net_sales=D("0"), orders=0, gross_order_value=D("0"),
-            restaurant_discount=D("0"), platform_discount=D("0"), source_file=source_file)
-        db.execute(zero.on_conflict_do_update(
-            index_elements=["business_date", "channel"],
-            set_={"net_sales": zero.excluded.net_sales, "orders": zero.excluded.orders,
-                  "gross_order_value": zero.excluded.gross_order_value,
-                  "restaurant_discount": zero.excluded.restaurant_discount,
-                  "platform_discount": zero.excluded.platform_discount, "source_file": zero.excluded.source_file}))
-        days = 1
-    write_upload_log(db, channel="swiggy", source_file=source_file, orders=orders, parse_errors=[],
-                     total_rows_seen=len(orders) + skipped_today, date_range=(day, day), succeeded=True,
-                     rows_skipped_today=skipped_today)
-    try:
-        with db.begin_nested():
-            adjust_stock_for_channel(db, "swiggy", sorted({business_date_of(o.placed_at) for o in orders} | {day}))
-    except Exception:
-        # Stock estimates must never block the sales upload itself.
-        import logging
-        logging.getLogger(__name__).exception("swiggy stock deduction failed")
-    return {"days": days, "delivered": sum(1 for o in orders if o.status == "delivered"),
-            "cancelled": sum(1 for o in orders if o.status != "delivered")}

@@ -160,6 +160,16 @@ async function swiggyPart(tabId, code, range) {
   return { ok: true, orders: sent.orders, dishes: sent.dishes, msg: `Swiggy: ${sent.orders} orders, ${Math.round(sent.dishes)} dishes` };
 }
 
+// The finished day's Zomato orders (calendar day, as Zomato's own CSV), with each order's full bill.
+async function zomatoFinalPart(tabId, code, day) {
+  await goto(tabId, ZOMATO_URL);
+  const res = await ask(tabId, { cmd: 'zread', day, final: true }, 2);
+  if (!res.ok) return { ok: false, msg: `Zomato ${day}: ${res.error || 'read failed'}` };
+  const sent = await post(code, { channel: 'zomato', day, orders: res.orders || [] }, '/api/live-feed/final');
+  if (!sent.ok) return { ok: false, msg: `Zomato ${day}: ${sent.error}` };
+  return { ok: true, msg: `Zomato ${day}: ${sent.delivered} delivered${sent.cancelled ? `, ${sent.cancelled} cancelled` : ''}, ₹${Math.round(sent.amount).toLocaleString('en-IN')}${sent.unmatched && sent.unmatched.length ? `, ${sent.unmatched.length} not matched to the menu` : ''}` };
+}
+
 // The finished day's Swiggy orders (calendar day, as Swiggy's own CSV), sent the same way.
 async function swiggyFinalPart(tabId, code, day) {
   const { swiggyResId } = await load(['swiggyResId']);
@@ -203,17 +213,18 @@ function finalsDue(now, finals) {
 }
 
 async function runFinal(force = false) {
-  const { code, final, finals, finalsS, swiggy } = await load(['code', 'final', 'finals', 'finalsS', 'swiggy']);
+  const { code, final, finals, finalsS, finalsZ, swiggy, zomato } = await load(['code', 'final', 'finals', 'finalsS', 'finalsZ', 'swiggy', 'zomato']);
   if (!code || final === false || running) return { ok: true, skipped: true };
   const now = new Date();
   const due = finalsDue(now, finals || {});
   const dueS = swiggy !== false ? finalsDue(now, finalsS || {}) : [];
-  if (!due.length && !dueS.length) return { ok: true, skipped: 'nothing due' };
+  const dueZ = zomato !== false ? finalsDue(now, finalsZ || {}) : [];
+  if (!due.length && !dueS.length && !dueZ.length) return { ok: true, skipped: 'nothing due' };
   running = true;
   const stop = keepAlive();
   try {
     const tabId = await helperTab();
-    const done = { ...(finals || {}) }, doneS = { ...(finalsS || {}) }, notes = [];
+    const done = { ...(finals || {}) }, doneS = { ...(finalsS || {}) }, doneZ = { ...(finalsZ || {}) }, notes = [];
     let ok = true;
     for (const { day, stage } of due) {          // each source is independent: one failing doesn't stop the other
       const r = await finalPart(tabId, code, day);
@@ -225,8 +236,13 @@ async function runFinal(force = false) {
       notes.push(r.msg);
       if (r.ok) doneS[day] = stage; else ok = false;
     }
+    for (const { day, stage } of dueZ) {
+      const r = await zomatoFinalPart(tabId, code, day);
+      notes.push(r.msg);
+      if (r.ok) doneZ[day] = stage; else ok = false;
+    }
     const trim = (m) => { const keep = Object.keys(m).sort().slice(-10); return Object.fromEntries(keep.map((k) => [k, m[k]])); };
-    await save({ finals: trim(done), finalsS: trim(doneS), finalAt: Date.now(), finalOk: ok, finalMsg: `Nightly upload: ${notes.join(' · ')}` });
+    await save({ finals: trim(done), finalsS: trim(doneS), finalsZ: trim(doneZ), finalAt: Date.now(), finalOk: ok, finalMsg: `Nightly upload: ${notes.join(' · ')}` });
     return { ok, msg: notes.join(' · ') };
   } catch (e) {
     await save({ finalAt: Date.now(), finalOk: false, finalMsg: `Nightly upload stopped: ${String((e && e.message) || e).slice(0, 120)}` });
