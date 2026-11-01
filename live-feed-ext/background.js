@@ -11,6 +11,7 @@
 const BASE = 'https://admin.ursmajestic.com';
 const REPORT_URL = 'https://billing.petpooja.com/custom_reports/view_report/55';
 const REPORT_PATTERN = 'https://billing.petpooja.com/custom_reports/view_report/*';
+const ORDERS_URL = 'https://billing.petpooja.com/orders/order_list/';
 const DASHBOARD_URL = 'https://billing.petpooja.com/users/dashboard';
 const DASHBOARD_PATTERN = 'https://billing.petpooja.com/users/dashboard*';
 const ZOMATO_URL = 'https://www.zomato.com/partners/onlineordering/orderHistory/';
@@ -160,6 +161,16 @@ async function swiggyPart(tabId, code, range) {
   return { ok: true, orders: sent.orders, dishes: sent.dishes, msg: `Swiggy: ${sent.orders} orders, ${Math.round(sent.dishes)} dishes` };
 }
 
+// The finished business day's Order Listing (Petpooja's All Orders page), replacing the manual Order Listing upload.
+async function ordersFinalPart(tabId, code, day) {
+  await goto(tabId, ORDERS_URL);
+  const res = await ask(tabId, { cmd: 'olread', day }, 3);
+  if (!res.ok) return { ok: false, msg: `Orders ${day}: ${res.error || 'read failed'}` };
+  const sent = await post(code, { channel: 'petpooja_orders', day, rows: res.rows }, '/api/live-feed/final');
+  if (!sent.ok) return { ok: false, msg: `Orders ${day}: ${sent.error}` };
+  return { ok: true, msg: `Orders ${day}: ${sent.orders} orders${sent.alarm ? ` (${sent.alarm})` : ''}` };
+}
+
 // The finished day's Zomato orders (calendar day, as Zomato's own CSV), with each order's full bill.
 async function zomatoFinalPart(tabId, code, day) {
   await goto(tabId, ZOMATO_URL);
@@ -213,23 +224,29 @@ function finalsDue(now, finals) {
 }
 
 async function runFinal(force = false) {
-  const { code, final, finals, finalsS, finalsZ, swiggy, zomato } = await load(['code', 'final', 'finals', 'finalsS', 'finalsZ', 'swiggy', 'zomato']);
+  const { code, final, finals, finalsO, finalsS, finalsZ, swiggy, zomato } = await load(['code', 'final', 'finals', 'finalsO', 'finalsS', 'finalsZ', 'swiggy', 'zomato']);
   if (!code || final === false || running) return { ok: true, skipped: true };
   const now = new Date();
   const due = finalsDue(now, finals || {});
+  const dueO = finalsDue(now, finalsO || {});
   const dueS = swiggy !== false ? finalsDue(now, finalsS || {}) : [];
   const dueZ = zomato !== false ? finalsDue(now, finalsZ || {}) : [];
-  if (!due.length && !dueS.length && !dueZ.length) return { ok: true, skipped: 'nothing due' };
+  if (!due.length && !dueO.length && !dueS.length && !dueZ.length) return { ok: true, skipped: 'nothing due' };
   running = true;
   const stop = keepAlive();
   try {
     const tabId = await helperTab();
-    const done = { ...(finals || {}) }, doneS = { ...(finalsS || {}) }, doneZ = { ...(finalsZ || {}) }, notes = [];
+    const done = { ...(finals || {}) }, doneO = { ...(finalsO || {}) }, doneS = { ...(finalsS || {}) }, doneZ = { ...(finalsZ || {}) }, notes = [];
     let ok = true;
     for (const { day, stage } of due) {          // each source is independent: one failing doesn't stop the other
       const r = await finalPart(tabId, code, day);
       notes.push(r.msg);
       if (r.ok) done[day] = stage; else ok = false;
+    }
+    for (const { day, stage } of dueO) {
+      const r = await ordersFinalPart(tabId, code, day);
+      notes.push(r.msg);
+      if (r.ok) doneO[day] = stage; else ok = false;
     }
     for (const { day, stage } of dueS) {
       const r = await swiggyFinalPart(tabId, code, day);
@@ -242,7 +259,7 @@ async function runFinal(force = false) {
       if (r.ok) doneZ[day] = stage; else ok = false;
     }
     const trim = (m) => { const keep = Object.keys(m).sort().slice(-10); return Object.fromEntries(keep.map((k) => [k, m[k]])); };
-    await save({ finals: trim(done), finalsS: trim(doneS), finalsZ: trim(doneZ), finalAt: Date.now(), finalOk: ok, finalMsg: `Nightly upload: ${notes.join(' · ')}` });
+    await save({ finals: trim(done), finalsO: trim(doneO), finalsS: trim(doneS), finalsZ: trim(doneZ), finalAt: Date.now(), finalOk: ok, finalMsg: `Nightly upload: ${notes.join(' · ')}` });
     return { ok, msg: notes.join(' · ') };
   } catch (e) {
     await save({ finalAt: Date.now(), finalOk: false, finalMsg: `Nightly upload stopped: ${String((e && e.message) || e).slice(0, 120)}` });
