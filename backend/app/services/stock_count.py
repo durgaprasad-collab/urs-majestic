@@ -267,6 +267,42 @@ def set_active(db: Session, ingredient_id: int, active: bool, reason: str, user_
     return row["name"]
 
 
+def shortfalls(db: Session) -> list[dict]:
+    """Items whose balance is below zero: sales used more than was ever recorded in
+    (a missing purchase, or a recipe portion that needs recalibrating). The shortfall
+    is what the balance is below zero; usage "adjusted" to what could really have been
+    used since the last count, purchase or move is only what existed then. A restock
+    clears it (migration 0058), so this is only about the current run."""
+    rows = db.execute(text("""
+        WITH latest AS (
+            SELECT DISTINCT ON (s.ingredient_id) s.ingredient_id, s.on_hand_qty, s.unit::text AS unit, s.counted_at
+              FROM ingredient_stock s ORDER BY s.ingredient_id, s.counted_at DESC, s.id DESC)
+        SELECT l.ingredient_id, i.name, COALESCE(i.category::text, 'Other') AS category, l.unit, l.on_hand_qty, l.counted_at
+          FROM latest l JOIN ingredients i ON i.id = l.ingredient_id
+         WHERE i.is_active AND l.on_hand_qty < 0 ORDER BY l.on_hand_qty
+    """)).mappings().all()
+    out = []
+    for r in rows:
+        # Walk back over the usage rows to the last count/purchase/move: the balance after it is
+        # all that was there to use.
+        anchor = db.execute(text("""
+            SELECT on_hand_qty, counted_at, note FROM ingredient_stock s
+             WHERE ingredient_id = :i AND (""" + HUMAN_ROW_SQL + """
+                    OR s.note LIKE 'purchase_auto%' OR s.note LIKE 'transfer_in%')
+             ORDER BY counted_at DESC, id DESC LIMIT 1
+        """), {"i": r["ingredient_id"]}).mappings().first()
+        had = max(float(anchor["on_hand_qty"]), 0.0) if anchor else 0.0
+        short = -float(r["on_hand_qty"])
+        since = db.execute(text("""
+            SELECT min(counted_at) FROM ingredient_stock
+             WHERE ingredient_id = :i AND counted_at > COALESCE(:a, '-infinity') AND on_hand_qty < 0
+        """), {"i": r["ingredient_id"], "a": anchor["counted_at"] if anchor else None}).scalar()
+        out.append({"id": r["ingredient_id"], "name": r["name"], "category": r["category"], "unit": r["unit"],
+                    "short": round(short, 3), "had": round(had, 3), "recorded": round(had + short, 3),
+                    "since": since.astimezone(business_tz()) if since else None})
+    return out
+
+
 def disabled_items(db: Session) -> list[dict]:
     return [dict(r) for r in db.execute(text("""
         SELECT i.id, i.name, i.category,

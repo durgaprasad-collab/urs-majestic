@@ -46,6 +46,16 @@
     <button type="button" class="sl-k warn" data-sl-filter="never"><span class="l">Never counted</span><span class="v">{{ s.never }}</span><span class="s">no real count on record</span></button>
   </div>
 
+  {% if shortfalls %}
+  <div class="sl-card sl-short">
+    <div class="sl-sechead"><h3>Used without stock · {{ shortfalls|length }} item{{ 's' if shortfalls|length != 1 }}</h3><p>Sales used more than was recorded in. Log the missing purchase or recalibrate the recipe grams. The next restock starts from the quantity bought.</p></div>
+    <table class="sl-table"><thead><tr><th>Item</th><th class="r">Short by</th><th class="r">Really used</th><th class="r sl-hide-sm">Recipes say</th><th class="sl-hide-sm">Since</th></tr></thead>
+      {% for f in shortfalls %}<tr><td class="sl-item">{{ f.name }}</td><td class="r"><b>{{ num(f.short) }} {{ f.unit }}</b></td><td class="r">{{ num(f.had) }} {{ f.unit }}</td><td class="r sl-hide-sm">{{ num(f.recorded) }} {{ f.unit }}</td><td class="sl-hide-sm sl-muted">{% if f.since %}{{ f.since.strftime('%d %b, %I:%M %p') }}{% endif %}</td></tr>{% endfor %}
+    </table>
+    <p class="sl-muted" style="padding:6px 12px 10px">"Really used" is what was on the shelf at the last count, purchase or move; "Recipes say" is what the sales deducted since.</p>
+  </div>
+  {% endif %}
+
   <div class="sl-tabs" role="tablist">
     <button type="button" class="on" data-sl-tab="overview">Overview <span>{{ s.stock_total }}</span></button>
     <button type="button" data-sl-tab="count">Count <span>{{ first|length }} first</span></button>
