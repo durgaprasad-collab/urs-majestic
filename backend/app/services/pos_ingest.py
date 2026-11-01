@@ -8,20 +8,17 @@ complete read heals an earlier one."""
 import datetime
 import decimal
 import json
-import logging
 import os
 
 from sqlalchemy.orm import Session
 
 from app.core.clock import business_today
-from app.services.order_derived_stock import sync_order_derived_stock
 from app.services.sales_stock import adjust_stock_for_pace, adjust_stock_for_sales
 from scripts.import_pos import (
     build_resolver, exclude_today, load_sales, pos_alias_map, seed_menu_items,
     upsert_daily_channel_sales, write_upload_log,
 )
 
-logger = logging.getLogger("stock_upload")
 _SEED = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "menu_seed.json"))
 D = decimal.Decimal
 MAX_ROWS = 600
@@ -38,13 +35,6 @@ def apply_item_sales(db: Session, raw_rows: list[dict], source_file: str, *, par
     imported_sales, unmatched = load_sales(db, raw_rows, resolver)
     adjust_stock_for_sales(db, imported_sales)
     adjust_stock_for_pace(db, {s.sale_date for s in imported_sales})
-    try:
-        with db.begin_nested():
-            sync_order_derived_stock(db)
-    except Exception:
-        # Experimental comparison model -- must never block the primary
-        # (control-model) upload it's piggybacking on.
-        logger.exception("order-derived deduction pass failed")
     upsert_daily_channel_sales(db, raw_rows, source_file)
     write_upload_log(db, source_file=source_file, rows=raw_rows, parse_errors=list(parse_errors),
                      excluded_today=excluded_today, declared_total=declared_total,

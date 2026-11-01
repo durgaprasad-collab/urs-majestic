@@ -24,7 +24,6 @@ from app.core.clock import business_today, business_tz
 from app.models.ingredient import Ingredient
 from app.models.purchase import Purchase
 from app.models.user import User
-from app.services.order_derived_stock import sync_order_derived_stock
 from app.services import purchases_page, vendor_prices
 from app.web.audit import log_change, log_field_diffs, resync_derived_costs
 from app.web.deps import _tmpl, require_user
@@ -353,11 +352,6 @@ async def save_bill(request: Request, db: Session = Depends(get_db)):
                        reason=f"Operator confirmed the bill is new despite {len(dups)} similar row(s).",
                        actor_user_id=user.id)
         resync_derived_costs(db)
-        try:
-            with db.begin_nested():
-                sync_order_derived_stock(db)
-        except Exception:
-            logger.exception("order-derived sync failed")
         db.commit()
     except Exception as exc:
         db.rollback()
