@@ -4,6 +4,7 @@ The helper (live-feed-ext/) runs in the restaurant PC's Chrome, reads
 Petpooja's live Item Report every ~10 minutes and POSTs the rows to
 /api/live-feed with a helper code made on this page. Logic: services/live_stock.py.
 """
+import datetime
 import logging
 import time
 
@@ -13,7 +14,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.upload_log import UploadLog
-from app.services import live_stock, pos_ingest
+from app.services import live_stock, pos_ingest, swiggy_ingest
+from app.services.uploads.item_matching import MenuIndex
 from app.services.task_engine import refresh_after_upload
 from app.web.deps import _tmpl, require_user
 
@@ -89,32 +91,47 @@ async def feed(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/api/live-feed/final")
 async def final(request: Request, db: Session = Depends(get_db)):
-    """The add-on's nightly upload of a finished business day (replaces the manual
-    Item Report Day Wise .xlsx upload). Safe to send again: a later read replaces the day."""
+    """The add-on's nightly upload of a finished day: Petpooja's item report (replaces the manual
+    Item Report Day Wise .xlsx) or Swiggy's orders (replaces the Past Orders .csv). Safe to send
+    again: a later read replaces that day."""
     tok = live_stock.check_token(db, request.headers.get("authorization"))
     if not tok:
         return JSONResponse({"error": "Helper code not recognised"}, status_code=401)
     try:
         body = await request.json()
-        if (body.get("channel") or "petpooja") != "petpooja":
-            raise ValueError("only the Petpooja item report can be uploaded this way")
-        rows = pos_ingest.rows_from_feed(body.get("day"), body.get("rows"))
-    except (ValueError, TypeError, AttributeError) as exc:
+        channel = body.get("channel") or "petpooja"
+        if channel == "petpooja":
+            rows = pos_ingest.rows_from_feed(body.get("day"), body.get("rows"))
+            day, source = rows[0]["sale_date"], f"live-feed {rows[0]['sale_date'].isoformat()}"
+        elif channel == "swiggy":
+            orders, unmapped = swiggy_ingest.orders_from_feed(body.get("day"), body.get("orders"), MenuIndex(db))
+            day = datetime.date.fromisoformat(str(body["day"]))
+            source = f"live-feed swiggy {day.isoformat()}"
+        else:
+            raise ValueError("unknown channel")
+    except (ValueError, TypeError, AttributeError, KeyError) as exc:
         db.rollback()
         return JSONResponse({"error": str(exc) or "Not saved"}, status_code=400)
-    source = f"live-feed {rows[0]['sale_date'].isoformat()}"
     try:
-        result = pos_ingest.apply_item_sales(db, rows, source)
+        if channel == "petpooja":
+            result = pos_ingest.apply_item_sales(db, rows, source)
+        else:
+            result = swiggy_ingest.apply_swiggy_orders(db, day, orders, source)
         db.commit()
     except Exception as exc:  # noqa: BLE001 - reported to the add-on, which tries again later
         db.rollback()
         log.exception("nightly upload failed")
-        db.add(UploadLog(channel="petpooja", source_file=source, rows_parsed=len(rows), rows_inserted=0,
+        db.add(UploadLog(channel=channel, source_file=source, rows_parsed=0, rows_inserted=0,
                          succeeded=False, error_detail=str(exc)[:500]))
         db.commit()
         return JSONResponse({"error": f"Could not save: {exc}"[:200]}, status_code=500)
     refresh_after_upload()
-    log.info("nightly upload %s: %s rows", source, len(rows))
-    return JSONResponse({"ok": True, "day": rows[0]["sale_date"].isoformat(), "rows": len(rows),
-                         "qty": float(sum(r["qty"] for r in rows)), "amount": float(sum(r["revenue"] for r in rows)),
-                         "unmatched": result["unmatched"][:20]})
+    if channel == "petpooja":
+        log.info("nightly upload %s: %s rows", source, len(rows))
+        return JSONResponse({"ok": True, "day": day.isoformat(), "rows": len(rows),
+                             "qty": float(sum(r["qty"] for r in rows)), "amount": float(sum(r["revenue"] for r in rows)),
+                             "unmatched": result["unmatched"][:20]})
+    log.info("nightly upload %s: %s delivered, %s cancelled", source, result["delivered"], result["cancelled"])
+    return JSONResponse({"ok": True, "day": day.isoformat(), **result,
+                         "amount": float(sum(o.net for o in orders if o.status == "delivered")),
+                         "unmatched": sorted(unmapped)[:20]})

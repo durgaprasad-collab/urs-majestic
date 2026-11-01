@@ -26,28 +26,33 @@
   const pad = (n) => String(n).padStart(2, '0');
   const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-  // One history entry -> {id, status, placed, lines, total}
+  // One history entry -> {id, status, placed, lines, total} for the live view, plus the tax, discount and
+  // priced items the nightly upload needs (net sales = item GST / 5%, like Swiggy's own CSV).
   function fromOrder(o) {
     const t = o && o.status && o.status.ordered_time;      // 'YYYY-MM-DD HH:MM:SS', the restaurant's local time
     if (!t || !o.order_id) return null;
-    const lines = [];
+    const lines = [], items = [];
     for (const it of (o.cart && o.cart.items) || []) {
       const qty = Number(it.quantity) || 0;
-      if (it.name && qty > 0) lines.push({ name: String(it.name), qty });
+      if (it.name && qty > 0) { lines.push({ name: String(it.name), qty }); items.push({ name: String(it.name), qty, total: Number(it.total) || 0 }); }
     }
+    const g = o.GST_details || {};
     return { id: String(o.order_id), status: String(o.status.order_status || '').toUpperCase(),
-             placed: String(t).replace(' ', 'T').slice(0, 16), lines, total: Number(o.bill) || 0 };
+             placed: String(t).replace(' ', 'T').slice(0, 19), lines, total: Number(o.bill) || 0,
+             tax: [Number(g.item_SGST) || 0, Number(g.item_CGST) || 0, Number(g.item_IGST) || 0],
+             trade: Number(o.restaurant_trade_discount) || 0, offers: Number(o.restaurant_offers_discount) || 0, items };
   }
 
-  async function read(day, resIdHint) {
+  async function read(day, resIdHint, calendar) {
     // The app makes its order requests a few seconds in (slower in a background tab), so wait by the clock.
     const until = Date.now() + 30000;
     while (Date.now() < until && !st.headers) await sleep(500);
     if (!st.headers) return { ok: false, error: "the page didn't make its usual requests (signed in?)" };
     const resId = st.resId || resIdHint;
     if (!resId) return { ok: false, error: 'restaurant id not known yet' };
-    // The list filters by calendar day, and the business day runs 1 AM to 1 AM, so ask for both days.
-    const next = new Date(day + 'T12:00:00'); next.setDate(next.getDate() + 1);
+    // The list filters by calendar day. The live view's business day runs 1 AM to 1 AM, so it asks for both
+    // days; the nightly upload wants the calendar day alone, as Swiggy's own CSV does.
+    const next = new Date(day + 'T12:00:00'); next.setDate(next.getDate() + (calendar ? 0 : 1));
     const orders = {};
     for (let offset = 0, guard = 0; guard < 15; guard++) {
       const url = `https://rms.swiggy.com/orders/v1/history?limit=20&offset=${offset}&ordered_time__gte=${day}&ordered_time__lte=${ymd(next)}&restaurant_id=${resId}`;
@@ -66,7 +71,7 @@
   window.addEventListener('message', async (ev) => {
     if (ev.source !== window || !ev.data || ev.data.type !== 'urs-s-read') return;
     let res;
-    try { res = await read(ev.data.day, ev.data.resId); } catch (e) { res = { ok: false, error: String(e).slice(0, 120) }; }
+    try { res = await read(ev.data.day, ev.data.resId, ev.data.calendar); } catch (e) { res = { ok: false, error: String(e).slice(0, 120) }; }
     window.postMessage({ type: 'urs-s-data', id: ev.data.id, ...res }, '*');
   });
 })();

@@ -160,6 +160,17 @@ async function swiggyPart(tabId, code, range) {
   return { ok: true, orders: sent.orders, dishes: sent.dishes, msg: `Swiggy: ${sent.orders} orders, ${Math.round(sent.dishes)} dishes` };
 }
 
+// The finished day's Swiggy orders (calendar day, as Swiggy's own CSV), sent the same way.
+async function swiggyFinalPart(tabId, code, day) {
+  const { swiggyResId } = await load(['swiggyResId']);
+  await goto(tabId, SWIGGY_URL + (swiggyResId || SWIGGY_RES_ID));
+  const res = await ask(tabId, { cmd: 'sread', day, calendar: true }, 2);
+  if (!res.ok) return { ok: false, msg: `Swiggy ${day}: ${res.error || 'read failed'}` };
+  const sent = await post(code, { channel: 'swiggy', day, orders: res.orders || [] }, '/api/live-feed/final');
+  if (!sent.ok) return { ok: false, msg: `Swiggy ${day}: ${sent.error}` };
+  return { ok: true, msg: `Swiggy ${day}: ${sent.delivered} delivered${sent.cancelled ? `, ${sent.cancelled} cancelled` : ''}, ₹${Math.round(sent.amount).toLocaleString('en-IN')}${sent.unmatched && sent.unmatched.length ? `, ${sent.unmatched.length} not matched to the menu` : ''}` };
+}
+
 // The finished business day's item report, sent once the day has closed. Safe to repeat: the
 // server replaces that day's rows with the latest read.
 async function finalPart(tabId, code, day) {
@@ -192,24 +203,30 @@ function finalsDue(now, finals) {
 }
 
 async function runFinal(force = false) {
-  const { code, final, finals } = await load(['code', 'final', 'finals']);
+  const { code, final, finals, finalsS, swiggy } = await load(['code', 'final', 'finals', 'finalsS', 'swiggy']);
   if (!code || final === false || running) return { ok: true, skipped: true };
   const now = new Date();
   const due = finalsDue(now, finals || {});
-  if (!due.length) return { ok: true, skipped: 'nothing due' };
+  const dueS = swiggy !== false ? finalsDue(now, finalsS || {}) : [];
+  if (!due.length && !dueS.length) return { ok: true, skipped: 'nothing due' };
   running = true;
   const stop = keepAlive();
   try {
     const tabId = await helperTab();
-    const done = { ...(finals || {}) }, notes = [];
+    const done = { ...(finals || {}) }, doneS = { ...(finalsS || {}) }, notes = [];
     let ok = true;
-    for (const { day, stage } of due) {
+    for (const { day, stage } of due) {          // each source is independent: one failing doesn't stop the other
       const r = await finalPart(tabId, code, day);
       notes.push(r.msg);
       if (r.ok) done[day] = stage; else ok = false;
     }
-    const keep = Object.keys(done).sort().slice(-10);
-    await save({ finals: Object.fromEntries(keep.map((k) => [k, done[k]])), finalAt: Date.now(), finalOk: ok, finalMsg: `Nightly upload: ${notes.join(' · ')}` });
+    for (const { day, stage } of dueS) {
+      const r = await swiggyFinalPart(tabId, code, day);
+      notes.push(r.msg);
+      if (r.ok) doneS[day] = stage; else ok = false;
+    }
+    const trim = (m) => { const keep = Object.keys(m).sort().slice(-10); return Object.fromEntries(keep.map((k) => [k, m[k]])); };
+    await save({ finals: trim(done), finalsS: trim(doneS), finalAt: Date.now(), finalOk: ok, finalMsg: `Nightly upload: ${notes.join(' · ')}` });
     return { ok, msg: notes.join(' · ') };
   } catch (e) {
     await save({ finalAt: Date.now(), finalOk: false, finalMsg: `Nightly upload stopped: ${String((e && e.message) || e).slice(0, 120)}` });
