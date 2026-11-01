@@ -49,7 +49,7 @@ class WeeklyOrderingTests(unittest.TestCase):
         reader = PdfReader(BytesIO(payload))
         self.assertEqual(len(reader.pages), 1)
         text = reader.pages[0].extract_text()
-        self.assertIn("Weekly Vegetable Delivery Plan", text)
+        self.assertIn("Weekly Delivery Plan", text)
         self.assertIn("Vegetable ingredient number 26", text)
 
 
