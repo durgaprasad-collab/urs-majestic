@@ -4,6 +4,8 @@
 //      1 AM), read its rows and send them to the admin's Live stock tab,
 //   3. open Zomato's Order history, read today's orders and send them too,
 //   4. open Swiggy's Past Orders, read today's orders and send them too.
+// After closing it also uploads the finished day's item report (about 1:15 AM, again about 6 AM
+// once Petpooja has caught up), replacing the manual Item Report Day Wise upload.
 // Read only: it presses Petpooja's Refresh and Search buttons, reads Zomato's and Swiggy's order
 // history, and never writes anything on any of the three sites.
 const BASE = 'https://admin.ursmajestic.com';
@@ -15,6 +17,8 @@ const ZOMATO_URL = 'https://www.zomato.com/partners/onlineordering/orderHistory/
 const ZOMATO_PATTERN = 'https://www.zomato.com/partners/onlineordering/*';
 const SWIGGY_URL = 'https://partner.swiggy.com/food/pastorders/';   // + restaurant id
 const SWIGGY_RES_ID = '1389673';                                      // until the page tells the add-on its own
+const FINAL_FIRST = '01:15';   // first upload of the finished day, PC's local time
+const FINAL_AGAIN = '06:00';  // second, once Petpooja has synced its late sales; replaces the first
 const DEFAULT_OPEN = '12:00';   // restaurant hours, PC's local time (orders run ~12:30 PM to ~12:30 AM)
 const DEFAULT_CLOSE = '01:00';  // Petpooja's business day also ends at 1 AM
 
@@ -106,10 +110,10 @@ function keepAlive() {
 
 async function progress(msg) { await save({ lastAt: Date.now(), lastOk: true, lastMsg: msg }); }
 
-async function post(code, body) {
+async function post(code, body, path = '/api/live-feed') {
   let resp;
   try {
-    resp = await fetch(`${BASE}/api/live-feed`, {
+    resp = await fetch(`${BASE}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${code}` },
       body: JSON.stringify({ ...body, read_at: new Date().toISOString() }),
@@ -154,6 +158,66 @@ async function swiggyPart(tabId, code, range) {
   const sent = await post(code, { channel: 'swiggy', orders: res.orders || [] });
   if (!sent.ok) return { ok: false, msg: `Swiggy: ${sent.error}` };
   return { ok: true, orders: sent.orders, dishes: sent.dishes, msg: `Swiggy: ${sent.orders} orders, ${Math.round(sent.dishes)} dishes` };
+}
+
+// The finished business day's item report, sent once the day has closed. Safe to repeat: the
+// server replaces that day's rows with the latest read.
+async function finalPart(tabId, code, day) {
+  const next = new Date(day + 'T12:00:00'); next.setDate(next.getDate() + 1);
+  const range = { day, from: `${day} 01:00:00`, to: `${ymd(next)} 01:00:00` };
+  await goto(tabId, DASHBOARD_URL);
+  await ask(tabId, { cmd: 'refresh' }, 3);      // so the report isn't behind the till
+  await goto(tabId, REPORT_URL);
+  const res = await ask(tabId, { cmd: 'read', range });
+  if (!res.ok) return { ok: false, msg: `${day}: ${res.error || 'read failed'}` };
+  if (!res.rows || !res.rows.length) return { ok: false, msg: `${day}: the report had no sales` };
+  const sent = await post(code, { channel: 'petpooja', day, rows: res.rows }, '/api/live-feed/final');
+  if (!sent.ok) return { ok: false, msg: `${day}: ${sent.error}` };
+  return { ok: true, msg: `${day}: ${sent.rows} items, ₹${Math.round(sent.amount).toLocaleString('en-IN')}${sent.unmatched && sent.unmatched.length ? `, ${sent.unmatched.length} not matched to the menu` : ''}` };
+}
+
+// Which finished days still need an upload: yesterday (twice: after 1:15 AM, then after 6 AM),
+// and any of the three days before it that were never sent (PC was off).
+function finalsDue(now, finals) {
+  const m = now.getHours() * 60 + now.getMinutes();
+  if (m < toMins(FINAL_FIRST)) return [];
+  const want = m >= toMins(FINAL_AGAIN) ? 2 : 1;
+  const due = [];
+  for (let back = 1; back <= 4; back++) {
+    const d = new Date(now); d.setDate(d.getDate() - back);
+    const day = ymd(d), have = finals[day] || 0;
+    if (have < (back === 1 ? want : 1)) due.push({ day, stage: back === 1 ? want : 1 });
+  }
+  return due.reverse();   // oldest first
+}
+
+async function runFinal(force = false) {
+  const { code, final, finals } = await load(['code', 'final', 'finals']);
+  if (!code || final === false || running) return { ok: true, skipped: true };
+  const now = new Date();
+  const due = finalsDue(now, finals || {});
+  if (!due.length) return { ok: true, skipped: 'nothing due' };
+  running = true;
+  const stop = keepAlive();
+  try {
+    const tabId = await helperTab();
+    const done = { ...(finals || {}) }, notes = [];
+    let ok = true;
+    for (const { day, stage } of due) {
+      const r = await finalPart(tabId, code, day);
+      notes.push(r.msg);
+      if (r.ok) done[day] = stage; else ok = false;
+    }
+    const keep = Object.keys(done).sort().slice(-10);
+    await save({ finals: Object.fromEntries(keep.map((k) => [k, done[k]])), finalAt: Date.now(), finalOk: ok, finalMsg: `Nightly upload: ${notes.join(' · ')}` });
+    return { ok, msg: notes.join(' · ') };
+  } catch (e) {
+    await save({ finalAt: Date.now(), finalOk: false, finalMsg: `Nightly upload stopped: ${String((e && e.message) || e).slice(0, 120)}` });
+    return { ok: false };
+  } finally {
+    running = false;
+    stop();
+  }
 }
 
 let running = false;
@@ -205,16 +269,23 @@ async function ping() {
   }
 }
 
-function schedule() { chrome.alarms.create('urs-live', { delayInMinutes: 1, periodInMinutes: 10 }); }
+function schedule() {
+  chrome.alarms.create('urs-live', { delayInMinutes: 1, periodInMinutes: 10 });
+  chrome.alarms.create('urs-final', { delayInMinutes: 2, periodInMinutes: 15 });
+}
 chrome.runtime.onInstalled.addListener(schedule);
 chrome.runtime.onStartup.addListener(schedule);
-chrome.alarms.onAlarm.addListener((a) => { if (a.name === 'urs-live') run(false); });
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a.name === 'urs-live') run(false);
+  if (a.name === 'urs-final') runFinal(false);
+});
 
 chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
   if (msg && msg.cmd === 'run-now') { run(true).then(sendResponse); return true; }
+  if (msg && msg.cmd === 'final-now') { runFinal(true).then(sendResponse); return true; }
   if (msg && msg.cmd === 'test') { ping().then(sendResponse); return true; }
   if (msg && msg.cmd === 'hours') {
-    load(['open', 'close', 'zomato', 'swiggy']).then((s) => sendResponse({ open: s.open || DEFAULT_OPEN, close: s.close || DEFAULT_CLOSE, zomato: s.zomato !== false, swiggy: s.swiggy !== false }));
+    load(['open', 'close', 'zomato', 'swiggy', 'final']).then((s) => sendResponse({ open: s.open || DEFAULT_OPEN, close: s.close || DEFAULT_CLOSE, zomato: s.zomato !== false, swiggy: s.swiggy !== false, final: s.final !== false }));
     return true;
   }
 });

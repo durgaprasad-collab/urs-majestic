@@ -10,17 +10,20 @@ async function status() {
   $('close').value = hrs.close;
   $('zomato').checked = hrs.zomato;
   $('swiggy').checked = hrs.swiggy;
-  const s = await chrome.storage.local.get(['code', 'lastAt', 'lastOk', 'lastMsg']);
+  $('final').checked = hrs.final;
+  const s = await chrome.storage.local.get(['code', 'lastAt', 'lastOk', 'lastMsg', 'finalAt', 'finalOk', 'finalMsg']);
+  const nightly = s.finalAt ? `
+${s.finalOk ? '✓' : '⚠'} ${s.finalMsg} · ${ago(s.finalAt)}` : '';
   const when = `Runs ${clock(hrs.open)} to ${clock(hrs.close)}.`;
   if (!s.code) return show('Paste your helper code, then press Save & test. ' + when);
   $('code').placeholder = 'Code saved (hidden)';
   if (!s.lastAt) return show(`Code saved. ${when} The first read happens within a few minutes of opening.`);
-  show(`${s.lastOk ? '✓' : '⚠'} ${s.lastMsg} · ${ago(s.lastAt)}. ${when}`, s.lastOk ? 'ok' : 'bad');
+  show(`${s.lastOk ? '✓' : '⚠'} ${s.lastMsg} · ${ago(s.lastAt)}. ${when}${nightly}`, s.lastOk && s.finalOk !== false ? 'ok' : 'bad');
 }
 
 $('save').addEventListener('click', async () => {
   const code = $('code').value.trim();
-  const save = { open: $('open').value || '12:00', close: $('close').value || '01:00', zomato: $('zomato').checked, swiggy: $('swiggy').checked };
+  const save = { open: $('open').value || '12:00', close: $('close').value || '01:00', zomato: $('zomato').checked, swiggy: $('swiggy').checked, final: $('final').checked };
   if (code) save.code = code;
   await chrome.storage.local.set(save);
   show('Testing…');
@@ -34,6 +37,18 @@ $('run').addEventListener('click', async () => {
   try {
     const r = await chrome.runtime.sendMessage({ cmd: 'run-now' });
     if (r && r.ok) show('✓ ' + (r.msg || 'Sent'), 'ok');
+    else show('⚠ ' + ((r && (r.msg || r.error)) || 'Failed'), 'bad');
+  } catch (e) {
+    show('The add-on was interrupted. Open this window again in a minute to see the result.', 'bad');
+  }
+});
+
+$('fin').addEventListener('click', async () => {
+  show('Uploading the finished day… this takes about a minute. You can close this window.');
+  try {
+    const r = await chrome.runtime.sendMessage({ cmd: 'final-now' });
+    if (r && r.skipped) show('Nothing to upload right now: yesterday is already uploaded' + (r.skipped === true ? '.' : ' (' + r.skipped + ').'), 'ok');
+    else if (r && r.ok) show('✓ ' + (r.msg || 'Uploaded'), 'ok');
     else show('⚠ ' + ((r && (r.msg || r.error)) || 'Failed'), 'bad');
   } catch (e) {
     show('The add-on was interrupted. Open this window again in a minute to see the result.', 'bad');

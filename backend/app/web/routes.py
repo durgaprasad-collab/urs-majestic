@@ -10,19 +10,15 @@ from app.core.database import get_db
 from app.core.clock import business_today
 from datetime import date
 from app.services.task_engine import refresh_after_upload
-from scripts.import_pos import (
-    seed_menu_items, parse_xlsx, build_resolver, load_sales, pos_alias_map,
-    exclude_today, upsert_daily_channel_sales, write_upload_log,
-)
+from scripts.import_pos import parse_xlsx
 from app.services import menu_page
+from app.services.pos_ingest import apply_item_sales
 from app.services.uploads.petpooja_order_listing import (
     parse_order_listing_xlsx, aggregate_by_day, check_aggregator_alarm,
     find_unpaired_diffs, upsert_order_counts, cross_check_amounts, ALARM_MESSAGE, store_order_times,
 )
 from app.models.item_sale import ItemSale
 from app.models.upload_log import UploadLog
-from app.services.sales_stock import adjust_stock_for_pace, adjust_stock_for_sales
-from app.services.order_derived_stock import sync_order_derived_stock
 from app.web.deps import _tmpl, require_user
 
 logger = logging.getLogger("stock_upload")
@@ -104,34 +100,10 @@ async def upload_post(
         tmp.write(data)
         tmp.close()
 
-        with open(_SEED, encoding="utf-8") as f:
-            seed = json.load(f)
-
-        menu_map = seed_menu_items(db, seed)
         raw_rows, parse_errors, declared_total, declared_rows = parse_xlsx(tmp.name)
-        raw_rows, excluded_today = exclude_today(raw_rows, business_today())
-        resolver = build_resolver(seed, menu_map, pos_alias_map(db))
-        imported_sales, _unmatched = load_sales(db, raw_rows, resolver)
-        adjust_stock_for_sales(db, imported_sales)
-        adjust_stock_for_pace(db, {s.sale_date for s in imported_sales})
-        try:
-            with db.begin_nested():
-                sync_order_derived_stock(db)
-        except Exception:
-            # Experimental comparison model -- must never block the primary
-            # (control-model) upload it's piggybacking on.
-            logger.exception("order-derived deduction pass failed")
-        upsert_daily_channel_sales(db, raw_rows, file.filename)
-        write_upload_log(
-            db,
-            source_file=file.filename,
-            rows=raw_rows,
-            parse_errors=parse_errors,
-            excluded_today=excluded_today,
-            declared_total=declared_total,
-            declared_rows=declared_rows,
-            succeeded=True,
-        )
+        excluded_today = apply_item_sales(
+            db, raw_rows, file.filename, parse_errors=parse_errors,
+            declared_total=declared_total, declared_rows=declared_rows)["excluded_today"]
         db.commit()
         refresh_after_upload()
     except Exception as exc:

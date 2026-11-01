@@ -11,6 +11,16 @@ About every 10 minutes, **only during the restaurant's hours**, it:
 5. opens Swiggy's partner portal **Past Orders** (partner.swiggy.com/food/pastorders/<restaurant id>) and sends today's
    orders the same way. Untick **Include Swiggy** to skip this.
 
+## Nightly upload of the finished day
+After closing it uploads the day's **Petpooja item report** by itself, so the manual *Item Report Day Wise* upload
+is no longer needed. The PC and Chrome must be on:
+- about **1:15 AM**: presses Petpooja's Refresh, reads the finished day's item report and sends it to
+  admin.ursmajestic.com (the same import as the manual upload: sales, costs, stock use);
+- about **6 AM**: sends it again once Petpooja has synced its late sales; the second send replaces the first;
+- if the PC was off, the next run also catches up the three days before.
+Untick **Upload each finished day automatically** in the add-on to turn it off, or press **Upload yesterday now**.
+Zomato, Swiggy and the Order Listing are still uploaded manually for now.
+
 Read only: the only buttons it presses are Petpooja's Refresh and Search; on Zomato and Swiggy it only fetches the order list.
 It never submits or changes anything on any of the sites.
 
