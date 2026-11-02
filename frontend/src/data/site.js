@@ -1,8 +1,8 @@
 import { CATEGORIES } from './menu'
 
-export const PHONE = '+919150102001'
-export const PHONE_DISPLAY = '+91 91501 02001'
-export const WHATSAPP = 'https://wa.me/919150102001'
+export const PHONE = '+919884194662'
+export const PHONE_DISPLAY = '+91 98841 94662'
+export const WHATSAPP = 'https://wa.me/919884194662'
 export const SWIGGY = 'https://www.swiggy.com/city/chennai/urs-majestic-pallavaram-rest1389673'
 export const ZOMATO = 'http://zoma.to/r/22783970'
 export const DIRECTIONS = 'https://www.google.com/maps/dir/?api=1&destination=12.951982,80.170999'
