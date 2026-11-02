@@ -17,6 +17,7 @@ export default function Header() {
           <a href="#combos">Combos</a>
           <a href="#menu">Menu</a>
           <a href="#visit">Visit</a>
+          <a href="/catering/">Catering</a>
         </nav>
         <span className={`open-pill${open ? '' : ' closed'}`}>
           <i aria-hidden="true" />

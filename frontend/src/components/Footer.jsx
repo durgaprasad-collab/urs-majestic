@@ -10,6 +10,7 @@ export default function Footer() {
             <img src="/img/logo-circle-180.jpg" alt="" width="46" height="46" />
             <span><b>URS MAJESTIC</b><small>100% Pure Vegetarian</small></span>
           </a>
+          <a href="/catering/" className="footer-catering">Party &amp; event catering</a>
           <span>
             French Village Food Court, 200 Feet Road, Pallavaram, Chennai · Prices exclusive of taxes · © {year} URS Majestic
           </span>

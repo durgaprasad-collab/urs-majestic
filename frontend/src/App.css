@@ -161,6 +161,7 @@ h1, h2, h3 { font-family: Cinzel, Georgia, serif; font-weight: 700; line-height:
 .site-footer { padding: 36px 0; background: #03140C; color: #8EA898; font-size: 13px; }
 .footer-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
 .footer-row .brand b { font-size: 15px; }
+.footer-catering { color: #D4A62A; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .mobile-bar { display: none; }
 
 @media (max-width: 980px) {
