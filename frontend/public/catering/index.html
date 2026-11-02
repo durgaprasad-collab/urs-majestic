@@ -5,40 +5,73 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pure Veg Party &amp; Event Catering in Pallavaram | URS Majestic</title>
 <meta name="description" content="Pure vegetarian party trays and meal boxes for apartments, poojas, birthdays and housewarmings in Pallavaram, Chromepet and Tambaram. Minimum 20 plates, 24-hour notice.">
-<link href="https://fonts.googleapis.com/css2?family=Italiana&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="/img/logo-circle-180.jpg" type="image/jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#1C3450;--gold:#C9971F;--cream:#EDE9E6;--coral:#C4623B}
-*{box-sizing:border-box}
-body{margin:0;font-family:Outfit,sans-serif;background:var(--cream);color:var(--navy);line-height:1.5}
-header{background:var(--navy);color:var(--cream);padding:48px 20px;text-align:center}
-h1,h2{font-family:Italiana,serif;font-weight:400}
-h1{font-size:2.2rem;margin:0 0 8px;color:#fff}
-header p{margin:0 auto;max-width:560px;color:var(--cream)}
-.gold{color:var(--gold)}
-main{max-width:920px;margin:0 auto;padding:28px 18px}
-h2{font-size:1.7rem;margin:32px 0 12px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-.card{background:#fff;border:1px solid #d9d3cd;border-radius:10px;padding:16px}
-.card h3{margin:0;font-size:1.05rem}
-.price{color:var(--coral);font-weight:600;font-size:1.25rem}
-.card ul{margin:8px 0;padding-left:18px;font-weight:300}
-.card .for{font-size:.85rem;color:#5a6b7d}
-.card button{margin-top:6px}
-.terms{background:#fff;border-left:4px solid var(--gold);padding:14px 18px;border-radius:6px}
-.terms li{margin:4px 0}
-form{background:#fff;border-radius:10px;padding:18px;border:1px solid #d9d3cd}
-label{display:block;font-size:.9rem;margin:10px 0 3px;font-weight:600}
-input,select{width:100%;padding:10px;border:1px solid #bfb8b0;border-radius:6px;font:inherit}
-button,.btn{background:var(--gold);color:#fff;border:0;border-radius:6px;padding:11px 18px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+:root{--ground:#062013;--ground-2:#0D3220;--ground-3:#14432C;--gold:#D4A62A;--gold-2:#E9C55A;--cream:#FBF7EE;--cream-2:#F3ECDC;--ink:#1B1A16;--ink-2:#5E5A50;--line:#E7DFCB;--veg:#1E8A3C;--r:18px}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--cream);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{font-family:Cinzel,Georgia,serif;font-weight:700;line-height:1.12;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.site-header{position:sticky;top:0;z-index:30;background:rgba(6,32,19,.94);backdrop-filter:blur(10px);border-bottom:1px solid rgba(212,166,42,.25)}
+.header-row{display:flex;align-items:center;gap:22px;height:68px}
+.brand{display:flex;align-items:center;gap:11px}
+.brand img{width:46px;height:46px;border-radius:50%;-webkit-mask-image:radial-gradient(circle,#000 62%,transparent 71%);mask-image:radial-gradient(circle,#000 62%,transparent 71%)}
+.brand b{display:block;font:700 17px/1 Cinzel,serif;letter-spacing:.06em;color:var(--gold-2)}
+.brand small{display:block;margin-top:4px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#9FB8A8}
+.header-nav{display:flex;gap:4px;margin-left:auto}
+.header-nav a{padding:8px 12px;border-radius:8px;color:#D5E0D9;font-size:14px;font-weight:500}
+.header-nav a:hover{background:rgba(255,255,255,.06);color:#fff}
+.btn,button{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 20px;border:0;border-radius:12px;font:600 14.5px Inter,sans-serif;cursor:pointer;background:linear-gradient(180deg,var(--gold-2),var(--gold));color:var(--ground);box-shadow:0 8px 22px rgba(212,166,42,.35);transition:transform .15s}
+.btn:hover,button:hover{transform:translateY(-1px)}
+.btn-sm{padding:9px 15px;font-size:13.5px;border-radius:10px}
+.hero{position:relative;overflow:hidden;background:radial-gradient(90% 120% at 15% 0%,var(--ground-3) 0%,var(--ground) 60%);color:#fff;padding:60px 0 68px}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 30%,rgba(212,166,42,.16),transparent 45%)}
+.hero .wrap{position:relative}
+.eyebrow{font:600 11px/1 Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
+.hero h1{margin:16px 0 14px;font-size:clamp(34px,5vw,56px);letter-spacing:.01em}
+.hero h1 em{font-style:normal;color:var(--gold-2)}
+.lead{max-width:34em;font-size:18px;color:#C9D8CF;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 0}
+.chip{padding:7px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.07);color:#E3ECE6;font-size:13px;font-weight:500}
+main{max-width:1180px;margin:0 auto;padding:44px 20px 56px}
+h2{font-size:clamp(24px,3vw,32px);color:var(--ground);margin:44px 0 16px}
+h2:first-child{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{display:flex;flex-direction:column;gap:8px;padding:22px 20px 20px;border:1px solid var(--line);border-radius:var(--r);background:#fff}
+.card h3{font-size:18px;color:var(--ground)}
+.price{font:700 24px Cinzel,serif;color:var(--ground)}
+.card ul{margin:2px 0;padding-left:18px;font-size:14px;color:var(--ink-2);flex:1}
+.card .for{font-size:13px;color:var(--ink-2)}
+.card button{margin-top:6px;align-self:flex-start}
+.terms{list-style:none;margin:0;padding:18px 22px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:var(--r)}
+.terms li{margin:6px 0}
+form{padding:22px;border:1px solid var(--line);border-radius:var(--r);background:#fff;max-width:640px}
+label{display:block;font-size:13px;margin:12px 0 4px;font-weight:600;color:var(--ground)}
+input,select{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font:500 15px Inter,sans-serif;background:var(--cream)}
+input:focus,select:focus{outline:3px solid var(--gold-2);outline-offset:1px}
+form button{margin-top:6px}
 .err{color:#b3261e;font-size:.9rem;min-height:1.2em;margin-top:8px}
-footer{text-align:center;padding:24px 16px;font-size:.9rem;color:#5a6b7d}
+.site-footer{padding:36px 0;background:#03140C;color:#8EA898;font-size:13px}
+.footer-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px}
+.footer-row .brand b{font-size:15px}
+@media(max-width:700px){.header-nav{display:none}.header-row{justify-content:space-between}.hero{padding:44px 0 52px}}
 </style>
 </head>
 <body>
-<header>
-<h1>Pure Veg <span class="gold">Party Catering</span></h1>
-<p>Freshly cooked vegetarian meal boxes and party trays for apartments, poojas, birthdays and housewarmings in Pallavaram, Chromepet and Tambaram.</p>
-</header>
+<header class="site-header"><div class="wrap header-row">
+<a href="/" class="brand" aria-label="URS Majestic home"><img src="/img/logo-circle-180.jpg" alt="" width="46" height="46"><span><b>URS MAJESTIC</b><small>Pure Veg &middot; Pallavaram</small></span></a>
+<nav class="header-nav" aria-label="Sections"><a href="/#signature">Signature</a><a href="/#combos">Combos</a><a href="/#menu">Menu</a><a href="/#visit">Visit</a><a href="/catering/">Catering</a></nav>
+<a href="https://wa.me/919884194662" class="btn btn-sm">WhatsApp</a>
+</div></header>
+<section class="hero"><div class="wrap">
+<span class="eyebrow">Party &amp; event catering</span>
+<h1>Pure Veg <em>Party Catering</em></h1>
+<p class="lead">Freshly cooked vegetarian meal boxes and party trays for apartments, poojas, birthdays and housewarmings in Pallavaram, Chromepet and Tambaram.</p>
+<div class="chips"><span class="chip">Minimum 20 plates</span><span class="chip">24-hour notice</span><span class="chip">100% pure veg</span></div>
+</div></section>
 <main>
 <h2>Choose a package</h2>
 <div class="grid" id="packages"></div>
@@ -67,10 +100,10 @@ footer{text-align:center;padding:24px 16px;font-size:.9rem;color:#5a6b7d}
 <button type="submit">Send request on WhatsApp</button>
 </form>
 </main>
-<footer>
-URS Majestic Pure Veg &middot; French Village Food Court, 200 Feet Radial Rd, Tiruthani Nagar, Pallavaram, Tamil Nadu 600117<br>
-WhatsApp / Call: 98841 94662
-</footer>
+<footer class="site-footer"><div class="wrap footer-row">
+<a href="/" class="brand"><img src="/img/logo-circle-180.jpg" alt="" width="46" height="46"><span><b>URS MAJESTIC</b><small>100% Pure Vegetarian</small></span></a>
+<span>French Village Food Court, 200 Feet Radial Rd, Tiruthani Nagar, Pallavaram, Tamil Nadu 600117 &middot; WhatsApp / Call: 98841 94662</span>
+</div></footer>
 <script>
 var PHONE="919884194662";
 var PKGS=[
