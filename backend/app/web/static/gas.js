@@ -4,6 +4,10 @@
   const form = document.querySelector('[data-gs-form]');
   if (add && form) add.addEventListener('click', () => { form.hidden = !form.hidden; if (!form.hidden) form.querySelector('[name=gross_kg]').focus(); });
 
+  // On a phone the chart scrolls sideways: open at the latest night.
+  const plot = document.querySelector('.gs-plot');
+  if (plot) plot.scrollLeft = plot.scrollWidth;
+
   async function save(input) {
     const v = input.value.trim();
     if (v === input.dataset.orig || input.dataset.busy) return;

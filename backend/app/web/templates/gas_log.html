@@ -80,6 +80,7 @@
       <div class="gs-legend">{% for c in cylinders %}<span class="gs-{{ c.key }}"><i></i>{{ c.label }} (est.)</span>{% endfor %}<span><i class="gs-hatch"></i>Doesn't add up</span><span>⇄ cylinder changed</span></div>
       {% set shown = chart|selectattr('used')|list %}
       {% if shown %}
+      <div class="gs-plot" style="--n:{{ shown|length }}">
       <div class="gs-bars">
         {% for n in shown %}
         <div class="gs-bar{{ ' gs-flag' if n.high }}" style="height:{{ (n.used / chart_max * 100)|round(1) }}%" tabindex="0">
@@ -91,6 +92,7 @@
         {% endfor %}
       </div>
       <div class="gs-x">{% for n in shown %}<span>{{ n.night.strftime('%a %d') }}<br><b>{{ kg(n.used) }}</b></span>{% endfor %}</div>
+      </div>
       {% else %}<p class="sl-empty">The chart fills in once both cylinders are weighed two nights running.</p>{% endif %}
     </div>
   </div>
@@ -144,5 +146,5 @@
     </div>
   </div>
 </div>
-<script src="/static/gas.js?v=1" defer></script>
+<script src="/static/gas.js?v=2" defer></script>
 {% endblock %}

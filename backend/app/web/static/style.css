@@ -1807,7 +1807,14 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .gs-chart .gs-bars { gap: 12px; height: 170px; padding-top: 22px; }
 .gs-chart .gs-bar { max-width: 70px; }
 .gs-chart .gs-x { gap: 12px; font-size: 11px; color: var(--sl-ink-2); }
-.gs-chart .gs-x span { max-width: 70px; }
+.gs-chart .gs-x span { min-width: 0; max-width: 70px; }
+.gs-plot { min-width: 0; }
+@media (max-width: 900px) {
+  /* Many nights: keep every bar and its label readable by letting the chart scroll sideways inside its card. */
+  .gs-plot { overflow-x: auto; padding-bottom: 4px; }
+  .gs-chart .gs-bars, .gs-chart .gs-x { gap: 6px; min-width: calc(var(--n) * 38px); }
+  .gs-chart .gs-bar, .gs-chart .gs-x span { max-width: none; }
+}
 .gs-flag { outline: 2px dashed var(--sl-bad); outline-offset: 2px; }
 .gs-sw { position: absolute; bottom: 100%; left: 50%; margin-bottom: 3px; font-size: 11px; font-weight: 700; color: var(--sl-ink-2); transform: translateX(-50%); }
 .gs-legend { flex-wrap: wrap; }
