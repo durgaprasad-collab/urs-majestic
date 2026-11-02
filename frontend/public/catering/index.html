@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pure Veg Party &amp; Event Catering in Pallavaram | URS Majestic</title>
+<meta name="description" content="Pure vegetarian party trays and meal boxes for apartments, poojas, birthdays and housewarmings in Pallavaram, Chromepet and Tambaram. Minimum 20 plates, 24-hour notice.">
+<link href="https://fonts.googleapis.com/css2?family=Italiana&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1C3450;--gold:#C9971F;--cream:#EDE9E6;--coral:#C4623B}
+*{box-sizing:border-box}
+body{margin:0;font-family:Outfit,sans-serif;background:var(--cream);color:var(--navy);line-height:1.5}
+header{background:var(--navy);color:var(--cream);padding:48px 20px;text-align:center}
+h1,h2{font-family:Italiana,serif;font-weight:400}
+h1{font-size:2.2rem;margin:0 0 8px;color:#fff}
+header p{margin:0 auto;max-width:560px;color:var(--cream)}
+.gold{color:var(--gold)}
+main{max-width:920px;margin:0 auto;padding:28px 18px}
+h2{font-size:1.7rem;margin:32px 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{background:#fff;border:1px solid #d9d3cd;border-radius:10px;padding:16px}
+.card h3{margin:0;font-size:1.05rem}
+.price{color:var(--coral);font-weight:600;font-size:1.25rem}
+.card ul{margin:8px 0;padding-left:18px;font-weight:300}
+.card .for{font-size:.85rem;color:#5a6b7d}
+.card button{margin-top:6px}
+.terms{background:#fff;border-left:4px solid var(--gold);padding:14px 18px;border-radius:6px}
+.terms li{margin:4px 0}
+form{background:#fff;border-radius:10px;padding:18px;border:1px solid #d9d3cd}
+label{display:block;font-size:.9rem;margin:10px 0 3px;font-weight:600}
+input,select{width:100%;padding:10px;border:1px solid #bfb8b0;border-radius:6px;font:inherit}
+button,.btn{background:var(--gold);color:#fff;border:0;border-radius:6px;padding:11px 18px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+.err{color:#b3261e;font-size:.9rem;min-height:1.2em;margin-top:8px}
+footer{text-align:center;padding:24px 16px;font-size:.9rem;color:#5a6b7d}
+</style>
+</head>
+<body>
+<header>
+<h1>Pure Veg <span class="gold">Party Catering</span></h1>
+<p>Freshly cooked vegetarian meal boxes and party trays for apartments, poojas, birthdays and housewarmings in Pallavaram, Chromepet and Tambaram.</p>
+</header>
+<main>
+<h2>Choose a package</h2>
+<div class="grid" id="packages"></div>
+
+<h2>How ordering works</h2>
+<ul class="terms">
+<li><strong>Minimum 20 plates</strong> per order</li>
+<li><strong>Order at least 24 hours ahead</strong></li>
+<li><strong>50% advance</strong> confirms your booking</li>
+<li>Delivery within 5 km: <strong>free above &#8377;5,000</strong>, otherwise &#8377;150</li>
+</ul>
+
+<h2>Request your quote on WhatsApp</h2>
+<form id="f" novalidate>
+<label for="pkg">Package</label>
+<select id="pkg"></select>
+<label for="plates">Number of plates (minimum 20)</label>
+<input id="plates" type="number" min="20" value="20">
+<label for="date">Date needed</label>
+<input id="date" type="date">
+<label for="area">Delivery area / apartment name</label>
+<input id="area" type="text" placeholder="e.g. Pallavaram, Chromepet">
+<label for="occ">Occasion</label>
+<select id="occ"><option>Apartment gathering</option><option>Pooja / Housewarming</option><option>Birthday party</option><option>School / tuition event</option><option>Other</option></select>
+<div class="err" id="err" role="alert"></div>
+<button type="submit">Send request on WhatsApp</button>
+</form>
+</main>
+<footer>
+URS Majestic Pure Veg &middot; French Village Food Court, 200 Feet Radial Rd, Tiruthani Nagar, Pallavaram, Tamil Nadu 600117<br>
+WhatsApp / Call: 98841 94662
+</footer>
+<script>
+var PHONE="919884194662";
+var PKGS=[
+{n:"Snacks Package",p:149,i:["Any two starters (4 pcs each)","Goli Soda","Gobi 65 / Mushroom 65 / Baby Corn 65"],f:"Evening meets, kids parties"},
+{n:"Group Lunch Box",p:199,i:["Veg Biryani","Raita","Gobi 65","Chappati (2)","Channa Masala"],f:"Poojas, trainings, community lunches"},
+{n:"Executive Lunch",p:249,i:["Jeera Rice","Chappati (2)","Paneer Butter Masala","Salad"],f:"Family gatherings, housewarmings"},
+{n:"Indo-Chinese Party",p:279,i:["Veg Fried Rice","Veg Noodles","Gobi Manchurian","Goli Soda"],f:"Birthdays, kids and youth parties"},
+{n:"Premium North Indian",p:299,i:["Butter Naan","Jeera Rice","Mushroom 65","Paneer Tikka Masala","Salad"],f:"Celebrations, special guests"},
+{n:"Paneer Celebration",p:349,i:["Butter Naan","Jeera Rice","Paneer 65","Paneer Butter Masala","Dal Tadka","Salad"],f:"Big occasions, apartment events"}
+];
+var box=document.getElementById("packages"),sel=document.getElementById("pkg");
+PKGS.forEach(function(k,idx){
+ var c=document.createElement("div");c.className="card";
+ var h=document.createElement("h3");h.textContent=k.n;
+ var pr=document.createElement("div");pr.className="price";pr.textContent="₹"+k.p+" / plate";
+ var ul=document.createElement("ul");k.i.forEach(function(x){var li=document.createElement("li");li.textContent=x;ul.appendChild(li);});
+ var fo=document.createElement("div");fo.className="for";fo.textContent="Perfect for: "+k.f;
+ var b=document.createElement("button");b.type="button";b.textContent="Select";
+ b.onclick=function(){sel.value=String(idx);document.getElementById("f").scrollIntoView({behavior:"smooth"});};
+ c.append(h,pr,ul,fo,b);box.appendChild(c);
+ var o=document.createElement("option");o.value=String(idx);o.textContent=k.n+" - ₹"+k.p;sel.appendChild(o);
+});
+var dateEl=document.getElementById("date");
+var t=new Date();t.setDate(t.getDate()+1);
+var min=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+dateEl.min=min;dateEl.value=min;
+var src=(new URLSearchParams(location.search).get("src")||"website").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,20)||"website";
+document.getElementById("f").addEventListener("submit",function(e){
+ e.preventDefault();
+ var err=document.getElementById("err"),n=parseInt(document.getElementById("plates").value,10);
+ if(!(n>=20)){err.textContent="Minimum order is 20 plates.";return;}
+ if(!dateEl.value||dateEl.value<min){err.textContent="Please choose a date at least 24 hours ahead.";return;}
+ err.textContent="";
+ var k=PKGS[parseInt(sel.value,10)];
+ var total=k.p*n;
+ var msg="Hi URS Majestic, catering request (src: "+src+")\nPackage: "+k.n+" (₹"+k.p+")\nPlates: "+n+"\nDate: "+dateEl.value+"\nArea: "+(document.getElementById("area").value||"-")+"\nOccasion: "+document.getElementById("occ").value+"\nEstimated food total: ₹"+total;
+ location.href="https://wa.me/"+PHONE+"?text="+encodeURIComponent(msg);
+});
+</script>
+</body>
+</html>
