@@ -1632,6 +1632,8 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 
 .sl-card { overflow: visible; border: 1px solid var(--sl-line); border-radius: 14px; background: #fff; }
 .sl-table { width: 100%; border-collapse: collapse; }
+/* Tablet widths: the sidebar leaves less room than the wide tables need, so the card scrolls sideways instead of the whole page. */
+@media (min-width: 901px) and (max-width: 1320px) { .sl-card:has(> .sl-table) { overflow-x: auto; } }
 .sl-table th { padding: 9px 12px; border-bottom: 1px solid var(--sl-line); background: #FBFAF6; text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--sl-ink-3); white-space: nowrap; }
 .sl-table th small { font-weight: 500; letter-spacing: 0; text-transform: none; }
 .sl-table td { padding: 8px 12px; border-bottom: 1px solid #F0EEE6; vertical-align: middle; font-size: 13px; }
