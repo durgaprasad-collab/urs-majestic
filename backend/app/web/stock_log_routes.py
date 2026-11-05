@@ -242,13 +242,21 @@ async def save_home_count(ingredient_id: int, request: Request, db: Session = De
 
 
 @router.post("/stock-log/item/{ingredient_id}/calibrate")
-def calibrate_recipes(ingredient_id: int, request: Request, db: Session = Depends(get_db)):
-    """Apply the suggested ratio to every dish line of this item (owner presses Apply)."""
+async def calibrate_recipes(ingredient_id: int, request: Request, db: Session = Depends(get_db)):
+    """Apply the suggestion to this item's dish lines (owner presses Apply). JSON {"lines": [{id, grams}]}
+    changes only those lines at those grams; no body changes every line at the suggested grams."""
     user, redir = require_user(request, db)
     if redir:
         return JSONResponse({"error": "Sign in again"}, status_code=401)
     try:
-        result = recipe_calibration.apply(db, ingredient_id, user.id)
+        body = await request.json()
+    except ValueError:
+        body = {}
+    picked = body.get("lines") if isinstance(body, dict) else None
+    if picked is not None and not isinstance(picked, list):
+        return JSONResponse({"error": "Bad request"}, status_code=400)
+    try:
+        result = recipe_calibration.apply(db, ingredient_id, user.id, picked)
     except ValueError as exc:
         db.rollback()
         return JSONResponse({"error": str(exc)}, status_code=409)

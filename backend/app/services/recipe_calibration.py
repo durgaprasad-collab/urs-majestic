@@ -139,15 +139,43 @@ def suggestions(db: Session) -> dict:
     return {"scale": scale, "check": check}
 
 
-def apply(db: Session, ingredient_id: int, user_id: int) -> dict:
-    """Scale every dish line of the item by its current suggested ratio. Recomputed here,
-    so a stale page cannot apply a ratio the data no longer supports."""
+def chosen_lines(dishes: list[dict], picked: list[dict] | None) -> list[dict]:
+    """The dish lines to change. None means all, at the suggested grams. Otherwise only the
+    picked lines, at the grams the owner typed; a line that isn't one of the item's dishes,
+    or a figure outside 0-5000, is refused rather than guessed at."""
+    if picked is None:
+        return [dict(d) for d in dishes]
+    by_id = {d["id"]: d for d in dishes}
+    out = []
+    for p in picked:
+        try:
+            line_id, g = int(p["id"]), Decimal(str(p["grams"]))
+        except (KeyError, TypeError, ValueError, ArithmeticError):
+            raise ValueError("Grams must be numbers")
+        if line_id not in by_id:
+            raise ValueError("A dish in that list isn't one of this item's dishes; reload the page")
+        if not (Decimal(0) < g <= Decimal(5000)):
+            raise ValueError("Grams must be above 0 and at most 5000")
+        out.append({**by_id[line_id], "new": float(round(g, 2))})
+    if not out:
+        raise ValueError("Tick at least one dish")
+    return out
+
+
+def apply(db: Session, ingredient_id: int, user_id: int, picked: list[dict] | None = None) -> dict:
+    """Change the item's dish lines: all of them at the suggested ratio, or only the picked ones at
+    the grams typed. The suggestion is recomputed here, so a stale page cannot apply a ratio the
+    data no longer supports."""
     found = next((s for s in suggestions(db)["scale"] if s["id"] == ingredient_id), None)
     if not found:
         raise ValueError("That item is no longer suggested; reload the page")
     ratio = found["ratio"]
+    lines = chosen_lines(found["dishes"], picked)
+    left_out = len(found["dishes"]) - len(lines)
     reason = f"Calibrated from {found['stretches']} counts: really used {found['real']:.3g} vs recipes {found['recipe']:.3g} {found['unit']} (x{ratio})"
-    for d in found["dishes"]:
+    if left_out:
+        reason += f"; {left_out} dish{'es' if left_out != 1 else ''} left unchanged"
+    for d in lines:
         db.execute(text("""UPDATE ingredient_dish_map SET grams_override = :g, portion_override_g = NULL, grams_source = 'calibrated'
                             WHERE id = :id"""), {"g": Decimal(str(d["new"])), "id": d["id"]})
         log_change(db, batch=BATCH, target_table="ingredient_dish_map", target_id=d["id"], field="grams_override",
@@ -157,4 +185,4 @@ def apply(db: Session, ingredient_id: int, user_id: int) -> dict:
                old_value=None, new_value=Decimal(str(ratio)), reason=reason, actor_user_id=user_id)
     resync_derived_costs(db)
     db.commit()
-    return {"ratio": ratio, "dishes": len(found["dishes"])}
+    return {"ratio": ratio, "dishes": len(lines), "left_out": left_out}

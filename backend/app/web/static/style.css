@@ -1627,6 +1627,9 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .sl-search { flex: 0 0 240px; display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--sl-line); border-radius: 10px; background: #fff; color: var(--sl-ink-3); }
 .sl-search input { width: 100%; border: 0; outline: 0; background: none; font: 500 13.5px Inter, sans-serif; color: var(--sl-ink); }
 .sl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sl-sort { display: inline-flex; padding: 3px; border: 1px solid var(--sl-line); border-radius: 999px; background: #fff; }
+.sl-sort button { padding: 5px 12px; border: 0; border-radius: 999px; background: none; color: var(--sl-ink-2); font: 600 12.5px Inter, sans-serif; cursor: pointer; }
+.sl-sort button.on { background: #062013; color: #E9C55A; }
 .sl-chip { padding: 6px 11px; border: 1px solid var(--sl-line); border-radius: 999px; background: #fff; color: var(--sl-ink-2); font: 600 12.5px Inter, sans-serif; cursor: pointer; }
 .sl-chip.on { border-color: #062013; background: #062013; color: #E9C55A; }
 
@@ -2393,6 +2396,10 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .sl-cal details { margin-top: 6px; font-size: 12.5px; }
 .sl-cal summary { cursor: pointer; color: var(--sl-ink-2); }
 .sl-cal-dishes { margin: 6px 0 0; padding: 0; list-style: none; }
-.sl-cal-dishes li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px dashed #EEEBE1; }
+.sl-cal-dishes li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed #EEEBE1; }
+.sl-cal-dishes label { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sl-cal-dishes label span { overflow-wrap: anywhere; }
+.sl-cal-g { display: flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--sl-ink-3); }
+.sl-cal-g input { width: 64px; padding: 5px 7px; border: 1px solid var(--sl-line); border-radius: 8px; text-align: right; font: 600 13px Inter, sans-serif; }
 .sl-cal-chk { padding: 10px 14px; border-top: 1px solid #F0EEE6; font-size: 12.5px; color: var(--sl-ink-2); }
 .sl-cal-chk small { display: block; margin-top: 2px; color: var(--sl-ink-3); }

@@ -42,6 +42,32 @@
   }));
   q.addEventListener('input', applyFilter);
 
+  // ── Order: by category, or one list with the least cover first. Cover-less rows go last.
+  // Rows are moved, not copied, so their saving handlers keep working.
+  const cats = [...document.querySelectorAll('[data-sl-cat]:not([data-sl-flat])')];
+  const flat = document.querySelector('[data-sl-flat]');
+  const rowsOf = (body) => [...body.querySelectorAll('[data-sl-row]')];
+  const coverOf = (r) => (r.dataset.cover === '' ? Infinity : Number(r.dataset.cover));
+  const byCover = (a, b) => coverOf(a) - coverOf(b) || a.dataset.name.localeCompare(b.dataset.name);
+  cats.forEach((body) => rowsOf(body).forEach((r) => { r._home = body; }));
+  function setSort(mode) {
+    document.querySelectorAll('[data-sl-sort]').forEach((b) => b.classList.toggle('on', b.dataset.slSort === mode));
+    const all = cats.flatMap(rowsOf).concat(rowsOf(flat));
+    if (mode === 'cover') {
+      all.sort(byCover).forEach((r) => flat.appendChild(r));
+    } else {
+      all.sort(byCover).forEach((r) => r._home.appendChild(r));
+    }
+    applyFilter();
+  }
+  document.querySelectorAll('[data-sl-sort]').forEach((b) => b.addEventListener('click', () => {
+    setSort(b.dataset.slSort);
+    try { localStorage.setItem('slSort', b.dataset.slSort); } catch (e) { /* private mode: just not remembered */ }
+  }));
+  let savedSort = 'cat';
+  try { savedSort = localStorage.getItem('slSort') || 'cat'; } catch (e) { /* ignore */ }
+  setSort(savedSort === 'cover' ? 'cover' : 'cat');
+
   // ── One-step save
   async function save(input) {
     const raw = input.value.trim();
@@ -206,14 +232,27 @@
   document.querySelectorAll('[data-cal-apply]').forEach((btn) => btn.addEventListener('click', async () => {
     const row = btn.closest('[data-cal]');
     const name = row.querySelector('b').textContent;
-    if (!window.confirm(`Change the grams of every dish that uses ${name}? This also recalculates dish costs.`)) return;
+    const lines = [...row.querySelectorAll('[data-cal-line]')].filter((c) => c.checked)
+      .map((c) => ({ id: Number(c.dataset.calLine), grams: row.querySelector(`[data-cal-g="${c.dataset.calLine}"]`).value.trim().replace(',', '.') }));
+    if (!lines.length) { window.alert('Tick at least one dish.'); return; }
+    if (lines.some((l) => !(Number(l.grams) > 0))) { window.alert('Every ticked dish needs grams above 0.'); return; }
+    if (!window.confirm(`Change the grams of ${lines.length} dish${lines.length === 1 ? '' : 'es'} that use ${name}? This also recalculates dish costs.`)) return;
     btn.disabled = true;
     try {
-      const res = await fetch(`/stock-log/item/${btn.dataset.calApply}/calibrate`, { method: 'POST' });
+      const res = await fetch(`/stock-log/item/${btn.dataset.calApply}/calibrate`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lines }),
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Not applied');
-      row.innerHTML = `<div class="sl-cal-top"><div><b>${name}</b> <small>Applied to ${body.dishes} dish${body.dishes === 1 ? '' : 'es'} (×${body.ratio}). Costs recalculated.</small></div></div>`;
+      row.innerHTML = `<div class="sl-cal-top"><div><b>${name}</b> <small>Applied to ${body.dishes} dish${body.dishes === 1 ? '' : 'es'}${body.left_out ? `, ${body.left_out} left unchanged` : ''}. Costs recalculated.</small></div></div>`;
     } catch (e) { window.alert(e.message); btn.disabled = false; }
+  }));
+  // Keep the button's count in step with the ticks.
+  document.querySelectorAll('[data-cal]').forEach((row) => row.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-cal-line]')) return;
+    const n = row.querySelectorAll('[data-cal-line]:checked').length;
+    row.querySelector('[data-cal-n]').textContent = n;
+    row.querySelector('[data-cal-es]').textContent = n === 1 ? '' : 'es';
   }));
 
   // ── Disable needs a confirmation

@@ -75,5 +75,22 @@ class DecideTests(unittest.TestCase):
         self.assertIsNone(rc.decide(self.wins(6, 0.0, 3.0)))
 
 
+class ChosenLinesTests(unittest.TestCase):
+    dishes = [{"id": 1, "name": "A", "grams": 10.0, "new": 17.0}, {"id": 2, "name": "B", "grams": 20.0, "new": 34.0}]
+
+    def test_no_pick_means_every_dish_at_the_suggested_grams(self):
+        self.assertEqual([d["new"] for d in rc.chosen_lines(self.dishes, None)], [17.0, 34.0])
+
+    def test_picked_lines_use_the_typed_grams_and_leave_the_rest(self):
+        got = rc.chosen_lines(self.dishes, [{"id": 2, "grams": "25.5"}])
+        self.assertEqual([(d["id"], d["new"]) for d in got], [(2, 25.5)])
+
+    def test_refuses_other_dishes_bad_grams_and_empty_picks(self):
+        for bad in ([{"id": 99, "grams": "5"}], [{"id": 1, "grams": "0"}], [{"id": 1, "grams": "6000"}],
+                    [{"id": 1, "grams": "abc"}], [{"id": 1}], []):
+            with self.assertRaises(ValueError):
+                rc.chosen_lines(self.dishes, bad)
+
+
 if __name__ == "__main__":
     unittest.main()

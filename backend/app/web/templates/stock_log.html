@@ -64,10 +64,10 @@
       <div class="sl-cal-top">
         <div><b>{{ c.name }}</b> <span class="sl-cal-r {{ 'up' if c.ratio > 1 else 'dn' }}">{{ '%.2f'|format(c.ratio) }}×</span>
           <small>used {{ num(c.real) }} {{ c.unit }} vs recipes {{ num(c.recipe) }} {{ c.unit }} over {{ c.stretches }} counts</small></div>
-        <button type="button" class="sl-btn sl-btn-p" data-cal-apply="{{ c.id }}">Apply to {{ c.dishes|length }} dish{{ 'es' if c.dishes|length != 1 }}</button>
+        <button type="button" class="sl-btn sl-btn-p" data-cal-apply="{{ c.id }}">Apply to <span data-cal-n>{{ c.dishes|length }}</span> dish<span data-cal-es>{{ 'es' if c.dishes|length != 1 }}</span></button>
       </div>
-      <details><summary>Show dishes</summary>
-        <ul class="sl-cal-dishes">{% for d in c.dishes %}<li><span>{{ d.name }}</span><span>{{ num(d.grams) }} → <b>{{ num(d.new) }}</b></span></li>{% endfor %}</ul>
+      <details><summary>Choose dishes and grams</summary>
+        <ul class="sl-cal-dishes">{% for d in c.dishes %}<li><label><input type="checkbox" checked data-cal-line="{{ d.id }}"> <span>{{ d.name }}</span></label><span class="sl-cal-g">{{ num(d.grams) }} → <input type="text" inputmode="decimal" value="{{ num(d.new) }}" data-cal-g="{{ d.id }}" aria-label="New grams for {{ d.name }}"></span></li>{% endfor %}</ul>
       </details>
     </div>
     {% endfor %}
@@ -88,6 +88,10 @@
   <section data-sl-panel="overview">
     <div class="sl-toolbar">
       <label class="sl-search">⌕<input type="search" placeholder="Search an item…" data-sl-q aria-label="Search items"></label>
+      <div class="sl-sort" role="group" aria-label="Order the list">
+        <button type="button" class="on" data-sl-sort="cat">By category</button>
+        <button type="button" data-sl-sort="cover">Running out first</button>
+      </div>
       <div class="sl-chips">
         {% for key, label, n in [('all', 'All', s.stock_total), ('low', 'Running low', s.low), ('zero', 'Zero estimates', s.zero), ('recount', 'Purchase since count', s.recount), ('old', 'Not counted 7+ days', s.old), ('never', 'Never counted', s.never)] %}
         <button type="button" class="sl-chip {{ 'on' if key == 'all' }}" data-sl-filter="{{ key }}">{{ label }} <b>{{ n }}</b></button>
@@ -101,7 +105,7 @@
         <tbody data-sl-cat>
           <tr class="sl-cat"><td colspan="7">{{ 'Packaging' if cat == 'packaging' else cat }}<span>{{ rows|length }} items{% if cat == 'Other' %} · no category set{% endif %}</span></td></tr>
           {% for i in rows %}
-          <tr data-sl-row data-name="{{ i.name|lower }}" data-flags="{{ 'low' if i.f_low }} {{ 'zero' if i.f_zero }} {{ 'recount' if i.f_recount }} {{ 'old' if i.f_old }} {{ 'never' if i.f_never }}">
+          <tr data-sl-row data-name="{{ i.name|lower }}" data-cover="{{ '%.3f'|format(i.cover) if i.cover is not none }}" data-flags="{{ 'low' if i.f_low }} {{ 'zero' if i.f_zero }} {{ 'recount' if i.f_recount }} {{ 'old' if i.f_old }} {{ 'never' if i.f_never }}">
             <td class="sl-item">{{ i.name }}{% if i.ingest %}<small class="sl-ing">Sales off: {% for g in i.ingest %}<span class="{{ 'late' if g.behind is defined and g.behind }}" title="ran {{ g.ran.strftime('%a %d %b, %I:%M %p') }}">{{ g.label }} to {{ g.upto.strftime('%d %b') }}{% if g.never %} (not sold here){% elif g.last_sold %} (none since {{ g.last_sold.strftime('%d %b') }}){% endif %}</span>{{ ' · ' if not loop.last }}{% endfor %}</small>{% elif i.pace_upto %}<small class="sl-ing"><span title="ran {{ i.pace_upto[1].strftime('%a %d %b, %I:%M %p') }}">Taken off at buying pace to {{ i.pace_upto[0].strftime('%d %b') }}</span></small>{% endif %}</td>
             <td>
               <span class="sl-qedit">
@@ -161,6 +165,7 @@
           {% endfor %}
         </tbody>
         {% endfor %}
+        <tbody data-sl-cat data-sl-flat hidden></tbody>
       </table>
       <p class="sl-empty" data-sl-empty hidden>No items match.</p>
     </div>
@@ -204,5 +209,5 @@
   </section>
 </div>
 <script type="application/json" id="sl-data">{{ {"tonight": tonight_ids, "done": s.todo_done, "total": s.todo_total}|tojson }}</script>
-<script src="/static/stock_log.js?v=5" defer></script>
+<script src="/static/stock_log.js?v=7" defer></script>
 {% endblock %}
