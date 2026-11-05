@@ -56,6 +56,29 @@
   </div>
   {% endif %}
 
+  {% if calibration.scale or calibration.check %}
+  <div class="sl-card sl-cal">
+    <div class="sl-sechead"><h3>Recipe check · {{ calibration.scale|length }} to review</h3><p>Counts show these items are used more or less than the recipes say, steadily over several counts. Apply scales every dish that uses the item. Nothing changes until you press it.</p></div>
+    {% for c in calibration.scale %}
+    <div class="sl-cal-row" data-cal="{{ c.id }}">
+      <div class="sl-cal-top">
+        <div><b>{{ c.name }}</b> <span class="sl-cal-r {{ 'up' if c.ratio > 1 else 'dn' }}">{{ '%.2f'|format(c.ratio) }}×</span>
+          <small>used {{ num(c.real) }} {{ c.unit }} vs recipes {{ num(c.recipe) }} {{ c.unit }} over {{ c.stretches }} counts</small></div>
+        <button type="button" class="sl-btn sl-btn-p" data-cal-apply="{{ c.id }}">Apply to {{ c.dishes|length }} dish{{ 'es' if c.dishes|length != 1 }}</button>
+      </div>
+      <details><summary>Show dishes</summary>
+        <ul class="sl-cal-dishes">{% for d in c.dishes %}<li><span>{{ d.name }}</span><span>{{ num(d.grams) }} → <b>{{ num(d.new) }}</b></span></li>{% endfor %}</ul>
+      </details>
+    </div>
+    {% endfor %}
+    {% if calibration.check %}
+    <div class="sl-cal-chk"><b>Not a grams problem, check the dish list or batch:</b>
+      {% for c in calibration.check %}{{ c.name }} ({{ '%.1f'|format(c.ratio) }}×){{ ', ' if not loop.last }}{% endfor %}.
+      <small>The gap is too big for a recipe-gram error: usually the item is missing from a dish, or goes through a gravy batch.</small></div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="sl-tabs" role="tablist">
     <button type="button" class="on" data-sl-tab="overview">Overview <span>{{ s.stock_total }}</span></button>
     <button type="button" data-sl-tab="count">Count <span>{{ first|length }} first</span></button>
@@ -181,5 +204,5 @@
   </section>
 </div>
 <script type="application/json" id="sl-data">{{ {"tonight": tonight_ids, "done": s.todo_done, "total": s.todo_total}|tojson }}</script>
-<script src="/static/stock_log.js?v=4" defer></script>
+<script src="/static/stock_log.js?v=5" defer></script>
 {% endblock %}

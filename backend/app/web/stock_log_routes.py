@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import business_today, business_tz
 from app.core.database import get_db
 from app.services.stock_log_pdf import build_low_cover_stock_pdf
-from app.services import home_stock, shell_pulse, stock_count
+from app.services import home_stock, recipe_calibration, shell_pulse, stock_count
 from app.web.deps import _tmpl, require_user
 from app.web.reorder_routes import record_stock, _LATEST_GAS_SQL, _GAS_AVERAGE_SQL
 
@@ -163,6 +163,7 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
         "first": stock_count.first_list(items),
         "disabled": stock_count.disabled_items(db),
         "shortfalls": stock_count.shortfalls(db),
+        "calibration": recipe_calibration.suggestions(db),
         "ingested": stock_count.last_ingestion(db),
     })
 
@@ -238,6 +239,21 @@ async def save_home_count(ingredient_id: int, request: Request, db: Session = De
     except home_stock.StockMoveError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
     return JSONResponse({"ok": True, "by": user.name, **result})
+
+
+@router.post("/stock-log/item/{ingredient_id}/calibrate")
+def calibrate_recipes(ingredient_id: int, request: Request, db: Session = Depends(get_db)):
+    """Apply the suggested ratio to every dish line of this item (owner presses Apply)."""
+    user, redir = require_user(request, db)
+    if redir:
+        return JSONResponse({"error": "Sign in again"}, status_code=401)
+    try:
+        result = recipe_calibration.apply(db, ingredient_id, user.id)
+    except ValueError as exc:
+        db.rollback()
+        return JSONResponse({"error": str(exc)}, status_code=409)
+    shell_pulse.invalidate()
+    return JSONResponse({"ok": True, **result})
 
 
 @router.post("/stock-log/item/{ingredient_id}/disable")

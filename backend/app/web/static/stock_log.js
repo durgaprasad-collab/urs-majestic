@@ -202,6 +202,20 @@
     document.querySelectorAll('[data-sl-section]').forEach((sec) => { sec.hidden = sec.dataset.slSection !== a.dataset.slSec; });
   }));
 
+  // ── Recipe check: Apply scales every dish line of the item
+  document.querySelectorAll('[data-cal-apply]').forEach((btn) => btn.addEventListener('click', async () => {
+    const row = btn.closest('[data-cal]');
+    const name = row.querySelector('b').textContent;
+    if (!window.confirm(`Change the grams of every dish that uses ${name}? This also recalculates dish costs.`)) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/stock-log/item/${btn.dataset.calApply}/calibrate`, { method: 'POST' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Not applied');
+      row.innerHTML = `<div class="sl-cal-top"><div><b>${name}</b> <small>Applied to ${body.dishes} dish${body.dishes === 1 ? '' : 'es'} (×${body.ratio}). Costs recalculated.</small></div></div>`;
+    } catch (e) { window.alert(e.message); btn.disabled = false; }
+  }));
+
   // ── Disable needs a confirmation
   document.querySelectorAll('[data-sl-disable]').forEach((form) => form.addEventListener('submit', (e) => {
     const ok = window.confirm(`Disable "${form.dataset.slDisable}"?\n\nIt disappears from the nightly count, order forecast, reorder lists and staff requests. History is kept and you can re-enable it from "Disabled items".`);
