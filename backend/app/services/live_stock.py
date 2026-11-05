@@ -219,6 +219,54 @@ def _resolvers(db: Session):
     return {"petpooja": petpooja, "zomato": zomato, "swiggy": zomato}  # Swiggy's item names go through the same matcher
 
 
+def timeline(reads_rows: list[tuple[datetime.datetime, list[tuple[str, float]]]]) -> dict[str, dict]:
+    """reads_rows: [(read_at, [(item, cumulative qty so far today)])] oldest first, items already resolved.
+    Per item: the quantity now, the time of the read that last raised it, and how much the latest read added
+    (the first read of the day counts everything up to then as sold)."""
+    out: dict[str, dict] = {}
+    prev: dict[str, float] = {}
+    for i, (at, rows) in enumerate(reads_rows):
+        cur: dict[str, float] = {}
+        for name, qty in rows:
+            cur[name] = cur.get(name, 0.0) + float(qty)
+        for name, qty in cur.items():
+            was = prev.get(name, 0.0)
+            e = out.setdefault(name, {"qty": 0.0, "last_at": None, "delta": 0.0})
+            e["qty"] = qty
+            if qty > was:
+                e["last_at"] = at
+            e["delta"] = max(qty - was, 0.0) if i == len(reads_rows) - 1 else 0.0
+        for name in prev:                       # an item missing from a later read keeps its earlier quantity
+            if name not in cur:
+                out[name]["delta"] = 0.0
+        prev = {**prev, **cur}
+    return out
+
+
+def _timeline(reads: list, resolve) -> dict[str, dict]:
+    """Every item sold today on one channel, including non-dishes like Water Bottle, with when it last sold."""
+    cache: dict[str, tuple] = {}
+
+    def canon_of(n):
+        if n not in cache:
+            cache[n] = resolve(n)
+        return cache[n]
+    resolved, food = [], {}
+    for rd in reads:
+        rows = []
+        for r in rd["rows"]:
+            canon, item = canon_of(r["name"])
+            if item is None:
+                continue
+            food[canon] = bool(getattr(item, "is_food", True))
+            rows.append((canon, r["qty"]))
+        resolved.append((rd["read_at"], rows))
+    out = timeline(resolved)
+    for name, e in out.items():
+        e["food"] = food.get(name, True)
+    return out
+
+
 def _part(ch: str, reads: list, resolve, now: datetime.datetime, today: datetime.date) -> dict | None:
     """One channel's side of the view from its reads today (oldest first)."""
     if not reads:
@@ -249,8 +297,9 @@ def _part(ch: str, reads: list, resolve, now: datetime.datetime, today: datetime
             still_since = rd["read_at"]
         else:
             break
+    sold = _timeline(reads, resolve)
     age = max(0.0, (now - last["read_at"]).total_seconds() / 60)
-    return {"ch": ch, "read_at": last["read_at"], "age_min": age, "status": "live" if age <= STALE_MIN else "stale",
+    return {"ch": ch, "sold": sold, "read_at": last["read_at"], "age_min": age, "status": "live" if age <= STALE_MIN else "stale",
             "reads": len(reads), "dishes": dishes, "amount": float(last["amount"]), "orders": last["orders_n"],
             "sales": sales, "merged": merged, "unmapped": unmapped, "hours": hours,
             "still_since": still_since, "still_min": max(0.0, (last["read_at"] - still_since).total_seconds() / 60)}
@@ -287,6 +336,18 @@ def snapshot(db: Session) -> dict:
         for h, n in p["hours"].items():
             hours[h] = hours.get(h, 0.0) + n
     freshest = min(live, key=lambda p: p["still_min"])
+    sold: dict[str, dict] = {}
+    for p in live:
+        for n, e in p["sold"].items():
+            s = sold.setdefault(n, {"name": n, "qty": 0.0, "last_at": None, "delta": 0.0, "food": e["food"]})
+            s["qty"] += e["qty"]
+            if e["last_at"] and (s["last_at"] is None or e["last_at"] > s["last_at"]):
+                s["last_at"] = e["last_at"]
+            if p["status"] == "live":           # "since the last update" only means something for a channel that is still reading
+                s["delta"] += e["delta"]
+    # Most recently sold first (last in, first out); ties and the unlucky few without a time by quantity.
+    sold_list = sorted(sold.values(), key=lambda s: (s["last_at"] is None, -(s["last_at"].timestamp() if s["last_at"] else 0), -s["qty"], s["name"]))
+    unsold = sorted(r[0] for r in db.execute(text("SELECT name FROM menu_items WHERE is_active")) if r[0] not in sold)
     notices: list[str] = []
     out = {**base, "status": primary["status"], "read_at": _fmt_dt(max(p["read_at"] for p in live)),
            "age_min": round(min(p["age_min"] for p in live), 1), "reads_today": sum(p["reads"] for p in live),
@@ -294,6 +355,8 @@ def snapshot(db: Session) -> dict:
            "walkin": _summary(parts["petpooja"]), "zomato": _summary(parts["zomato"]), "swiggy": _summary(parts["swiggy"]),
            "still_since": _fmt_dt(freshest["still_since"]), "still_min": round(freshest["still_min"], 1),
            "top": [{"name": n, "qty": q} for n, q in sorted(merged.items(), key=lambda kv: -kv[1])],
+           "sold": [{"name": s["name"], "qty": s["qty"], "last_at": _fmt_dt(s["last_at"]), "delta": round(s["delta"], 1), "food": s["food"]} for s in sold_list],
+           "unsold": unsold,
            "unmapped": [u for p in live for u in p["unmapped"]],
            "hours": [{"h": h, "n": round(n, 1)} for h, n in sorted(hours.items())],
            "rows": [], "notice": None, "notices": notices, "tight": 0, "out": 0}

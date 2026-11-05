@@ -35,7 +35,8 @@
     </div>
     <div class="ls-sidecol">
       <div class="sl-card ls-side"><div class="sl-sechead"><h3>Dishes by hour</h3><p>from the reads today</p></div><div class="ls-hrs" data-ls-hrs></div><div class="ls-hl" data-ls-hl></div></div>
-      <div class="sl-card ls-side"><div class="sl-sechead"><h3>Selling now</h3><p>dishes so far today</p></div><div data-ls-top></div></div>
+      <div class="sl-card ls-side"><div class="sl-sechead"><h3>Selling now</h3><p>everything sold today, most recent first</p></div><div class="ls-sellscroll" data-ls-top></div>
+        <details class="ls-unsold" data-ls-unsold-card hidden><summary>Not sold yet today (<span data-ls-unsold-n>0</span>)</summary><div data-ls-unsold></div></details></div>
       <div class="sl-card ls-side" data-ls-unm-card hidden><div class="sl-sechead"><h3>Not matched to a menu item</h3><p>These sales are left out. Link them on Menu Analysis.</p></div><div data-ls-unm></div></div>
     </div>
   </div>
@@ -55,5 +56,5 @@
     </div>
   </details>
 </div>
-<script src="/static/live_stock.js?v=3" defer></script>
+<script src="/static/live_stock.js?v=4" defer></script>
 {% endblock %}

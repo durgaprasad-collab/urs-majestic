@@ -64,11 +64,17 @@
     $('[data-ls-hrs]').innerHTML = hrs.map((h) => '<i style="height:' + Math.max(4, h.n / mx * 100) + '%" title="' + (h.h % 12 || 12) + (h.h % 24 >= 12 ? ' PM' : ' AM') + ': ' + h.n + ' dishes"></i>').join('');
     $('[data-ls-hl]').innerHTML = hrs.map((h) => '<span>' + (h.h % 12 || 12) + '</span>').join('');
     {
-      // Top 8 by name, then one row for the rest so the list adds up to "Dishes sold".
-      const all = d.top || [], shown = all.slice(0, 8), rest = all.slice(8);
-      const row = (n, q) => '<div class="ls-dish"><span>' + n + '</span><b>' + Math.round(q) + '</b></div>';
-      $('[data-ls-top]').innerHTML = shown.map((t) => row(esc(t.name), t.qty)).join('')
-        + (rest.length ? row('Other ' + rest.length + ' dish' + (rest.length === 1 ? '' : 'es'), rest.reduce((a, t) => a + t.qty, 0)) : '');
+      // Every item sold today, most recently sold first (last in, first out), non-dishes like Water Bottle included.
+      const all = d.sold || [];
+      $('[data-ls-top]').innerHTML = all.map((t) => '<div class="ls-dish"><span>' + esc(t.name)
+        + (t.delta > 0 ? ' <em class="ls-new">+' + Math.round(t.delta) + ' since last update</em>' : '')
+        + (t.food === false ? ' <small class="ls-nd">not a dish</small>' : '')
+        + '<small class="ls-when">' + (t.last_at ? 'last sold ' + clock(t.last_at) : '') + '</small></span><b>' + Math.round(t.qty) + '</b></div>').join('')
+        || '<div class="ls-dish"><span class="sl-muted">Nothing sold yet.</span></div>';
+      const un = d.unsold || [];
+      $('[data-ls-unsold-card]').hidden = !un.length;
+      $('[data-ls-unsold-n]').textContent = un.length;
+      $('[data-ls-unsold]').innerHTML = un.map((n) => '<span>' + esc(n) + '</span>').join('');
     }
     const unm = d.unmapped || [];
     $('[data-ls-unm-card]').hidden = !unm.length;

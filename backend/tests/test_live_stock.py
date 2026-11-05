@@ -78,5 +78,32 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(live_stock.classify(1.0, None, None), ("ok", "OK"))  # early in the day: no projection
 
 
+class TimelineTests(unittest.TestCase):
+    def at(self, h, m=0):
+        return datetime.datetime(2026, 11, 5, h, m, tzinfo=datetime.timezone.utc)
+
+    def test_last_sold_is_the_read_that_raised_the_quantity(self):
+        t = live_stock.timeline([
+            (self.at(13), [("Gobi 65", 2.0), ("Water Bottle", 1.0)]),
+            (self.at(13, 10), [("Gobi 65", 2.0), ("Water Bottle", 3.0)]),
+            (self.at(13, 20), [("Gobi 65", 5.0), ("Water Bottle", 3.0)]),
+        ])
+        self.assertEqual(t["Gobi 65"]["last_at"], self.at(13, 20))
+        self.assertEqual(t["Water Bottle"]["last_at"], self.at(13, 10))
+        self.assertEqual(t["Gobi 65"]["qty"], 5.0)
+
+    def test_delta_is_what_the_latest_read_added(self):
+        t = live_stock.timeline([(self.at(13), [("A", 2.0), ("B", 1.0)]), (self.at(13, 10), [("A", 5.0), ("B", 1.0)])])
+        self.assertEqual((t["A"]["delta"], t["B"]["delta"]), (3.0, 0.0))
+
+    def test_first_read_counts_everything_as_sold_then(self):
+        t = live_stock.timeline([(self.at(13), [("A", 4.0)])])
+        self.assertEqual((t["A"]["last_at"], t["A"]["delta"]), (self.at(13), 4.0))
+
+    def test_item_missing_from_a_later_read_keeps_its_time_and_has_no_delta(self):
+        t = live_stock.timeline([(self.at(13), [("A", 4.0)]), (self.at(13, 10), [("B", 1.0)])])
+        self.assertEqual((t["A"]["last_at"], t["A"]["delta"], t["A"]["qty"]), (self.at(13), 0.0, 4.0))
+
+
 if __name__ == "__main__":
     unittest.main()
