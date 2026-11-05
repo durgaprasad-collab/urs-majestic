@@ -66,7 +66,9 @@
     {
       // Every item sold today, most recently sold first (last in, first out), non-dishes like Water Bottle included.
       const all = d.sold || [];
-      $('[data-ls-top]').innerHTML = all.map((t) => '<div class="ls-dish"><span>' + esc(t.name)
+      const CH = { petpooja: ['Walk-in', 'walkin'], zomato: ['Zomato', 'zomato'], swiggy: ['Swiggy', 'swiggy'] };
+      $('[data-ls-top]').innerHTML = all.map((t) => '<div class="ls-dish"><span><span class="ls-chs">'
+        + (t.by || []).map((b) => '<i class="ls-ch ' + (CH[b.ch] || [b.ch, ''])[1] + '">' + (CH[b.ch] || [b.ch])[0] + ' ' + Math.round(b.qty) + '</i>').join('') + '</span>' + esc(t.name)
         + (t.delta > 0 ? ' <em class="ls-new">+' + Math.round(t.delta) + ' since last update</em>' : '')
         + (t.food === false ? ' <small class="ls-nd">not a dish</small>' : '')
         + '<small class="ls-when">' + (t.last_at ? 'last sold ' + clock(t.last_at) : '') + '</small></span><b>' + Math.round(t.qty) + '</b></div>').join('')

@@ -2361,6 +2361,10 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .ls-dish > span { min-width: 0; }
 .ls-new { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: var(--sl-good-bg); color: var(--sl-good); font: 700 11px Inter, sans-serif; font-style: normal; white-space: nowrap; }
 .ls-nd { margin-left: 4px; color: var(--sl-ink-3); }
+.ls-chs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 3px; }
+.ls-chs:empty { display: none; }
+.ls-ch { padding: 1px 7px; border-radius: 999px; font: 700 10.5px Inter, sans-serif; font-style: normal; letter-spacing: .02em; white-space: nowrap; }
+.ls-ch.walkin { background: #E4EFE8; color: #0D3220; } .ls-ch.zomato { background: #FDE6E8; color: #B5202E; } .ls-ch.swiggy { background: #FEEBD6; color: #B35A06; }
 .ls-when { display: block; color: var(--sl-ink-3); font-size: 11.5px; }
 .ls-sellscroll { max-height: 460px; overflow-y: auto; }
 .ls-unsold { border-top: 1px solid #F0EEE6; padding: 8px 14px; font-size: 12.5px; }

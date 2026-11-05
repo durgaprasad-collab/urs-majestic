@@ -339,8 +339,9 @@ def snapshot(db: Session) -> dict:
     sold: dict[str, dict] = {}
     for p in live:
         for n, e in p["sold"].items():
-            s = sold.setdefault(n, {"name": n, "qty": 0.0, "last_at": None, "delta": 0.0, "food": e["food"]})
+            s = sold.setdefault(n, {"name": n, "qty": 0.0, "last_at": None, "delta": 0.0, "food": e["food"], "by": {}})
             s["qty"] += e["qty"]
+            s["by"][p["ch"]] = s["by"].get(p["ch"], 0.0) + e["qty"]
             if e["last_at"] and (s["last_at"] is None or e["last_at"] > s["last_at"]):
                 s["last_at"] = e["last_at"]
             if p["status"] == "live":           # "since the last update" only means something for a channel that is still reading
@@ -355,7 +356,8 @@ def snapshot(db: Session) -> dict:
            "walkin": _summary(parts["petpooja"]), "zomato": _summary(parts["zomato"]), "swiggy": _summary(parts["swiggy"]),
            "still_since": _fmt_dt(freshest["still_since"]), "still_min": round(freshest["still_min"], 1),
            "top": [{"name": n, "qty": q} for n, q in sorted(merged.items(), key=lambda kv: -kv[1])],
-           "sold": [{"name": s["name"], "qty": s["qty"], "last_at": _fmt_dt(s["last_at"]), "delta": round(s["delta"], 1), "food": s["food"]} for s in sold_list],
+           "sold": [{"name": s["name"], "qty": s["qty"], "last_at": _fmt_dt(s["last_at"]), "delta": round(s["delta"], 1), "food": s["food"],
+                     "by": [{"ch": ch, "qty": s["by"][ch]} for ch in CHANNELS if ch in s["by"]]} for s in sold_list],
            "unsold": unsold,
            "unmapped": [u for p in live for u in p["unmapped"]],
            "hours": [{"h": h, "n": round(n, 1)} for h, n in sorted(hours.items())],
