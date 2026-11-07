@@ -246,6 +246,15 @@ def vendor_prices_page(request: Request, db: Session = Depends(get_db)):
     return _tmpl(request, "purchases_vendors.html", {"user": user, **data, "cat": cat})
 
 
+@router.get("/purchases/compare", response_class=HTMLResponse)
+def price_compare_page(request: Request, db: Session = Depends(get_db)):
+    """Every item's price on each delivery site side by side (latest price check), cheapest in green."""
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    return _tmpl(request, "purchases_compare.html", {"user": user, **vendor_prices.compare_matrix(db)})
+
+
 @router.get("/purchases/new")
 def purchases_new_get(request: Request):
     """Entry moved onto /purchases (one bill, many lines). Quick-add still

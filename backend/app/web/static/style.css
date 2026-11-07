@@ -2304,6 +2304,27 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
   .vp-table td.sl-empty { grid-column: 1 / -1; }
 }
 
+/* Price compare: item x site matrix */
+.pc-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 12px; }
+.pc-filters input[type=search], .pc-filters select { padding: 8px 10px; border: 1px solid var(--sl-line); border-radius: 8px; font: 14px Inter, sans-serif; background: #fff; }
+.pc-filters input[type=search] { flex: 1 1 220px; min-width: 0; max-width: 360px; }
+.pc-chk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.pc-wrap { overflow-x: auto; padding: 0; }
+.pc-table { min-width: 640px; }
+.pc-table td { vertical-align: top; }
+.pc-table b { font-weight: 700; }
+.pc-table small { display: block; font-size: 10.5px; color: var(--sl-ink-3); white-space: nowrap; }
+.pc-table th.pc-item, .pc-table td.pc-item { position: sticky; left: 0; z-index: 1; background: #fff; min-width: 120px; }
+.pc-table td.pc-item b { font-weight: 600; }
+.pc-c a { color: inherit; text-decoration: none; }
+.pc-c.best { background: var(--sl-good-bg); }
+.pc-c.best b { color: var(--sl-good); }
+.pc-c.off b { opacity: .55; }
+.pc-c.off small { color: var(--sl-warn); }
+.pc-paid { background: #FAF9F5; }
+.pc-note { margin: 10px 0 0; font-size: 12px; }
+@media (max-width: 640px) { .pc-table th.pc-item, .pc-table td.pc-item { min-width: 104px; max-width: 120px; } }
+
 /* Buy: prices by app */
 .by-apps { margin: 3px 0 5px; font-size: 12px; }
 .by-apps summary { cursor: pointer; color: #2F6E9E; font-weight: 600; list-style: none; }

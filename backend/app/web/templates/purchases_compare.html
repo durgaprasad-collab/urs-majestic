@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Price compare — URS Majestic{% endblock %}
+
+{% block content %}
+{% macro vp(v, u) %}{% if u == 'g' or u == 'ml' %}₹{{ '{:,.0f}'.format(v * 1000) }}{% elif v >= 10 %}₹{{ '{:,.1f}'.format(v)|replace('.0', '') }}{% else %}₹{{ '%.2f'|format(v) }}{% endif %}{% endmacro %}
+{% macro per(u) %}{% if u == 'g' or u == 'kg' %}/kg{% elif u == 'ml' or u == 'l' %}/litre{% else %}/pc{% endif %}{% endmacro %}
+<div class="sl pu pc">
+  <div class="sl-head">
+    <div>
+      <h1 class="sl-title">Price compare</h1>
+      <p class="sl-sub">{% if day %}Every item on each delivery site from the price check of {{ day.strftime('%a %d %b') }}, plus the last price you paid at each local shop, per kg, litre or piece. The cheapest is green. Delivery fees and minimum orders are not counted.{% else %}Delivery-site prices appear here after the first price check.{% endif %}</p>
+    </div>
+    <div class="sl-btns"><a class="sl-btn" href="/purchases/vendors">Vendor prices</a><a class="sl-btn" href="/purchases">← Purchases</a></div>
+  </div>
+
+  {% if rows %}
+  <div class="pc-filters">
+    <input id="pc-q" type="search" placeholder="Search ingredient…" autocomplete="off" aria-label="Search ingredients">
+    <select id="pc-cat" aria-label="Category"><option value="">All categories</option>{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select>
+    <label class="pc-chk"><input id="pc-gap" type="checkbox"> Cheaper than I paid</label>
+    <span id="pc-count" class="sl-muted"></span>
+  </div>
+
+  <div class="sl-card pc-wrap">
+    <table class="sl-table pc-table">
+      <thead><tr><th class="pc-item">Item</th><th class="r">You paid</th>{% for s in sites %}<th class="r">{{ s }}</th>{% endfor %}{% for s in shops %}<th class="r pc-shop">{{ s }}<small>local shop</small></th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr data-name="{{ r.name|lower }}" data-cat="{{ r.category }}" data-gap="{{ 1 if r.saving is not none and r.saving > 0 else 0 }}">
+          <td class="pc-item"><b>{{ r.name }}</b><small>{{ r.category }}</small></td>
+          <td class="r pc-paid">{% if r.paid %}<b>{{ vp(r.paid.price, r.unit) }}</b><small>{{ r.paid.vendor }}</small>{% else %}<span class="sl-muted">—</span>{% endif %}</td>
+          {% for s in sites %}{% set o = r.cells.get(s) %}
+          <td class="r pc-c {{ 'best' if o and s in r.cheapest }} {{ 'off' if o and (not o.in_stock or o.small) }}">
+            {% if o %}{% if o.url %}<a href="{{ o.url }}" target="_blank" rel="noopener noreferrer">{% endif %}<b>{{ vp(o.ppu, r.unit) }}</b>{% if o.url %}</a>{% endif %}
+            <small title="{{ o.product }}">₹{{ '%g'|format(o.price) }} · {{ '%g'|format(o.pack_qty) }} {{ o.pack_unit }}{% if not o.in_stock %} · out{% elif o.small %} · small pack{% endif %}</small>
+            {% else %}<span class="sl-muted">—</span>{% endif %}
+          </td>
+          {% endfor %}
+          {% for s in shops %}{% set c = r.shop_cells.get(s) %}
+          <td class="r pc-c pc-shop {{ 'best' if c and ('shop:' ~ s) in r.cheapest }}">
+            {% if c %}<b>{{ vp(c.ppu, r.unit) }}</b><small>{{ c.date.strftime('%d %b').lstrip('0') }}{% if c.n > 1 %} · {{ c.n }} buys{% endif %}</small>{% else %}<span class="sl-muted">—</span>{% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+        <tr id="pc-none" hidden><td colspan="{{ 2 + sites|length + shops|length }}" class="sl-empty">No ingredient matches.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sl-muted pc-note">Green = lowest price per kg / litre / piece across in-stock, normal-size online packs and local-shop prices you paid. Faded = out of stock or a small pack (dearer per unit). Tap a price to open the product.</p>
+  <script>
+  (function () {
+    var q = document.getElementById('pc-q'), cat = document.getElementById('pc-cat'), gap = document.getElementById('pc-gap');
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.pc-table tbody tr[data-name]'));
+    var none = document.getElementById('pc-none'), count = document.getElementById('pc-count');
+    function run() {
+      var t = q.value.trim().toLowerCase().split(/\s+/).filter(Boolean), n = 0;
+      rows.forEach(function (r) {
+        var ok = t.every(function (w) { return r.dataset.name.indexOf(w) > -1; }) &&
+                 (!cat.value || r.dataset.cat === cat.value) && (!gap.checked || r.dataset.gap === '1');
+        r.hidden = !ok; if (ok) n++;
+      });
+      none.hidden = n > 0; count.textContent = n + ' of ' + rows.length + ' items';
+    }
+    q.addEventListener('input', run); cat.addEventListener('change', run); gap.addEventListener('change', run); run();
+  })();
+  </script>
+  {% else %}
+  <p class="sl-empty">No price check has been saved yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

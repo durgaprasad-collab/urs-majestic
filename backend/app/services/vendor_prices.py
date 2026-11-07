@@ -136,6 +136,64 @@ def market_latest(db: Session, offers: dict | None = None) -> dict:
     return out
 
 
+SITE_ORDER = ["Hyperpure", "Instamart", "Blinkit", "BigBasket", "Zepto"]  # columns on the compare page, in this order
+
+
+def _site(channel: str) -> str:
+    c = (channel or "").strip()
+    low = c.lower()
+    if "instamart" in low:
+        return "Instamart"
+    if "bigbasket" in low or "bbnow" in low or "big basket" in low:
+        return "BigBasket"
+    return c
+
+
+def compare_matrix(db: Session) -> dict:
+    """One row per item: a cell per delivery site (latest price check) and a
+    cell per local shop (last price you paid there, from purchase bills).
+    {day, sites, shops, rows: [{id, name, category, unit, paid, cells, shop_cells, cheapest: [keys]}]}.
+    The cheapest is the lowest price per unit among in-stock, normal-size
+    online packs and local-shop prices; small packs count only when nothing
+    else is available. Local-shop keys are prefixed "shop:"."""
+    items = compare(db)["items"]
+    offers = market_offers(db, items)
+    online_words = ("hyperpure", "instamart", "blinkit", "bigbasket", "big basket", "bbnow", "zepto", "zomato", "swiggy",
+                    "jiomart", "amazon", "flipkart")  # delivery apps, not local shops
+    rows, seen, shop_n = [], set(), {}
+    for iid, it in items.items():
+        v = offers.get(iid) if offers else None
+        cells: dict = {}
+        for o in (v["offers"] if v else []):  # already ordered best first
+            cells.setdefault(_site(o["channel"]), o)
+            seen.add(_site(o["channel"]))
+        shop_cells: dict = {}
+        for vd in it["vendors"]:
+            if any(w in vd["vendor"].lower() for w in online_words):
+                continue
+            shop_cells[vd["vendor"]] = {"ppu": vd["last_price"], "date": vd["last_date"], "n": vd["n"], "avg": vd["avg"]}
+            shop_n[vd["vendor"]] = shop_n.get(vd["vendor"], 0) + 1
+        if not cells and not shop_cells:
+            continue
+        pool = [(s, o["ppu"]) for s, o in cells.items() if o["in_stock"] and not o["small"]]             or [(s, o["ppu"]) for s, o in cells.items() if o["in_stock"]]
+        pool += [("shop:" + s, c["ppu"]) for s, c in shop_cells.items()]
+        low = min((p for _, p in pool), default=None)
+        cheapest = [k for k, p in pool if low is not None and p <= low * 1.0001]
+        for o in cells.values():
+            o["vs_cheapest"] = (o["ppu"] / low - 1) * 100 if low and o["in_stock"] else None
+        rows.append({"id": iid, "name": it["name"], "category": it["category"] or "Other", "unit": it["unit"],
+                     "paid": ({"price": it["last"]["price"], "vendor": it["last"]["vendor"], "date": it["last"]["date"]}
+                              if it["last"] else None),
+                     "cells": cells, "shop_cells": shop_cells, "cheapest": cheapest, "low": low,
+                     "saving": ((it["last"]["price"] - low) / it["last"]["price"] * 100
+                                if low and it["last"] and it["last"]["price"] else None)})
+    rows.sort(key=lambda r: r["name"].lower())
+    sites = [s for s in SITE_ORDER if s in seen] + sorted(s for s in seen if s not in SITE_ORDER)
+    shops = sorted(shop_n, key=lambda s: (-shop_n[s], s.lower()))
+    return {"day": offers["_day"] if offers else None, "sites": sites, "shops": shops, "rows": rows,
+            "categories": sorted({r["category"] for r in rows})}
+
+
 def page(db: Session, days: int = DAYS) -> dict:
     data = compare(db, days)
     offers = market_offers(db, data["items"])
