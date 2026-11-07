@@ -189,6 +189,7 @@ def build_tasks(db: Session) -> tuple[datetime.date | None, list[dict]]:
     runout = db.execute(text("""
         SELECT name, on_hand_qty, unit, stock_days_cover_left FROM v_ingredient_reorder_forecast
         WHERE is_active AND on_hand_qty >= 0 AND stock_days_cover_left IS NOT NULL AND stock_days_cover_left < 1
+          AND coalesce(category, '') <> 'Staff'  -- staff vegetables are not a customer-service blocker
         ORDER BY stock_days_cover_left
     """)).mappings().all()
     if runout:
