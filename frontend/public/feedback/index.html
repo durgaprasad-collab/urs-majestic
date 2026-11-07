@@ -352,7 +352,7 @@
       href="#"
     >🙏 Mind sharing this on Google?</a>
 
-    <p class="ty-reset" id="tyReset">Resetting in 3 s…</p>
+    <p class="ty-reset" id="tyReset">Resetting in 12 s…</p>
   </div>
 </div>
 
@@ -451,14 +451,13 @@
     const ty = document.getElementById('tyScreen');
     ty.classList.add('show');
 
-    if (rating >= 4) {
-      const gb = document.getElementById('googleBtn');
-      gb.href = GOOGLE_REVIEW_URL;
-      gb.classList.remove('hidden');
-    }
+    // Offered to every customer, whatever the rating (Google bans review gating).
+    const gb = document.getElementById('googleBtn');
+    gb.href = GOOGLE_REVIEW_URL;
+    gb.classList.remove('hidden');
 
     /* ── Reset after 3 s ── */
-    let countdown = 3;
+    let countdown = 12;
     const resetEl = document.getElementById('tyReset');
     const tick = setInterval(() => {
       countdown--;
@@ -482,7 +481,7 @@
     const ty = document.getElementById('tyScreen');
     ty.classList.remove('show');
     document.getElementById('googleBtn').classList.add('hidden');
-    document.getElementById('tyReset').textContent = 'Resetting in 3 s…';
+    document.getElementById('tyReset').textContent = 'Resetting in 12 s…';
   }
 </script>
 </body>
