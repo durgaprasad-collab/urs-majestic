@@ -270,10 +270,22 @@ def build_tasks(db: Session) -> tuple[datetime.date | None, list[dict]]:
 
     # ── Revenue development (CRO) ────────────────────────────────────────
     cat = db.execute(text("SELECT max(order_taken_date) FROM catering_orders")).scalar()
-    if cat is None or (today - cat).days > 21:
+    # Owner target (2026-11-07): at least 1 non-corporate B2B/catering order by 31 Dec 2026.
+    b2b_start, b2b_end = datetime.date(2026, 11, 7), datetime.date(2026, 12, 31)
+    if b2b_start <= today <= b2b_end and (cat is None or cat < b2b_start):
+        left = (b2b_end - today).days
+        t.add("b2b_target", "cro", "P1",
+              f"B2B target: land 1 non-corporate order by 31 Dec ({left} days left)",
+              "Hunt events, not offices: apartment associations, pooja/housewarming/birthday trays, school and tuition "
+              "events, temple and community-hall organisers, wedding planners, and stall or sampling slots at "
+              "Chennai consumer fairs. Trade expos at Chennai Trade Centre mostly gather suppliers, not buyers. "
+              "Log each pitch in /catering-orders. Corporate BD stays out.",
+              "Three new qualified pitches this week (name, contact, event date, quote sent), and the running count "
+              "of pitches and quotes updated.", "/catering-orders")
+    elif cat is None or (today - cat).days > 21:
         t.add("catering", "cro", "P2",
               f"Find the next catering order (last one {cat:%d %b})" if cat else "Start catering sales",
-              "Catering orders are large tickets (₹5,500–₹8,000 so far). Pitch nearby offices, temples and events.",
+              "Catering orders are large tickets (₹5,500–₹8,000 so far). Pitch apartment associations, temples and events.",
               "Three catering pitches made this week.", "/catering-orders")
 
     return asof, t.items
