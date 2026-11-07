@@ -251,14 +251,10 @@ def build_tasks(db: Session) -> tuple[datetime.date | None, list[dict]]:
         when = f", last updated {rv['effective_from']:%d %b}" if rv else ""
         t.add("google_reviews", "creative", "P1",
               f"Grow Google reviews: {cnt} on record{when}",
-              "Reviews drive walk-in discovery. Ask happy tables at the counter with a QR card, and update the count weekly.",
-              "Review QR on every table/counter and the count updated this week.", "/daily-brief")
-    fb = db.execute(text("""
-        SELECT count(*) FROM customer_feedback WHERE NOT coalesce(is_test, false) AND created_at > now() - interval '30 days'
-    """)).scalar() or 0
-    if fb == 0:
-        t.add("feedback", "creative", "P2", "No customer feedback collected in 30 days",
-              "The QR feedback page exists but has no real responses.", "Feedback QR placed and first responses in.")
+              "Reviews drive walk-in discovery. The review QR goes on the bill, and the count is read off the listing weekly.",
+              "Review QR printing on the bill and the count updated this week.", "/daily-brief")
+    # Separate feedback-QR task retired 2026-11-07: the Google review QR on the bill is the single
+    # ask (food-court customers leave unseen, so counter and table asks do not fit).
     top = db.execute(text("""
         SELECT s.item_name, sum(s.qty) q FROM item_sales s JOIN menu_items m ON m.name = s.item_name
         WHERE m.is_food AND s.sale_date > :asof - 7 GROUP BY 1 ORDER BY 2 DESC LIMIT 1
