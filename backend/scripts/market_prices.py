@@ -28,7 +28,6 @@ SKIP_CATEGORIES = {"Overhead", "Staff", "Apparel", "Equipment"}
 SKIP_NAMES = {"Cooking Gas", "Vendor delivery charge", "Cashew gravy"}  # cashew gravy is made to order locally
 # What to type in a shop's search box when the item name won't find it.
 SEARCH = {
-    "Ginger-Garlic": "Ginger",  # house convention: fresh ginger is logged here
     "Chinese Garlic": "Garlic", "Gobi": "Cauliflower", "Palak": "Spinach", "Radish/Mullangi": "Radish",
     "Rice/Basmati": "Basmati rice", "Ponni Rice (staff meals)": "Ponni rice",
     "Fresh cream (Rich's Double Dream)": "Rich's whipping cream", "Wheat Flour": "Atta",

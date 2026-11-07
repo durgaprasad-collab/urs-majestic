@@ -34,11 +34,10 @@ def _words(s: str) -> set[str]:
     return {w for w in re.split(r"[^a-z0-9]+", s.lower()) if len(w) > 1}
 
 
-# Kitchen names staff type (Hindi / Tamil) -> the item's name. Fresh ginger
-# is logged under Ginger-Garlic by house convention. Garlic is left out on
-# purpose: it goes to Chinese Garlic, Ginger-Garlic or Garlic case by case.
+# Kitchen names staff type (Hindi / Tamil) -> the item's name. Garlic is left
+# out on purpose: it goes to Chinese Garlic or Garlic (for the paste) case by case.
 LOCAL_NAMES = {
-    "adrak": "Ginger-Garlic", "inji": "Ginger-Garlic", "ginger": "Ginger-Garlic",
+    "adrak": "Ginger", "inji": "Ginger", "ginger": "Ginger",
     "dhanya": "Coriander", "dhaniya": "Coriander", "dhania": "Coriander", "kothamalli": "Coriander", "kothamali": "Coriander",
     "pyaz": "Onion", "pyaaz": "Onion", "kanda": "Onion", "vengayam": "Onion",
     "tamatar": "Tomato", "thakkali": "Tomato",
