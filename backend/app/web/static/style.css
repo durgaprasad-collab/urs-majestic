@@ -2321,6 +2321,10 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .pc-c.best b { color: var(--sl-good); }
 .pc-c.off b { opacity: .55; }
 .pc-c.off small { color: var(--sl-warn); }
+.pc-badges { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.pc-b { font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 999px; white-space: nowrap; background: #EEF3EF; color: var(--sl-good); }
+.pc-b.soon { background: #FBF1DC; color: var(--sl-warn); }
+.pc-b.low, .pc-b.out { background: #F9E3E0; color: var(--sl-bad); }
 .pc-paid { background: #FAF9F5; }
 .pc-note { margin: 10px 0 0; font-size: 12px; }
 @media (max-width: 640px) { .pc-table th.pc-item, .pc-table td.pc-item { min-width: 104px; max-width: 120px; } }

@@ -149,6 +149,17 @@ def _site(channel: str) -> str:
     return c
 
 
+def _stock_badge(r) -> dict | None:
+    """On hand and days of cover for an item, with a level: out / low (under 1 day) / soon (under 3) / ok."""
+    if r is None:
+        return None
+    qty, unit, cover = float(r[1] or 0), r[2], (float(r[3]) if r[3] is not None else None)
+    if qty <= 0:
+        return {"qty": 0.0, "unit": unit, "cover": None, "level": "out"}
+    level = "ok" if cover is None or cover >= 3 else ("low" if cover < 1 else "soon")
+    return {"qty": qty, "unit": unit, "cover": cover, "level": level}
+
+
 def compare_matrix(db: Session) -> dict:
     """One row per item: a cell per delivery site (latest price check) and a
     cell per local shop (last price you paid there, from purchase bills).
@@ -160,6 +171,8 @@ def compare_matrix(db: Session) -> dict:
     offers = market_offers(db, items)
     online_words = ("hyperpure", "instamart", "blinkit", "bigbasket", "big basket", "bbnow", "zepto", "zomato", "swiggy",
                     "jiomart", "amazon", "flipkart")  # delivery apps, not local shops
+    stock = {r[0]: r for r in db.execute(text(
+        "SELECT ingredient_id, on_hand_qty, unit::text, stock_days_cover_left FROM v_ingredient_reorder_forecast WHERE is_active"))}
     rows, seen, shop_n = [], set(), {}
     for iid, it in items.items():
         v = offers.get(iid) if offers else None
@@ -184,6 +197,7 @@ def compare_matrix(db: Session) -> dict:
         rows.append({"id": iid, "name": it["name"], "category": it["category"] or "Other", "unit": it["unit"],
                      "paid": ({"price": it["last"]["price"], "vendor": it["last"]["vendor"], "date": it["last"]["date"]}
                               if it["last"] else None),
+                     "stock": _stock_badge(stock.get(iid)),
                      "cells": cells, "shop_cells": shop_cells, "cheapest": cheapest, "low": low,
                      "saving": ((it["last"]["price"] - low) / it["last"]["price"] * 100
                                 if low and it["last"] and it["last"]["price"] else None)})

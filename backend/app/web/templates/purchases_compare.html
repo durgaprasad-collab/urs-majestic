@@ -27,7 +27,8 @@
       <tbody>
       {% for r in rows %}
         <tr data-name="{{ r.name|lower }}" data-cat="{{ r.category }}" data-gap="{{ 1 if r.saving is not none and r.saving > 0 else 0 }}">
-          <td class="pc-item"><b>{{ r.name }}</b><small>{{ r.category }}</small></td>
+          <td class="pc-item"><b>{{ r.name }}</b><small>{{ r.category }}</small>
+            {% if r.stock %}<span class="pc-badges"><span class="pc-b {{ r.stock.level }}">{% if r.stock.level == 'out' %}Out of stock{% else %}{{ '%g'|format(r.stock.qty|round(2)) }} {{ r.stock.unit }} in stock{% endif %}</span>{% if r.stock.cover is not none and r.stock.level != 'out' %}<span class="pc-b {{ r.stock.level }}">{{ '%.1f'|format(r.stock.cover) }} days</span>{% endif %}</span>{% endif %}</td>
           <td class="r pc-paid">{% if r.paid %}<b>{{ vp(r.paid.price, r.unit) }}</b><small>{{ r.paid.vendor }}</small>{% else %}<span class="sl-muted">—</span>{% endif %}</td>
           {% for s in sites %}{% set o = r.cells.get(s) %}
           <td class="r pc-c {{ 'best' if o and s in r.cheapest }} {{ 'off' if o and (not o.in_stock or o.small) }}">
