@@ -2237,7 +2237,7 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
    sideways inside their own card; form fields shrink to fit. Pages with a
    card layout (Buy, Stock Log) are left to their own rules. ── */
 @media (max-width: 640px) {
-  .app-main table:not(.by-table):not(:has(tr[data-sl-row])) { display: block; max-width: 100%; overflow-x: auto; min-width: 0 !important; width: auto; -webkit-overflow-scrolling: touch; }
+  .app-main table:not(.by-table):not(.pc-table):not(:has(tr[data-sl-row])) { display: block; max-width: 100%; overflow-x: auto; min-width: 0 !important; width: auto; -webkit-overflow-scrolling: touch; }
   .sl-card, .card, [class*="-grid"] > *, .ct-order > * { min-width: 0; }
   .person-actions { flex-wrap: wrap; }
   .app-main input, .app-main select, .app-main textarea { max-width: 100%; min-width: 0; }
@@ -2329,7 +2329,7 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .pc-b.low, .pc-b.out { background: #F9E3E0; color: var(--sl-bad); }
 .pc-paid { background: #FAF9F5; }
 .pc-note { margin: 10px 0 0; font-size: 12px; }
-@media (max-width: 640px) { .pc-table th.pc-item, .pc-table td.pc-item { min-width: 104px; max-width: 120px; } }
+@media (max-width: 640px) { .pc .sl-sub, .pc-note { display: none; } .pc .sl-head { margin-bottom: 8px; } .pc-table th.pc-item, .pc-table td.pc-item { min-width: 104px; max-width: 120px; } }
 
 /* Buy: prices by app */
 .by-apps { margin: 3px 0 5px; font-size: 12px; }

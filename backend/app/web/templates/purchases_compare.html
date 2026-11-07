@@ -63,6 +63,14 @@
       });
       none.hidden = n > 0; count.textContent = n + ' of ' + rows.length + ' items';
     }
+    // Size the table box to the space left on screen so its header row stays frozen (phones included).
+    var wrap = document.querySelector('.pc-wrap');
+    function fit() {
+      var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      var room = vh - (wrap.getBoundingClientRect().top + window.scrollY) - 10;
+      wrap.style.maxHeight = (room >= 320 ? room : vh - 90) + 'px';
+    }
+    fit(); window.addEventListener('resize', fit);
     q.addEventListener('input', run); cat.addEventListener('change', run); gap.addEventListener('change', run); run();
   })();
   </script>
