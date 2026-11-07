@@ -207,6 +207,8 @@ def _build(db: Session) -> dict:
         SELECT count(*) FROM modal JOIN tot USING (item_name) JOIN menu_items m ON m.name = modal.item_name
         WHERE m.is_active AND m.is_food AND tot.q >= :minq AND abs(modal.unit - m.price) >= 1
           AND modal.days * 2 >= tot.days
+          -- Add-on lines bill at a deliberate lower price under the same item name.
+          AND m.name NOT IN ('Masala Kulcha (1 No)', 'Chilli Gobi')
     """), {"asof": asof, "minq": LEAK_MIN_QTY}).scalar() or 0
     leak_total = sum(r["leak"] for r in leak_rows)
 
