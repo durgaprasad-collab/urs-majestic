@@ -2309,9 +2309,11 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .pc-filters input[type=search], .pc-filters select { padding: 8px 10px; border: 1px solid var(--sl-line); border-radius: 8px; font: 14px Inter, sans-serif; background: #fff; }
 .pc-filters input[type=search] { flex: 1 1 220px; min-width: 0; max-width: 360px; }
 .pc-chk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
-.pc-wrap { overflow-x: auto; padding: 0; }
+.pc-wrap { overflow: auto; max-height: calc(100vh - 190px); min-height: 320px; padding: 0; }
 .pc-table { min-width: 640px; }
 .pc-table td { vertical-align: top; }
+.pc-table thead th { position: sticky; top: 0; z-index: 2; background: #FAF9F5; box-shadow: 0 1px 0 var(--sl-line); }
+.pc-table thead th.pc-item { z-index: 3; }
 .pc-table b { font-weight: 700; }
 .pc-table small { display: block; font-size: 10.5px; color: var(--sl-ink-3); white-space: nowrap; }
 .pc-table th.pc-item, .pc-table td.pc-item { position: sticky; left: 0; z-index: 1; background: #fff; min-width: 120px; }
