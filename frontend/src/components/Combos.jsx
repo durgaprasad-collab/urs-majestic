@@ -1,7 +1,7 @@
 import { priceOf } from '../data/site'
 
 export default function Combos() {
-  const express = ['Biryani Express — Veg', 'Biryani Express — Mushroom', 'Biryani Express — Paneer'].map(priceOf)
+  const express = ['Biryani Express — Veg', 'Biryani Express — Mushroom'].map(priceOf)
   return (
     <section className="section combos" id="combos">
       <div className="wrap">
@@ -23,13 +23,13 @@ export default function Combos() {
           </div>
           <div className="combo">
             <h3>Biryani Express</h3>
-            <p>Veg ₹{express[0]} · Mushroom ₹{express[1]} · Paneer ₹{express[2]}</p>
-            <div className="combo-price"><b><small>from </small>₹{Math.min(...express)}</b><span>3 choices</span></div>
+            <p>Veg ₹{express[0]} · Mushroom ₹{express[1]}</p>
+            <div className="combo-price"><b><small>from </small>₹{Math.min(...express)}</b><span>2 choices</span></div>
           </div>
           <div className="combo">
-            <h3>Chinese Mega Box</h3>
-            <p>The big Indo-Chinese box.</p>
-            <div className="combo-price"><b>₹{priceOf('Chinese Mega Box')}</b><span>per box</span></div>
+            <h3>Indo Chinese Duo</h3>
+            <p>Two Indo-Chinese favourites in one box.</p>
+            <div className="combo-price"><b>₹{priceOf('Indo Chinese Duo')}</b><span>per box</span></div>
           </div>
         </div>
       </div>
