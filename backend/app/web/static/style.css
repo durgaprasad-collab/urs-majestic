@@ -1862,9 +1862,12 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .by-run { padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .by-run.r0 { background: var(--sl-bad-bg); color: var(--sl-bad); } .by-run.r1 { background: var(--sl-warn-bg); color: var(--sl-warn); } .by-run.r2 { background: #F2F1EA; color: var(--sl-ink-2); }
 @media (max-width: 900px) {
-  .by-week { grid-template-columns: repeat(2, 1fr); }
+  .by-week { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .by-wkpis { grid-template-columns: 1fr 1fr; }
 }
+.by-week { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+@media (max-width: 900px) { .by-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.by-day { min-width: 0; }
 
 /* ── Purchases (/purchases) ───────────────────────────────────── */
 .pu-err { border-color: #F2C4BA; background: var(--sl-bad-bg); color: var(--sl-bad); }
