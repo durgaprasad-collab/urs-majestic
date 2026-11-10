@@ -2458,3 +2458,8 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .gv-note{font-size:12.5px;color:var(--sl-ink-2,#6b645a);margin:8px 2px}
 .gv-fin{margin:0}
 @media (max-width:640px){.gv-hm{display:none}.gv-form input{width:100%}.gv-form label{flex:1 1 130px}.gv-table th,.gv-table td{padding:6px 5px;font-size:12.5px}}
+
+.gv-det summary{cursor:pointer;list-style:none;display:inline-block;padding:0 8px;border-radius:6px;background:#f3efe6;font-weight:600}
+.gv-det[open] summary{background:#e6dfd0}
+.gv-det ul{list-style:none;margin:6px 0 2px;padding:0;text-align:left;font-size:12.5px;min-width:170px}
+.gv-det li{display:flex;justify-content:space-between;gap:10px;padding:2px 0}

@@ -48,14 +48,26 @@
   </form>
 
   <div class="sl-card gv-card">
+    <h3>Dishes using gravy · since {{ dt(c.start) }}: <b>{{ total_dishes|int }}</b> total</h3>
+    <table class="gv-table">
+      <thead><tr><th>Dish</th><th class="num">Sold</th><th class="num">Share</th></tr></thead>
+      <tbody>
+      {% for r in by_dish %}<tr><td>{{ r.dish }}</td><td class="num">{{ r.qty|int }}</td><td class="num">{{ '%.0f'|format(r.pct) }}%</td></tr>{% endfor %}
+      <tr><td><b>Total</b></td><td class="num"><b>{{ total_dishes|int }}</b></td><td class="num">100%</td></tr>
+      </tbody>
+    </table>
+    <p class="gv-note">Dishes with a lighter gravy share (biryani, pulav, chappati with channa) count as half a portion; every other dish as one. Tap a day's number below to see which dishes made it.</p>
+  </div>
+
+  <div class="sl-card gv-card">
     <h3>Day by day · batch of {{ dt(c.batch.batch_date) }}</h3>
     <table class="gv-table">
-      <thead><tr><th>Date</th><th class="num">Dishes (weighted)</th><th class="num">Used (kg)</th><th class="num">Left (kg)</th></tr></thead>
+      <thead><tr><th>Date</th><th class="num">Dishes</th><th class="num">Used (kg)</th><th class="num">Left (kg)</th></tr></thead>
       <tbody>
       {% for r in daily %}
         <tr>
           <td>{{ dt(r.day) }}{% if r.reading %} <span class="gv-pill">weighed</span>{% endif %}</td>
-          <td class="num">{% if r.has_sales %}{{ '%.1f'|format(r.portions) }}{% else %}<span class="gv-dim">no sales</span>{% endif %}</td>
+          <td class="num">{% if r.has_sales %}<details class="gv-det"><summary>{{ r.dishes|int }}</summary><ul>{% for n, q in r.breakup %}<li>{{ n }} <b>×{{ q|int }}</b></li>{% endfor %}</ul></details>{% else %}<span class="gv-dim">no sales</span>{% endif %}</td>
           <td class="num">{{ '%.2f'|format(r.kg) }}</td>
           <td class="num"><b>{{ '%.1f'|format([r.left, 0]|max) }}</b></td>
         </tr>

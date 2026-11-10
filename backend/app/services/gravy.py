@@ -35,9 +35,9 @@ _PORTIONS_SQL = text("""
           FROM orders o JOIN order_items oi ON oi.order_id = o.id JOIN menu_items mi ON mi.id = oi.menu_item_id
          WHERE (o.placed_at AT TIME ZONE :tz)::date >= :since
     )
-    SELECT w.d AS day, sum(w.qty * g.gr / base.b)::float AS portions
+    SELECT w.d AS day, w.n AS dish, sum(w.qty)::float AS qty, (g.gr / base.b)::float AS weight
       FROM w JOIN g ON g.name = w.n CROSS JOIN base
-     GROUP BY w.d ORDER BY w.d
+     GROUP BY w.d, w.n, g.gr, base.b ORDER BY w.d
 """)
 
 
@@ -60,9 +60,14 @@ def ensure_tables(db) -> None:
     db.commit()
 
 
-def _portions(db, since: date) -> dict:
+def _portions(db, since: date) -> tuple[dict, dict]:
+    """({day: weighted portions}, {day: {dish: qty}})"""
     rows = db.execute(_PORTIONS_SQL, {"since": since, "tz": settings.BUSINESS_TIMEZONE}).mappings().all()
-    return {r["day"]: float(r["portions"] or 0) for r in rows}
+    portions, dishes = defaultdict(float), defaultdict(dict)
+    for r in rows:
+        portions[r["day"]] += r["qty"] * r["weight"]
+        dishes[r["day"]][r["dish"]] = r["qty"]
+    return dict(portions), dict(dishes)
 
 
 def _calibrate(batches, readings, portions) -> tuple[float, int]:
@@ -94,7 +99,7 @@ def page_data(db) -> dict:
 
     today = business_today()
     since = min([b["batch_date"] for b in batches] + [today - timedelta(days=60)])
-    portions = _portions(db, since)
+    portions, dishes = _portions(db, since)
     asof = db.execute(text("SELECT max(sale_date) FROM item_sales")).scalar()
     g_per, n_cal = _calibrate(batches, readings, portions)
 
@@ -108,7 +113,7 @@ def page_data(db) -> dict:
     yield_kg = float(cur["yield_kg"])
     rs = readings.get(cur["id"], [])
     last = asof or today
-    left, daily, used_total = yield_kg, [], 0.0
+    left, daily, used_total, by_dish = yield_kg, [], 0.0, {}
     day = start
     while day <= last:
         p = portions.get(day, 0.0)
@@ -118,8 +123,12 @@ def page_data(db) -> dict:
         reading = next((r for r in rs if r["reading_date"] == day), None)
         if reading:  # a weighed reading beats the estimate
             left = float(reading["kg_left"])
+        dd = dishes.get(day, {})
         daily.append({"day": day, "portions": p, "kg": kg, "left": left, "reading": reading is not None,
-                      "has_sales": day in portions})
+                      "has_sales": day in portions, "dishes": sum(dd.values()),
+                      "breakup": sorted(dd.items(), key=lambda x: -x[1])})
+        for n, q in dd.items():
+            by_dish[n] = by_dish.get(n, 0.0) + q
         day += timedelta(days=1)
 
     recent = [portions[d] for d in sorted(portions) if d <= last][-TREND_DAYS:]
@@ -135,5 +144,9 @@ def page_data(db) -> dict:
         "last_reading": rs[-1] if rs else None,
         "no_sales_days": [d["day"] for d in daily if not d["has_sales"] and d["day"] < last],
     }
+    total_dishes = sum(by_dish.values())
+    out["total_dishes"] = total_dishes
+    out["by_dish"] = [{"dish": n, "qty": q, "pct": q / total_dishes * 100 if total_dishes else 0}
+                      for n, q in sorted(by_dish.items(), key=lambda x: -x[1])]
     out["daily"] = list(reversed(daily))
     return out
