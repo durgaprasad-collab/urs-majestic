@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Gravy — URS Majestic{% endblock %}
+
+{% block content %}
+{% macro kg(v) %}{% if v is none %}—{% else %}{{ '%.1f'|format(v) }}{% endif %}{% endmacro %}
+{% macro dt(d) %}{{ d.strftime('%a %d %b') if d else '—' }}{% endmacro %}
+{% set c = current %}
+<div class="sl gv">
+  <div class="sl-head">
+    <div>
+      <h1 class="sl-title">Gravy</h1>
+      <p class="sl-sub">When the last batch was made, how much of it is used, and when to make the next. Use is <b>estimated from dishes sold</b> (about {{ g_per|round|int }} g of gravy per dish{% if n_cal %}, learned from {{ n_cal }} past batch{{ 'es' if n_cal > 1 }}{% else %}, a starting guess{% endif %}). Weigh what's left now and then and add it below: that corrects the estimate.</p>
+    </div>
+    <div class="sl-btns"><button type="button" class="sl-btn sl-btn-p" data-gv-toggle="gv-batch">+ New batch</button></div>
+  </div>
+  {% if request.query_params.get('added') %}<p class="sl-flash">Saved.</p>{% endif %}
+  {% if request.query_params.get('error') %}<p class="sl-flash gs-err">That wasn't saved. Check the date and the weights (gross must be more than the vessel).</p>{% endif %}
+
+  <form method="post" action="/gravy/batch" class="gv-form" id="gv-batch" hidden>
+    <label>Made on<input type="date" name="batch_date" value="{{ today.isoformat() }}" required></label>
+    <label>Gross weight (kg)<input name="gross_kg" inputmode="decimal" required placeholder="e.g. 26.9"></label>
+    <label>Vessel (kg)<input name="vessel_kg" inputmode="decimal" value="4" required></label>
+    <label>First served<input type="date" name="started_use_date"></label>
+    <label class="gv-wide">Notes<input name="notes" placeholder="optional"></label>
+    <button type="submit" class="sl-btn sl-btn-p">Save batch</button>
+  </form>
+
+  {% if c %}
+  <div class="sl-kpis gv-kpis">
+    <div class="sl-k"><span class="l">Last batch</span><span class="v">{{ dt(c.batch.batch_date) }}</span>
+      <span class="s">{{ kg(c.yield_kg) }} kg · served from {{ dt(c.start) }} · day {{ c.days_in_use }}</span></div>
+    <div class="sl-k {{ c.level }}"><span class="l">Left (est.)</span><span class="v">{{ kg(c.left) }}</span> <span class="v small">kg</span>
+      <span class="s">{{ kg(c.used) }} kg used{% if c.last_reading %} · weighed {{ c.last_reading.kg_left }} kg on {{ dt(c.last_reading.reading_date) }}{% endif %}</span></div>
+    <div class="sl-k"><span class="l">Daily use</span><span class="v">{{ kg(c.per_day_kg) }}</span> <span class="v small">kg/day</span>
+      <span class="s">average of the last {{ 14 }} trading days</span></div>
+    <div class="sl-k {{ c.level }}"><span class="l">Make next batch</span>
+      <span class="v">{% if c.make_by is none %}—{% elif c.make_by <= today %}Today{% else %}{{ dt(c.make_by) }}{% endif %}</span>
+      <span class="s">{% if c.runout %}runs out ≈ {{ dt(c.runout) }} ({{ '%.1f'|format(c.days_left) }} days); batch made {{ lead }} day before{% else %}needs sales data{% endif %}</span></div>
+  </div>
+  <p class="gv-note">Sales counted up to <b>{{ dt(asof) }}</b>.{% if c.no_sales_days %} No sales in: {% for d in c.no_sales_days %}{{ dt(d) }}{{ ', ' if not loop.last }}{% endfor %} (shown as zero use; if the kitchen was open, upload that day's report).{% endif %}</p>
+
+  <form method="post" action="/gravy/reading" class="gv-form gv-inline">
+    <input type="hidden" name="batch_id" value="{{ c.batch.id }}">
+    <b>Weighed what's left:</b>
+    <label>Date<input type="date" name="reading_date" value="{{ today.isoformat() }}" required></label>
+    <label>Gravy left (kg)<input name="kg_left" inputmode="decimal" required placeholder="e.g. 9.5"></label>
+    <button type="submit" class="sl-btn">Save reading</button>
+  </form>
+
+  <div class="sl-card gv-card">
+    <h3>Day by day · batch of {{ dt(c.batch.batch_date) }}</h3>
+    <table class="gv-table">
+      <thead><tr><th>Date</th><th class="num">Dishes (weighted)</th><th class="num">Used (kg)</th><th class="num">Left (kg)</th></tr></thead>
+      <tbody>
+      {% for r in daily %}
+        <tr>
+          <td>{{ dt(r.day) }}{% if r.reading %} <span class="gv-pill">weighed</span>{% endif %}</td>
+          <td class="num">{% if r.has_sales %}{{ '%.1f'|format(r.portions) }}{% else %}<span class="gv-dim">no sales</span>{% endif %}</td>
+          <td class="num">{{ '%.2f'|format(r.kg) }}</td>
+          <td class="num"><b>{{ '%.1f'|format([r.left, 0]|max) }}</b></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="sl-sub">No batch in use. Add one with “+ New batch”.</p>
+  {% endif %}
+
+  <div class="sl-card gv-card">
+    <h3>All batches</h3>
+    <table class="gv-table">
+      <thead><tr><th>Made</th><th class="num">Yield (kg)</th><th class="gv-hm">Served</th><th class="num">Lasted</th><th class="num">kg/day</th><th class="num gv-hm">₹/kg</th><th></th></tr></thead>
+      <tbody>
+      {% for b in batches %}
+        <tr>
+          <td>{{ dt(b.batch_date) }}</td>
+          <td class="num">{{ kg(b.yield_kg) }}</td>
+          <td class="gv-hm">{{ dt(b.started_use_date) }} → {% if b.finished_date %}{{ dt(b.finished_date) }}{% elif c and c.batch.id == b.id %}in use{% else %}—{% endif %}</td>
+          <td class="num">{% if b.finished_date and b.days_lasted %}{{ b.days_lasted }} d{% else %}—{% endif %}</td>
+          <td class="num">{% if b.finished_date and b.kg_per_day %}{{ '%.1f'|format(b.kg_per_day) }}{% else %}—{% endif %}</td>
+          <td class="num gv-hm">{% if b.cost_per_kg %}{{ '%.0f'|format(b.cost_per_kg) }}{% else %}—{% endif %}</td>
+          <td>{% if c and c.batch.id == b.id %}
+            <form method="post" action="/gravy/finish" class="gv-fin"><input type="hidden" name="batch_id" value="{{ b.id }}"><input type="hidden" name="finished_date" value="{{ today.isoformat() }}"><button class="sl-btn" type="submit">Finished today</button></form>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="gv-note">Ingredients going into a batch (onion, tomato, cashew, oil) are still taken off stock separately. This page tracks the gravy itself.</p>
+  </div>
+</div>
+<script>
+document.querySelectorAll('[data-gv-toggle]').forEach(function (b) {
+  b.addEventListener('click', function () { var f = document.getElementById(b.dataset.gvToggle); f.hidden = !f.hidden; });
+});
+</script>
+{% endblock %}

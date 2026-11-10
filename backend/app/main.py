@@ -12,7 +12,7 @@ from app.core.middleware import (
     ProductionErrorMiddleware,
 )
 from app.web import routes as web_routes
-from app.web import auth_routes, purchase_routes, mapping_routes, engine_routes, channel_upload_routes, recon_routes, daily_brief_routes, business_settings_routes, stock_log_routes, gas_log_routes, catering_routes, buy_routes, rush_routes, live_stock_routes
+from app.web import auth_routes, purchase_routes, mapping_routes, engine_routes, channel_upload_routes, recon_routes, daily_brief_routes, business_settings_routes, stock_log_routes, gas_log_routes, gravy_routes, catering_routes, buy_routes, rush_routes, live_stock_routes
 
 app = FastAPI(
     title="URS Majestic",
@@ -88,6 +88,7 @@ app.include_router(web_routes.router)
 app.include_router(purchase_routes.router)
 app.include_router(stock_log_routes.router)
 app.include_router(gas_log_routes.router)
+app.include_router(gravy_routes.router)
 app.include_router(catering_routes.router)
 app.include_router(buy_routes.router)
 app.include_router(rush_routes.router)
