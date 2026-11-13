@@ -25,7 +25,7 @@ TREND_DAYS = 14     # recent trading days used for the daily rate
 _REF_YIELD = 22.88
 _REF_ISSUED = [  # (ingredient name, qty issued for the 3-Nov batch)
     ("Onion", 26.12), ("Tomato", 1.981), ("Cashew gravy", 0.706), ("Oil", 2.0), ("Butter", 0.25),
-    ("Coriander powder", 0.03255), ("Chilli powder", 0.0651), ("Chicken Masala (veg spice blend)", 0.0651),
+    ("Coriander powder", 0.03255), ("Chilli powder", 0.0651), ("Chicken Masala (veg spice blend)", 65.1),
     ("Turmeric Powder", 13.02), ("Kashmiri chilli powder", 32.55), ("Jeera Whole (cumin seed)", 32.55),
     ("Salt", 0.03255), ("Kasuri Methi", 32.55), ("Bay leaf", 23.33), ("Star anise", 23.33),
     ("Cinnamon/Cassia (Dalchini)", 23.34),
