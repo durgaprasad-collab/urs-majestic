@@ -20,6 +20,58 @@ DEFAULT_G = 220.0   # g of gravy per weighted portion (26-Oct batch: 18.85 kg ov
 LEAD_DAYS = 1       # make the next batch this many days before the last one runs out
 TREND_DAYS = 14     # recent trading days used for the daily rate
 
+# What goes into a batch, per kg of gravy yield, from the owner-weighed 3-Nov batch
+# (22.88 kg yield). Quantities are in each ingredient's own stock unit.
+_REF_YIELD = 22.88
+_REF_ISSUED = [  # (ingredient name, qty issued for the 3-Nov batch)
+    ("Onion", 26.12), ("Tomato", 1.981), ("Cashew gravy", 0.706), ("Oil", 2.0), ("Butter", 0.25),
+    ("Coriander powder", 0.03255), ("Chilli powder", 0.0651), ("Chicken Masala (veg spice blend)", 0.0651),
+    ("Turmeric Powder", 13.02), ("Kashmiri chilli powder", 32.55), ("Jeera Whole (cumin seed)", 32.55),
+    ("Salt", 0.03255), ("Kasuri Methi", 32.55), ("Bay leaf", 23.33), ("Star anise", 23.33),
+    ("Cinnamon/Cassia (Dalchini)", 23.34),
+]
+
+
+_UNIT_X = {("g", "kg"): 0.001, ("kg", "g"): 1000.0, ("ml", "l"): 0.001, ("l", "ml"): 1000.0}
+
+
+def recipe_for(yield_kg: float) -> list[tuple[str, float]]:
+    return [(n, q * yield_kg / _REF_YIELD) for n, q in _REF_ISSUED]
+
+
+def issue_batch(db, batch_date: date, yield_kg: float) -> int:
+    """Take the batch's ingredients off stock (one ledger row each, scaled to the yield).
+    Skips an ingredient that already has a gravy_batch row for that date, so a batch
+    entered by hand earlier is not deducted twice. Returns how many were deducted.
+    The note starts with SYSTEM: the table only allows a negative balance for system
+    rows, and a batch that overdraws stock should show as a shortfall, not clip at 0."""
+    tag = f"gravy_batch_{batch_date.isoformat()}"
+    done = 0
+    for name, qty in recipe_for(yield_kg):
+        ing = db.execute(text("SELECT id, unit::text AS unit FROM ingredients WHERE name = :n"), {"n": name}).mappings().first()
+        if ing is None:
+            continue
+        if db.execute(text("SELECT 1 FROM ingredient_stock WHERE ingredient_id = :i AND note LIKE :p LIMIT 1"),
+                      {"i": ing["id"], "p": "%" + tag + "%"}).first():
+            continue
+        last = db.execute(text("""SELECT on_hand_qty, unit::text AS unit FROM ingredient_stock
+                                  WHERE ingredient_id = :i ORDER BY counted_at DESC, id DESC LIMIT 1 FOR UPDATE"""),
+                          {"i": ing["id"]}).mappings().first()
+        unit, q = ing["unit"], qty
+        if last is not None and last["unit"] != unit:  # the ledger can be in kg while the item is in g
+            f = _UNIT_X.get((unit, last["unit"]))
+            if f is None:
+                continue  # incompatible unit: leave it for a manual count rather than guess
+            unit, q = last["unit"], qty * f
+        bal = (float(last["on_hand_qty"]) if last else 0.0) - q
+        db.execute(text("""INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by, note)
+                           VALUES (:i, :b, CAST(:u AS unit_type), NULL, :n)"""),
+                   {"i": ing["id"], "b": round(bal, 4), "u": unit,
+                    "n": f"SYSTEM {tag}: issued {q:.4g} {unit} to gravy batch (auto, scaled to {yield_kg:.2f} kg yield)"})
+        done += 1
+    return done
+
+
 _PORTIONS_SQL = text("""
     WITH g AS (
         SELECT mi.name, COALESCE(m.grams_override, m.portion_override_g) AS gr
@@ -105,7 +157,8 @@ def page_data(db) -> dict:
 
     cur = next((b for b in batches if b["yield_kg"] is not None and b["finished_date"] is None), None)
     out = {"batches": batches, "readings": readings, "g_per": g_per, "n_cal": n_cal, "asof": asof, "today": today,
-           "current": None, "daily": [], "lead": LEAD_DAYS}
+           "current": None, "daily": [], "lead": LEAD_DAYS,
+           "recipe": [{"name": n, "per_kg": q / _REF_YIELD} for n, q in _REF_ISSUED]}
     if cur is None:
         return out
 

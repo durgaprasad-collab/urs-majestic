@@ -45,6 +45,7 @@ def add_batch(
     vessel_kg: str = Form("4"),
     started_use_date: str = Form(""),
     notes: str = Form(""),
+    deduct: str = Form(""),
     db: Session = Depends(get_db),
 ):
     """A new batch: weighed gross minus the vessel is the yield. The batch before it
@@ -63,8 +64,9 @@ def add_batch(
         INSERT INTO gravy_batches (batch_date, gross_kg, vessel_kg, vessel_weighed, yield_kg, started_use_date, notes, created_by)
         VALUES (:d, :g, :v, false, :y, :s, :n, :u)
     """), {"d": d, "g": g, "v": v, "y": g - v, "s": start, "n": notes.strip() or None, "u": user.id})
+    n = gravy.issue_batch(db, d, float(g - v)) if deduct else 0
     db.commit()
-    return RedirectResponse("/gravy?added=batch", status_code=303)
+    return RedirectResponse(f"/gravy?added=batch&deducted={n}", status_code=303)
 
 
 @router.post("/gravy/reading")

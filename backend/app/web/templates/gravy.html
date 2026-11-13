@@ -13,7 +13,7 @@
     </div>
     <div class="sl-btns"><button type="button" class="sl-btn sl-btn-p" data-gv-toggle="gv-batch">+ New batch</button></div>
   </div>
-  {% if request.query_params.get('added') %}<p class="sl-flash">Saved.</p>{% endif %}
+  {% if request.query_params.get('added') %}<p class="sl-flash">Saved.{% if request.query_params.get('deducted') %} {{ request.query_params.get('deducted') }} ingredients taken off stock (see Stock Log).{% endif %}</p>{% endif %}
   {% if request.query_params.get('error') %}<p class="sl-flash gs-err">That wasn't saved. Check the date and the weights (gross must be more than the vessel).</p>{% endif %}
 
   <form method="post" action="/gravy/batch" class="gv-form" id="gv-batch" hidden>
@@ -22,6 +22,8 @@
     <label>Vessel (kg)<input name="vessel_kg" inputmode="decimal" value="4" required></label>
     <label>First served<input type="date" name="started_use_date"></label>
     <label class="gv-wide">Notes<input name="notes" placeholder="optional"></label>
+    <label class="gv-wide gv-chk"><input type="checkbox" name="deduct" value="1" checked> Take the ingredients off stock (scaled to the yield)</label>
+    <details class="gv-wide gv-det" id="gv-prev"><summary>What will be deducted</summary><ul id="gv-prev-list"><li>Enter the gross weight to see it.</li></ul></details>
     <button type="submit" class="sl-btn sl-btn-p">Save batch</button>
   </form>
 
@@ -102,6 +104,18 @@
   </div>
 </div>
 <script>
+(function () {
+  var R = {{ recipe|tojson }}, f = document.getElementById('gv-batch');
+  var g = f.elements.gross_kg, v = f.elements.vessel_kg, ul = document.getElementById('gv-prev-list');
+  function upd() {
+    var y = parseFloat(g.value) - parseFloat(v.value);
+    if (!(y > 0)) { ul.innerHTML = '<li>Enter the gross weight to see it.</li>'; return; }
+    ul.innerHTML = '<li><b>Yield ' + y.toFixed(2) + ' kg</b></li>' + R.map(function (r) {
+      var q = r.per_kg * y; return '<li>' + r.name + ' <b>' + (q < 1 ? q.toPrecision(3) : q.toFixed(2)) + '</b></li>';
+    }).join('');
+  }
+  g.addEventListener('input', upd); v.addEventListener('input', upd);
+})();
 document.querySelectorAll('[data-gv-toggle]').forEach(function (b) {
   b.addEventListener('click', function () { var f = document.getElementById(b.dataset.gvToggle); f.hidden = !f.hidden; });
 });
