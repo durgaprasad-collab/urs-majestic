@@ -100,6 +100,54 @@ _HISTORY_SQL = text("""
 """)
 
 
+_AUDIT_SQL = text("""
+    select * from (
+        select s.id, i.name, s.on_hand_qty, s.unit::text as unit, s.counted_at, s.note,
+               u.name as by_name,
+               lag(s.on_hand_qty) over w as prev_qty, lag(s.unit::text) over w as prev_unit
+          from ingredient_stock s
+          join ingredients i on i.id = s.ingredient_id
+          left join users u on u.id = s.counted_by
+        window w as (partition by s.ingredient_id order by s.counted_at, s.id)
+    ) x
+    order by counted_at desc, id desc
+    limit 500
+""")
+
+
+def _audit_source(note: str | None, by_name: str | None) -> tuple[str, str]:
+    """(label, kind) for one ledger row; kind drives the badge colour."""
+    n = (note or "").strip()
+    low = n.lower()
+    if low.startswith("system gravy_batch"):
+        return "Gravy batch", "sys"
+    if low.startswith("purchase_auto"):
+        return "Purchase", "buy"
+    for pre, label in (("petpooja_usage", "Petpooja sales"), ("zomato_usage", "Zomato sales"),
+                       ("swiggy_usage", "Swiggy sales"), ("pace_usage", "Buying-pace estimate")):
+        if low.startswith(pre):
+            return label, "est"
+    if low.startswith("transfer_in") or low.startswith("transfer_out"):
+        return "Home transfer", "move"
+    if low.startswith("system") or low.startswith("unit_fix"):
+        return "System", "sys"
+    if low == "reorder_required":
+        return "Count (reorder flagged)", "count"
+    return ("Count" if by_name else "Count / edit"), "count"
+
+
+def audit_log(db: Session) -> list[dict]:
+    rows = []
+    for r in db.execute(_AUDIT_SQL).mappings().all():
+        d = dict(r)
+        d["counted_at"] = d["counted_at"].astimezone(business_tz())
+        d["source"], d["kind"] = _audit_source(d["note"], d["by_name"])
+        p = d["prev_qty"]
+        d["delta"] = (float(d["on_hand_qty"]) - float(p)) if p is not None and d["prev_unit"] == d["unit"] else None
+        rows.append(d)
+    return rows
+
+
 def _stock_rows(db: Session) -> list[dict]:
     rows = db.execute(_LIST_SQL).mappings().all()
     gas_reading = db.execute(_LATEST_GAS_SQL).mappings().first()
@@ -165,6 +213,7 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
         "shortfalls": stock_count.shortfalls(db),
         "calibration": recipe_calibration.suggestions(db),
         "ingested": stock_count.last_ingestion(db),
+        "audit": audit_log(db),
     })
 
 

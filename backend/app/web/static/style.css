@@ -1633,6 +1633,15 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .sl-chip { padding: 6px 11px; border: 1px solid var(--sl-line); border-radius: 999px; background: #fff; color: var(--sl-ink-2); font: 600 12.5px Inter, sans-serif; cursor: pointer; }
 .sl-chip.on { border-color: #062013; background: #062013; color: #E9C55A; }
 
+.al-num { text-align: right; white-space: nowrap; }
+.al-up { color: #1B7A3E; font-weight: 700; }
+.al-dn { color: #B3261E; font-weight: 700; }
+.al-note { display: block; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-src { display: inline-block; padding: 2px 9px; border-radius: 999px; background: #ECE9DF; font-size: 11.5px; font-weight: 700; color: var(--sl-ink-2); white-space: nowrap; }
+.al-src.buy { background: #DDF1E4; color: #1B7A3E; }
+.al-src.est { background: #FBF0D0; color: #8A6A0B; }
+.al-src.sys { background: #E4E8F5; color: #3A4A8C; }
+.al-src.count { background: #F3E7C4; color: #5E4A0A; }
 .sl-card { overflow: visible; border: 1px solid var(--sl-line); border-radius: 14px; background: #fff; }
 .sl-table { width: 100%; border-collapse: collapse; }
 /* Tablet widths: the sidebar leaves less room than the wide tables need, so the card scrolls sideways instead of the whole page. */

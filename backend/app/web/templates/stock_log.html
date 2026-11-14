@@ -82,6 +82,7 @@
   <div class="sl-tabs" role="tablist">
     <button type="button" class="on" data-sl-tab="overview">Overview <span>{{ s.stock_total }}</span></button>
     <button type="button" data-sl-tab="count">Count <span>{{ first|length }} first</span></button>
+    <button type="button" data-sl-tab="audit">Audit log <span>{{ audit|length }}</span></button>
   </div>
 
   {# ── OVERVIEW: every quantity is directly editable (saves on Enter / blur) ── #}
@@ -207,7 +208,50 @@
       </div>
     </div>
   </section>
+
+  {# ── AUDIT LOG: every stock change, newest first: before -> after, and where it came from ── #}
+  <section data-sl-panel="audit" hidden>
+    <div class="sl-toolbar"><input type="search" class="sl-search" placeholder="Search item or source…" data-al-q aria-label="Search audit log">
+      <select data-al-kind aria-label="Filter by source"><option value="">All sources</option><option value="count">Counts / edits</option><option value="buy">Purchases</option><option value="est">Sales estimates</option><option value="sys">System / gravy</option><option value="move">Home transfers</option></select></div>
+    <div class="sl-card">
+      <table class="sl-table al-table">
+        <thead><tr><th>When</th><th>Item</th><th class="al-num">Before</th><th class="al-num">After</th><th class="al-num">Change</th><th>Source</th><th>By</th></tr></thead>
+        <tbody>
+        {% for a in audit %}
+        <tr data-al-row data-al-kind="{{ a.kind }}" data-al-text="{{ (a.name ~ ' ' ~ a.source ~ ' ' ~ (a.note or ''))|lower }}">
+          <td>{{ a.counted_at.strftime('%d %b, %I:%M %p').lstrip('0') }}</td>
+          <td><b>{{ a.name }}</b>{% if a.note and a.kind in ('sys', 'est') %}<small class="sl-muted al-note">{{ a.note }}</small>{% endif %}</td>
+          <td class="al-num">{% if a.prev_qty is none %}<span class="sl-muted">first</span>{% else %}{{ num(a.prev_qty|float) }} {{ a.prev_unit }}{% endif %}</td>
+          <td class="al-num"><b>{{ num(a.on_hand_qty|float) }}</b> {{ a.unit }}</td>
+          <td class="al-num">{% if a.delta is none %}<span class="sl-muted">—</span>{% elif a.delta > 0 %}<span class="al-up">+{{ num(a.delta) }}</span>{% elif a.delta < 0 %}<span class="al-dn">{{ num(a.delta) }}</span>{% else %}<span class="sl-muted">0</span>{% endif %}</td>
+          <td><span class="al-src {{ a.kind }}">{{ a.source }}</span></td>
+          <td>{{ a.by_name or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="sl-empty">No stock changes logged yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="sl-empty" data-al-empty hidden>No entries match.</p>
+    </div>
+    <p class="sl-hint">Latest {{ audit|length }} changes across all items. Each row is one ledger entry: the balance before, the balance after, and what caused it.</p>
+  </section>
 </div>
 <script type="application/json" id="sl-data">{{ {"tonight": tonight_ids, "done": s.todo_done, "total": s.todo_total}|tojson }}</script>
+<script>
+(function () {
+  var q = document.querySelector('[data-al-q]'), k = document.querySelector('[data-al-kind]');
+  if (!q) return;
+  function run() {
+    var t = q.value.trim().toLowerCase(), kind = k.value, n = 0;
+    document.querySelectorAll('[data-al-row]').forEach(function (r) {
+      var ok = (!t || r.dataset.alText.indexOf(t) > -1) && (!kind || r.dataset.alKind === kind);
+      r.style.display = ok ? '' : 'none'; if (ok) n++;
+    });
+    document.querySelector('[data-al-empty]').hidden = n > 0;
+  }
+  q.addEventListener('input', run); k.addEventListener('change', run);
+})();
+</script>
 <script src="/static/stock_log.js?v=7" defer></script>
 {% endblock %}
