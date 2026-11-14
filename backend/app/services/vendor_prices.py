@@ -109,7 +109,8 @@ def market_offers(db: Session, items: dict | None = None) -> dict:
              "vs_paid": (ppu / paid[iid] - 1) * 100 if paid.get(iid) else None}
         out.setdefault(iid, {"day": day, "unit": r["item_unit"], "offers": []})["offers"].append(o)
     for v in out.values():
-        v["offers"].sort(key=lambda o: (not o["in_stock"], o["small"], o["ppu"]))
+        # the usual brand comes before an "ALT:" substitute, whatever the price
+        v["offers"].sort(key=lambda o: (not o["in_stock"], o["small"], o["product"].startswith("ALT:"), o["ppu"]))
         first = next((o for o in v["offers"] if o["in_stock"] and not o["small"]), None)
         if first:
             first["best"] = True

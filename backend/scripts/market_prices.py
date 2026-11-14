@@ -50,6 +50,19 @@ def items(db) -> list[dict]:
            AND p.purchase_date >= current_date - 60
          ORDER BY i.category NULLS LAST, i.name
     """)).mappings().all()
+    # Brand lives in the purchase note when a bill was typed in ("Eastern Kashmiri chilli powder 250 g",
+    # "ZKP - Moong Dal 10kg"); a note that is only the shop name says nothing about brand.
+    bought = {}
+    for n in db.execute(text("""
+        SELECT p.ingredient_id, left(p.notes, 160) AS note, max(p.purchase_date) AS d
+          FROM purchases p
+         WHERE p.deleted_at IS NULL AND p.usage_type = 'menu' AND p.purchase_date >= current_date - 180
+           AND coalesce(p.notes, '') <> '' AND p.notes IS DISTINCT FROM p.vendor
+         GROUP BY p.ingredient_id, left(p.notes, 160) ORDER BY max(p.purchase_date) DESC
+    """)).mappings():
+        lst = bought.setdefault(n["ingredient_id"], [])
+        if len(lst) < 3:
+            lst.append(n["note"])
     out = []
     for r in rows:
         if (r["category"] or "") in SKIP_CATEGORIES or r["name"] in SKIP_NAMES:
@@ -60,6 +73,7 @@ def items(db) -> list[dict]:
         out.append({
             "ingredient_id": r["id"], "name": r["name"], "unit": r["unit"], "category": r["category"],
             "search": SEARCH.get(r["name"]) or r["name"].split("(")[0].replace(" - resale", "").strip(),
+            "bought_as": bought.get(r["id"], []),  # recent bill notes: where the usual brand shows up
             "you_pay": ({"per": per, "price": round(p["best"]["last_price"] * mult, 2), "vendor": p["best"]["vendor"],
                          "last_vendor": p["last"]["vendor"], "last_price": round(p["last"]["price"] * mult, 2)} if p else None),
         })
@@ -106,7 +120,7 @@ def summary(db) -> dict:
                m.price, m.pack_qty, m.pack_unit, m.price_per_unit
           FROM market_prices m JOIN ingredients i ON i.id = m.ingredient_id
          WHERE m.checked_on = :d AND m.in_stock
-         ORDER BY m.ingredient_id, m.price_per_unit
+         ORDER BY m.ingredient_id, (m.product LIKE 'ALT:%'), m.price_per_unit
     """), {"d": day}).mappings().all()
     out = []
     for r in rows:
