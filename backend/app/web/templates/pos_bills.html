@@ -28,10 +28,10 @@
 </div>
 <p class="sl-muted">Taxable ₹{{ '{:,.2f}'.format(tax.t) }} · CGST ₹{{ '{:,.2f}'.format(tax.c) }} · SGST ₹{{ '{:,.2f}'.format(tax.s) }}{% if tax.d %} · Discounts ₹{{ '{:,.0f}'.format(tax.d) }}{% endif %}{% if voids %} · {{ voids }} void{% endif %}. These bills are separate from the Petpooja import.</p>
 <div class="card">
-  {% for b in bills %}
-  <a class="pb-row {{ 'void' if b.status == 'void' }}" href="/pos/bill/{{ b.id }}">
-    <div><b>{{ b.invoice_no }}</b><br><small>{{ b.created_at.strftime('%I:%M %p').lstrip('0') }} · {{ 'Dine-in' if b.order_type == 'dine_in' else 'Takeaway' }}{% if b.table_no %} · T{{ b.table_no }}{% endif %} · {{ b.payment_mode|upper }}{% if b.status == 'void' %} · VOID{% endif %}</small></div>
-    <b style="align-self:center">₹{{ '{:,.0f}'.format(b.total) }}</b>
+  {% for bl in bills %}
+  <a class="pb-row {{ 'void' if bl.status == 'void' }}" href="/pos/bill/{{ bl.id }}">
+    <div><b>{{ bl.invoice_no }}</b><br><small>{{ bl.created_at.strftime('%I:%M %p').lstrip('0') }} · {{ 'Dine-in' if bl.order_type == 'dine_in' else 'Takeaway' }}{% if bl.table_no %} · T{{ bl.table_no }}{% endif %} · {{ bl.payment_mode|upper }}{% if bl.status == 'void' %} · VOID{% endif %}</small></div>
+    <b style="align-self:center">₹{{ '{:,.0f}'.format(bl.total) }}</b>
   </a>
   {% else %}<p class="sl-empty">No bills on this day.</p>{% endfor %}
 </div>

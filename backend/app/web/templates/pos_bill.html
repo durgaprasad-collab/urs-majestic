@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ b.invoice_no }} — URS Majestic{% endblock %}
+{% block title %}{{ bill.invoice_no }} — URS Majestic{% endblock %}
 {% block content %}
 <style>
   .bill-wrap{max-width:420px;margin:0 auto}
@@ -33,13 +33,13 @@
     <div class="c">{{ ps.address }}{% if ps.phone %}<br>Ph: {{ ps.phone }}{% endif %}{% if ps.gstin %}<br>GSTIN: {{ ps.gstin }}{% endif %}</div>
     <hr>
     <div class="c"><b>TAX INVOICE</b></div>
-    {% if b.status == 'void' %}<div class="void">VOID</div>{% endif %}
+    {% if bill.status == 'void' %}<div class="void">VOID</div>{% endif %}
     <table>
-      <tr><td>Invoice</td><td class="r">{{ b.invoice_no }}</td></tr>
-      <tr><td>Date</td><td class="r">{{ b.created_at.strftime('%d %b %Y, %I:%M %p') }}</td></tr>
-      <tr><td>Type</td><td class="r">{{ types[b.order_type] }}{% if b.table_no %} · Table {{ b.table_no }}{% endif %}</td></tr>
-      {% if b.customer_name %}<tr><td>Customer</td><td class="r">{{ b.customer_name }}{% if b.customer_phone %} · {{ b.customer_phone }}{% endif %}</td></tr>{% endif %}
-      {% if b.customer_gstin %}<tr><td>Cust. GSTIN</td><td class="r">{{ b.customer_gstin }}</td></tr>{% endif %}
+      <tr><td>Invoice</td><td class="r">{{ bill.invoice_no }}</td></tr>
+      <tr><td>Date</td><td class="r">{{ bill.created_at.strftime('%d %b %Y, %I:%M %p') }}</td></tr>
+      <tr><td>Type</td><td class="r">{{ types[bill.order_type] }}{% if bill.table_no %} · Table {{ bill.table_no }}{% endif %}</td></tr>
+      {% if bill.customer_name %}<tr><td>Customer</td><td class="r">{{ bill.customer_name }}{% if bill.customer_phone %} · {{ bill.customer_phone }}{% endif %}</td></tr>{% endif %}
+      {% if bill.customer_gstin %}<tr><td>Cust. GSTIN</td><td class="r">{{ bill.customer_gstin }}</td></tr>{% endif %}
     </table>
     <hr>
     <table>
@@ -48,28 +48,28 @@
     </table>
     <hr>
     <table>
-      <tr><td>Subtotal</td><td class="r">{{ '%.2f'|format(b.subtotal) }}</td></tr>
-      {% if b.discount > 0 %}<tr><td>Discount</td><td class="r">-{{ '%.2f'|format(b.discount) }}</td></tr>{% endif %}
-      <tr><td>Taxable value</td><td class="r">{{ '%.2f'|format(b.taxable) }}</td></tr>
-      <tr><td>CGST @ {{ '%g'|format((b.gst_rate / 2)|float) }}%</td><td class="r">{{ '%.2f'|format(b.cgst) }}</td></tr>
-      <tr><td>SGST @ {{ '%g'|format((b.gst_rate / 2)|float) }}%</td><td class="r">{{ '%.2f'|format(b.sgst) }}</td></tr>
-      {% if b.round_off != 0 %}<tr><td>Round off</td><td class="r">{{ '%+.2f'|format(b.round_off) }}</td></tr>{% endif %}
-      <tr class="big"><td>TOTAL</td><td class="r">₹{{ '%.2f'|format(b.total) }}</td></tr>
-      <tr><td>Paid by</td><td class="r">{{ b.payment_mode|upper }}</td></tr>
+      <tr><td>Subtotal</td><td class="r">{{ '%.2f'|format(bill.subtotal) }}</td></tr>
+      {% if bill.discount > 0 %}<tr><td>Discount</td><td class="r">-{{ '%.2f'|format(bill.discount) }}</td></tr>{% endif %}
+      <tr><td>Taxable value</td><td class="r">{{ '%.2f'|format(bill.taxable) }}</td></tr>
+      <tr><td>CGST @ {{ '%g'|format((bill.gst_rate / 2)|float) }}%</td><td class="r">{{ '%.2f'|format(bill.cgst) }}</td></tr>
+      <tr><td>SGST @ {{ '%g'|format((bill.gst_rate / 2)|float) }}%</td><td class="r">{{ '%.2f'|format(bill.sgst) }}</td></tr>
+      {% if bill.round_off != 0 %}<tr><td>Round off</td><td class="r">{{ '%+.2f'|format(bill.round_off) }}</td></tr>{% endif %}
+      <tr class="big"><td>TOTAL</td><td class="r">₹{{ '%.2f'|format(bill.total) }}</td></tr>
+      <tr><td>Paid by</td><td class="r">{{ bill.payment_mode|upper }}</td></tr>
     </table>
     <hr>
     <div class="c">{{ ps.footer }}</div>
-    {% if b.by_name %}<div class="c" style="font-size:11px;margin-top:4px">Billed by {{ b.by_name }}</div>{% endif %}
+    {% if bill.by_name %}<div class="c" style="font-size:11px;margin-top:4px">Billed by {{ bill.by_name }}</div>{% endif %}
   </div>
 
-  {% if b.status == 'paid' %}
+  {% if bill.status == 'paid' %}
   <details style="margin-top:14px"><summary class="sl-muted">Void this bill</summary>
-    <form method="post" action="/pos/bill/{{ b.id }}/void" onsubmit="return confirm('Void {{ b.invoice_no }}? The number stays on record as VOID.')" style="margin-top:8px;display:flex;gap:8px">
+    <form method="post" action="/pos/bill/{{ bill.id }}/void" onsubmit="return confirm('Void {{ bill.invoice_no }}? The number stays on record as VOID.')" style="margin-top:8px;display:flex;gap:8px">
       <input name="reason" placeholder="Reason (required)" required maxlength="200" class="form-input" style="flex:1">
       <button class="btn-primary btn-sm" type="submit">Void</button>
     </form>
   </details>
-  {% elif b.void_reason %}<p class="sl-muted" style="margin-top:12px">Voided: {{ b.void_reason }}</p>{% endif %}
+  {% elif bill.void_reason %}<p class="sl-muted" style="margin-top:12px">Voided: {{ bill.void_reason }}</p>{% endif %}
 </div>
 
 {% endblock %}

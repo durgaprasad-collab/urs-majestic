@@ -88,7 +88,7 @@ def pos_bill(bill_id: int, request: Request, db: Session = Depends(get_db)):
     if b is None:
         return RedirectResponse("/pos/bills", status_code=303)
     b["created_at"] = b["created_at"].astimezone(business_tz())
-    return _tmpl(request, "pos_bill.html", {"user": user, "b": b, "items": items, "ps": pos.settings(db),
+    return _tmpl(request, "pos_bill.html", {"user": user, "bill": b, "items": items, "ps": pos.settings(db),
                                             "types": pos.ORDER_TYPES})
 
 
