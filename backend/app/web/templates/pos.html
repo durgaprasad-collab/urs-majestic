@@ -96,7 +96,7 @@
 <script>
 (function () {
   var menu = JSON.parse(document.getElementById('pos-menu').textContent);
-  var cart = {}, cat = 'All', q = '', lastTotal = 0, timer = null;
+  var cart = {}, cat = 'All', q = '';
   var $ = function (id) { return document.getElementById(id); };
   var money = function (n) { return '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN', {minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2}); };
   var cats = ['All'].concat(menu.map(function (m) { return m.category; }).filter(function (c, i, a) { return a.indexOf(c) === i; }));
@@ -123,22 +123,25 @@
     $('pos-go').disabled = !n;
     drawGrid(); preview();
   }
+  var RATE = {{ gst_rate }}, INCL = {{ 'true' if inclusive else 'false' }};
+  var r2 = function (x) { return Math.round((x + 1e-9) * 100) / 100; };
+  function calc() {
+    var sub = r2(items().reduce(function (a, i) { return a + byId[i.id].price * i.qty; }, 0));
+    var disc = Math.min(Math.max(r2(parseFloat($('pos-disc').value) || 0), 0), sub), net = sub - disc, taxable, gst;
+    if (INCL) { taxable = r2(net / (1 + RATE / 100)); gst = r2(net - taxable); } else { taxable = net; gst = r2(net * RATE / 100); }
+    var cgst = r2(gst / 2), sgst = r2(gst - cgst), raw = taxable + cgst + sgst, total = Math.round(raw + 1e-9);
+    return {subtotal: sub, discount: disc, taxable: taxable, cgst: cgst, sgst: sgst, round_off: r2(total - raw), total: total};
+  }
   function preview() {
-    clearTimeout(timer);
     if (!count()) { $('pos-tot').innerHTML = ''; $('pos-bar-t').textContent = 'View bill →'; return; }
-    timer = setTimeout(function () {
-      fetch('/pos/preview', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({items: items(), discount: $('pos-disc').value || 0})})
-        .then(function (r) { return r.json(); }).then(function (c) {
-          if (c.error) { $('pos-err').textContent = c.error; return; }
-          $('pos-err').textContent = ''; lastTotal = c.total;
-          var rows = [['Subtotal', money(c.subtotal)]];
-          if (c.discount) rows.push(['Discount', '− ' + money(c.discount)]);
-          rows.push(['Taxable', money(c.taxable)], ['CGST', money(c.cgst)], ['SGST', money(c.sgst)]);
-          if (c.round_off) rows.push(['Round off', (c.round_off > 0 ? '+' : '−') + (Math.abs(c.round_off)).toFixed(2)]);
-          $('pos-tot').innerHTML = rows.map(function (r) { return '<div><span>' + r[0] + '</span><span>' + r[1] + '</span></div>'; }).join('') + '<div class="g"><span>Total</span><span>' + money(c.total) + '</span></div>';
-          $('pos-bar-t').textContent = money(c.total) + ' →';
-        });
-    }, 150);
+    var c = calc();
+    var rows = [['Subtotal', money(c.subtotal)]];
+    if (c.discount) rows.push(['Discount', '− ' + money(c.discount)]);
+    rows.push(['Taxable', money(c.taxable)], ['CGST', money(c.cgst)], ['SGST', money(c.sgst)]);
+    if (c.round_off) rows.push(['Round off', (c.round_off > 0 ? '+' : '−') + Math.abs(c.round_off).toFixed(2)]);
+    $('pos-tot').innerHTML = rows.map(function (r) { return '<div><span>' + r[0] + '</span><span>' + r[1] + '</span></div>'; }).join('') + '<div class="g"><span>Total</span><span>' + money(c.total) + '</span></div>';
+    $('pos-bar-t').textContent = money(c.total) + ' →';
+    $('pos-go').textContent = 'Charge ' + money(c.total) + ' & print';
   }
   function chosen(name) { var r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : ''; }
 
