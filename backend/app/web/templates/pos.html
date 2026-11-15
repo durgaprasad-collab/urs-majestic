@@ -2,7 +2,8 @@
 {% block title %}POS — URS Majestic{% endblock %}
 {% block content %}
 <style>
-  .pos{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:84px}
+  @media (max-width:900px){.rs-tabbar{display:none!important}}
+  .pos{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:96px}
   .pos-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
   .pos-head h1{margin:0;font-size:22px}
   .pos-links a{margin-left:8px;font-size:13px;font-weight:600}
@@ -16,8 +17,8 @@
   .pos-it b{display:block;font-size:14px;line-height:1.25;overflow-wrap:anywhere}
   .pos-it span{display:block;margin-top:4px;color:#5A5A4A;font-size:13px}
   .pos-it i{position:absolute;top:6px;right:6px;min-width:22px;padding:1px 6px;border-radius:999px;background:#D4A62A;color:#062013;font:700 12px Inter,sans-serif;font-style:normal;text-align:center}
-  .pos-bar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 16px;background:#062013;color:#fff;font-weight:700;cursor:pointer;border:0;width:100%;font-size:16px}
-  .pos-cart{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);display:none}
+  .pos-bar{position:fixed;left:0;right:0;bottom:0;z-index:70;padding-bottom:calc(14px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 16px;background:#062013;color:#fff;font-weight:700;cursor:pointer;border:0;width:100%;font-size:16px}
+  .pos-cart{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.45);display:none}
   .pos-cart.open{display:block}
   .pos-sheet{position:absolute;left:0;right:0;bottom:0;max-height:92vh;overflow-y:auto;background:#fff;border-radius:18px 18px 0 0;padding:16px}
   .pos-sheet h2{margin:0 0 8px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
