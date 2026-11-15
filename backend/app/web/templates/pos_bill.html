@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ b.invoice_no }} — URS Majestic{% endblock %}
+{% block content %}
+<style>
+  .bill-wrap{max-width:420px;margin:0 auto}
+  .bill{background:#fff;border:1px solid #DDD8C8;border-radius:12px;padding:18px 16px;font-family:'Courier New',monospace;font-size:13px;color:#111}
+  .bill h2{margin:0;text-align:center;font-size:16px}
+  .bill .c{text-align:center}
+  .bill hr{border:0;border-top:1px dashed #888;margin:8px 0}
+  .bill table{width:100%;border-collapse:collapse}
+  .bill td,.bill th{padding:2px 0;vertical-align:top}
+  .bill .r{text-align:right}
+  .bill .big{font-size:16px;font-weight:800}
+  .bill .void{color:#B3261E;text-align:center;font-weight:800;font-size:18px;border:2px solid #B3261E;margin:6px 0;padding:4px}
+  .bill-act{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}
+  .bill-act a,.bill-act button{flex:1;text-align:center;padding:12px;border-radius:10px;border:1px solid #DDD8C8;background:#fff;font:700 14px Inter,sans-serif;cursor:pointer;text-decoration:none;color:inherit}
+  .bill-act .p{background:#062013;color:#fff;border-color:#062013}
+  @media print{
+    body *{visibility:hidden}
+    .bill,.bill *{visibility:visible}
+    .bill{position:absolute;left:0;top:0;width:76mm;border:0;padding:2mm}
+  }
+</style>
+<div class="bill-wrap">
+  <div class="bill-act">
+    <a href="/pos" class="p">New bill</a>
+    <button type="button" onclick="window.print()">Print</button>
+    <a href="/pos/bills">Today's bills</a>
+  </div>
+  {% if request.query_params.get('error') %}<p class="sl-flash">Give a reason to void the bill.</p>{% endif %}
+  <div class="bill">
+    <h2>{{ ps.legal_name }}</h2>
+    <div class="c">{{ ps.address }}{% if ps.phone %}<br>Ph: {{ ps.phone }}{% endif %}{% if ps.gstin %}<br>GSTIN: {{ ps.gstin }}{% endif %}</div>
+    <hr>
+    <div class="c"><b>TAX INVOICE</b></div>
+    {% if b.status == 'void' %}<div class="void">VOID</div>{% endif %}
+    <table>
+      <tr><td>Invoice</td><td class="r">{{ b.invoice_no }}</td></tr>
+      <tr><td>Date</td><td class="r">{{ b.created_at.strftime('%d %b %Y, %I:%M %p') }}</td></tr>
+      <tr><td>Type</td><td class="r">{{ types[b.order_type] }}{% if b.table_no %} · Table {{ b.table_no }}{% endif %}</td></tr>
+      {% if b.customer_name %}<tr><td>Customer</td><td class="r">{{ b.customer_name }}{% if b.customer_phone %} · {{ b.customer_phone }}{% endif %}</td></tr>{% endif %}
+      {% if b.customer_gstin %}<tr><td>Cust. GSTIN</td><td class="r">{{ b.customer_gstin }}</td></tr>{% endif %}
+    </table>
+    <hr>
+    <table>
+      <tr><th style="text-align:left">Item</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amt</th></tr>
+      {% for i in items %}<tr><td>{{ i.name }}</td><td class="r">{{ i.qty }}</td><td class="r">{{ '%.2f'|format(i.unit_price) }}</td><td class="r">{{ '%.2f'|format(i.line_total) }}</td></tr>{% endfor %}
+    </table>
+    <hr>
+    <table>
+      <tr><td>Subtotal</td><td class="r">{{ '%.2f'|format(b.subtotal) }}</td></tr>
+      {% if b.discount > 0 %}<tr><td>Discount</td><td class="r">-{{ '%.2f'|format(b.discount) }}</td></tr>{% endif %}
+      <tr><td>Taxable value</td><td class="r">{{ '%.2f'|format(b.taxable) }}</td></tr>
+      <tr><td>CGST @ {{ '%g'|format((b.gst_rate / 2)|float) }}%</td><td class="r">{{ '%.2f'|format(b.cgst) }}</td></tr>
+      <tr><td>SGST @ {{ '%g'|format((b.gst_rate / 2)|float) }}%</td><td class="r">{{ '%.2f'|format(b.sgst) }}</td></tr>
+      {% if b.round_off != 0 %}<tr><td>Round off</td><td class="r">{{ '%+.2f'|format(b.round_off) }}</td></tr>{% endif %}
+      <tr class="big"><td>TOTAL</td><td class="r">₹{{ '%.2f'|format(b.total) }}</td></tr>
+      <tr><td>Paid by</td><td class="r">{{ b.payment_mode|upper }}</td></tr>
+    </table>
+    <hr>
+    <div class="c">{{ ps.footer }}</div>
+    {% if b.by_name %}<div class="c" style="font-size:11px;margin-top:4px">Billed by {{ b.by_name }}</div>{% endif %}
+  </div>
+
+  {% if b.status == 'paid' %}
+  <details style="margin-top:14px"><summary class="sl-muted">Void this bill</summary>
+    <form method="post" action="/pos/bill/{{ b.id }}/void" onsubmit="return confirm('Void {{ b.invoice_no }}? The number stays on record as VOID.')" style="margin-top:8px;display:flex;gap:8px">
+      <input name="reason" placeholder="Reason (required)" required maxlength="200" class="form-input" style="flex:1">
+      <button class="btn-primary btn-sm" type="submit">Void</button>
+    </form>
+  </details>
+  {% elif b.void_reason %}<p class="sl-muted" style="margin-top:12px">Voided: {{ b.void_reason }}</p>{% endif %}
+</div>
+{% if request.query_params.get('print') %}<script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 300); });</script>{% endif %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}POS settings — URS Majestic{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">POS &amp; GST settings</h1>
+  <a href="/pos" class="btn-primary btn-sm">Back to POS</a>
+</div>
+{% if request.query_params.get('saved') %}<p class="sl-flash">Saved.</p>{% endif %}
+{% if request.query_params.get('error') %}<p class="sl-flash">GST rate must be between 0 and 28.</p>{% endif %}
+<form method="post" action="/pos/settings" class="card" style="padding:16px;display:grid;gap:12px;max-width:560px">
+  <label>Legal / trade name<input class="form-input" name="legal_name" value="{{ ps.legal_name }}" required></label>
+  <label>GSTIN<input class="form-input" name="gstin" value="{{ ps.gstin }}" maxlength="15" placeholder="33XXXXXXXXXXXZ5"></label>
+  <label>Address on the bill<textarea class="form-input" name="address" rows="2">{{ ps.address }}</textarea></label>
+  <label>Phone<input class="form-input" name="phone" value="{{ ps.phone }}" inputmode="tel"></label>
+  <label>GST rate (%) — split equally into CGST and SGST<input class="form-input" name="gst_rate" value="{{ ps.gst_rate }}" inputmode="decimal"></label>
+  <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="prices_include_gst" value="1" {{ 'checked' if ps.prices_include_gst == '1' }}> Menu prices already include GST</label>
+  <label>Invoice prefix<input class="form-input" name="invoice_prefix" value="{{ ps.invoice_prefix }}" maxlength="8"></label>
+  <label>Bill footer<input class="form-input" name="footer" value="{{ ps.footer }}" maxlength="120"></label>
+  <button class="btn-primary" type="submit">Save</button>
+  <p class="sl-muted">Invoice numbers run in order per financial year (April to March), for example {{ ps.invoice_prefix }}/2026-27/000001. Changing the prefix does not renumber old bills. Confirm the GST rate and whether prices include GST with your accountant.</p>
+</form>
+{% endblock %}

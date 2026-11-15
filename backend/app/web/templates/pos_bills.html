@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}POS bills — URS Majestic{% endblock %}
+{% block content %}
+<style>
+  .pb-k{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+  .pb-k div{background:#fff;border:1px solid #DDD8C8;border-radius:12px;padding:10px 12px}
+  .pb-k small{display:block;color:#6B6B5B;font-size:12px}
+  .pb-k b{font-size:18px}
+  .pb-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:11px 12px;border-bottom:1px solid #EFEBDD;text-decoration:none;color:inherit}
+  .pb-row small{color:#6B6B5B}
+  .pb-row.void b{text-decoration:line-through;color:#B3261E}
+  @media (min-width:700px){.pb-k{grid-template-columns:repeat(5,minmax(0,1fr))}}
+</style>
+<div class="page-header">
+  <h1 class="page-title">POS bills</h1>
+  <a href="/pos" class="btn-primary btn-sm">New bill</a>
+</div>
+<form method="get" style="display:flex;gap:8px;margin-bottom:6px">
+  <input type="date" name="day" value="{{ day.isoformat() }}" max="{{ today.isoformat() }}" class="form-input" onchange="this.form.submit()">
+  <span class="sl-muted" style="align-self:center">{{ day.strftime('%A') }}</span>
+</form>
+<div class="pb-k">
+  <div><small>Sales ({{ count }} bills)</small><b>₹{{ '{:,.0f}'.format(total) }}</b></div>
+  <div><small>Cash</small><b>₹{{ '{:,.0f}'.format(by_mode.cash) }}</b></div>
+  <div><small>UPI</small><b>₹{{ '{:,.0f}'.format(by_mode.upi) }}</b></div>
+  <div><small>Card</small><b>₹{{ '{:,.0f}'.format(by_mode.card) }}</b></div>
+  <div><small>GST collected</small><b>₹{{ '{:,.2f}'.format(tax.c + tax.s) }}</b></div>
+</div>
+<p class="sl-muted">Taxable ₹{{ '{:,.2f}'.format(tax.t) }} · CGST ₹{{ '{:,.2f}'.format(tax.c) }} · SGST ₹{{ '{:,.2f}'.format(tax.s) }}{% if tax.d %} · Discounts ₹{{ '{:,.0f}'.format(tax.d) }}{% endif %}{% if voids %} · {{ voids }} void{% endif %}. These bills are separate from the Petpooja import.</p>
+<div class="card">
+  {% for b in bills %}
+  <a class="pb-row {{ 'void' if b.status == 'void' }}" href="/pos/bill/{{ b.id }}">
+    <div><b>{{ b.invoice_no }}</b><br><small>{{ b.created_at.strftime('%I:%M %p').lstrip('0') }} · {{ 'Dine-in' if b.order_type == 'dine_in' else 'Takeaway' }}{% if b.table_no %} · T{{ b.table_no }}{% endif %} · {{ b.payment_mode|upper }}{% if b.status == 'void' %} · VOID{% endif %}</small></div>
+    <b style="align-self:center">₹{{ '{:,.0f}'.format(b.total) }}</b>
+  </a>
+  {% else %}<p class="sl-empty">No bills on this day.</p>{% endfor %}
+</div>
+{% endblock %}

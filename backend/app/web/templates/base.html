@@ -18,6 +18,7 @@
   {% set b = shell.badges if shell and shell.has_data else {} %}
   {# Each nav entry: (href, label, icon, active-prefix, badge value, badge level) #}
   {% set run_items = [
+    ('/pos', 'POS', 'receipt', '/pos', None, None),
     ('/buy', 'Buy', 'req', '/buy', b.requisitions, 'bad'),
     ('/stock-log', 'Stock Log', 'stock', '/stock-log', b.stock, 'bad'),
     ('/live-stock', 'Live stock', 'trend', '/live-stock', None, None),
@@ -117,6 +118,7 @@
         <a href="/stock-log" data-command-item data-keywords="stock inventory count update"><b>▦ Stock count</b><small>Update inventory</small></a>
         <a href="/live-stock" data-command-item data-keywords="live stock today sales so far kitchen used running out petpooja"><b>◔ Live stock</b><small>Today's use against stock, as it happens</small></a>
         <a href="/buy" data-command-item data-keywords="buy order requisition approve staff request running out shopping list"><b>✓ Buy</b><small>Staff requests and items running out</small></a>
+        <a href="/pos" data-command-item data-keywords="pos bill billing counter invoice gst"><b>▣ POS</b><small>Counter billing with GST invoices</small></a>
         <a href="/gravy" data-command-item data-keywords="gravy batch cashew base made left used next batch"><b>◒ Gravy</b><small>Last batch, left, next batch due</small></a>
         <a href="/gas-log" data-command-item data-keywords="gas cylinder weight reading"><b>◉ Gas</b><small>Cylinders weighed nightly</small></a>
         <a href="/upload" data-command-item data-keywords="upload report petpooja zomato swiggy sales"><b>⇧ Upload sales report</b><small>Refresh channel data</small></a>

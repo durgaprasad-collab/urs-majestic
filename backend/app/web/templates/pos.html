@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}POS — URS Majestic{% endblock %}
+{% block content %}
+<style>
+  .pos{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:84px}
+  .pos-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .pos-head h1{margin:0;font-size:22px}
+  .pos-links a{margin-left:8px;font-size:13px;font-weight:600}
+  .pos-search{width:100%;padding:12px 14px;border:1px solid #DDD8C8;border-radius:12px;font-size:16px;background:#fff}
+  .pos-cats{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+  .pos-cats button{flex:0 0 auto;padding:8px 13px;border:1px solid #DDD8C8;border-radius:999px;background:#fff;font:600 13px Inter,sans-serif;cursor:pointer}
+  .pos-cats button.on{background:#062013;color:#fff;border-color:#062013}
+  .pos-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .pos-it{position:relative;text-align:left;padding:12px 11px;min-height:76px;border:1px solid #DDD8C8;border-radius:12px;background:#fff;cursor:pointer;font:inherit}
+  .pos-it:active{background:#F6F1DC}
+  .pos-it b{display:block;font-size:14px;line-height:1.25;overflow-wrap:anywhere}
+  .pos-it span{display:block;margin-top:4px;color:#5A5A4A;font-size:13px}
+  .pos-it i{position:absolute;top:6px;right:6px;min-width:22px;padding:1px 6px;border-radius:999px;background:#D4A62A;color:#062013;font:700 12px Inter,sans-serif;font-style:normal;text-align:center}
+  .pos-bar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 16px;background:#062013;color:#fff;font-weight:700;cursor:pointer;border:0;width:100%;font-size:16px}
+  .pos-cart{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);display:none}
+  .pos-cart.open{display:block}
+  .pos-sheet{position:absolute;left:0;right:0;bottom:0;max-height:92vh;overflow-y:auto;background:#fff;border-radius:18px 18px 0 0;padding:16px}
+  .pos-sheet h2{margin:0 0 8px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
+  .pos-x{border:0;background:#ECE9DF;border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer}
+  .pos-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #EFEBDD}
+  .pos-line b{font-size:14px;overflow-wrap:anywhere}
+  .pos-line small{display:block;color:#6B6B5B}
+  .pos-q{display:flex;align-items:center;gap:6px}
+  .pos-q button{width:34px;height:34px;border-radius:9px;border:1px solid #DDD8C8;background:#fff;font-size:18px;cursor:pointer}
+  .pos-q span{min-width:20px;text-align:center;font-weight:700}
+  .pos-opt{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+  .pos-opt label{flex:1 1 0;min-width:80px}
+  .pos-opt input{position:absolute;opacity:0;pointer-events:none}
+  .pos-opt span{display:block;text-align:center;padding:10px 6px;border:1px solid #DDD8C8;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer}
+  .pos-opt input:checked+span{background:#062013;color:#fff;border-color:#062013}
+  .pos-f{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+  .pos-f input{padding:11px;border:1px solid #DDD8C8;border-radius:10px;font-size:16px;width:100%;box-sizing:border-box}
+  .pos-tot{margin:10px 0;font-size:14px}
+  .pos-tot div{display:flex;justify-content:space-between;padding:3px 0}
+  .pos-tot .g{font-size:20px;font-weight:800;border-top:2px solid #062013;margin-top:4px;padding-top:8px}
+  .pos-go{width:100%;padding:15px;border:0;border-radius:12px;background:#D4A62A;color:#062013;font:800 17px Inter,sans-serif;cursor:pointer}
+  .pos-go:disabled{opacity:.5}
+  .pos-err{color:#B3261E;font-weight:600;margin:6px 0;min-height:1em}
+  @media (min-width:901px){
+    .pos{grid-template-columns:minmax(0,1fr) 380px;align-items:start;padding-bottom:20px}
+    .pos-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+    .pos-bar{display:none}
+    .pos-cart{display:block;position:sticky;top:12px;inset:auto;background:none;z-index:1}
+    .pos-sheet{position:static;max-height:none;border:1px solid #DDD8C8;border-radius:14px}
+    .pos-x{display:none}
+  }
+</style>
+
+<div class="pos-head">
+  <h1>POS</h1>
+  <div class="pos-links"><a href="/pos/bills">Today's bills</a><a href="/pos/settings">GST settings</a></div>
+</div>
+{% if not ps.gstin %}<p class="sl-flash">GSTIN isn't set yet, so bills print without it. <a href="/pos/settings">Add it</a>.</p>{% endif %}
+
+<div class="pos">
+  <div>
+    <input class="pos-search" type="search" placeholder="Search dish…" id="pos-q" autocomplete="off">
+    <div class="pos-cats" id="pos-cats"></div>
+    <div class="pos-grid" id="pos-grid"></div>
+  </div>
+
+  <div class="pos-cart" id="pos-cart">
+    <div class="pos-sheet">
+      <h2>Bill <button class="pos-x" type="button" id="pos-close" aria-label="Close">×</button></h2>
+      <div id="pos-lines"><p class="sl-muted">Tap dishes to add them.</p></div>
+      <div class="pos-opt" id="pos-type">
+        <label><input type="radio" name="ot" value="dine_in" checked><span>Dine-in</span></label>
+        <label><input type="radio" name="ot" value="takeaway"><span>Takeaway</span></label>
+      </div>
+      <div class="pos-f">
+        <input id="pos-table" placeholder="Table no." inputmode="text" maxlength="20">
+        <input id="pos-disc" placeholder="Discount ₹" inputmode="decimal">
+        <input id="pos-cn" placeholder="Customer name">
+        <input id="pos-cp" placeholder="Phone" inputmode="tel">
+        <input id="pos-cg" placeholder="Customer GSTIN (optional)" maxlength="15" style="grid-column:1/-1">
+      </div>
+      <div class="pos-tot" id="pos-tot"></div>
+      <div class="pos-opt" id="pos-pay">
+        <label><input type="radio" name="pm" value="cash" checked><span>Cash</span></label>
+        <label><input type="radio" name="pm" value="upi"><span>UPI</span></label>
+        <label><input type="radio" name="pm" value="card"><span>Card</span></label>
+      </div>
+      <p class="pos-err" id="pos-err"></p>
+      <button class="pos-go" type="button" id="pos-go" disabled>Charge &amp; print</button>
+    </div>
+  </div>
+</div>
+<button class="pos-bar" type="button" id="pos-bar"><span id="pos-bar-n">No items</span><span id="pos-bar-t">View bill →</span></button>
+
+<script type="application/json" id="pos-menu">{{ menu|tojson }}</script>
+<script>
+(function () {
+  var menu = JSON.parse(document.getElementById('pos-menu').textContent);
+  var cart = {}, cat = 'All', q = '', lastTotal = 0, timer = null;
+  var $ = function (id) { return document.getElementById(id); };
+  var money = function (n) { return '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN', {minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2}); };
+  var cats = ['All'].concat(menu.map(function (m) { return m.category; }).filter(function (c, i, a) { return a.indexOf(c) === i; }));
+  var byId = {}; menu.forEach(function (m) { byId[m.id] = m; });
+
+  function drawCats() {
+    $('pos-cats').innerHTML = cats.map(function (c) { return '<button type="button" data-c="' + c.replace(/"/g, '&quot;') + '" class="' + (c === cat ? 'on' : '') + '">' + c + '</button>'; }).join('');
+  }
+  function drawGrid() {
+    var t = q.toLowerCase();
+    $('pos-grid').innerHTML = menu.filter(function (m) { return (cat === 'All' || m.category === cat) && (!t || m.name.toLowerCase().indexOf(t) > -1); })
+      .map(function (m) { var n = cart[m.id] || 0;
+        return '<button type="button" class="pos-it" data-id="' + m.id + '">' + (n ? '<i>' + n + '</i>' : '') + '<b>' + m.name.replace(/</g, '&lt;') + '</b><span>' + money(m.price) + '</span></button>'; }).join('') || '<p class="sl-muted">No dishes match.</p>';
+  }
+  function items() { return Object.keys(cart).map(function (id) { return {id: +id, qty: cart[id]}; }); }
+  function count() { return items().reduce(function (a, i) { return a + i.qty; }, 0); }
+  function drawCart() {
+    var its = items();
+    $('pos-lines').innerHTML = its.length ? its.map(function (i) { var m = byId[i.id];
+      return '<div class="pos-line"><div><b>' + m.name.replace(/</g, '&lt;') + '</b><small>' + money(m.price) + ' each</small></div><div class="pos-q"><button type="button" data-d="-1" data-id="' + i.id + '">−</button><span>' + i.qty + '</span><button type="button" data-d="1" data-id="' + i.id + '">+</button></div><b>' + money(m.price * i.qty) + '</b></div>'; }).join('')
+      : '<p class="sl-muted">Tap dishes to add them.</p>';
+    var n = count();
+    $('pos-bar-n').textContent = n ? n + ' item' + (n > 1 ? 's' : '') : 'No items';
+    $('pos-go').disabled = !n;
+    drawGrid(); preview();
+  }
+  function preview() {
+    clearTimeout(timer);
+    if (!count()) { $('pos-tot').innerHTML = ''; $('pos-bar-t').textContent = 'View bill →'; return; }
+    timer = setTimeout(function () {
+      fetch('/pos/preview', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({items: items(), discount: $('pos-disc').value || 0})})
+        .then(function (r) { return r.json(); }).then(function (c) {
+          if (c.error) { $('pos-err').textContent = c.error; return; }
+          $('pos-err').textContent = ''; lastTotal = c.total;
+          var rows = [['Subtotal', money(c.subtotal)]];
+          if (c.discount) rows.push(['Discount', '− ' + money(c.discount)]);
+          rows.push(['Taxable', money(c.taxable)], ['CGST', money(c.cgst)], ['SGST', money(c.sgst)]);
+          if (c.round_off) rows.push(['Round off', (c.round_off > 0 ? '+' : '−') + (Math.abs(c.round_off)).toFixed(2)]);
+          $('pos-tot').innerHTML = rows.map(function (r) { return '<div><span>' + r[0] + '</span><span>' + r[1] + '</span></div>'; }).join('') + '<div class="g"><span>Total</span><span>' + money(c.total) + '</span></div>';
+          $('pos-bar-t').textContent = money(c.total) + ' →';
+        });
+    }, 150);
+  }
+  function chosen(name) { var r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : ''; }
+
+  $('pos-cats').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cat = b.dataset.c; drawCats(); drawGrid(); });
+  $('pos-q').addEventListener('input', function (e) { q = e.target.value.trim(); drawGrid(); });
+  $('pos-grid').addEventListener('click', function (e) { var b = e.target.closest('.pos-it'); if (!b) return; var id = b.dataset.id; cart[id] = Math.min((cart[id] || 0) + 1, 99); drawCart(); });
+  $('pos-lines').addEventListener('click', function (e) { var b = e.target.closest('button[data-d]'); if (!b) return; var id = b.dataset.id; cart[id] = (cart[id] || 0) + (+b.dataset.d); if (cart[id] <= 0) delete cart[id]; drawCart(); });
+  $('pos-disc').addEventListener('input', preview);
+  $('pos-bar').addEventListener('click', function () { $('pos-cart').classList.add('open'); });
+  $('pos-close').addEventListener('click', function () { $('pos-cart').classList.remove('open'); });
+  $('pos-go').addEventListener('click', function () {
+    var btn = $('pos-go'); btn.disabled = true; btn.textContent = 'Saving…'; $('pos-err').textContent = '';
+    fetch('/pos/bill', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+      items: items(), order_type: chosen('ot'), pay_mode: chosen('pm'), discount: $('pos-disc').value || 0, table: $('pos-table').value,
+      cust_name: $('pos-cn').value, cust_phone: $('pos-cp').value, cust_gstin: $('pos-cg').value})})
+      .then(function (r) { return r.json(); }).then(function (d) {
+        if (d.ok) { location.href = d.url; return; }
+        $('pos-err').textContent = d.error || 'Could not save the bill'; btn.disabled = false; btn.textContent = 'Charge & print';
+      }).catch(function () { $('pos-err').textContent = 'No connection. The bill was not saved.'; btn.disabled = false; btn.textContent = 'Charge & print'; });
+  });
+  drawCats(); drawGrid(); drawCart();
+})();
+</script>
+{% endblock %}
