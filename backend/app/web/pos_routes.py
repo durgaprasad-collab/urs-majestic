@@ -88,8 +88,16 @@ def pos_bill(bill_id: int, request: Request, db: Session = Depends(get_db)):
     if b is None:
         return RedirectResponse("/pos/bills", status_code=303)
     b["created_at"] = b["created_at"].astimezone(business_tz())
-    return _tmpl(request, "pos_bill.html", {"user": user, "bill": b, "items": items, "ps": pos.settings(db),
-                                            "types": pos.ORDER_TYPES})
+    try:  # TEMPORARY diagnostic (owner-only page): show the real error instead of the masked 500 page
+        resp = _tmpl(request, "pos_bill.html", {"user": user, "bill": b, "items": items, "ps": pos.settings(db),
+                                                "types": pos.ORDER_TYPES})
+        resp.render()
+        return resp
+    except Exception:
+        import sys, traceback
+        from fastapi.responses import PlainTextResponse
+        msg = "\n".join(["POS bill error (send this to Claude):", "", traceback.format_exc(), "python " + sys.version])
+        return PlainTextResponse(msg, status_code=200)
 
 
 @router.post("/pos/bill/{bill_id}/void")
