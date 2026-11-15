@@ -89,10 +89,11 @@ def pos_bill(bill_id: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/pos/bills", status_code=303)
     b["created_at"] = b["created_at"].astimezone(business_tz())
     try:  # TEMPORARY diagnostic (owner-only page): show the real error instead of the masked 500 page
-        resp = _tmpl(request, "pos_bill.html", {"user": user, "bill": b, "items": items, "ps": pos.settings(db),
-                                                "types": pos.ORDER_TYPES})
-        resp.render()
-        return resp
+        from app.services.shell_pulse import get_shell_context
+        from app.web.deps import templates
+        ctx = {"request": request, "user": user, "bill": b, "items": items, "ps": pos.settings(db),
+               "types": pos.ORDER_TYPES, "shell": get_shell_context()}
+        return HTMLResponse(templates.get_template("pos_bill.html").render(ctx))
     except Exception:
         import sys, traceback
         from fastapi.responses import PlainTextResponse
