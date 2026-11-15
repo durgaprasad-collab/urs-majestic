@@ -41,7 +41,7 @@ async def pos_create_bill(request: Request, db: Session = Depends(get_db)):
     except (ValueError, TypeError, InvalidOperation, KeyError) as exc:
         db.rollback()
         return JSONResponse({"error": str(exc) or "Check the bill and try again"}, status_code=400)
-    return JSONResponse({"ok": True, "id": bill_id, "url": f"/pos/bill/{bill_id}?print=1"})
+    return JSONResponse({"ok": True, "id": bill_id, "url": f"/pos/bill/{bill_id}"})
 
 
 @router.post("/pos/preview")

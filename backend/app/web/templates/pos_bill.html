@@ -71,5 +71,5 @@
   </details>
   {% elif b.void_reason %}<p class="sl-muted" style="margin-top:12px">Voided: {{ b.void_reason }}</p>{% endif %}
 </div>
-{% if request.query_params.get('print') %}<script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 300); });</script>{% endif %}
+
 {% endblock %}
