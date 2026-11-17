@@ -23,8 +23,6 @@
     return [];
   };
 
-  const forDay = (rows, day) => rows.every((r) => String(r[1]).startsWith(day));
-
   const read = async (range) => {
     const day = range && range.day;
     if (range) {
@@ -42,8 +40,12 @@
     const until = Date.now() + 15000;
     while (Date.now() < until) {
       const rows = tableRows();
-      if (rows && rows.length && (!day || forDay(rows, day))) {
-        return { ok: true, rows: rows.map((r) => [String(r[0]).trim(), String(r[1]), String(r[2]), String(r[3])]) };
+      // The 1 AM-to-1 AM window can include a late order Petpooja dates to the previous day, so a
+      // stray row from another day is normal. Keep only the requested day's rows; a table with none
+      // of them is still the old day's data (not refreshed yet), so keep waiting.
+      const mine = rows && day ? rows.filter((r) => String(r[1]).startsWith(day)) : rows;
+      if (mine && mine.length) {
+        return { ok: true, rows: mine.map((r) => [String(r[0]).trim(), String(r[1]), String(r[2]), String(r[3])]) };
       }
       await sleep(500);
     }
