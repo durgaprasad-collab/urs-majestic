@@ -127,12 +127,24 @@ async function post(code, body, path = '/api/live-feed') {
   return { ok: true, ...json };
 }
 
+// Read the item report for a range. If it comes back showing another day (the date picker or
+// table didn't take the new range), reload the report once and try again before giving up.
+async function readReport(tabId, range) {
+  let res = await ask(tabId, { cmd: 'read', range });
+  if (!res.ok && /showing another day/.test(res.error || '')) {
+    await sleep(2000);
+    await goto(tabId, REPORT_URL);
+    res = await ask(tabId, { cmd: 'read', range });
+  }
+  return res;
+}
+
 // Petpooja walk-in sales: Refresh on the home page, then the item report.
 async function petpoojaPart(tabId, code, range) {
   await goto(tabId, DASHBOARD_URL);
   const refreshed = await ask(tabId, { cmd: 'refresh' }, 3);
   await goto(tabId, REPORT_URL);
-  const res = await ask(tabId, { cmd: 'read', range });
+  const res = await readReport(tabId, range);
   if (!res.ok) return { ok: false, msg: `Petpooja: ${res.error || 'read failed'}` };
   if (!res.rows || !res.rows.length) return { ok: true, empty: true, msg: 'Petpooja: no sales yet' };
   const sent = await post(code, { channel: 'petpooja', rows: res.rows });
@@ -200,7 +212,7 @@ async function finalPart(tabId, code, day) {
   await goto(tabId, DASHBOARD_URL);
   await ask(tabId, { cmd: 'refresh' }, 3);      // so the report isn't behind the till
   await goto(tabId, REPORT_URL);
-  const res = await ask(tabId, { cmd: 'read', range });
+  const res = await readReport(tabId, range);
   if (!res.ok) return { ok: false, msg: `${day}: ${res.error || 'read failed'}` };
   if (!res.rows || !res.rows.length) return { ok: false, msg: `${day}: the report had no sales` };
   const sent = await post(code, { channel: 'petpooja', day, rows: res.rows }, '/api/live-feed/final');
