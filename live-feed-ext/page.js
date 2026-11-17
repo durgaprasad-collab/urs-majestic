@@ -14,7 +14,11 @@
     for (const el of $.fn.dataTable.tables()) {
       const rows = $(el).DataTable().rows({ search: 'none' }).data().toArray();
       // Item report rows look like [name, date, qty, total]
-      if (rows.length && Array.isArray(rows[0]) && rows[0].length >= 4) return rows;
+      if (rows.length && Array.isArray(rows[0]) && rows[0].length >= 4) {
+        // Petpooja puts a "Total" summary row (empty date) at the top. It is not a dish: drop it,
+        // otherwise the day check fails on it and it would be sent as an item.
+        return rows.filter((r) => Array.isArray(r) && r.length >= 4 && String(r[1]).trim() !== '');
+      }
     }
     return [];
   };
