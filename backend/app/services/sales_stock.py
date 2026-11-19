@@ -295,16 +295,16 @@ def share_after(db, ledger: str, sale_date, at) -> Decimal:
     if ledger == "petpooja_usage":
         day_sql = """SELECT sum(amount) AS total, sum(amount) FILTER (WHERE created_at > :at) AS after
                        FROM petpooja_order_times WHERE business_date = :d"""
-        hist_sql = """SELECT created_at AS t, amount AS a FROM petpooja_order_times
-                       WHERE business_date > :d - 60 AND business_date <> :d"""
+        hist_tbl, hist_t, hist_a = "petpooja_order_times", "created_at", "amount"
+        hist_where = "business_date > :d - 60 AND business_date <> :d"
         params = {}
     else:
         channel = ledger.split("_")[0]
         day_sql = """SELECT sum(total_amount) AS total, sum(total_amount) FILTER (WHERE placed_at > :at) AS after
                        FROM orders WHERE channel = :ch
                         AND (timezone(:tz, placed_at) - interval '6 hours')::date = :d"""
-        hist_sql = """SELECT placed_at AS t, total_amount AS a FROM orders WHERE channel = :ch
-                       AND placed_at > now() - interval '60 days'"""
+        hist_tbl, hist_t, hist_a = "orders", "placed_at", "total_amount"
+        hist_where = "channel = :ch AND placed_at > now() - interval '60 days'"
         params = {"ch": channel}
     params.update({"d": sale_date, "at": at, "tz": settings.BUSINESS_TIMEZONE})
     row = db.execute(text(day_sql), params).mappings().first()
@@ -315,12 +315,19 @@ def share_after(db, ledger: str, sale_date, at) -> Decimal:
     def mins(t):
         lt = t.astimezone(business_tz())
         return ((lt.hour - 6) % 24) * 60 + lt.minute
-    cut = mins(at)
-    hist = db.execute(text(hist_sql), params).all()
-    total = sum(Decimal(str(a or 0)) for _, a in hist)
+    # Summed in the database: this used to download up to 60 days of orders (about 1,600 rows)
+    # for every ingredient on every call, which was most of the project's egress.
+    params["cut"] = mins(at)
+    agg = db.execute(text(f"""
+        SELECT COALESCE(sum({hist_a}), 0) AS total,
+               COALESCE(sum({hist_a}) FILTER (WHERE
+                   ((extract(hour FROM timezone(:tz, {hist_t}))::int - 6 + 24) % 24) * 60
+                   + extract(minute FROM timezone(:tz, {hist_t}))::int > :cut), 0) AS after
+          FROM {hist_tbl} WHERE {hist_where}"""), params).mappings().first()
+    total = Decimal(str(agg["total"] or 0))
     if not total:
         return Decimal("1")  # nothing to go on: take the whole day off, as before
-    return sum(Decimal(str(a or 0)) for t, a in hist if mins(t) > cut) / total
+    return Decimal(str(agg["after"] or 0)) / total
 
 
 def date_from_iso(value: str):
