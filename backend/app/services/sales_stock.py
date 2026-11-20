@@ -8,7 +8,7 @@ applies the difference.
 """
 
 from collections import defaultdict, namedtuple
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -148,16 +148,24 @@ Sale = namedtuple("Sale", "item_name qty sale_date")
 DELIVERY_STOCK_FROM = date(2026, 9, 23)
 
 
+# From these moments a channel's orders also arrive in Petpooja's item report (the Petpooja integration),
+# so Petpooja's own usage covers them. Orders placed from then on are NOT deducted again through the
+# channel's own ledger. Local business time (naive). Zomato was connected to Petpooja on 20 Nov 2026, ~7:30 PM.
+PETPOOJA_COVERS_FROM = {"zomato": datetime(2026, 11, 20, 19, 30)}
+
+
 def channel_sales(db, channel: str, dates) -> list:
     """Dish quantities per IST business date from a delivery channel's orders."""
     if not dates:
         return []
+    cut = PETPOOJA_COVERS_FROM.get(channel)
     rows = db.execute(text("""
         SELECT m.name AS item_name, (o.placed_at AT TIME ZONE :tz)::date AS sale_date, sum(oi.quantity) AS qty
           FROM orders o JOIN order_items oi ON oi.order_id = o.id JOIN menu_items m ON m.id = oi.menu_item_id
          WHERE o.channel = :channel AND (o.placed_at AT TIME ZONE :tz)::date = ANY(:dates)
+           AND (CAST(:cut AS timestamp) IS NULL OR (o.placed_at AT TIME ZONE :tz) < CAST(:cut AS timestamp))
          GROUP BY 1, 2
-    """), {"channel": channel, "dates": list(dates), "tz": settings.BUSINESS_TIMEZONE}).mappings().all()
+    """), {"channel": channel, "dates": list(dates), "tz": settings.BUSINESS_TIMEZONE, "cut": cut}).mappings().all()
     return [Sale(r["item_name"], r["qty"], r["sale_date"]) for r in rows]
 
 

@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import business_now, business_tz
 from app.core.config import settings
-from app.services.sales_stock import Sale, calculate_ingredient_usage, share_after
+from app.services.sales_stock import PETPOOJA_COVERS_FROM, Sale, calculate_ingredient_usage, share_after
 from app.services.stock_count import HUMAN_ROW_SQL, NON_STOCK_CATEGORIES, NON_STOCK_NAMES, UNIT_FACTOR, count_day
 from app.services.uploads.zomato import ITEM_SPLIT_RE, ITEM_TOKEN_RE
 
@@ -116,11 +116,15 @@ def clean_orders(raw) -> list[dict]:
     return out
 
 
-def order_rows(orders: list[dict], day: datetime.date) -> tuple[list[dict], int, float]:
+def order_rows(orders: list[dict], day: datetime.date, channel: str | None = None) -> tuple[list[dict], int, float]:
     """Items sold on Zomato or Swiggy for the business day (1 AM to 1 AM), skipping rejected / cancelled orders.
+    Orders placed after the channel's Petpooja-integration moment are left out: Petpooja's own read has them.
     Returns ([{name, qty, amount}], orders kept, their total)."""
     start = datetime.datetime.combine(day, datetime.time(1, 0))
     end = start + datetime.timedelta(days=1)
+    cut = PETPOOJA_COVERS_FROM.get(channel or "")
+    if cut and cut < end:
+        end = max(start, cut)
     qty: dict[str, int] = {}
     kept, amount = 0, 0.0
     for o in orders:
@@ -150,7 +154,7 @@ def save_read(db: Session, token_id: int | None, rows_raw=None, client_read_at: 
     day = count_day(business_now())
     orders_n = None
     if channel in ORDER_CHANNELS:
-        rows, orders_n, amount = order_rows(clean_orders(orders_raw), day)
+        rows, orders_n, amount = order_rows(clean_orders(orders_raw), day, channel)
         dishes = sum(r["qty"] for r in rows)
     else:
         rows = clean_rows(rows_raw)

@@ -48,6 +48,17 @@ class ZomatoTests(unittest.TestCase):
             ("4", "DELIVERED", "2026-10-28T01:00", "1 x A", 10)), self.DAY)  # the 28th
         self.assertEqual(n, 2)
 
+    def test_orders_after_petpooja_integration_are_left_to_petpooja(self):
+        day = datetime.date(2026, 11, 20)
+        orders = self.orders(
+            ("1", "DELIVERED", "2026-11-20T14:44", "1 x Chilli Parotta", 210),   # before 7:30 PM: Zomato read counts it
+            ("2", "DELIVERED", "2026-11-20T20:11", "1 x Veg Kofta Combo", 223),   # after: Petpooja's report has it
+            ("3", "DELIVERED", "2026-11-21T00:10", "1 x Veg Kofta Combo", 223))
+        rows, n, _ = live_stock.order_rows(orders, day, "zomato")
+        self.assertEqual((n, {r["name"] for r in rows}), (1, {"Chilli Parotta"}))
+        _, n_swiggy, _ = live_stock.order_rows(orders, day, "swiggy")   # Swiggy not connected: all 3 count
+        self.assertEqual(n_swiggy, 3)
+
     def test_empty_list_is_fine(self):
         self.assertEqual(live_stock.zomato_rows([], self.DAY), ([], 0, 0.0))
 
