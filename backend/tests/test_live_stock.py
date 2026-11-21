@@ -56,8 +56,10 @@ class ZomatoTests(unittest.TestCase):
             ("3", "DELIVERED", "2026-11-21T00:10", "1 x Veg Kofta Combo", 223))
         rows, n, _ = live_stock.order_rows(orders, day, "zomato")
         self.assertEqual((n, {r["name"] for r in rows}), (1, {"Chilli Parotta"}))
-        _, n_swiggy, _ = live_stock.order_rows(orders, day, "swiggy")   # Swiggy not connected: all 3 count
-        self.assertEqual(n_swiggy, 3)
+        _, n_swiggy, _ = live_stock.order_rows(orders, day, "swiggy")   # Swiggy is connected too
+        self.assertEqual(n_swiggy, 1)
+        _, n_other, _ = live_stock.order_rows(orders, day, "ownly")     # a channel not connected: all 3 count
+        self.assertEqual(n_other, 3)
 
     def test_empty_list_is_fine(self):
         self.assertEqual(live_stock.zomato_rows([], self.DAY), ([], 0, 0.0))

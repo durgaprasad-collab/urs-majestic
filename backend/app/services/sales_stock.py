@@ -150,8 +150,9 @@ DELIVERY_STOCK_FROM = date(2026, 9, 23)
 
 # From these moments a channel's orders also arrive in Petpooja's item report (the Petpooja integration),
 # so Petpooja's own usage covers them. Orders placed from then on are NOT deducted again through the
-# channel's own ledger. Local business time (naive). Zomato was connected to Petpooja on 20 Nov 2026, ~7:30 PM.
-PETPOOJA_COVERS_FROM = {"zomato": datetime(2026, 11, 20, 19, 30)}
+# channel's own ledger. Local business time (naive). Zomato was connected to Petpooja on 20 Nov 2026 ~7:30 PM; Swiggy
+# was seen in Petpooja's report on 21 Nov (no Swiggy orders exist between those two moments, so the same cutoff is safe).
+PETPOOJA_COVERS_FROM = {"zomato": datetime(2026, 11, 20, 19, 30), "swiggy": datetime(2026, 11, 20, 19, 30)}
 
 
 def channel_sales(db, channel: str, dates) -> list:
