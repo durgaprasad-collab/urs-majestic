@@ -21,7 +21,7 @@
     const svg = document.getElementById('td-bars');
     if (!svg) return;
     const W = 760, H = 270, L = 44, R = 74, T = 12, B = 34;
-    const peak = Math.max(...bars.map((b) => Math.max(b.walk + b.zomato + b.swiggy, b.target)));
+    const peak = Math.max(...bars.map((b) => Math.max(b.walk + b.zomato + b.swiggy + b.ownly, b.target)));
     const max = niceMax(peak * 1.05), step = max / 4;
     const pw = W - L - R, ph = H - T - B, slot = pw / bars.length, bw = Math.min(22, slot - 8);
     const y = (v) => T + ph - (v / max) * ph;
@@ -31,7 +31,7 @@
     }
     bars.forEach((b, i) => {
       const cx = L + slot * i + slot / 2, x = cx - bw / 2;
-      const parts = [[b.walk, 'var(--td-walk)'], [b.zomato, 'var(--td-zom)'], [b.swiggy, 'var(--td-swg)']].filter((p) => p[0] > 0);
+      const parts = [[b.walk, 'var(--td-walk)'], [b.zomato, 'var(--td-zom)'], [b.swiggy, 'var(--td-swg)'], [b.ownly, 'var(--td-own)']].filter((p) => p[0] > 0);
       let acc = 0;
       parts.forEach(([v, c], k) => {
         const top = acc + v, h = y(acc) - y(top) - (acc ? 2 : 0);
@@ -41,11 +41,12 @@
       const weekend = b.dow === 'Sat' || b.dow === 'Sun';
       el('text', { x: cx, y: H - B + 15, 'text-anchor': 'middle', class: weekend ? 'lbl' : '' }, svg).textContent = b.dow[0];
       if (i % 3 === 0 || i === bars.length - 1) el('text', { x: cx, y: H - B + 28, 'text-anchor': 'middle' }, svg).textContent = b.label;
-      const tot = b.walk + b.zomato + b.swiggy;
+      const tot = b.walk + b.zomato + b.swiggy + b.ownly;
       const hit = el('rect', { x: cx - slot / 2, y: T, width: slot, height: ph, class: 'td-hit' }, svg);
       hit.addEventListener('mousemove', (ev) => show(ev,
         `<b>${b.dow} ${b.label} · ${inr(tot)}</b><i style="background:var(--td-walk)"></i>Walk-in ${inr(b.walk)}<br>` +
         `<i style="background:var(--td-zom)"></i>Zomato ${inr(b.zomato)}<br><i style="background:var(--td-swg)"></i>Swiggy ${inr(b.swiggy)}<br>` +
+        (b.ownly ? `<i style="background:var(--td-own)"></i>Ownly ${inr(b.ownly)}<br>` : '') +
         `${tot >= b.be ? '✓ above' : '✗ below'} break-even (${inr(b.be)}) by ${inr(Math.abs(tot - b.be))}`));
       hit.addEventListener('mouseleave', hide);
     });
@@ -62,8 +63,8 @@
       el('text', { x: W - R + 6, y: y(last) + 13 }, svg).textContent = name;
     });
     const tbl = document.getElementById('td-bars-table');
-    tbl.innerHTML = '<table class="td-dt"><tr><th>Day</th><th>Walk-in</th><th>Zomato</th><th>Swiggy</th><th>Total</th><th>vs break-even</th></tr>' +
-      bars.map((b) => { const t = b.walk + b.zomato + b.swiggy; return `<tr><td>${b.dow} ${b.label}</td><td>${inr(b.walk)}</td><td>${inr(b.zomato)}</td><td>${inr(b.swiggy)}</td><td><b>${inr(t)}</b></td><td class="${t >= b.be ? 'up' : 'dn'}">${t >= b.be ? '+' : '−'}${inr(Math.abs(t - b.be))}</td></tr>`; }).join('') + '</table>';
+    tbl.innerHTML = '<table class="td-dt"><tr><th>Day</th><th>Walk-in</th><th>Zomato</th><th>Swiggy</th><th>Ownly</th><th>Total</th><th>vs break-even</th></tr>' +
+      bars.map((b) => { const t = b.walk + b.zomato + b.swiggy + b.ownly; return `<tr><td>${b.dow} ${b.label}</td><td>${inr(b.walk)}</td><td>${inr(b.zomato)}</td><td>${inr(b.swiggy)}</td><td>${inr(b.ownly)}</td><td><b>${inr(t)}</b></td><td class="${t >= b.be ? 'up' : 'dn'}">${t >= b.be ? '+' : '−'}${inr(Math.abs(t - b.be))}</td></tr>`; }).join('') + '</table>';
     const btn = document.querySelector('[data-td-table]');
     if (btn) btn.addEventListener('click', () => { tbl.hidden = !tbl.hidden; btn.textContent = tbl.hidden ? 'Show as table' : 'Hide table'; });
   })();

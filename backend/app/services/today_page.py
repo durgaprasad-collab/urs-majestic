@@ -12,6 +12,7 @@ import math
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.services.sales_stock import PETPOOJA_COVERS_FROM
 from app.services import target_engine, task_engine
 
 D = decimal.Decimal
@@ -59,7 +60,7 @@ def build_today(db: Session, reporting_date: datetime.date | None = None) -> dic
     """), {"day": day}).mappings().all()
     by_day: dict = {}
     for r in rows:
-        day_row = by_day.setdefault(r["d"], {"petpooja": 0.0, "zomato": 0.0, "swiggy": 0.0})
+        day_row = by_day.setdefault(r["d"], {"petpooja": 0.0, "zomato": 0.0, "swiggy": 0.0, "ownly": 0.0})
         day_row[r["channel"]] = day_row.get(r["channel"], 0.0) + _f(r["net"])
 
     def tot(d):
@@ -79,8 +80,8 @@ def build_today(db: Session, reporting_date: datetime.date | None = None) -> dic
     today_total = tot(day)
     gap = today_total - be
     lw = day - datetime.timedelta(days=7)
-    ch_today = by_day.get(day, {"petpooja": 0, "zomato": 0, "swiggy": 0})
-    ch_lw = by_day.get(lw, {"petpooja": 0, "zomato": 0, "swiggy": 0})
+    ch_today = by_day.get(day, {"petpooja": 0, "zomato": 0, "swiggy": 0, "ownly": 0})
+    ch_lw = by_day.get(lw, {"petpooja": 0, "zomato": 0, "swiggy": 0, "ownly": 0})
     week_start = day - datetime.timedelta(days=day.weekday())
     week_days = [week_start + datetime.timedelta(days=i) for i in range(min(4, day.weekday() + 1))]
     week_days = [d for d in week_days if d in by_day]
@@ -100,8 +101,8 @@ def build_today(db: Session, reporting_date: datetime.date | None = None) -> dic
 
     verdict = {
         "total": today_total, "be": be, "gap": gap, "target": target,
-        "walk": ch_today["petpooja"], "zomato": ch_today["zomato"], "swiggy": ch_today["swiggy"],
-        "walk_lw": ch_lw["petpooja"], "zomato_lw": ch_lw["zomato"],
+        "walk": ch_today["petpooja"], "zomato": ch_today["zomato"], "swiggy": ch_today["swiggy"], "ownly": ch_today.get("ownly", 0),
+        "walk_lw": ch_lw["petpooja"], "zomato_lw": ch_lw["zomato"], "swiggy_lw": ch_lw["swiggy"], "ownly_lw": ch_lw.get("ownly", 0),
         "vs_lw": pct(today_total, tot(lw)), "walk_vs_lw": pct(ch_today["petpooja"], ch_lw["petpooja"]),
         "zomato_vs_lw": pct(ch_today["zomato"], ch_lw["zomato"]),
         "week_ok": len(week_ok), "week_n": len(week_days),
@@ -116,12 +117,12 @@ def build_today(db: Session, reporting_date: datetime.date | None = None) -> dic
     bars = [{
         "d": d.isoformat(), "dow": d.strftime("%a"), "label": d.strftime("%d %b"),
         "walk": round(by_day.get(d, {}).get("petpooja", 0)), "zomato": round(by_day.get(d, {}).get("zomato", 0)),
-        "swiggy": round(by_day.get(d, {}).get("swiggy", 0)), "be": round(be_for(d)),
+        "swiggy": round(by_day.get(d, {}).get("swiggy", 0)), "ownly": round(by_day.get(d, {}).get("ownly", 0)), "be": round(be_for(d)),
         "target": round(target if d >= month_start else target_prev),
     } for d in span]
     wd = [b for b in bars if datetime.date.fromisoformat(b["d"]).isoweekday() <= 4]
     we = [b for b in bars if datetime.date.fromisoformat(b["d"]).isoweekday() >= 5]
-    ok = lambda b: b["walk"] + b["zomato"] + b["swiggy"] >= b["be"]  # noqa: E731
+    ok = lambda b: b["walk"] + b["zomato"] + b["swiggy"] + b["ownly"] >= b["be"]  # noqa: E731
     pattern = {"wd_ok": sum(map(ok, wd)), "wd_n": len(wd), "we_ok": sum(map(ok, we)), "we_n": len(we)}
 
     # ── Month cumulative ──
@@ -148,7 +149,7 @@ def build_today(db: Session, reporting_date: datetime.date | None = None) -> dic
         avg = sum(vals) / len(vals) if vals else 0
         rhythm.append({"dow": calendar.day_abbr[dow - 1], "avg": avg, "ok": avg >= be})
 
-    # ── Dishes: walk-in (Petpooja item report) + Zomato (order items) ──
+    # ── Dishes: walk-in (Petpooja item report, minus platform orders it also holds) + Zomato / Swiggy (order items) ──
     # Zomato order lines carry no per-dish price, so revenue is walk-in only.
     dishes = db.execute(text("""
         WITH w AS (
@@ -164,20 +165,31 @@ def build_today(db: Session, reporting_date: datetime.date | None = None) -> dic
             SELECT m.name n,
                    sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date = :day) zq,
                    sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date = :day - 7) zq_lw,
-                   sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date > :day - 7) z7
+                   sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date > :day - 7) z7,
+                   -- orders placed after the platform was connected to Petpooja are ALSO in the item report: take them
+                   -- back out of walk-in so they are not counted twice
+                   sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date = :day
+                       AND (o.placed_at AT TIME ZONE 'Asia/Kolkata') >= CASE o.channel WHEN 'zomato' THEN :cz ELSE :cs END) in_pp,
+                   sum(oi.quantity * coalesce(oi.unit_price, 0)) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date = :day
+                       AND (o.placed_at AT TIME ZONE 'Asia/Kolkata') >= CASE o.channel WHEN 'zomato' THEN :cz ELSE :cs END) in_pp_rev,
+                   sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date = :day - 7
+                       AND (o.placed_at AT TIME ZONE 'Asia/Kolkata') >= CASE o.channel WHEN 'zomato' THEN :cz ELSE :cs END) in_pp_lw,
+                   sum(oi.quantity) FILTER (WHERE (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date > :day - 7
+                       AND (o.placed_at AT TIME ZONE 'Asia/Kolkata') >= CASE o.channel WHEN 'zomato' THEN :cz ELSE :cs END) in_pp7
             FROM orders o JOIN order_items oi ON oi.order_id = o.id JOIN menu_items m ON m.id = oi.menu_item_id
-            WHERE o.channel = 'zomato' AND m.is_food
+            WHERE o.channel IN ('zomato', 'swiggy') AND m.is_food
               AND (o.placed_at AT TIME ZONE 'Asia/Kolkata')::date BETWEEN :day - 7 AND :day
             GROUP BY 1
         )
         SELECT coalesce(w.n, z.n) AS name,
-               coalesce(wq, 0)::int AS walk_q, coalesce(zq, 0)::int AS zomato_q, coalesce(wr, 0) AS walk_rev,
-               (coalesce(wq_lw, 0) + coalesce(zq_lw, 0))::int AS last_week_q,
-               (coalesce(w7, 0) + coalesce(z7, 0))::int AS week_q
+               greatest(coalesce(wq, 0) - coalesce(in_pp, 0), 0)::int AS walk_q, coalesce(zq, 0)::int AS zomato_q,
+               greatest(coalesce(wr, 0) - coalesce(in_pp_rev, 0), 0) AS walk_rev,
+               (greatest(coalesce(wq_lw, 0) - coalesce(in_pp_lw, 0), 0) + coalesce(zq_lw, 0))::int AS last_week_q,
+               (greatest(coalesce(w7, 0) - coalesce(in_pp7, 0), 0) + coalesce(z7, 0))::int AS week_q
         FROM w FULL JOIN z ON w.n = z.n
-        WHERE coalesce(wq, 0) + coalesce(zq, 0) > 0
-        ORDER BY coalesce(wq, 0) + coalesce(zq, 0) DESC, coalesce(wr, 0) DESC
-    """), {"day": day}).mappings().all()
+        WHERE greatest(coalesce(wq, 0) - coalesce(in_pp, 0), 0) + coalesce(zq, 0) > 0
+        ORDER BY greatest(coalesce(wq, 0) - coalesce(in_pp, 0), 0) + coalesce(zq, 0) DESC, coalesce(wr, 0) DESC
+    """), {"day": day, "cz": PETPOOJA_COVERS_FROM["zomato"], "cs": PETPOOJA_COVERS_FROM["swiggy"]}).mappings().all()
     dishes = [dict(r, total_q=r["walk_q"] + r["zomato_q"]) for r in dishes]
     dish_summary = {
         "count": len(dishes),

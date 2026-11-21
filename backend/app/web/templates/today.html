@@ -30,14 +30,14 @@
       <p class="td-sent">{{ inr(v.total) }}, <em>{{ inr(v.gap|abs) }} {{ 'ahead of' if v.gap >= 0 else 'short of' }}</em> break-even</p>
       <p class="td-why">
         Walk-in {{ inr(v.walk) }}{% if v.walk_vs_lw is not none %} (<span class="{{ 'up' if v.walk_vs_lw >= 0 else 'dn' }}">{{ change(v.walk_vs_lw) }}</span> vs last {{ day.strftime('%a') }}){% endif %},
-        Zomato {{ inr(v.zomato) }}{% if v.zomato_vs_lw is not none %} (<span class="{{ 'up' if v.zomato_vs_lw >= 0 else 'dn' }}">{{ change(v.zomato_vs_lw) }}</span>){% endif %}{% if v.swiggy %}, Swiggy {{ inr(v.swiggy) }}{% endif %}.
+        Zomato {{ inr(v.zomato) }}{% if v.zomato_vs_lw is not none %} (<span class="{{ 'up' if v.zomato_vs_lw >= 0 else 'dn' }}">{{ change(v.zomato_vs_lw) }}</span>){% endif %}{% if v.swiggy %}, Swiggy {{ inr(v.swiggy) }}{% endif %}{% if v.ownly %}, Ownly {{ inr(v.ownly) }}{% endif %}.
         {% if v.close_gap %}{{ v.close_gap.n }} more {{ v.close_gap.item }} order{{ 's' if v.close_gap.n != 1 }} would have closed the gap.{% endif %}
       </p>
     </div>
     <div><div class="td-k">Break-even / day</div><div class="td-vv">{{ inr(v.be) }}</div><div class="td-vs">Fixed {{ inrk(v.fixed) }} ÷ {{ '%.0f'|format(v.margin_pct) }}% margin ÷ {{ v.days_in_month }} days</div></div>
     <div><div class="td-k">vs last {{ day.strftime('%A') }}</div>
       <div class="td-vv {{ 'up' if (v.vs_lw or 0) >= 0 else 'dn' }}">{% if v.vs_lw is not none %}{{ '%+.0f'|format(v.vs_lw) }}%{% else %}—{% endif %}</div>
-      <div class="td-vs">{{ inr(v.walk_lw + v.zomato_lw) }} last week</div></div>
+      <div class="td-vs">{{ inr(v.walk_lw + v.zomato_lw + v.swiggy_lw + v.ownly_lw) }} last week</div></div>
     <div><div class="td-k">This week, Mon–Thu</div>
       <div class="td-vv">{{ v.week_ok }} <small>of {{ v.week_n }} days</small></div>
       <div class="td-vs">cleared break-even{% for d, amt in v.week_ok_days %}{{ ' (' if loop.first else ', ' }}{{ d.strftime('%a') }} {{ inrk(amt) }}{{ ')' if loop.last }}{% endfor %}</div></div>
@@ -45,7 +45,7 @@
 
   <section class="td-card td-c8" aria-labelledby="td-bars-h">
     <h2 id="td-bars-h">Daily sales, last 21 days <small>stacked by channel</small><a class="td-more" href="/reconciliation">Open Reconcile →</a></h2>
-    <div class="td-legend"><span><i style="background:var(--td-walk)"></i>Walk-in</span><span><i style="background:var(--td-zom)"></i>Zomato</span><span><i style="background:var(--td-swg)"></i>Swiggy</span><span><i class="ln"></i>Break-even</span><span><i class="ln g"></i>Profit target ({{ inrk(m.goal) }}/month)</span></div>
+    <div class="td-legend"><span><i style="background:var(--td-walk)"></i>Walk-in</span><span><i style="background:var(--td-zom)"></i>Zomato</span><span><i style="background:var(--td-swg)"></i>Swiggy</span><span><i style="background:var(--td-own)"></i>Ownly</span><span><i class="ln"></i>Break-even</span><span><i class="ln g"></i>Profit target ({{ inrk(m.goal) }}/month)</span></div>
     <svg class="td-chart" id="td-bars" viewBox="0 0 760 270" role="img" aria-label="Daily sales by channel for the last 21 days with break-even and profit target lines"></svg>
     <p class="td-insight"><b>{{ pattern.we_ok }} of the last {{ pattern.we_n }} Fri–Sun days cleared break-even; {{ pattern.wd_ok }} of {{ pattern.wd_n }} Mon–Thu days did.</b>
       {% if pattern.wd_ok * 3 <= pattern.wd_n %}Weekday dinners are where the gap is.{% endif %}</p>
@@ -75,17 +75,17 @@
 
   <section class="td-card td-c7" aria-labelledby="td-dish-h">
     {% set ds = dish_summary %}
-    <h2 id="td-dish-h">Items sold on {{ day.strftime('%A') }} <small>walk-in + Zomato, by quantity</small><a class="td-more" href="/results">Menu Analysis →</a></h2>
+    <h2 id="td-dish-h">Items sold on {{ day.strftime('%A') }} <small>walk-in + Zomato &amp; Swiggy, by quantity</small><a class="td-more" href="/results">Menu Analysis →</a></h2>
     {% if dishes %}
     <div class="td-dsum">
       <span><b>{{ ds.count }}</b>dishes</span>
       <span><b>{{ ds.walk_q }}</b><i style="background:var(--td-walk)"></i>walk-in plates</span>
-      <span><b>{{ ds.zomato_q }}</b><i style="background:var(--td-zom)"></i>Zomato plates</span>
+      <span><b>{{ ds.zomato_q }}</b><i style="background:var(--td-zom)"></i>Zomato &amp; Swiggy plates</span>
       <span><b>{{ inr(ds.walk_rev) }}</b>walk-in food revenue</span>
     </div>
     <div class="td-dish-wrap">
       <table class="td-dishes" data-td-dishes>
-        <thead><tr><th>Dish</th><th>Walk-in · Zomato</th><th>Sold</th><th>Walk-in ₹</th><th>vs last {{ day.strftime('%a') }}</th><th>7 days</th></tr></thead>
+        <thead><tr><th>Dish</th><th>Walk-in · Delivery</th><th>Sold</th><th>Walk-in ₹</th><th>vs last {{ day.strftime('%a') }}</th><th>7 days</th></tr></thead>
         <tbody>
         {% for d in dishes %}
         {% set combo = d.name.split(' - ', 1) if d.name.startswith('Combo ') and ' - ' in d.name else none %}

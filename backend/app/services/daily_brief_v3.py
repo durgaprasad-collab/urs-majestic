@@ -218,15 +218,15 @@ _CHANNELS = [
     ("Counter", "counter_sales", "petpooja"),
     ("Zomato", "zomato_sales", "zomato"),
     ("Swiggy", "swiggy_sales", "swiggy"),
-    ("Website", None, None),
+    ("Ownly", "ownly_sales", "ownly"),   # the restaurant's own online ordering (Ownly), tagged in Petpooja's order listing
 ]
 
 
 def _channel_performance(summary: dict, rows: dict[str, dict]) -> list[dict]:
     out = []
     for label, skey, chan in _CHANNELS:
-        if chan is None:
-            # Future-ready: no integration yet -> "No sales", never a fake ₹0.
+        if chan == "ownly" and chan not in rows:
+            # Ownly orders only exist on days someone ordered: no row means "No sales", not missing data.
             out.append({"label": label, "value": None, "status": "not_connected", "note": "No sales"})
             continue
         if chan not in rows:

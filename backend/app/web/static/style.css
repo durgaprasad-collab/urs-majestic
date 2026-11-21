@@ -1416,7 +1416,7 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 
 /* ── Today page body (templates/today.html, static/today.js) ──────────────── */
 .td {
-  --td-walk: #2F6FB0; --td-zom: #E23744; --td-swg: #F59E0B;   /* validated CVD-safe channel set */
+  --td-walk: #2F6FB0; --td-zom: #E23744; --td-swg: #F59E0B; --td-own: #7A4FB5;   /* validated CVD-safe channel set */
   --td-ink: #14201B; --td-ink-2: #56645D; --td-ink-3: #98A39D; --td-line: #E4E1D6; --td-grid: #EEECE4;
   --td-gold: #D4A62A; --td-good: #1E8A5A; --td-warn: #B7791F; --td-bad: #C2412D;
   display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px;

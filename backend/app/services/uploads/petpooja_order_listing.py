@@ -21,6 +21,20 @@ ALARM_CUTOFF = date(2026, 6, 29)
 ALARM_MESSAGE = "Aggregator orders are being punched into POS again — double-counting risk"
 
 
+# Petpooja tags orders that came through an aggregator in the Order Type column, e.g. "Delivery (Zomato)".
+# Since those platforms were connected to Petpooja their dishes are in Petpooja's item report too.
+AGGREGATOR_SOURCES = ("zomato", "swiggy", "ownly")
+
+
+def source_of(order_type: str | None) -> str | None:
+    """'zomato' / 'swiggy' / 'ownly' for an order the platform sent into Petpooja, else None (counter, pick-up...)."""
+    low = (order_type or "").lower()
+    for name in AGGREGATOR_SOURCES:
+        if name in low:
+            return name
+    return None
+
+
 @dataclass
 class OrderListingRow:
     order_no: object
@@ -30,6 +44,7 @@ class OrderListingRow:
     status: str
     created: datetime
     business_date: date
+    source: str | None = None
 
 
 @dataclass
@@ -86,7 +101,7 @@ def parse_order_listing_xlsx(path: str) -> tuple[list[OrderListingRow], list[Par
             rows.append(OrderListingRow(
                 order_no=order_no, order_type=order_type, amount=amount,
                 discount=discount, status=status, created=created,
-                business_date=business_date,
+                business_date=business_date, source=source_of(row[col["Order Type"]]),
             ))
         except Exception as exc:
             errors.append(ParseError(line_no, f"Order No. {order_no!r}: {exc}"))
@@ -95,12 +110,12 @@ def parse_order_listing_xlsx(path: str) -> tuple[list[OrderListingRow], list[Par
 
 
 def aggregate_by_day(rows: list[OrderListingRow], upload_date: date) -> dict[date, dict]:
-    """Per-business-date {count, amount} for included rows: excludes
-    Status='Cancelled' and business_date >= upload_date (today's export is
-    incomplete). 'Saved' status is included, matching the item report."""
+    """Per-business-date {count, amount} for the walk-in (counter) rows: excludes
+    Status='Cancelled', orders the aggregators sent in, and business_date >= upload_date (today's
+    export is incomplete). 'Saved' status is included, matching the item report."""
     totals: dict[date, dict] = {}
     for r in rows:
-        if r.status == "Cancelled":
+        if r.status == "Cancelled" or r.source:
             continue
         if r.business_date >= upload_date:
             continue
@@ -111,9 +126,10 @@ def aggregate_by_day(rows: list[OrderListingRow], upload_date: date) -> dict[dat
 
 
 def check_aggregator_alarm(rows: list[OrderListingRow]) -> bool:
-    """True if any Delivery-type row lands after the date staff stopped
-    manually punching aggregator orders into the POS."""
-    return any(r.order_type == "Delivery" and r.business_date > ALARM_CUTOFF for r in rows)
+    """True if any Delivery-type row with no known platform lands after the date staff stopped
+    manually punching aggregator orders into the POS. Orders tagged Zomato / Swiggy / Ownly come in
+    through the integration and are split out, so they are not a double-count risk."""
+    return any(r.order_type == "Delivery" and not r.source and r.business_date > ALARM_CUTOFF for r in rows)
 
 
 def find_unpaired_diffs(daily_amounts: dict[date, decimal.Decimal], tolerance=decimal.Decimal("1")) -> list[tuple[date, decimal.Decimal]]:
@@ -188,8 +204,9 @@ def store_order_times(db: Session, rows: list[OrderListingRow], upload_date: dat
         db.execute(text("DELETE FROM petpooja_order_times WHERE business_date = :d"), {"d": d})
     for r in keep:
         created = r.created if r.created.tzinfo else r.created.replace(tzinfo=business_tz())
-        db.execute(text("""INSERT INTO petpooja_order_times (business_date, order_no, created_at, amount)
-                           VALUES (:d, :n, :c, :a) ON CONFLICT (business_date, order_no) DO UPDATE
-                           SET created_at = EXCLUDED.created_at, amount = EXCLUDED.amount"""),
-                   {"d": r.business_date, "n": str(r.order_no), "c": created, "a": r.amount})
+        db.execute(text("""INSERT INTO petpooja_order_times (business_date, order_no, created_at, amount, source, discount)
+                           VALUES (:d, :n, :c, :a, :s, :x) ON CONFLICT (business_date, order_no) DO UPDATE
+                           SET created_at = EXCLUDED.created_at, amount = EXCLUDED.amount,
+                               source = EXCLUDED.source, discount = EXCLUDED.discount"""),
+                   {"d": r.business_date, "n": str(r.order_no), "c": created, "a": r.amount, "s": r.source, "x": r.discount})
     return len(keep)

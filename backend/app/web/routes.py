@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.clock import business_today
 from datetime import date
+from app.services.channel_split import recompute_split
 from app.services.task_engine import refresh_after_upload
 from scripts.import_pos import parse_xlsx
 from app.services import menu_page
@@ -184,6 +185,7 @@ async def upload_petpooja_orders(
         daily = aggregate_by_day(rows, today)
         dates_updated, dates_skipped_no_row = upsert_order_counts(db, daily)
         store_order_times(db, rows, today)
+        recompute_split(db, {r.business_date for r in rows if r.business_date < today})
         diffs = cross_check_amounts(db, daily)
         warnings = find_unpaired_diffs(diffs)
 

@@ -13,6 +13,7 @@ import os
 from sqlalchemy.orm import Session
 
 from app.core.clock import business_today
+from app.services.channel_split import recompute_split
 from app.services.sales_stock import adjust_stock_for_pace, adjust_stock_for_sales
 from scripts.import_pos import (
     build_resolver, exclude_today, load_sales, pos_alias_map, seed_menu_items,
@@ -36,6 +37,7 @@ def apply_item_sales(db: Session, raw_rows: list[dict], source_file: str, *, par
     adjust_stock_for_sales(db, imported_sales)
     adjust_stock_for_pace(db, {s.sale_date for s in imported_sales})
     upsert_daily_channel_sales(db, raw_rows, source_file)
+    recompute_split(db, {r["sale_date"] for r in raw_rows})   # Petpooja now carries platform orders: keep walk-in apart
     write_upload_log(db, source_file=source_file, rows=raw_rows, parse_errors=list(parse_errors),
                      excluded_today=excluded_today, declared_total=declared_total,
                      declared_rows=declared_rows, succeeded=True)

@@ -154,7 +154,8 @@ def _build(db: Session) -> dict:
     walkin_m = sum(ch(d, "petpooja") for d in mtd_days)
     zomato_m = sum(ch(d, "zomato") for d in mtd_days)
     swiggy_m = sum(ch(d, "swiggy") for d in mtd_days)
-    channel_m = walkin_m + zomato_m + swiggy_m
+    ownly_m = sum(ch(d, "ownly") for d in mtd_days)
+    channel_m = walkin_m + zomato_m + swiggy_m + ownly_m
     zom_rows = [by_day[d]["zomato"] for d in mtd_days if "zomato" in by_day[d]]
     zom_gross = sum(_f(r["gross"]) for r in zom_rows)
     zom_disc = sum(_f(r["rdisc"]) for r in zom_rows)

@@ -12,9 +12,10 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import business_today
 from app.models.upload_log import UploadLog
+from app.services.channel_split import recompute_split
 from app.services.uploads.petpooja_order_listing import (
     ALARM_MESSAGE, OrderListingRow, aggregate_by_day, check_aggregator_alarm, cross_check_amounts,
-    find_unpaired_diffs, store_order_times, upsert_order_counts,
+    find_unpaired_diffs, source_of, store_order_times, upsert_order_counts,
 )
 
 D = decimal.Decimal
@@ -62,7 +63,8 @@ def rows_from_feed(day: str, raw) -> tuple[list[OrderListingRow], int]:
         rows.append(OrderListingRow(
             order_no=order_no, order_type=_TYPE_SUFFIX.sub("", str(r.get("type") or "")).strip(),
             amount=_money(r.get("amount"), "amount"), discount=_money(r.get("discount"), "discount"),
-            status=str(r.get("status") or "").strip(), created=created, business_date=business_date))
+            status=str(r.get("status") or "").strip(), created=created, business_date=business_date,
+            source=source_of(r.get("type"))))
     return rows, other_day
 
 
@@ -72,6 +74,7 @@ def apply_order_listing(db: Session, day: datetime.date, rows: list[OrderListing
     daily = aggregate_by_day(rows, today)
     upsert_order_counts(db, daily)
     store_order_times(db, rows, today)
+    recompute_split(db, {r.business_date for r in rows if r.business_date < today})
     warnings = find_unpaired_diffs(cross_check_amounts(db, daily))
     count = sum(a["count"] for a in daily.values())
     amount = sum((a["amount"] for a in daily.values()), D("0"))

@@ -12,7 +12,7 @@ class DailyChannelSales(Base):
 
     __tablename__ = "daily_channel_sales"
     __table_args__ = (
-        CheckConstraint("channel = ANY (ARRAY['petpooja','swiggy','zomato'])", name="daily_channel_sales_channel_check"),
+        CheckConstraint("channel = ANY (ARRAY['petpooja','swiggy','zomato','catering','ownly'])", name="daily_channel_sales_channel_check"),
         CheckConstraint("net_sales >= 0", name="daily_channel_sales_net_sales_check"),
         CheckConstraint("orders >= 0", name="daily_channel_sales_orders_check"),
     )
