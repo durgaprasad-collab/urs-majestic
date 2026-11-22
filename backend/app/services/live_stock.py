@@ -31,7 +31,7 @@ KEEP_DAYS = 4
 CHANNELS = ("petpooja", "zomato", "swiggy")
 ORDER_CHANNELS = ("zomato", "swiggy")  # fed as whole orders, not as a Petpooja item report
 LEDGER = {"petpooja": "petpooja_usage", "zomato": "zomato_usage", "swiggy": "swiggy_usage"}
-LABEL = {"petpooja": "Walk-in", "zomato": "Zomato", "swiggy": "Swiggy"}
+LABEL = {"petpooja": "Petpooja (all channels)", "zomato": "Zomato", "swiggy": "Swiggy"}
 _NOT_COUNTED = re.compile(r"reject|cancel|fail|declin", re.I)  # Zomato / Swiggy order statuses that never became sales
 _SEED = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "menu_seed.json"))
 
