@@ -19,7 +19,7 @@
     const total = d.amount || 0;
     const chips = CH.map(([k]) => {
       const c = d[k];
-      if (!c) return '<span class="tl-chip none"><i></i>' + SOURCE[k] + ' no read yet</span>';
+      if (!c) return k === 'walkin' ? '<span class="tl-chip none"><i></i>' + SOURCE[k] + ' no read yet</span>' : '';
       return '<span class="tl-chip ' + (c.status === 'live' ? 'ok' : 'old') + '"><i></i>' + SOURCE[k] + ' ' + ago(c.age_min) + '</span>';
     }).join('');
     const dishSplit = CH.filter(([k]) => d[k]).map(([k, , col]) => '<span><b style="background:' + col + '"></b>' + Math.round(d[k].dishes) + '</span>').join('');

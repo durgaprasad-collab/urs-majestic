@@ -82,9 +82,11 @@ class SourcesTests(unittest.TestCase):
             {"type": "Delivery (Swiggy)", "amount": "200", "status": "Success"},
             {"type": "Delivery (Ownly)", "amount": "300", "status": "Success"},
             {"type": "Dine In", "amount": "400", "status": "Success"},
-            {"type": "Delivery (Zomato)", "amount": "999", "status": "Cancelled"}])
+            {"type": "Delivery (Zomato)", "amount": "999", "status": "Cancelled"},
+            {"type": "Delivery (Zomato)", "amount": "259", "status": "Success", "items": [{"name": "Mushroom Biryani", "qty": 2}]}])
         self.assertEqual({x["source"]: (x["orders"], x["amount"]) for x in out},
-                         {"zomato": (1, 1000.5), "swiggy": (1, 200.0), "ownly": (1, 300.0), "walkin": (1, 400.0)})
+                         {"zomato": (2, 1259.5), "swiggy": (1, 200.0), "ownly": (1, 300.0), "walkin": (1, 400.0)})
+        self.assertEqual([x for x in out if x["source"] == "zomato"][0]["items"], {"Mushroom Biryani": 2.0})
 
 
 class ClassifyTests(unittest.TestCase):

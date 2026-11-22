@@ -15,14 +15,71 @@
   };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  async function readDay(day) {
+  const SOURCE_RE = /zomato|swiggy|ownly/i;
+  const stored = (k) => new Promise((r) => chrome.storage.local.get(k, (v) => r(v || {})));
+
+  // Platform orders: the list shows item names but not quantities, so each one's detail page is read (cached
+  // per order, so a 10-minute read only fetches the new ones). The detail URL needs a second number that only
+  // Petpooja's own page knows: learn it by opening one order's "view" panel once, and remember it.
+  async function learnSegment() {
+    const icon = document.querySelector('tbody .order-detail');   // any order on the page itself (the list rows read above are parsed copies)
+    if (!icon) return null;
+    const before = performance.getEntriesByType('resource').length;
+    icon.click();
+    for (let i = 0; i < 20; i++) {
+      await sleep(500);
+      const e = performance.getEntriesByType('resource').slice(before).find((x) => /\/orders\/order_detail\//.test(x.name));
+      if (e) {
+        const seg = new URL(e.name).pathname.split('/').pop();
+        const close = document.querySelector('.modal.show .btn-close, .offcanvas.show .btn-close, [data-bs-dismiss]');
+        if (close) close.click(); else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        return seg;
+      }
+    }
+    return null;
+  }
+  async function itemsOf(id, seg) {
+    const r = await fetch(`/orders/order_detail/${id}/${seg}?fancybox=true&_=${Date.now()}`, { credentials: 'include', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    if (!r.ok) return null;
+    const d = new DOMParser().parseFromString(await r.text(), 'text/html');
+    const tbl = [...d.querySelectorAll('table')].find((x) => /Item Name/i.test(x.textContent) && /Quantity/i.test(x.textContent));
+    if (!tbl) return null;
+    const items = [];
+    for (const tr of tbl.querySelectorAll('tr')) {
+      const c = [...tr.children].map((td) => td.textContent.trim().replace(/\s+/g, ' '));
+      if (c.length >= 3 && c[0] && /^\d+(\.\d+)?$/.test(c[2])) items.push({ name: c[0], qty: Number(c[2]) });   // item rows only: tax / discount rows have no plain quantity
+    }
+    return items;
+  }
+  async function addItems(day, rows, trs) {
+    const cache = (await stored('olItems')).olItems || {};
+    let { olSeg } = await stored('olSeg');
+    const todo = rows.map((r, i) => ({ r, tr: trs[i] })).filter(({ r }) => SOURCE_RE.test(r.type) && !/cancel|reject|fail|declin/i.test(r.status));
+    for (const { r, tr } of todo) {
+      const key = day + '|' + r.no;
+      if (cache[key]) { r.items = cache[key]; continue; }
+      const oc = tr.children[13] && tr.children[13].querySelector('.order-detail');
+      const id = oc && (oc.getAttribute('onclick') || '').match(/\d{6,}/);
+      if (!id) continue;
+      if (!olSeg) { olSeg = await learnSegment(); if (olSeg) chrome.storage.local.set({ olSeg }); }
+      if (!olSeg) break;
+      let items = await itemsOf(id[0], olSeg);
+      if (items === null) { olSeg = null; chrome.storage.local.remove('olSeg'); continue; }
+      cache[key] = items;
+      r.items = items;
+    }
+    const keep = Object.fromEntries(Object.entries(cache).filter(([k]) => k.startsWith(day)));   // only today's orders are worth remembering
+    chrome.storage.local.set({ olItems: keep });
+  }
+
+  async function readDay(day, live) {
     let form = null;
     for (let i = 0; i < 40 && !(form = document.getElementById('order_search')); i++) await sleep(500);
     if (!form) return { ok: false, error: 'The All Orders page did not load (signed in?)' };
     const params = new URLSearchParams(new FormData(form));
     params.set('data[Order][startdate]', petpoojaDate(day, 0));
     params.set('data[Order][enddate]', petpoojaDate(day, 1));
-    const rows = [];
+    const rows = [], trsAll = [];
     let total = null;
     for (let p = 1; p <= 60; p++) {
       const r = await fetch(`/orders/ordlist/page:${p}`, {
@@ -41,17 +98,19 @@
         const created = isoOf(c[12]);
         if (!created) return { ok: false, error: `Could not read the time of order ${c[1]}` };
         rows.push({ no: c[1], type: c[2], amount: c[6], discount: c[8], status: c[11], created });
+        trsAll.push(tr);   // the parsed copy: only used for the order id, which the live fetch below re-reads from the page
       }
       if (total !== null && rows.length >= total) break;
     }
     if (total !== null && rows.length !== total) return { ok: false, error: `Read ${rows.length} of ${total} orders` };
     if (!rows.length) return { ok: false, error: 'The All Orders list was empty' };
+    if (live) { try { await addItems(day, rows, trsAll); } catch (_) { /* items are a bonus: the split by source still goes */ } }
     return { ok: true, rows };
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || msg.cmd !== 'olread') return;
-    readDay(msg.day).then(sendResponse, (e) => sendResponse({ ok: false, error: String(e) }));
+    readDay(msg.day, !!msg.live).then(sendResponse, (e) => sendResponse({ ok: false, error: String(e) }));
     return true; // answer asynchronously
   });
 })();

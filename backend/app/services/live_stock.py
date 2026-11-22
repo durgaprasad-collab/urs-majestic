@@ -193,10 +193,14 @@ def split_sources(rows_raw) -> list[dict]:
         amt = float(str(r.get("amount") or 0).replace(",", ""))
         if not math.isfinite(amt):
             raise ValueError("bad amount")
-        e = acc.setdefault(source_of(r.get("type")) or "walkin", [0, 0.0])
+        e = acc.setdefault(source_of(r.get("type")) or "walkin", [0, 0.0, {}])
         e[0] += 1
         e[1] += amt
-    return [{"source": k, "orders": v[0], "amount": round(v[1], 2)} for k, v in sorted(acc.items())]
+        for ln in (r.get("items") or [])[:100]:           # platform orders carry their items (read from the order's detail page)
+            name, q = str(ln.get("name") or "").strip()[:200], float(ln.get("qty") or 0)
+            if name and q > 0 and math.isfinite(q):
+                e[2][name] = e[2].get(name, 0.0) + q
+    return [{"source": k, "orders": v[0], "amount": round(v[1], 2), "items": v[2]} for k, v in sorted(acc.items())]
 
 
 def save_sources(db: Session, token_id: int | None, rows_raw, client_read_at: str | None = None) -> dict:
@@ -206,7 +210,8 @@ def save_sources(db: Session, token_id: int | None, rows_raw, client_read_at: st
         INSERT INTO live_sales_reads (business_date, rows, dishes, amount, token_id, channel, orders_n)
         VALUES (:d, CAST(:r AS jsonb), 0, :a, :t, 'sources', :on)"""),
         {"d": day, "r": json.dumps(split), "a": sum(x["amount"] for x in split), "t": token_id, "on": sum(x["orders"] for x in split)})
-    return {"business_date": day.isoformat(), "channel": "sources", "orders": sum(x["orders"] for x in split), "split": split}
+    return {"business_date": day.isoformat(), "channel": "sources", "orders": sum(x["orders"] for x in split),
+            "split": [{k: v for k, v in x.items() if k != "items"} for x in split]}
 
 
 def latest_sources(db: Session, day: datetime.date) -> dict | None:
@@ -214,7 +219,8 @@ def latest_sources(db: Session, day: datetime.date) -> dict | None:
                            ORDER BY read_at DESC, id DESC LIMIT 1"""), {"d": day}).mappings().first()
     if not r:
         return None
-    return {"read_at": _fmt_dt(r["read_at"]), "split": r["rows"]}
+    return {"read_at": _fmt_dt(r["read_at"]), "split": [{k: v for k, v in x.items() if k != "items"} for x in r["rows"]],
+            "items": {x["source"]: x.get("items") or {} for x in r["rows"] if x["source"] != "walkin"}}
 
 
 # ── the live view ─────────────────────────────────────────────────────────────
@@ -389,6 +395,21 @@ def snapshot(db: Session) -> dict:
                 s["last_at"] = e["last_at"]
             if p["status"] == "live":           # "since the last update" only means something for a channel that is still reading
                 s["delta"] += e["delta"]
+    # Petpooja's item report has every channel's items. The platform orders' own items (All Orders detail) say how much
+    # of each item came through Zomato / Swiggy / Ownly: move that out of the "petpooja" share.
+    src = latest_sources(db, today)
+    if src:
+        res = resolvers["petpooja"]
+        for ch_name, items in src["items"].items():
+            for nm, q in items.items():
+                canon, _ = res(nm)
+                e = sold.get(canon or nm)
+                if not e:
+                    continue
+                take = min(q, e["by"].get("petpooja", 0.0))
+                if take > 0:
+                    e["by"]["petpooja"] -= take
+                    e["by"][ch_name] = e["by"].get(ch_name, 0.0) + take
     # Most recently sold first (last in, first out); ties and the unlucky few without a time by quantity.
     sold_list = sorted(sold.values(), key=lambda s: (s["last_at"] is None, -(s["last_at"].timestamp() if s["last_at"] else 0), -s["qty"], s["name"]))
     unsold = sorted(r[0] for r in db.execute(text("SELECT name FROM menu_items WHERE is_active")) if r[0] not in sold)
@@ -400,7 +421,7 @@ def snapshot(db: Session) -> dict:
            "still_since": _fmt_dt(freshest["still_since"]), "still_min": round(freshest["still_min"], 1),
            "top": [{"name": n, "qty": q} for n, q in sorted(merged.items(), key=lambda kv: -kv[1])],
            "sold": [{"name": s["name"], "qty": s["qty"], "last_at": _fmt_dt(s["last_at"]), "delta": round(s["delta"], 1), "food": s["food"],
-                     "by": [{"ch": ch, "qty": s["by"][ch]} for ch in CHANNELS if ch in s["by"]]} for s in sold_list],
+                     "by": [{"ch": ch, "qty": s["by"][ch]} for ch in ("petpooja", "zomato", "swiggy", "ownly") if s["by"].get(ch, 0) > 0]} for s in sold_list],
            "unsold": unsold, "sources": latest_sources(db, today),
            "unmapped": [u for p in live for u in p["unmapped"]],
            "hours": [{"h": h, "n": round(n, 1)} for h, n in sorted(hours.items())],
