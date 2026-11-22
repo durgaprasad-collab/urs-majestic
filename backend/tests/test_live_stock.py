@@ -75,6 +75,18 @@ class ZomatoTests(unittest.TestCase):
             live_stock.save_read(None, None, [], channel="swiggy")
 
 
+class SourcesTests(unittest.TestCase):
+    def test_split_by_type_tag_and_skips_cancelled(self):
+        out = live_stock.split_sources([
+            {"type": "Delivery (Zomato)", "amount": "1,000.50", "status": "Success"},
+            {"type": "Delivery (Swiggy)", "amount": "200", "status": "Success"},
+            {"type": "Delivery (Ownly)", "amount": "300", "status": "Success"},
+            {"type": "Dine In", "amount": "400", "status": "Success"},
+            {"type": "Delivery (Zomato)", "amount": "999", "status": "Cancelled"}])
+        self.assertEqual({x["source"]: (x["orders"], x["amount"]) for x in out},
+                         {"zomato": (1, 1000.5), "swiggy": (1, 200.0), "ownly": (1, 300.0), "walkin": (1, 400.0)})
+
+
 class ClassifyTests(unittest.TestCase):
     def test_out_now(self):
         self.assertEqual(live_stock.classify(0.0, 1.0, 2.0)[0], "out")

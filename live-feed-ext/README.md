@@ -48,3 +48,11 @@ the *previous* business day, which is what Petpooja does until 1 AM.
 - Only walk-in / counter sales are in Petpooja's item report. Zomato and Swiggy orders are read from their own portals.
 - The server rejects a report that isn't for today's business day, so a stale or rolled-over report can't overwrite the numbers.
 - To stop it: remove the add-on, or revoke the helper code.
+
+## v1.7.0 changes
+- Only Petpooja is read now (Zomato's and Swiggy's portals are no longer opened, live or nightly).
+- Item list: Petpooja's Item Report (every channel's items). Source split: Petpooja's All Orders page, each order's type tag
+  (Zomato / Swiggy / Ownly / walk-in), sent with every live read.
+- Tandoori items (Roti, Butter Roti, Naan, Butter Naan, Garlic Naan, Masala Kulcha, Paneer Power Combo) are pressed OFF at 3:30 PM and ON at
+  6:30 PM in Petpooja's Online Menu item on/off page (one switch for Ownly, Zomato and Swiggy). If Petpooja asks a question first, the add-on stops
+  and shows the question in its window instead of guessing. PC on and Chrome signed in to Petpooja are needed at those times.

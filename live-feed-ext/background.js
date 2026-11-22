@@ -1,23 +1,23 @@
 // URS Live Stock Feed: every ~10 minutes, during the restaurant's hours only:
 //   1. press Refresh on Petpooja's home page (so its reports aren't behind),
 //   2. open Petpooja's Item Report (Day Wise With Time) for today's business day (1 AM to
-//      1 AM), read its rows and send them to the admin's Live stock tab,
-//   3. open Zomato's Order history, read today's orders and send them too,
-//   4. open Swiggy's Past Orders, read today's orders and send them too.
-// After closing it also uploads the finished day's item report (about 1:15 AM, again about 6 AM
-// once Petpooja has caught up), replacing the manual Item Report Day Wise upload.
-// Read only: it presses Petpooja's Refresh and Search buttons, reads Zomato's and Swiggy's order
-// history, and never writes anything on any of the three sites.
+//      1 AM), read its rows (every item, from every channel) and send them to the Live stock tab,
+//   3. open Petpooja's All Orders page and send today's orders so the server can split sales by
+//      source (Zomato / Swiggy / Ownly / walk-in) from each order's type tag.
+// After closing it also uploads the finished day's item report and order listing (about 1:15 AM,
+// again about 6 AM). Zomato's and Swiggy's own portals are no longer read.
+// Every day from 3:30 PM to 6:30 PM it switches the tandoori items OFF in Petpooja's Online Menu
+// (which controls Ownly, Zomato and Swiggy) and back ON at 6:30 PM.
 const BASE = 'https://admin.ursmajestic.com';
 const REPORT_URL = 'https://billing.petpooja.com/custom_reports/view_report/55';
 const REPORT_PATTERN = 'https://billing.petpooja.com/custom_reports/view_report/*';
 const ORDERS_URL = 'https://billing.petpooja.com/orders/order_list/';
 const DASHBOARD_URL = 'https://billing.petpooja.com/users/dashboard';
 const DASHBOARD_PATTERN = 'https://billing.petpooja.com/users/dashboard*';
-const ZOMATO_URL = 'https://www.zomato.com/partners/onlineordering/orderHistory/';
-const ZOMATO_PATTERN = 'https://www.zomato.com/partners/onlineordering/*';
-const SWIGGY_URL = 'https://partner.swiggy.com/food/pastorders/';   // + restaurant id
-const SWIGGY_RES_ID = '1389673';                                      // until the page tells the add-on its own
+const MENU_URL = 'https://menu.petpooja.com/menus/item_on_off/';
+const TANDOORI = ['Roti (2 Nos)', 'Butter Roti (2 Nos)', 'Naan (1 No)', 'Butter Naan (1 No)', 'Garlic Naan (1 No)', 'Masala Kulcha (1 No)', 'Paneer Power Combo (02)'];
+const TANDOORI_OFF = '15:30';   // switch off from here...
+const TANDOORI_ON = '18:30';    // ...until here, PC's local time
 const FINAL_FIRST = '01:15';   // first upload of the finished day, PC's local time
 const FINAL_AGAIN = '06:00';  // second, once Petpooja has synced its late sales; replaces the first
 const DEFAULT_OPEN = '12:00';   // restaurant hours, PC's local time (orders run ~12:30 PM to ~12:30 AM)
@@ -152,25 +152,15 @@ async function petpoojaPart(tabId, code, range) {
   return { ok: true, rows: sent.rows, dishes: sent.dishes, msg: `Petpooja: ${sent.rows} items, ${Math.round(sent.dishes)} dishes${refreshed.ok ? '' : ` (${refreshed.error})`}` };
 }
 
-// Zomato orders: today's order history, fetched by the page itself (zomato_page.js).
-async function zomatoPart(tabId, code, range) {
-  await goto(tabId, ZOMATO_URL);
-  const res = await ask(tabId, { cmd: 'zread', day: range.day }, 2);
-  if (!res.ok) return { ok: false, msg: `Zomato: ${res.error || 'read failed'}` };
-  const sent = await post(code, { channel: 'zomato', orders: res.orders || [] });
-  if (!sent.ok) return { ok: false, msg: `Zomato: ${sent.error}` };
-  return { ok: true, orders: sent.orders, dishes: sent.dishes, msg: `Zomato: ${sent.orders} orders, ${Math.round(sent.dishes)} dishes` };
-}
-
-// Swiggy orders: today's Past Orders list, fetched by the page itself (swiggy_page.js).
-async function swiggyPart(tabId, code, range) {
-  const { swiggyResId } = await load(['swiggyResId']);
-  await goto(tabId, SWIGGY_URL + (swiggyResId || SWIGGY_RES_ID));
-  const res = await ask(tabId, { cmd: 'sread', day: range.day }, 2);
-  if (!res.ok) return { ok: false, msg: `Swiggy: ${res.error || 'read failed'}` };
-  const sent = await post(code, { channel: 'swiggy', orders: res.orders || [] });
-  if (!sent.ok) return { ok: false, msg: `Swiggy: ${sent.error}` };
-  return { ok: true, orders: sent.orders, dishes: sent.dishes, msg: `Swiggy: ${sent.orders} orders, ${Math.round(sent.dishes)} dishes` };
+// Today's All Orders list, for the source split (Zomato / Swiggy / Ownly / walk-in). Reads the same
+// page as the nightly Order Listing, for the current business day.
+async function sourcesPart(tabId, code, range) {
+  await goto(tabId, ORDERS_URL);
+  const res = await ask(tabId, { cmd: 'olread', day: range.day, live: true }, 3);
+  if (!res.ok) return { ok: false, msg: `Orders: ${res.error || 'read failed'}` };
+  const sent = await post(code, { channel: 'sources', rows: res.rows });
+  if (!sent.ok) return { ok: false, msg: `Orders: ${sent.error}` };
+  return { ok: true, msg: `Orders: ${sent.orders} (${(sent.split || []).map((x) => `${x.source} ${x.orders}`).join(', ')})` };
 }
 
 // The finished business day's Order Listing (Petpooja's All Orders page), replacing the manual Order Listing upload.
@@ -181,27 +171,6 @@ async function ordersFinalPart(tabId, code, day) {
   const sent = await post(code, { channel: 'petpooja_orders', day, rows: res.rows }, '/api/live-feed/final');
   if (!sent.ok) return { ok: false, msg: `Orders ${day}: ${sent.error}` };
   return { ok: true, msg: `Orders ${day}: ${sent.orders} orders${sent.alarm ? ` (${sent.alarm})` : ''}` };
-}
-
-// The finished day's Zomato orders (calendar day, as Zomato's own CSV), with each order's full bill.
-async function zomatoFinalPart(tabId, code, day) {
-  await goto(tabId, ZOMATO_URL);
-  const res = await ask(tabId, { cmd: 'zread', day, final: true }, 2);
-  if (!res.ok) return { ok: false, msg: `Zomato ${day}: ${res.error || 'read failed'}` };
-  const sent = await post(code, { channel: 'zomato', day, orders: res.orders || [] }, '/api/live-feed/final');
-  if (!sent.ok) return { ok: false, msg: `Zomato ${day}: ${sent.error}` };
-  return { ok: true, msg: `Zomato ${day}: ${sent.delivered} delivered${sent.cancelled ? `, ${sent.cancelled} cancelled` : ''}, ₹${Math.round(sent.amount).toLocaleString('en-IN')}${sent.unmatched && sent.unmatched.length ? `, ${sent.unmatched.length} not matched to the menu` : ''}` };
-}
-
-// The finished day's Swiggy orders (calendar day, as Swiggy's own CSV), sent the same way.
-async function swiggyFinalPart(tabId, code, day) {
-  const { swiggyResId } = await load(['swiggyResId']);
-  await goto(tabId, SWIGGY_URL + (swiggyResId || SWIGGY_RES_ID));
-  const res = await ask(tabId, { cmd: 'sread', day, calendar: true }, 2);
-  if (!res.ok) return { ok: false, msg: `Swiggy ${day}: ${res.error || 'read failed'}` };
-  const sent = await post(code, { channel: 'swiggy', day, orders: res.orders || [] }, '/api/live-feed/final');
-  if (!sent.ok) return { ok: false, msg: `Swiggy ${day}: ${sent.error}` };
-  return { ok: true, msg: `Swiggy ${day}: ${sent.delivered} delivered${sent.cancelled ? `, ${sent.cancelled} cancelled` : ''}, ₹${Math.round(sent.amount).toLocaleString('en-IN')}${sent.unmatched && sent.unmatched.length ? `, ${sent.unmatched.length} not matched to the menu` : ''}` };
 }
 
 // The finished business day's item report, sent once the day has closed. Safe to repeat: the
@@ -236,19 +205,17 @@ function finalsDue(now, finals) {
 }
 
 async function runFinal(force = false) {
-  const { code, final, finals, finalsO, finalsS, finalsZ, swiggy, zomato } = await load(['code', 'final', 'finals', 'finalsO', 'finalsS', 'finalsZ', 'swiggy', 'zomato']);
+  const { code, final, finals, finalsO } = await load(['code', 'final', 'finals', 'finalsO']);
   if (!code || final === false || running) return { ok: true, skipped: true };
   const now = new Date();
   const due = finalsDue(now, finals || {});
   const dueO = finalsDue(now, finalsO || {});
-  const dueS = swiggy !== false ? finalsDue(now, finalsS || {}) : [];
-  const dueZ = zomato !== false ? finalsDue(now, finalsZ || {}) : [];
-  if (!due.length && !dueO.length && !dueS.length && !dueZ.length) return { ok: true, skipped: 'nothing due' };
+  if (!due.length && !dueO.length) return { ok: true, skipped: 'nothing due' };
   running = true;
   const stop = keepAlive();
   try {
     const tabId = await helperTab();
-    const done = { ...(finals || {}) }, doneO = { ...(finalsO || {}) }, doneS = { ...(finalsS || {}) }, doneZ = { ...(finalsZ || {}) }, notes = [];
+    const done = { ...(finals || {}) }, doneO = { ...(finalsO || {}) }, notes = [];
     let ok = true;
     for (const { day, stage } of due) {          // each source is independent: one failing doesn't stop the other
       const r = await finalPart(tabId, code, day);
@@ -260,18 +227,8 @@ async function runFinal(force = false) {
       notes.push(r.msg);
       if (r.ok) doneO[day] = stage; else ok = false;
     }
-    for (const { day, stage } of dueS) {
-      const r = await swiggyFinalPart(tabId, code, day);
-      notes.push(r.msg);
-      if (r.ok) doneS[day] = stage; else ok = false;
-    }
-    for (const { day, stage } of dueZ) {
-      const r = await zomatoFinalPart(tabId, code, day);
-      notes.push(r.msg);
-      if (r.ok) doneZ[day] = stage; else ok = false;
-    }
     const trim = (m) => { const keep = Object.keys(m).sort().slice(-10); return Object.fromEntries(keep.map((k) => [k, m[k]])); };
-    await save({ finals: trim(done), finalsO: trim(doneO), finalsS: trim(doneS), finalsZ: trim(doneZ), finalAt: Date.now(), finalOk: ok, finalMsg: `Nightly upload: ${notes.join(' · ')}` });
+    await save({ finals: trim(done), finalsO: trim(doneO), finalAt: Date.now(), finalOk: ok, finalMsg: `Nightly upload: ${notes.join(' · ')}` });
     return { ok, msg: notes.join(' · ') };
   } catch (e) {
     await save({ finalAt: Date.now(), finalOk: false, finalMsg: `Nightly upload stopped: ${String((e && e.message) || e).slice(0, 120)}` });
@@ -284,8 +241,35 @@ async function runFinal(force = false) {
 
 let running = false;
 
+// Tandoori items: OFF from 3:30 PM to 6:30 PM, ON otherwise. Acts only when the wanted state differs from
+// what it last set, so it never switches anything on that it did not switch off itself.
+async function tandooriTick() {
+  const { tandoori, tState, tTry } = await load(['tandoori', 'tState', 'tTry']);
+  if (tandoori === false || running) return;
+  const now = new Date(), m = now.getHours() * 60 + now.getMinutes();
+  const want = (m >= toMins(TANDOORI_OFF) && m < toMins(TANDOORI_ON)) ? 'off' : 'on';
+  if (want === (tState || 'on')) return;
+  if (tTry && Date.now() - tTry < 4 * 60000) return;   // after a failure, wait a few minutes
+  running = true;
+  const stop = keepAlive();
+  try {
+    await save({ tTry: Date.now() });
+    const tabId = await helperTab();
+    await goto(tabId, MENU_URL);
+    const r = await ask(tabId, { cmd: 'switch', want, names: TANDOORI }, 3);
+    const when = now.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+    if (r.ok) await save({ tState: want, tNote: `Tandoori items switched ${want.toUpperCase()} at ${when}`, tOk: true });
+    else await save({ tNote: `Tandoori ${want.toUpperCase()} at ${when} failed: ${r.error || 'unknown'}`, tOk: false });
+  } catch (e) {
+    await save({ tNote: `Tandoori switch stopped: ${String((e && e.message) || e).slice(0, 120)}`, tOk: false });
+  } finally {
+    running = false;
+    stop();
+  }
+}
+
 async function run(force = false) {
-  const { code, open, close, zomato, swiggy } = await load(['code', 'open', 'close', 'zomato', 'swiggy']);
+  const { code, open, close } = await load(['code', 'open', 'close']);
   if (!code) return fail('No helper code saved yet');
   const now = new Date();
   if (!force && !inHours(now, open || DEFAULT_OPEN, close || DEFAULT_CLOSE)) return { ok: true, skipped: 'outside restaurant hours' };
@@ -298,14 +282,8 @@ async function run(force = false) {
     const tabId = await helperTab();
     await progress('Reading Petpooja…');
     const parts = [await petpoojaPart(tabId, code, range)];    // each part is independent: one failing doesn't stop the other
-    if (zomato !== false) {
-      await progress(parts[0].msg + ' · reading Zomato…');
-      parts.push(await zomatoPart(tabId, code, range));
-    }
-    if (swiggy !== false) {
-      await progress(parts.map((p) => p.msg).join(' · ') + ' · reading Swiggy…');
-      parts.push(await swiggyPart(tabId, code, range));
-    }
+    await progress(parts[0].msg + ' · reading All Orders…');
+    parts.push(await sourcesPart(tabId, code, range));
     const ok = parts.every((p) => p.ok);
     const msg = parts.map((p) => p.msg).join(' · ');
     const dishes = parts.reduce((s, p) => s + (p.dishes || 0), 0);
@@ -334,20 +312,23 @@ async function ping() {
 function schedule() {
   chrome.alarms.create('urs-live', { delayInMinutes: 1, periodInMinutes: 10 });
   chrome.alarms.create('urs-final', { delayInMinutes: 2, periodInMinutes: 15 });
+  chrome.alarms.create('urs-tandoori', { delayInMinutes: 1, periodInMinutes: 1 });
 }
 chrome.runtime.onInstalled.addListener(schedule);
 chrome.runtime.onStartup.addListener(schedule);
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === 'urs-live') run(false);
   if (a.name === 'urs-final') runFinal(false);
+  if (a.name === 'urs-tandoori') tandooriTick();
 });
 
 chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
   if (msg && msg.cmd === 'run-now') { run(true).then(sendResponse); return true; }
   if (msg && msg.cmd === 'final-now') { runFinal(true).then(sendResponse); return true; }
+  if (msg && msg.cmd === 'tandoori-now') { save({ tTry: 0 }).then(tandooriTick).then(() => sendResponse({ ok: true })); return true; }
   if (msg && msg.cmd === 'test') { ping().then(sendResponse); return true; }
   if (msg && msg.cmd === 'hours') {
-    load(['open', 'close', 'zomato', 'swiggy', 'final']).then((s) => sendResponse({ open: s.open || DEFAULT_OPEN, close: s.close || DEFAULT_CLOSE, zomato: s.zomato !== false, swiggy: s.swiggy !== false, final: s.final !== false }));
+    load(['open', 'close', 'final', 'tandoori', 'tandoriNote']).then((s) => sendResponse({ open: s.open || DEFAULT_OPEN, close: s.close || DEFAULT_CLOSE, final: s.final !== false, tandoori: s.tandoori !== false }));
     return true;
   }
 });

@@ -1,15 +1,13 @@
 {
   "manifest_version": 3,
   "name": "URS Live Stock Feed",
-  "version": "1.6.2",
-  "description": "Reads Petpooja's live Item Report about every 10 minutes and sends it to admin.ursmajestic.com (Live stock tab). Read only.",
+  "version": "1.7.0",
+  "description": "Reads Petpooja's live Item Report and All Orders about every 10 minutes and sends them to admin.ursmajestic.com (Live stock tab). Also switches the tandoori items off from 3:30 PM to 6:30 PM daily in Petpooja's Online Menu.",
   "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": [
     "https://admin.ursmajestic.com/*",
     "https://billing.petpooja.com/*",
-    "https://www.zomato.com/*",
-    "https://partner.swiggy.com/*",
-    "https://rms.swiggy.com/*"
+    "https://menu.petpooja.com/*"
   ],
   "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_title": "URS Live Stock Feed" },
@@ -36,26 +34,9 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.zomato.com/partners/onlineordering/*"],
-      "js": ["zomato_page.js"],
-      "world": "MAIN",
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["https://www.zomato.com/partners/onlineordering/*"],
-      "js": ["zomato.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["https://partner.swiggy.com/food/*"],
-      "js": ["swiggy_page.js"],
-      "world": "MAIN",
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["https://partner.swiggy.com/food/*"],
-      "js": ["swiggy.js"],
-      "run_at": "document_start"
+      "matches": ["https://menu.petpooja.com/menus/item_on_off/*"],
+      "js": ["menu.js"],
+      "run_at": "document_idle"
     }
   ]
 }

@@ -36,9 +36,10 @@
     const w = d.walkin, z = d.zomato, sw = d.swiggy;
     $('[data-ls-lr]').textContent = [w && 'Petpooja ' + clock(w.read_at), z && 'Zomato ' + clock(z.read_at), sw && 'Swiggy ' + clock(sw.read_at)].filter(Boolean).join(' · ');
     $('[data-ls-k1]').textContent = Math.round(d.dishes);
-    $('[data-ls-k1s]').textContent = '₹' + Math.round(d.amount).toLocaleString('en-IN') + ' so far'
-      + (w ? ' · walk-in ' + Math.round(w.dishes) : '') + (z ? ' · Zomato ' + Math.round(z.dishes) + ' (' + z.orders + ' orders)' : ' · no Zomato read yet')
-      + (sw ? ' · Swiggy ' + Math.round(sw.dishes) + ' (' + sw.orders + ' orders)' : ' · no Swiggy read yet');
+    const SRC = { walkin: 'Walk-in', zomato: 'Zomato', swiggy: 'Swiggy', ownly: 'Ownly' };
+    const src = d.sources && d.sources.split ? d.sources.split.map((x) => SRC[x.source] + ' ' + x.orders + ' orders · ₹' + Math.round(x.amount).toLocaleString('en-IN')).join(' · ') : '';
+    $('[data-ls-k1s]').textContent = '₹' + Math.round(d.amount).toLocaleString('en-IN') + ' so far' + (src ? ' · ' + src : '')
+      + (z ? ' · Zomato (old read) ' + Math.round(z.dishes) : '') + (sw ? ' · Swiggy (old read) ' + Math.round(sw.dishes) : '');
     $('[data-ls-k2]').textContent = clock(d.read_at);
     $('[data-ls-k2s]').textContent = [w && 'Petpooja ' + ago(w.age_min), z && 'Zomato ' + ago(z.age_min), sw && 'Swiggy ' + ago(sw.age_min)].filter(Boolean).join(' · ')
       + (d.still_min >= 20 ? ' · no new sales since ' + clock(d.still_since) : '');

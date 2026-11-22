@@ -149,6 +149,8 @@ zomato_rows = order_rows  # kept for callers that used the old name
 
 def save_read(db: Session, token_id: int | None, rows_raw=None, client_read_at: str | None = None,
               channel: str = "petpooja", orders_raw=None) -> dict:
+    if channel == "sources":
+        return save_sources(db, token_id, rows_raw, client_read_at)
     if channel not in CHANNELS:
         raise ValueError("unknown channel")
     day = count_day(business_now())
@@ -176,6 +178,43 @@ def save_read(db: Session, token_id: int | None, rows_raw=None, client_read_at: 
     db.execute(text("DELETE FROM live_sales_reads WHERE business_date < :d"), {"d": day - datetime.timedelta(days=KEEP_DAYS)})
     return {"business_date": day.isoformat(), "channel": channel, "rows": len(rows), "orders": orders_n,
             "dishes": dishes, "amount": amount}
+
+
+def split_sources(rows_raw) -> list[dict]:
+    """Petpooja's All Orders rows for today -> [{source, orders, amount}] (cancelled orders left out).
+    source is zomato / swiggy / ownly from the order's type tag, else walkin."""
+    from app.services.uploads.petpooja_order_listing import source_of
+    if not isinstance(rows_raw, list) or len(rows_raw) > 3000:
+        raise ValueError("bad orders list")
+    acc: dict[str, list] = {}
+    for r in rows_raw:
+        if _NOT_COUNTED.search(str(r.get("status") or "")):
+            continue
+        amt = float(str(r.get("amount") or 0).replace(",", ""))
+        if not math.isfinite(amt):
+            raise ValueError("bad amount")
+        e = acc.setdefault(source_of(r.get("type")) or "walkin", [0, 0.0])
+        e[0] += 1
+        e[1] += amt
+    return [{"source": k, "orders": v[0], "amount": round(v[1], 2)} for k, v in sorted(acc.items())]
+
+
+def save_sources(db: Session, token_id: int | None, rows_raw, client_read_at: str | None = None) -> dict:
+    split = split_sources(rows_raw)
+    day = count_day(business_now())
+    db.execute(text("""
+        INSERT INTO live_sales_reads (business_date, rows, dishes, amount, token_id, channel, orders_n)
+        VALUES (:d, CAST(:r AS jsonb), 0, :a, :t, 'sources', :on)"""),
+        {"d": day, "r": json.dumps(split), "a": sum(x["amount"] for x in split), "t": token_id, "on": sum(x["orders"] for x in split)})
+    return {"business_date": day.isoformat(), "channel": "sources", "orders": sum(x["orders"] for x in split), "split": split}
+
+
+def latest_sources(db: Session, day: datetime.date) -> dict | None:
+    r = db.execute(text("""SELECT read_at, rows FROM live_sales_reads WHERE business_date = :d AND channel = 'sources'
+                           ORDER BY read_at DESC, id DESC LIMIT 1"""), {"d": day}).mappings().first()
+    if not r:
+        return None
+    return {"read_at": _fmt_dt(r["read_at"]), "split": r["rows"]}
 
 
 # ── the live view ─────────────────────────────────────────────────────────────
@@ -322,7 +361,7 @@ def snapshot(db: Session) -> dict:
     today = count_day(now)
     all_reads = db.execute(text("""
         SELECT id, channel, read_at, rows, dishes, amount, orders_n FROM live_sales_reads
-         WHERE business_date = :d ORDER BY read_at, id"""), {"d": today}).mappings().all()
+         WHERE business_date = :d AND channel <> 'sources' ORDER BY read_at, id"""), {"d": today}).mappings().all()
     base = {"today": today.isoformat(), "now": _fmt_dt(now), "has_helper": bool(tokens(db))}
     if not all_reads:
         return {**base, "status": "none"}
@@ -362,7 +401,7 @@ def snapshot(db: Session) -> dict:
            "top": [{"name": n, "qty": q} for n, q in sorted(merged.items(), key=lambda kv: -kv[1])],
            "sold": [{"name": s["name"], "qty": s["qty"], "last_at": _fmt_dt(s["last_at"]), "delta": round(s["delta"], 1), "food": s["food"],
                      "by": [{"ch": ch, "qty": s["by"][ch]} for ch in CHANNELS if ch in s["by"]]} for s in sold_list],
-           "unsold": unsold,
+           "unsold": unsold, "sources": latest_sources(db, today),
            "unmapped": [u for p in live for u in p["unmapped"]],
            "hours": [{"h": h, "n": round(n, 1)} for h, n in sorted(hours.items())],
            "rows": [], "notice": None, "notices": notices, "tight": 0, "out": 0}

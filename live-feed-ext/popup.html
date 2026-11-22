@@ -19,17 +19,16 @@
 </head>
 <body>
   <h1>URS Live Stock Feed</h1>
-  <small>Reads Petpooja's item report about every 10 minutes, <b>only during the restaurant's hours below</b>, and sends it to the Live stock tab. Read only.</small>
+  <small>Reads Petpooja's item report and All Orders about every 10 minutes, <b>only during the restaurant's hours below</b>, and sends it to the Live stock tab. Read only.</small>
   <label for="code">Helper code</label>
   <input id="code" type="password" placeholder="urslf_..." autocomplete="off">
   <div class="row">
     <div><label for="open">Opens</label><input id="open" type="time"></div>
     <div><label for="close">Closes</label><input id="close" type="time"></div>
   </div>
-  <label class="chk"><input id="zomato" type="checkbox" checked> Include Zomato orders (Chrome must be signed in to Zomato)</label>
-  <label class="chk"><input id="swiggy" type="checkbox" checked> Include Swiggy orders (Chrome must be signed in to Swiggy's partner portal)</label>
+  <label class="chk"><input id="tandoori" type="checkbox" checked> Switch tandoori items OFF 3:30 PM to 6:30 PM daily (Chrome must be signed in to Petpooja)</label>
   <label class="chk"><input id="final" type="checkbox" checked> Upload each finished day automatically (about 1:15 AM and 6 AM)</label>
-  <button id="save">Save &amp; test</button><button id="run" class="alt">Read now</button><button id="fin" class="alt">Upload yesterday now</button>
+  <button id="save">Save &amp; test</button><button id="run" class="alt">Read now</button><button id="fin" class="alt">Upload yesterday now</button><button id="tnd" class="alt">Tandoori check now</button>
   <div id="st">Loading…</div>
   <script src="popup.js"></script>
 </body>
