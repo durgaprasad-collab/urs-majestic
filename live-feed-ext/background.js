@@ -14,7 +14,6 @@ const REPORT_PATTERN = 'https://billing.petpooja.com/custom_reports/view_report/
 const ORDERS_URL = 'https://billing.petpooja.com/orders/order_list/';
 const DASHBOARD_URL = 'https://billing.petpooja.com/users/dashboard';
 const DASHBOARD_PATTERN = 'https://billing.petpooja.com/users/dashboard*';
-const MENU_URL = 'https://menu.petpooja.com/menus/item_on_off/';
 const TANDOORI = ['Roti (2 Nos)', 'Butter Roti (2 Nos)', 'Naan (1 No)', 'Butter Naan (1 No)', 'Garlic Naan (1 No)', 'Masala Kulcha (1 No)', 'Paneer Power Combo (02)'];
 const TANDOORI_OFF = '15:30';   // switch off from here...
 const TANDOORI_ON = '18:30';    // ...until here, PC's local time
@@ -255,7 +254,10 @@ async function tandooriTick() {
   try {
     await save({ tTry: Date.now() });
     const tabId = await helperTab();
-    await goto(tabId, MENU_URL);
+    await goto(tabId, DASHBOARD_URL);
+    const opened = await ask(tabId, { cmd: 'openmenu' }, 4);
+    if (!opened.ok) throw new Error(opened.error || 'could not open Menu on/off');
+    await sleep(6000);
     const r = await ask(tabId, { cmd: 'switch', want, names: TANDOORI }, 3);
     const when = now.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
     if (r.ok) await save({ tState: want, tNote: `Tandoori items switched ${want.toUpperCase()} at ${when}`, tOk: true });

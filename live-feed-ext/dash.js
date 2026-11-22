@@ -2,6 +2,13 @@
 // dashboard's own Refresh button (the circular arrow beside the date), which pulls
 // the latest orders into Petpooja's reports. That is the only thing it does here.
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg && msg.cmd === 'openmenu') {   // Petpooja only serves the on/off page when it is reached from this link
+    const a = [...document.querySelectorAll('a')].find((x) => x.textContent.trim() === 'Menu on/off');
+    if (!a) { sendResponse({ ok: false, error: "Couldn't find 'Menu on/off' on Petpooja's home page" }); return; }
+    sendResponse({ ok: true });
+    setTimeout(() => a.click(), 100);
+    return;
+  }
   if (!msg || msg.cmd !== 'refresh') return;
   (async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "URS Live Stock Feed",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Reads Petpooja's live Item Report and All Orders about every 10 minutes and sends them to admin.ursmajestic.com (Live stock tab). Also switches the tandoori items off from 3:30 PM to 6:30 PM daily in Petpooja's Online Menu.",
   "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": [
