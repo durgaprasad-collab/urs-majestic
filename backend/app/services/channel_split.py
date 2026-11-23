@@ -30,6 +30,24 @@ def recompute_split(db, dates) -> None:
                 UPDATE daily_channel_sales SET net_sales = greatest(0, :n)
                  WHERE business_date = :d AND channel = 'petpooja'"""),
                 {"d": d, "n": D(str(item_total)) - platform_amount})
+        # Since add-on 1.7.0 Zomato's and Swiggy's portals are no longer read, so nothing else writes their
+        # rows. Fill them from the tagged orders (amount less discount); a row that came from a portal file
+        # (any other source_file) is left alone.
+        for ch in ("zomato", "swiggy"):
+            t = tagged.get(ch)
+            if not t:
+                continue
+            db.execute(text("""
+                INSERT INTO daily_channel_sales (business_date, channel, net_sales, orders, restaurant_discount,
+                                                 platform_discount, source_file)
+                VALUES (:d, :c, greatest(0, :a - :x), :n, :x, 0, 'petpooja order listing')
+                ON CONFLICT (business_date, channel) DO UPDATE
+                   SET net_sales = EXCLUDED.net_sales, orders = EXCLUDED.orders,
+                       restaurant_discount = EXCLUDED.restaurant_discount, source_file = EXCLUDED.source_file,
+                       uploaded_at = now()
+                 WHERE daily_channel_sales.source_file LIKE 'petpooja order listing%'
+                    OR daily_channel_sales.source_file LIKE 'manual %'"""),
+                {"d": d, "c": ch, "a": t["amount"], "n": t["n"], "x": t["discount"] or 0})
         own = tagged.get("ownly")
         if own:
             db.execute(text("""
