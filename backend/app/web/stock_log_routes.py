@@ -224,13 +224,11 @@ async def save_one_count(ingredient_id: int, request: Request, db: Session = Dep
     user, redir = require_user(request, db)
     if redir:
         return JSONResponse({"error": "Sign in again"}, status_code=401)
-    body = await request.json()
-    try:
-        qty = float(body.get("qty"))
-    except (TypeError, ValueError):
-        return JSONResponse({"error": "Enter a number"}, status_code=400)
-    if qty < 0:
-        return JSONResponse({"error": "Quantity can't be negative"}, status_code=400)
+    qty, body, bad = await _qty_body(request)   # rejects junk / nan / negative instead of failing with a 500
+    if bad:
+        return bad
+    if qty >= 1e7:
+        return JSONResponse({"error": "That quantity is too large"}, status_code=400)
     unit = db.execute(text("SELECT unit::text FROM ingredients WHERE id = :i AND is_active"),
                       {"i": ingredient_id}).scalar()
     if unit is None:

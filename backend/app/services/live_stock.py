@@ -210,7 +210,7 @@ def save_sources(db: Session, token_id: int | None, rows_raw, client_read_at: st
         INSERT INTO live_sales_reads (business_date, rows, dishes, amount, token_id, channel, orders_n)
         VALUES (:d, CAST(:r AS jsonb), 0, :a, :t, 'sources', :on)"""),
         {"d": day, "r": json.dumps(split), "a": sum(x["amount"] for x in split), "t": token_id, "on": sum(x["orders"] for x in split)})
-    return {"business_date": day.isoformat(), "channel": "sources", "orders": sum(x["orders"] for x in split),
+    return {"business_date": day.isoformat(), "channel": "sources", "rows": len(split), "dishes": 0, "orders": sum(x["orders"] for x in split),
             "split": [{k: v for k, v in x.items() if k != "items"} for x in split]}
 
 

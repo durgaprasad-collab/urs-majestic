@@ -168,7 +168,8 @@ def _ingredient_cost_per_g(db: Session) -> tuple[dict[int, decimal.Decimal], lis
         # amortized by total spend (not portion-costed), and some (cardamom,
         # saffron) are legitimately > IMPLAUSIBLE_PER_G, so applying it would
         # false-flag them and wrongly divide the cost down.
-        if category != _SPICE_CATEGORY and has_direct_unit_row and per_g > IMPLAUSIBLE_PER_G:
+        small_pack = pack_size_g is not None and 0 < pack_size_g <= 50   # a small concentrated bottle (biryani essence, Rs 3.9/g) is genuinely dear per gram
+        if category != _SPICE_CATEGORY and not small_pack and has_direct_unit_row and per_g > IMPLAUSIBLE_PER_G:
             corrected = per_g / 1000
             anomalies.append(UnitAnomaly(ing_id, name, float(per_g), float(corrected)))
             per_g = corrected
