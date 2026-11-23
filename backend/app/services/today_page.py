@@ -191,6 +191,25 @@ def build_today(db: Session, reporting_date: datetime.date | None = None) -> dic
         ORDER BY greatest(coalesce(wq, 0) - coalesce(in_pp, 0), 0) + coalesce(zq, 0) DESC, coalesce(wr, 0) DESC
     """), {"day": day, "cz": PETPOOJA_COVERS_FROM["zomato"], "cs": PETPOOJA_COVERS_FROM["swiggy"]}).mappings().all()
     dishes = [dict(r, total_q=r["walk_q"] + r["zomato_q"]) for r in dishes]
+    # Zomato / Swiggy / Ownly orders now live in Petpooja's item report and the orders table no longer gets their
+    # lines, so split them back out using the platform items the add-on read from All Orders (latest read of the day).
+    if dishes and not any(d["zomato_q"] for d in dishes):
+        try:
+            from app.services.live_stock import latest_sources
+            src = latest_sources(db, day)
+        except Exception:
+            src = None
+        online: dict[str, float] = {}
+        for items in ((src or {}).get("items") or {}).values():
+            for n, q in items.items():
+                online[n] = online.get(n, 0.0) + float(q)
+        if online:
+            for d in dishes:
+                moved = min(int(round(online.get(d["name"], 0))), d["walk_q"])
+                if moved > 0:
+                    d["walk_rev"] = _f(d["walk_rev"]) * (d["walk_q"] - moved) / d["walk_q"]
+                    d["walk_q"] -= moved
+                    d["zomato_q"] = moved
     dish_summary = {
         "count": len(dishes),
         "walk_q": sum(d["walk_q"] for d in dishes),

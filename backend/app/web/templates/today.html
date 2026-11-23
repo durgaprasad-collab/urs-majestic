@@ -75,12 +75,12 @@
 
   <section class="td-card td-c7" aria-labelledby="td-dish-h">
     {% set ds = dish_summary %}
-    <h2 id="td-dish-h">Items sold on {{ day.strftime('%A') }} <small>walk-in + Zomato &amp; Swiggy, by quantity</small><a class="td-more" href="/results">Menu Analysis →</a></h2>
+    <h2 id="td-dish-h">Items sold on {{ day.strftime('%A') }} <small>walk-in + online (Zomato, Swiggy, Ownly), by quantity</small><a class="td-more" href="/results">Menu Analysis →</a></h2>
     {% if dishes %}
     <div class="td-dsum">
       <span><b>{{ ds.count }}</b>dishes</span>
       <span><b>{{ ds.walk_q }}</b><i style="background:var(--td-walk)"></i>walk-in plates</span>
-      <span><b>{{ ds.zomato_q }}</b><i style="background:var(--td-zom)"></i>Zomato &amp; Swiggy plates</span>
+      <span><b>{{ ds.zomato_q }}</b><i style="background:var(--td-zom)"></i>online plates</span>
       <span><b>{{ inr(ds.walk_rev) }}</b>walk-in food revenue</span>
     </div>
     <div class="td-dish-wrap">
