@@ -24,6 +24,27 @@
   .rc tr.s-stale td.name{border-left-color:#a35c00}
   .rc tr.s-diff td.name{border-left-color:#2c5d9e}
   .rc tr.s-ok td.name{border-left-color:#2e7d4f}
+  .rc>*{min-width:0}
+  @media (max-width:720px){
+    /* phone: keep ingredient, status, estimate, Stock Log, cover; the note drops under the name */
+    .rc table{min-width:0;display:block}
+    .rc thead{display:none}
+    .rc tbody{display:block}
+    .rc tr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px 8px;padding:10px 12px;border-bottom:1px solid #eef0ee}
+    .rc tr[hidden]{display:none}
+    .rc td{border:0;padding:0;text-align:left}
+    .rc td.name{grid-column:1 / 3;border-left:0;min-width:0}
+    .rc td:nth-child(2){grid-column:3;text-align:right}
+    .rc td:nth-child(3),.rc td:nth-child(4),.rc td:nth-child(5),.rc td:nth-child(6),.rc td:nth-child(9),.rc td:nth-child(10){display:none}
+    .rc td:nth-child(7)::before{content:"Estimate ";color:#5f6b66;font-size:11px}
+    .rc td:nth-child(8)::before{content:"Stock Log ";color:#5f6b66;font-size:11px}
+    .rc td:nth-child(11)::before{content:"Cover ";color:#5f6b66;font-size:11px}
+    .rc td:nth-child(11){text-align:right}
+    .rc td.note{grid-column:1 / 4;min-width:0}
+    .rc tr.s-never,.rc tr.s-neg{box-shadow:inset 4px 0 #b3261e}
+    .rc tr.s-stale{box-shadow:inset 4px 0 #a35c00}
+    .rc tr.s-diff{box-shadow:inset 4px 0 #2c5d9e}
+  }
   .rc-neg{color:#b3261e}.rc-u{color:#5f6b66;font-size:11px;margin-left:2px}
   .rc-pill{display:inline-block;font:600 11px inherit;padding:2px 8px;border-radius:999px}
   .p-never,.p-neg{background:#fbe9e7;color:#b3261e}.p-stale{background:#fdf1e0;color:#a35c00}.p-diff{background:#e7eefa;color:#2c5d9e}.p-ok{background:#e6f3eb;color:#2e7d4f}
