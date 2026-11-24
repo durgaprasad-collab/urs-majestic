@@ -8,7 +8,9 @@ document.querySelectorAll('[data-share]').forEach(b => b.addEventListener('click
     text += `\n${h.textContent.trim()}\n`;
     h.nextElementSibling.querySelectorAll('tr').forEach(tr => {
       const td = tr.querySelectorAll('td');
-      text += `• ${td[1].textContent.trim()} – ${td[2].textContent.trim()}\n`;
+      const c = td[1].cloneNode(true);
+      c.querySelectorAll('.px').forEach(x => x.remove());   // share the item and quantity only, not the price notes
+      text += `• ${c.textContent.trim()} – ${td[2].textContent.trim()}\n`;
     });
   });
   try {

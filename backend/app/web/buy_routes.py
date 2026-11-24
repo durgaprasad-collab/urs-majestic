@@ -101,10 +101,21 @@ def week_print(request: Request, db: Session = Depends(get_db)):
         cat = r.ingredient.category if r.ingredient else None
         g = "Staff requests" if not r.ingredient_id else where_bought(cat)
         unit = getattr(r.unit, "value", r.unit) or ""
-        by_group.setdefault(g, []).append({"name": r.ingredient.name if r.ingredient else r.item_name,
+        by_group.setdefault(g, []).append({"ingredient_id": r.ingredient_id,
+                                           "name": r.ingredient.name if r.ingredient else r.item_name,
                                            "qty": r.quantity or Decimal(0), "unit": str(unit), "done": True})
     groups = [(g, by_group[g]) for g in GROUP_ORDER if g in by_group]
-    return _tmpl(request, "buy_week_print.html", {"user": user, "groups": groups, "printed": business_now()})
+    # Price info per item: what each vendor charged lately + the average rate paid, and the cheapest apps today.
+    vendors = vendor_prices.compare(db)["items"]
+    offers = vendor_prices.market_offers(db, vendors)
+    info = {}
+    for iid, it in vendors.items():
+        qty = sum(v["qty"] for v in it["vendors"])
+        spend = sum(v["spend"] for v in it["vendors"])
+        info[iid] = {"unit": it["unit"], "avg": spend / qty if qty else None,
+                     "vendors": [{"name": v["vendor"], "last": v["last_price"], "avg": v["avg"]} for v in it["vendors"][:4]],
+                     "apps": [o for o in (offers.get(iid) or {}).get("offers", []) if o["in_stock"] and not o["small"]][:3]}
+    return _tmpl(request, "buy_week_print.html", {"user": user, "groups": groups, "printed": business_now(), "info": info})
 
 
 @router.get("/requisitions")
