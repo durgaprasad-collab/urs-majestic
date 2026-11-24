@@ -261,7 +261,7 @@ def week_plan(db: Session, today_keys: set[str] | None = None) -> dict:
             continue
     waiting = {r[0] for r in db.execute(text(
         "SELECT ingredient_id FROM requisitions WHERE status = 'approved' AND ingredient_id IS NOT NULL"))}
-    lines, covered = [], 0
+    lines, covered, moves = [], 0, []
     for iid, f in _forecast(db).items():
         per_day, on_hand = f["daily_consumption"], f["on_hand_qty"]
         if not per_day or per_day <= 0 or on_hand is None:
@@ -269,7 +269,15 @@ def week_plan(db: Session, today_keys: set[str] | None = None) -> dict:
         per_day, on_hand = Decimal(str(per_day)), max(Decimal(str(on_hand)), Decimal(0))
         home = at_home.get(iid, Decimal(0))
         cover = on_hand / per_day
-        need = per_day * WEEK_DAYS - on_hand - home
+        # What the kitchen is short for the week, and home can cover: carry it over (no purchase).
+        short = per_day * WEEK_DAYS - on_hand
+        if home > 0 and short > 0:
+            amount = min(home, short).quantize(Decimal("0.01"))
+            if amount >= per_day / 2:   # under half a day's use isn't worth a trip
+                moves.append({"ingredient_id": iid, "name": f["name"], "unit": f["unit"], "group": where_bought(f["category"]),
+                              "qty": amount, "home": home, "on_hand": on_hand, "cover": cover,
+                              "orders": short - home > 0})   # home can't cover it all: the rest is on the order list
+        need = short - home
         if need <= 0:
             covered += 1
             continue
@@ -289,6 +297,7 @@ def week_plan(db: Session, today_keys: set[str] | None = None) -> dict:
             "on_today": f"i{iid}" in today_keys, "approved": iid in waiting,
         })
     lines.sort(key=lambda l: (l["cover"], l["name"].lower()))
+    moves.sort(key=lambda m: (m["cover"], m["name"].lower()))
     days = []
     for n in range(WEEK_DAYS):
         d = today + datetime.timedelta(days=n)
@@ -297,7 +306,7 @@ def week_plan(db: Session, today_keys: set[str] | None = None) -> dict:
     open_lines = [l for l in lines if not l["approved"]]
     biggest = max((l for l in open_lines if l["cost"]), key=lambda l: l["cost"], default=None)
     return {
-        "days": days, "groups": groups, "lines": lines, "covered": covered,
+        "days": days, "groups": groups, "lines": lines, "covered": covered, "moves": moves,
         "n_runout": sum(1 for l in lines if l["cover"] < WEEK_DAYS),
         "total": sum((l["cost"] for l in open_lines if l["cost"]), Decimal(0)),
         "biggest": biggest,

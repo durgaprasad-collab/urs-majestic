@@ -130,6 +130,20 @@
     b.disabled = true;
     root.querySelector('[data-by-form]').submit();
   }));
+  // Carry stock from home to the kitchen (same endpoint the Stock Log uses; not a purchase).
+  $$('[data-bw-domove]').forEach(b => b.addEventListener('click', async () => {
+    const tr = b.closest('tr');
+    b.disabled = true;
+    try {
+      const res = await fetch(`/stock-log/item/${tr.dataset.bwMove}/move`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+        body: JSON.stringify({ qty: parseFloat(b.dataset.qty), to: 'restaurant', note: 'Next 7 days' }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Could not move it');
+      b.textContent = 'Moved ✓';
+      tr.classList.add('by-off');
+    } catch (e) { alert(e.message); b.disabled = false; }
+  }));
   $$('[data-bw-print]').forEach(b => b.addEventListener('click', () => {
     const sel = wsel();
     // Approved lines always print; ticked lines are added. None ticked = approved only (ids=0).
