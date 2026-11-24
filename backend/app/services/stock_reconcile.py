@@ -33,6 +33,7 @@ def _bought_since(db: Session, since_by_item: dict[int, datetime.date]) -> dict[
         SELECT p.ingredient_id, p.qty, p.unit::text AS unit, p.purchase_date, i.unit::text AS item_unit, i.pack_size_g
           FROM purchases p JOIN ingredients i ON i.id = p.ingredient_id
          WHERE p.deleted_at IS NULL AND p.purchase_date > :lo
+           AND coalesce(p.storage_location, 'restaurant') <> 'home'   -- bought for home: it posts to home stock, not the kitchen
     """), {"lo": lo}).mappings().all()
     out: dict[int, float] = {}
     for r in rows:
@@ -42,6 +43,34 @@ def _bought_since(db: Session, since_by_item: dict[int, datetime.date]) -> dict[
         q = to_item_unit(float(r["qty"]), r["unit"], r["item_unit"], r["pack_size_g"])
         if q is not None:
             out[r["ingredient_id"]] = out.get(r["ingredient_id"], 0.0) + q
+    return out
+
+
+def _moved_since(db: Session, since_by_item: dict[int, datetime.date], count_at: dict[int, datetime.datetime]) -> dict[int, float]:
+    """Net quantity carried into the kitchen from home (negative: sent to home) after each count day,
+    in the item's unit."""
+    if not since_by_item:
+        return {}
+    from app.core.clock import business_tz
+    from app.services.home_stock import _per_kg
+    rows = db.execute(text("""
+        SELECT t.ingredient_id, t.qty, t.unit, t.from_location, t.to_location, t.created_at,
+               i.unit::text AS iunit, i.pack_size_g
+          FROM stock_transfers t JOIN ingredients i ON i.id = t.ingredient_id
+         WHERE t.created_at > :lo
+    """), {"lo": datetime.datetime.combine(min(since_by_item.values()), datetime.time.min, tzinfo=business_tz())}).mappings().all()
+    out: dict[int, float] = {}
+    for r in rows:
+        since = since_by_item.get(r["ingredient_id"])
+        if since is None or r["created_at"] <= count_at[r["ingredient_id"]]:   # moved after the count itself, not just after its day
+            continue
+        item = {"unit": r["iunit"], "pack_size_g": r["pack_size_g"]}
+        try:
+            q = stock_count._in_item_unit({"on_hand_qty": r["qty"], "unit": r["unit"]}, item, _per_kg(item, r["unit"]))
+        except Exception:
+            continue
+        sign = 1 if r["to_location"] == "restaurant" else (-1 if r["from_location"] == "restaurant" else 0)
+        out[r["ingredient_id"]] = out.get(r["ingredient_id"], 0.0) + sign * q
     return out
 
 
@@ -94,12 +123,13 @@ def reconcile(db: Session) -> dict:
     since = {i["id"]: stock_count.count_day(i["last_at"]) for i in items if i["last_at"] and i["last_qty"] is not None}
     bought = _bought_since(db, since)
     used = _used_since(db, since)
+    moved = _moved_since(db, since, {i["id"]: i["last_at"] for i in items if i["id"] in since})   # carried in from home (+) or sent to home (-)
     rows = []
     for i in items:
         iid, k = i["id"], i.get("k") or 1.0
         est = None
         if iid in since:
-            est = i["last_qty"] + bought.get(iid, 0.0) - used.get(iid, 0.0) * k
+            est = i["last_qty"] + bought.get(iid, 0.0) + moved.get(iid, 0.0) - used.get(iid, 0.0) * k
         age = (today - since[iid]).days if iid in since else None
         per_day = i["use"]["daily"] if i["use"] else None
         slog = i["qty"]
@@ -117,6 +147,7 @@ def reconcile(db: Session) -> dict:
              "count_day": since.get(iid), "count_qty": i["last_qty"], "age": age,
              "bought": bought.get(iid, 0.0) if iid in since else None,
              "used": used.get(iid, 0.0) * k if iid in since else None,
+             "moved": moved.get(iid, 0.0) if iid in since else None,
              "est": est, "slog": slog, "home": i["home"], "per_day": per_day, "cover": cover}
         r["note"] = _note(r)
         rows.append(r)
