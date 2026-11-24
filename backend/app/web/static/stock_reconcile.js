@@ -1,16 +1,23 @@
 // Filter chips and sortable columns for /stock-reconcile (rows are rendered by the server).
 (() => {
-  const tb = document.querySelector('[data-rc-table] tbody');
+  const tb = document.querySelector('[data-sr-table] tbody');
   if (!tb) return;
   const rows = [...tb.rows];
-  document.querySelector('[data-rc-chips]').addEventListener('click', (e) => {
-    const b = e.target.closest('.rc-chip');
-    if (!b) return;
-    document.querySelectorAll('.rc-chip').forEach((c) => c.setAttribute('aria-pressed', c === b ? 'true' : 'false'));
-    rows.forEach((r) => { r.hidden = !!b.dataset.k && r.dataset.status !== b.dataset.k; });
+  let status = '', term = '';
+  const apply = () => rows.forEach((r) => {
+    const name = r.cells[0].dataset.v.toLowerCase();
+    r.hidden = (!!status && r.dataset.status !== status) || (!!term && !name.includes(term));
   });
+  document.querySelector('[data-sr-chips]').addEventListener('click', (e) => {
+    const b = e.target.closest('.sr-chip');
+    if (!b) return;
+    document.querySelectorAll('.sr-chip').forEach((c) => c.setAttribute('aria-pressed', c === b ? 'true' : 'false'));
+    status = b.dataset.k || '';
+    apply();
+  });
+  document.querySelector('[data-sr-search]').addEventListener('input', (e) => { term = e.target.value.trim().toLowerCase(); apply(); });
   let col = -1, asc = true;
-  document.querySelectorAll('[data-rc-table] th').forEach((th, i) => th.addEventListener('click', () => {
+  document.querySelectorAll('[data-sr-table] th').forEach((th, i) => th.addEventListener('click', () => {
     asc = col === i ? !asc : true; col = i;
     const num = th.dataset.t === 'n';
     const val = (r) => r.cells[i].dataset.v;

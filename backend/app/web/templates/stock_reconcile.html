@@ -2,56 +2,58 @@
 {% block title %}Stock reconciliation — URS Majestic{% endblock %}
 
 {% block content %}
-{% macro q(v, u) %}{% if v is none %}<span class="rc-u">—</span>{% else %}<span class="{{ 'rc-neg' if v < 0 }}">{{ '{:,.2f}'.format(v) if u in ('kg', 'l') else '{:,.0f}'.format(v) }}</span><span class="rc-u">{{ u }}</span>{% endif %}{% endmacro %}
+{% macro q(v, u) %}{% if v is none %}<span class="sr-u">—</span>{% else %}<span class="{{ 'sr-neg' if v < 0 }}">{{ '{:,.2f}'.format(v) if u in ('kg', 'l') else '{:,.0f}'.format(v) }}</span><span class="sr-u">{{ u }}</span>{% endif %}{% endmacro %}
 <style>
-  .rc{display:grid;gap:16px}
-  .rc-chips{display:flex;flex-wrap:wrap;gap:8px}
-  .rc-chip{border:1px solid #dde2dd;background:#fff;border-radius:999px;padding:6px 12px;font:500 13px inherit;cursor:pointer;display:flex;gap:8px;align-items:center}
-  .rc-chip b{font-variant-numeric:tabular-nums}
-  .rc-chip[aria-pressed="true"]{border-color:#1f5c4a;box-shadow:inset 0 0 0 1px #1f5c4a}
-  .rc-dot{width:9px;height:9px;border-radius:50%}
-  .rc-key{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-  .rc-key div{background:#fff;border:1px solid #dde2dd;border-radius:8px;padding:10px 12px;font-size:13px;color:#5f6b66}
-  .rc-key strong{color:#1c2421;display:block;font-size:13px;margin-bottom:2px}
-  .rc-box{overflow-x:auto;background:#fff;border:1px solid #dde2dd;border-radius:8px}
-  .rc table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
-  .rc th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:#5f6b66;text-align:right;padding:8px 6px;border-bottom:1px solid #dde2dd;cursor:pointer;line-height:1.2}
-  .rc td{padding:7px 6px;border-bottom:1px solid #eef0ee;text-align:right;font-size:12px;white-space:nowrap}
-  .rc th:first-child,.rc td:first-child,.rc th.l,.rc td.l{text-align:left}
-  .rc td.name{white-space:normal;min-width:150px;max-width:260px;font-weight:500;border-left:4px solid transparent}
-  .rc-note{display:block;font-weight:400;color:#5f6b66;font-size:11px;line-height:1.3;margin-top:2px}
-  .rc-box{overflow-x:auto}
-  .rc td.note{white-space:normal;color:#5f6b66;font-size:12.5px;min-width:240px}
-  .rc tr.s-never td.name,.rc tr.s-neg td.name{border-left-color:#b3261e}
-  .rc tr.s-stale td.name{border-left-color:#a35c00}
-  .rc tr.s-diff td.name{border-left-color:#2c5d9e}
-  .rc tr.s-ok td.name{border-left-color:#2e7d4f}
-  .rc>*{min-width:0}
+  .sr{display:grid;gap:16px}
+  .sr-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .sr-chip{border:1px solid #dde2dd;background:#fff;border-radius:999px;padding:6px 12px;font:500 13px inherit;cursor:pointer;display:flex;gap:8px;align-items:center}
+  .sr-chip b{font-variant-numeric:tabular-nums}
+  .sr-chip[aria-pressed="true"]{border-color:#1f5c4a;box-shadow:inset 0 0 0 1px #1f5c4a}
+  .sr-dot{width:9px;height:9px;border-radius:50%}
+  .sr-key{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .sr-key div{background:#fff;border:1px solid #dde2dd;border-radius:8px;padding:10px 12px;font-size:13px;color:#5f6b66}
+  .sr-key strong{color:#1c2421;display:block;font-size:13px;margin-bottom:2px}
+  .sr-box{overflow-x:auto;background:#fff;border:1px solid #dde2dd;border-radius:8px}
+  .sr table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+  .sr th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:#5f6b66;text-align:right;padding:8px 6px;border-bottom:1px solid #dde2dd;cursor:pointer;line-height:1.2}
+  .sr td{padding:7px 6px;border-bottom:1px solid #eef0ee;text-align:right;font-size:12px;white-space:nowrap}
+  .sr th:first-child,.sr td:first-child,.sr th.l,.sr td.l{text-align:left}
+  .sr td.name{white-space:normal;min-width:150px;max-width:260px;font-weight:500;border-left:4px solid transparent}
+  .sr-note{display:block;font-weight:400;color:#5f6b66;font-size:11px;line-height:1.3;margin-top:2px}
+  .sr-box{overflow:visible}   /* no scroll container, so the header can stick to the page scroll */
+  .sr th{position:sticky;top:56px;background:#fff;z-index:2;box-shadow:0 1px 0 #dde2dd}
+  .sr-search{width:100%;max-width:320px;padding:8px 12px;border:1px solid #dde2dd;border-radius:8px;font-size:14px;background:#fff}
+  .sr td.note{white-space:normal;color:#5f6b66;font-size:12.5px;min-width:240px}
+  .sr tr.s-never td.name,.sr tr.s-neg td.name{border-left-color:#b3261e}
+  .sr tr.s-stale td.name{border-left-color:#a35c00}
+  .sr tr.s-diff td.name{border-left-color:#2c5d9e}
+  .sr tr.s-ok td.name{border-left-color:#2e7d4f}
+  .sr>*{min-width:0}
   @media (max-width:720px){
     /* phone: keep ingredient, status, estimate, Stock Log, cover; the note drops under the name */
-    .rc table{min-width:0;display:block}
-    .rc thead{display:none}
-    .rc tbody{display:block}
-    .rc tr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px 8px;padding:10px 12px;border-bottom:1px solid #eef0ee}
-    .rc tr[hidden]{display:none}
-    .rc td{border:0;padding:0;text-align:left}
-    .rc td.name{grid-column:1 / 3;border-left:0;min-width:0;max-width:none}
-    .rc td.name .rc-note{font-size:12px}
-    .rc td:nth-child(2){grid-column:3;text-align:right}
-    .rc td:nth-child(3),.rc td:nth-child(4),.rc td:nth-child(5),.rc td:nth-child(6),.rc td:nth-child(9),.rc td:nth-child(10),.rc td:nth-child(11){display:none}
-    .rc td:nth-child(7)::before{content:"Estimate ";color:#5f6b66;font-size:11px}
-    .rc td:nth-child(8)::before{content:"Stock Log ";color:#5f6b66;font-size:11px}
-    .rc td:nth-child(12)::before{content:"Cover ";color:#5f6b66;font-size:11px}
-    .rc td:nth-child(12){text-align:right}
-    .rc tr.s-never,.rc tr.s-neg{box-shadow:inset 4px 0 #b3261e}
-    .rc tr.s-stale{box-shadow:inset 4px 0 #a35c00}
-    .rc tr.s-diff{box-shadow:inset 4px 0 #2c5d9e}
+    .sr table{min-width:0;display:block}
+    .sr thead{display:none}
+    .sr tbody{display:block}
+    .sr tr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px 8px;padding:10px 12px;border-bottom:1px solid #eef0ee}
+    .sr tr[hidden]{display:none}
+    .sr td{border:0;padding:0;text-align:left}
+    .sr td.name{grid-column:1 / 3;border-left:0;min-width:0;max-width:none}
+    .sr td.name .sr-note{font-size:12px}
+    .sr td:nth-child(2){grid-column:3;text-align:right}
+    .sr td:nth-child(3),.sr td:nth-child(4),.sr td:nth-child(5),.sr td:nth-child(6),.sr td:nth-child(9),.sr td:nth-child(10),.sr td:nth-child(11){display:none}
+    .sr td:nth-child(7)::before{content:"Estimate ";color:#5f6b66;font-size:11px}
+    .sr td:nth-child(8)::before{content:"Stock Log ";color:#5f6b66;font-size:11px}
+    .sr td:nth-child(12)::before{content:"Cover ";color:#5f6b66;font-size:11px}
+    .sr td:nth-child(12){text-align:right}
+    .sr tr.s-never,.sr tr.s-neg{box-shadow:inset 4px 0 #b3261e}
+    .sr tr.s-stale{box-shadow:inset 4px 0 #a35c00}
+    .sr tr.s-diff{box-shadow:inset 4px 0 #2c5d9e}
   }
-  .rc-neg{color:#b3261e}.rc-u{color:#5f6b66;font-size:11px;margin-left:2px}
-  .rc-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;white-space:nowrap}
-  .p-never,.p-neg{background:#fbe9e7;color:#b3261e}.p-stale{background:#fdf1e0;color:#a35c00}.p-diff{background:#e7eefa;color:#2c5d9e}.p-ok{background:#e6f3eb;color:#2e7d4f}
+  .sr-neg{color:#b3261e}.sr-u{color:#5f6b66;font-size:11px;margin-left:2px}
+  .sr-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;white-space:nowrap}
+  .sr-p-never,.sr-p-neg{background:#fbe9e7;color:#b3261e}.sr-p-stale{background:#fdf1e0;color:#a35c00}.sr-p-diff{background:#e7eefa;color:#2c5d9e}.sr-p-ok{background:#e6f3eb;color:#2e7d4f}
 </style>
-<div class="sl rc">
+<div class="sl sr">
   <div class="sl-head">
     <div>
       <h1 class="sl-title">Stock reconciliation · {{ day.strftime('%d %b %Y') }}</h1>
@@ -60,20 +62,22 @@
     <div class="sl-btns"><a href="/stock-log" class="sl-btn">← Stock Log</a></div>
   </div>
 
-  <div class="rc-chips" data-rc-chips>
-    <button type="button" class="rc-chip" aria-pressed="true" data-k="">All ingredients <b>{{ rows|length }}</b></button>
-    {% for k, l in label.items() %}<button type="button" class="rc-chip" aria-pressed="false" data-k="{{ k }}"><span class="rc-dot" style="background:{{ {'never':'#b3261e','neg':'#b3261e','stale':'#a35c00','diff':'#2c5d9e','ok':'#2e7d4f'}[k] }}"></span>{{ l }} <b>{{ counts[k] }}</b></button>{% endfor %}
+  <div class="sr-chips" data-sr-chips>
+    <button type="button" class="sr-chip" aria-pressed="true" data-k="">All ingredients <b>{{ rows|length }}</b></button>
+    {% for k, l in label.items() %}<button type="button" class="sr-chip" aria-pressed="false" data-k="{{ k }}"><span class="sr-dot" style="background:{{ {'never':'#b3261e','neg':'#b3261e','stale':'#a35c00','diff':'#2c5d9e','ok':'#2e7d4f'}[k] }}"></span>{{ l }} <b>{{ counts[k] }}</b></button>{% endfor %}
   </div>
 
-  <div class="rc-key">
+  <input type="search" class="sr-search" placeholder="Search ingredient…" aria-label="Search ingredient" data-sr-search autocomplete="off">
+
+  <div class="sr-key">
     <div><strong>Never counted</strong>No physical count exists, so every screen is a guess.</div>
     <div><strong>Below zero</strong>Recipes use more than was counted plus bought: a missing purchase bill, or a portion set too high.</div>
     <div><strong>Count too old</strong>Last count is over 30 days old; drift has built up since.</div>
     <div><strong>Screens disagree</strong>Stock Log differs from the estimate by more than 20% and two days of use.</div>
   </div>
 
-  <div class="rc-box">
-    <table data-rc-table>
+  <div class="sr-box">
+    <table data-sr-table>
       <thead><tr>
         <th data-t="s">Ingredient</th><th class="l" data-t="n">Status</th><th data-t="s">Last count</th><th data-t="n">Counted</th>
         <th data-t="n">Bought since</th><th data-t="n">Used since</th><th data-t="n">Best estimate</th><th data-t="n">Stock Log</th>
@@ -82,18 +86,18 @@
       <tbody>
       {% for r in rows %}
         <tr class="s-{{ r.status }}" data-status="{{ r.status }}">
-          <td class="name" data-v="{{ r.name }}">{{ r.name }}<small class="rc-note">{{ r.note }}</small></td>
-          <td class="l" data-v="{{ loop.index }}"><span class="rc-pill p-{{ r.status }}">{{ label[r.status] }}</span></td>
-          <td data-v="{{ r.count_day.isoformat() if r.count_day else '' }}">{% if r.count_day %}{{ r.count_day.strftime('%d %b') }}{% else %}<span class="rc-u">none</span>{% endif %}</td>
+          <td class="name" data-v="{{ r.name }}">{{ r.name }}<small class="sr-note">{{ r.note }}</small></td>
+          <td class="l" data-v="{{ loop.index }}"><span class="sr-pill sr-p-{{ r.status }}">{{ label[r.status] }}</span></td>
+          <td data-v="{{ r.count_day.isoformat() if r.count_day else '' }}">{% if r.count_day %}{{ r.count_day.strftime('%d %b') }}{% else %}<span class="sr-u">none</span>{% endif %}</td>
           <td data-v="{{ r.count_qty if r.count_qty is not none else '' }}">{{ q(r.count_qty, r.unit) }}</td>
           <td data-v="{{ r.bought if r.bought is not none else '' }}">{{ q(r.bought, r.unit) }}</td>
           <td data-v="{{ r.used if r.used is not none else '' }}">{{ q(r.used, r.unit) }}</td>
           <td data-v="{{ r.est if r.est is not none else '' }}"><b>{{ q(r.est, r.unit) }}</b></td>
           <td data-v="{{ r.slog if r.slog is not none else '' }}">{{ q(r.slog, r.unit) }}</td>
-          <td data-v="{{ r.home or '' }}">{% if r.home %}{{ q(r.home, r.unit) }}{% else %}<span class="rc-u">—</span>{% endif %}</td>
-          <td data-v="{{ r.moved if r.moved else '' }}">{% if r.moved %}<span class="{{ 'rc-neg' if r.moved < 0 }}">{{ '+' if r.moved > 0 }}{{ '{:,.2f}'.format(r.moved) if r.unit in ('kg', 'l') else '{:,.0f}'.format(r.moved) }}</span><span class="rc-u">{{ r.unit }}</span>{% else %}<span class="rc-u">—</span>{% endif %}</td>
-          <td data-v="{{ r.per_day or '' }}">{% if r.per_day %}{{ q(r.per_day, r.unit) }}{% else %}<span class="rc-u">—</span>{% endif %}</td>
-          <td data-v="{{ r.cover if r.cover is not none and r.cover >= 0 else '' }}">{% if r.cover is not none and r.cover >= 0 %}{{ '99+' if r.cover > 99 else '%.1f'|format(r.cover) }}{% else %}<span class="rc-u">—</span>{% endif %}</td>
+          <td data-v="{{ r.home or '' }}">{% if r.home %}{{ q(r.home, r.unit) }}{% else %}<span class="sr-u">—</span>{% endif %}</td>
+          <td data-v="{{ r.moved if r.moved else '' }}">{% if r.moved %}<span class="{{ 'sr-neg' if r.moved < 0 }}">{{ '+' if r.moved > 0 }}{{ '{:,.2f}'.format(r.moved) if r.unit in ('kg', 'l') else '{:,.0f}'.format(r.moved) }}</span><span class="sr-u">{{ r.unit }}</span>{% else %}<span class="sr-u">—</span>{% endif %}</td>
+          <td data-v="{{ r.per_day or '' }}">{% if r.per_day %}{{ q(r.per_day, r.unit) }}{% else %}<span class="sr-u">—</span>{% endif %}</td>
+          <td data-v="{{ r.cover if r.cover is not none and r.cover >= 0 else '' }}">{% if r.cover is not none and r.cover >= 0 %}{{ '99+' if r.cover > 99 else '%.1f'|format(r.cover) }}{% else %}<span class="sr-u">—</span>{% endif %}</td>
         </tr>
       {% endfor %}
       </tbody>
@@ -101,5 +105,5 @@
   </div>
   <p class="sl-sub">Bought since = purchases dated after the count day. Moved in = carried from home (negative: sent to home) and counted in the estimate. Used since = what the sales ledger took off stock for recipes after the count day (all channels). Gobi and onion are weighed as bought, so real usable stock is lower. Click a column heading to sort.</p>
 </div>
-<script src="/static/stock_reconcile.js?v=1" defer></script>
+<script src="/static/stock_reconcile.js?v=3" defer></script>
 {% endblock %}
