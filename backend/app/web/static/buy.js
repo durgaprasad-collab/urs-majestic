@@ -132,8 +132,8 @@
   }));
   $$('[data-bw-print]').forEach(b => b.addEventListener('click', () => {
     const sel = wsel();
-    if (!sel.length) { alert('Tick at least one line.'); return; }
-    const ids = sel.map(tr => tr.dataset.iid).join(',');
+    // Approved lines always print; ticked lines are added. None ticked = approved only (ids=0).
+    const ids = sel.length ? sel.map(tr => tr.dataset.iid).join(',') : '0';
     const q = sel.map(tr => `${tr.dataset.iid}:${wqty(tr)}`).join(',');
     // Same window (the sheet has its own Back link): a new tab has no way back in an installed app / on iPhone.
     window.location.href = `/buy/week/print?ids=${ids}&q=${encodeURIComponent(q)}`;

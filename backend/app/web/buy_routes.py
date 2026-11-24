@@ -13,7 +13,7 @@ from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.routes.requisitions import _sync_fulfillment, notify_decision
 from app.core.clock import business_now, business_tz
@@ -23,7 +23,7 @@ from app.models.requisition import Requisition, RequisitionStatus
 from app.models.user import User
 from app.services import request_check
 from app.services import vendor_prices
-from app.services.buy_inbox import OWNER_NOTE, WEEK_NOTE, bought_this_week, inbox, week_plan
+from app.services.buy_inbox import OWNER_NOTE, WEEK_NOTE, GROUP_ORDER, bought_this_week, inbox, week_plan, where_bought
 from app.web.deps import _tmpl, require_user
 
 log = logging.getLogger("buy")
@@ -74,12 +74,36 @@ def week_print(request: Request, db: Session = Depends(get_db)):
                 qty[int(k)] = Decimal(v)
             except InvalidOperation:
                 pass
-    groups = []
+    # Everything already approved goes on the sheet, whatever is ticked: those lines have no
+    # checkbox, and approvals from To buy / catering may not be in the week plan at all.
+    approved = (db.query(Requisition).options(joinedload(Requisition.ingredient))
+                .filter(Requisition.status == RequisitionStatus.approved).order_by(Requisition.id).all())
+    appr_by_ing: dict[int, list] = {}
+    for r in approved:
+        if r.ingredient_id:
+            appr_by_ing.setdefault(r.ingredient_id, []).append(r)
+    by_group: dict[str, list] = {}
+    seen = set()
     for g, lines in plan["groups"]:
-        chosen = [dict(l, qty=qty.get(l["ingredient_id"], l["qty"])) for l in lines
-                  if not l["approved"] and (not ids or l["ingredient_id"] in ids)]
-        if chosen:
-            groups.append((g, chosen))
+        for l in lines:
+            iid = l["ingredient_id"]
+            if l["approved"]:
+                reqs = appr_by_ing.get(iid, [])
+                q = sum((r.quantity for r in reqs if r.quantity), Decimal(0)) or l["qty"]
+                unit = next((r.unit for r in reqs if r.quantity and r.unit), None) or l["unit"]
+                by_group.setdefault(g, []).append(dict(l, qty=q, unit=str(getattr(unit, "value", unit)), done=True))
+                seen.add(iid)
+            elif not ids or iid in ids:
+                by_group.setdefault(g, []).append(dict(l, qty=qty.get(iid, l["qty"]), done=False))
+    for r in approved:
+        if r.ingredient_id in seen:
+            continue
+        cat = r.ingredient.category if r.ingredient else None
+        g = "Staff requests" if not r.ingredient_id else where_bought(cat)
+        unit = getattr(r.unit, "value", r.unit) or ""
+        by_group.setdefault(g, []).append({"name": r.ingredient.name if r.ingredient else r.item_name,
+                                           "qty": r.quantity or Decimal(0), "unit": str(unit), "done": True})
+    groups = [(g, by_group[g]) for g in GROUP_ORDER if g in by_group]
     return _tmpl(request, "buy_week_print.html", {"user": user, "groups": groups, "printed": business_now()})
 
 
