@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import business_today, business_tz
 from app.core.database import get_db
 from app.services.stock_log_pdf import build_low_cover_stock_pdf
-from app.services import home_stock, recipe_calibration, shell_pulse, stock_count
+from app.services import home_stock, recipe_calibration, shell_pulse, stock_count, stock_reconcile
 from app.web.deps import _tmpl, require_user
 from app.web.reorder_routes import record_stock, _LATEST_GAS_SQL, _GAS_AVERAGE_SQL
 
@@ -215,6 +215,14 @@ def stock_log(request: Request, db: Session = Depends(get_db)):
         "ingested": stock_count.last_ingestion(db),
         "audit": audit_log(db),
     })
+
+
+@router.get("/stock-reconcile", response_class=HTMLResponse)
+def stock_reconcile_page(request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    return _tmpl(request, "stock_reconcile.html", {"user": user, **stock_reconcile.reconcile(db)})
 
 
 @router.post("/stock-log/item/{ingredient_id}/count")

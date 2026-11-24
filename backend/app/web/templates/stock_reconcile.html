@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Stock reconciliation — URS Majestic{% endblock %}
+
+{% block content %}
+{% macro q(v, u) %}{% if v is none %}<span class="rc-u">—</span>{% else %}<span class="{{ 'rc-neg' if v < 0 }}">{{ '{:,.2f}'.format(v) if u in ('kg', 'l') else '{:,.0f}'.format(v) }}</span><span class="rc-u">{{ u }}</span>{% endif %}{% endmacro %}
+<style>
+  .rc{display:grid;gap:16px}
+  .rc-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .rc-chip{border:1px solid #dde2dd;background:#fff;border-radius:999px;padding:6px 12px;font:500 13px inherit;cursor:pointer;display:flex;gap:8px;align-items:center}
+  .rc-chip b{font-variant-numeric:tabular-nums}
+  .rc-chip[aria-pressed="true"]{border-color:#1f5c4a;box-shadow:inset 0 0 0 1px #1f5c4a}
+  .rc-dot{width:9px;height:9px;border-radius:50%}
+  .rc-key{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .rc-key div{background:#fff;border:1px solid #dde2dd;border-radius:8px;padding:10px 12px;font-size:13px;color:#5f6b66}
+  .rc-key strong{color:#1c2421;display:block;font-size:13px;margin-bottom:2px}
+  .rc-box{overflow-x:auto;background:#fff;border:1px solid #dde2dd;border-radius:8px}
+  .rc table{border-collapse:collapse;width:100%;min-width:900px;font-variant-numeric:tabular-nums}
+  .rc th{font:600 11px inherit;text-transform:uppercase;letter-spacing:.06em;color:#5f6b66;text-align:right;padding:10px;border-bottom:1px solid #dde2dd;cursor:pointer;white-space:nowrap}
+  .rc td{padding:9px 10px;border-bottom:1px solid #eef0ee;text-align:right;font-size:13px;white-space:nowrap}
+  .rc th:first-child,.rc td:first-child,.rc th.l,.rc td.l{text-align:left}
+  .rc td.name{white-space:normal;min-width:160px;font-weight:500;border-left:4px solid transparent}
+  .rc td.note{white-space:normal;color:#5f6b66;font-size:12.5px;min-width:240px}
+  .rc tr.s-never td.name,.rc tr.s-neg td.name{border-left-color:#b3261e}
+  .rc tr.s-stale td.name{border-left-color:#a35c00}
+  .rc tr.s-diff td.name{border-left-color:#2c5d9e}
+  .rc tr.s-ok td.name{border-left-color:#2e7d4f}
+  .rc-neg{color:#b3261e}.rc-u{color:#5f6b66;font-size:11px;margin-left:2px}
+  .rc-pill{display:inline-block;font:600 11px inherit;padding:2px 8px;border-radius:999px}
+  .p-never,.p-neg{background:#fbe9e7;color:#b3261e}.p-stale{background:#fdf1e0;color:#a35c00}.p-diff{background:#e7eefa;color:#2c5d9e}.p-ok{background:#e6f3eb;color:#2e7d4f}
+</style>
+<div class="sl rc">
+  <div class="sl-head">
+    <div>
+      <h1 class="sl-title">Stock reconciliation · {{ day.strftime('%d %b %Y') }}</h1>
+      <p class="sl-sub">For every stocked ingredient: the last physical count, plus everything bought since, minus what recipes say sales used. That best estimate is set against what the Stock Log shows. Work the red and amber rows first.</p>
+    </div>
+    <div class="sl-btns"><a href="/stock-log" class="sl-btn">← Stock Log</a></div>
+  </div>
+
+  <div class="rc-chips" data-rc-chips>
+    <button type="button" class="rc-chip" aria-pressed="true" data-k="">All ingredients <b>{{ rows|length }}</b></button>
+    {% for k, l in label.items() %}<button type="button" class="rc-chip" aria-pressed="false" data-k="{{ k }}"><span class="rc-dot" style="background:{{ {'never':'#b3261e','neg':'#b3261e','stale':'#a35c00','diff':'#2c5d9e','ok':'#2e7d4f'}[k] }}"></span>{{ l }} <b>{{ counts[k] }}</b></button>{% endfor %}
+  </div>
+
+  <div class="rc-key">
+    <div><strong>Never counted</strong>No physical count exists, so every screen is a guess.</div>
+    <div><strong>Below zero</strong>Recipes use more than was counted plus bought: a missing purchase bill, or a portion set too high.</div>
+    <div><strong>Count too old</strong>Last count is over 30 days old; drift has built up since.</div>
+    <div><strong>Screens disagree</strong>Stock Log differs from the estimate by more than 20% and two days of use.</div>
+  </div>
+
+  <div class="rc-box">
+    <table data-rc-table>
+      <thead><tr>
+        <th data-t="s">Ingredient</th><th class="l" data-t="n">Status</th><th data-t="s">Last count</th><th data-t="n">Counted</th>
+        <th data-t="n">Bought since</th><th data-t="n">Used since</th><th data-t="n">Best estimate</th><th data-t="n">Stock Log</th>
+        <th data-t="n">At home</th><th data-t="n">Use / day</th><th data-t="n">Days cover</th><th class="l" data-t="s">What to do</th>
+      </tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr class="s-{{ r.status }}" data-status="{{ r.status }}">
+          <td class="name" data-v="{{ r.name }}">{{ r.name }}</td>
+          <td class="l" data-v="{{ loop.index }}"><span class="rc-pill p-{{ r.status }}">{{ label[r.status] }}</span></td>
+          <td data-v="{{ r.count_day.isoformat() if r.count_day else '' }}">{% if r.count_day %}{{ r.count_day.strftime('%d %b') }}{% else %}<span class="rc-u">none</span>{% endif %}</td>
+          <td data-v="{{ r.count_qty if r.count_qty is not none else '' }}">{{ q(r.count_qty, r.unit) }}</td>
+          <td data-v="{{ r.bought if r.bought is not none else '' }}">{{ q(r.bought, r.unit) }}</td>
+          <td data-v="{{ r.used if r.used is not none else '' }}">{{ q(r.used, r.unit) }}</td>
+          <td data-v="{{ r.est if r.est is not none else '' }}"><b>{{ q(r.est, r.unit) }}</b></td>
+          <td data-v="{{ r.slog if r.slog is not none else '' }}">{{ q(r.slog, r.unit) }}</td>
+          <td data-v="{{ r.home or '' }}">{% if r.home %}{{ q(r.home, r.unit) }}{% else %}<span class="rc-u">—</span>{% endif %}</td>
+          <td data-v="{{ r.per_day or '' }}">{% if r.per_day %}{{ q(r.per_day, r.unit) }}{% else %}<span class="rc-u">—</span>{% endif %}</td>
+          <td data-v="{{ r.cover if r.cover is not none and r.cover >= 0 else '' }}">{% if r.cover is not none and r.cover >= 0 %}{{ '99+' if r.cover > 99 else '%.1f'|format(r.cover) }}{% else %}<span class="rc-u">—</span>{% endif %}</td>
+          <td class="note l" data-v="{{ r.note }}">{{ r.note }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="sl-sub">Bought since = purchases dated after the count day. Used since = what the sales ledger took off stock for recipes after the count day (all channels). Gobi and onion are weighed as bought, so real usable stock is lower. Click a column heading to sort.</p>
+</div>
+<script src="/static/stock_reconcile.js?v=1" defer></script>
+{% endblock %}

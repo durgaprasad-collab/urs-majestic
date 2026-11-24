@@ -162,7 +162,7 @@ def stock_view(db: Session) -> list[dict]:
             "home_upd_by": hb["by_name"] if hb else None,
             "total": (qty or 0) + (home_qty or 0) if (qty is not None or home_qty is not None) else None,
             "id": r["ingredient_id"], "name": r["name"], "category": cat, "unit": r["unit"],
-            "pack": bool(r["pack_size_g"]),
+            "pack": bool(r["pack_size_g"]), "k": k,   # stock-unit -> item-unit factor
             "qty": qty, "source": src, "estimated": src not in (None, "counted"),
             "cover": cover, "stale": bool(r["stock_stale"]), "use": use,
             "last_qty": _in_item_unit(h, r, per_kg) if h else None,
