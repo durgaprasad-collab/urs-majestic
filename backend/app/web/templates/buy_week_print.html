@@ -24,7 +24,7 @@
 </head>
 <body>
 {% macro amt(q, u) %}{% if u == 'g' and q >= 1000 %}{{ '%g'|format((q / 1000)|round(2)) }} kg{% elif u == 'ml' and q >= 1000 %}{{ '%g'|format((q / 1000)|round(2)) }} L{% else %}{{ '%g'|format(q|float) }} {{ u }}{% endif %}{% endmacro %}
-<div class="bar"><div><h1>URS Majestic · order for the week</h1><div class="sub">Grouped by where it's bought · printed {{ printed.strftime('%a %d %b %Y, %I:%M %p') }}</div></div><div class="acts"><a class="back" href="/buy?tab=week">← Back to Buy</a><button type="button" data-print>Print / save as PDF</button></div></div>
+<div class="bar"><div><h1>URS Majestic · order for the week</h1><div class="sub">Grouped by where it's bought · printed {{ printed.strftime('%a %d %b %Y, %I:%M %p') }}</div></div><div class="acts"><a class="back" href="/buy?tab=week">← Back to Buy</a><button type="button" data-share>Share list</button><button type="button" data-print>Print / save as PDF</button></div></div>
 {% for g, lines in groups %}
 <h2>{{ g }}</h2>
 <table>
@@ -33,6 +33,6 @@
 {% else %}
 <p class="empty">Nothing selected.</p>
 {% endfor %}
-<script src="/static/print.js" defer></script>
+<script src="/static/print.js?v=2" defer></script>
 </body>
 </html>
