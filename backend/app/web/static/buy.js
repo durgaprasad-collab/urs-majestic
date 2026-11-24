@@ -135,7 +135,8 @@
     if (!sel.length) { alert('Tick at least one line.'); return; }
     const ids = sel.map(tr => tr.dataset.iid).join(',');
     const q = sel.map(tr => `${tr.dataset.iid}:${wqty(tr)}`).join(',');
-    window.open(`/buy/week/print?ids=${ids}&q=${encodeURIComponent(q)}`, '_blank', 'noopener');
+    // Same window (the sheet has its own Back link): a new tab has no way back in an installed app / on iPhone.
+    window.location.href = `/buy/week/print?ids=${ids}&q=${encodeURIComponent(q)}`;
   }));
   $$('[data-bw-share]').forEach(b => b.addEventListener('click', () => {
     const groups = {};

@@ -17,12 +17,14 @@
   td.q { text-align: right; font-weight: 700; white-space: nowrap; width: 120px; }
   td.bx { width: 26px; } td.bx span { display: inline-block; width: 14px; height: 14px; border: 1.4px solid #000; }
   .empty { color: #666; }
-  @media print { .bar button { display: none; } body { padding: 0; } }
+  .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .back { padding: 8px 14px; border: 1px solid #062013; border-radius: 8px; color: #062013; text-decoration: none; font: 600 13px Inter, sans-serif; }
+  @media print { .acts { display: none; } body { padding: 0; } }
 </style>
 </head>
 <body>
 {% macro amt(q, u) %}{% if u == 'g' and q >= 1000 %}{{ '%g'|format((q / 1000)|round(2)) }} kg{% elif u == 'ml' and q >= 1000 %}{{ '%g'|format((q / 1000)|round(2)) }} L{% else %}{{ '%g'|format(q|float) }} {{ u }}{% endif %}{% endmacro %}
-<div class="bar"><div><h1>URS Majestic · order for the week</h1><div class="sub">Grouped by where it's bought · printed {{ printed.strftime('%a %d %b %Y, %I:%M %p') }}</div></div><button type="button" data-print>Print / save as PDF</button></div>
+<div class="bar"><div><h1>URS Majestic · order for the week</h1><div class="sub">Grouped by where it's bought · printed {{ printed.strftime('%a %d %b %Y, %I:%M %p') }}</div></div><div class="acts"><a class="back" href="/buy?tab=week">← Back to Buy</a><button type="button" data-print>Print / save as PDF</button></div></div>
 {% for g, lines in groups %}
 <h2>{{ g }}</h2>
 <table>
