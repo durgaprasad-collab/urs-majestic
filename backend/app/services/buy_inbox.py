@@ -243,7 +243,22 @@ def week_plan(db: Session, today_keys: set[str] | None = None) -> dict:
     today_keys = inbox item keys, to mark lines already on today's list."""
     today = business_now().date()
     today_keys = today_keys or set()
-    steps = {r[0]: r[1] for r in db.execute(text("SELECT id, order_increment_qty FROM ingredients"))}
+    steps, packs = {}, {}
+    for r in db.execute(text("SELECT id, order_increment_qty, pack_size_g FROM ingredients")):
+        steps[r[0]], packs[r[0]] = r[1], r[2]
+    # Goods bought and stored at home count towards the week too: they only need carrying over.
+    from app.services.home_stock import _per_kg, home_balances
+    from app.services.stock_count import _in_item_unit
+    at_home = {}
+    for iid, h in home_balances(db).items():
+        f = _forecast(db).get(iid)
+        if f is None or not h["on_hand_qty"] or h["on_hand_qty"] <= 0:
+            continue
+        item = {"unit": f["unit"], "pack_size_g": packs.get(iid)}
+        try:
+            at_home[iid] = Decimal(str(_in_item_unit(h, item, _per_kg(item, h["unit"]))))
+        except Exception:
+            continue
     waiting = {r[0] for r in db.execute(text(
         "SELECT ingredient_id FROM requisitions WHERE status = 'approved' AND ingredient_id IS NOT NULL"))}
     lines, covered = [], 0
@@ -252,8 +267,9 @@ def week_plan(db: Session, today_keys: set[str] | None = None) -> dict:
         if not per_day or per_day <= 0 or on_hand is None:
             continue
         per_day, on_hand = Decimal(str(per_day)), max(Decimal(str(on_hand)), Decimal(0))
+        home = at_home.get(iid, Decimal(0))
         cover = on_hand / per_day
-        need = per_day * WEEK_DAYS - on_hand
+        need = per_day * WEEK_DAYS - on_hand - home
         if need <= 0:
             covered += 1
             continue
@@ -265,7 +281,7 @@ def week_plan(db: Session, today_keys: set[str] | None = None) -> dict:
         day = min(int(cover), WEEK_DAYS - 1)
         lines.append({
             "ingredient_id": iid, "name": f["name"], "category": f["category"], "unit": f["unit"],
-            "group": where_bought(f["category"]), "on_hand": on_hand, "per_day": per_day,
+            "group": where_bought(f["category"]), "on_hand": on_hand, "home": home, "per_day": per_day,
             "use_kind": f.get("use_kind"), "use_gap": f.get("use_gap"),
             "cover": cover, "day": day, "runout": today + datetime.timedelta(days=day),
             "qty": qty, "unit_cost": f["avg_unit_cost"],

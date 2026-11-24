@@ -170,7 +170,7 @@
             <td>{% if not l.approved %}<input type="checkbox" class="by-cb" checked data-bw-cb aria-label="Order {{ l.name }}">{% endif %}</td>
             <td><span class="sl-item">{{ l.name }}</span>{{ vhint(l.ingredient_id) }}{{ appprices(l.ingredient_id) }}
               {% if l.approved %}<span class="by-pill req">approved, waiting</span>{% elif l.on_today %}<span class="by-pill req">also on today's list</span>{% endif %}</td>
-            <td class="r {{ '' if l.on_hand > 0 else 'by-zero' }}">{{ amt(l.on_hand, l.unit) }}</td>
+            <td class="r {{ '' if l.on_hand > 0 else 'by-zero' }}">{{ amt(l.on_hand, l.unit) }}{% if l.home %}<small class="sl-muted" style="display:block">+ {{ amt(l.home, l.unit) }} at home</small>{% endif %}</td>
             <td class="r by-use">{{ useday(l) }}</td>
             <td><span class="by-run {{ 'r0' if l.cover < 1 else ('r1' if l.cover < 3 else 'r2') }}">{{ 'Out now' if l.on_hand <= 0 else ('Today' if l.day == 0 else ('Tomorrow' if l.day == 1 else l.runout.strftime('%a %d'))) }}</span></td>
             <td class="r"><span class="sl-qedit"><input inputmode="decimal" data-bw-qty value="{{ '%g'|format(l.qty|float) }}" {{ 'disabled' if l.approved }} aria-label="Order {{ l.name }}"><span class="u">{{ l.unit }}</span></span></td>
