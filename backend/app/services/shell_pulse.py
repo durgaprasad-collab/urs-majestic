@@ -169,7 +169,13 @@ def _build(db: Session) -> dict:
     # not menu_items.price, which lags behind POS price changes.
     leaks = db.execute(text("""
         WITH s AS (
-            SELECT item_name, sum(qty) q, sum(revenue) / nullif(sum(qty), 0) AS sold_at FROM item_sales
+            -- Price from the last 14 days where possible, so a reprice stops
+            -- showing old-price sales as a margin leak; quantity stays 30 days.
+            SELECT item_name, sum(qty) q,
+                   coalesce(sum(revenue) FILTER (WHERE sale_date > :asof - 14)
+                              / nullif(sum(qty) FILTER (WHERE sale_date > :asof - 14), 0),
+                            sum(revenue) / nullif(sum(qty), 0)) AS sold_at
+            FROM item_sales
             WHERE sale_date > :asof - 30 AND sale_date <= :asof GROUP BY 1
         ), z AS (
             SELECT oi.menu_item_id, count(*) n FROM order_items oi JOIN orders o ON o.id = oi.order_id
@@ -197,7 +203,7 @@ def _build(db: Session) -> dict:
     stale_prices = db.execute(text("""
         WITH d AS (
             SELECT item_name, sale_date, round(sum(revenue) / nullif(sum(qty), 0), 2) AS unit, sum(qty) q
-            FROM item_sales WHERE sale_date > :asof - 30 AND sale_date <= :asof GROUP BY 1, 2
+            FROM item_sales WHERE sale_date > :asof - 14 AND sale_date <= :asof GROUP BY 1, 2
         ), modal AS (
             SELECT DISTINCT ON (item_name) item_name, unit, days
             FROM (SELECT item_name, unit, count(*) days, max(sale_date) last_day FROM d GROUP BY 1, 2) x

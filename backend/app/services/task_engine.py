@@ -169,7 +169,9 @@ def build_tasks(db: Session) -> tuple[datetime.date | None, list[dict]]:
               "Portion, recipe or price changed and the new food cost recorded.", "/results", impact=r["leak"])
     dead = db.execute(text("""
         SELECT m.name FROM menu_items m
-        WHERE m.is_active AND m.is_food AND NOT EXISTS (
+        WHERE m.is_active AND m.is_food
+          AND m.name <> 'Extra Gravy (Combo)'  -- combo add-on, kept (22% food cost)
+          AND NOT EXISTS (
             SELECT 1 FROM item_sales s WHERE s.item_name = m.name AND s.sale_date > :asof - 30)
         ORDER BY m.name
     """), {"asof": asof}).scalars().all()
