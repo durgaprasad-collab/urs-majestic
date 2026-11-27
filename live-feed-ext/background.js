@@ -97,7 +97,15 @@ async function ask(tabId, message, tries = 4) {
     await sleep(3000);
   }
   let where = '';
-  try { const t = await chrome.tabs.get(tabId); where = ` The tab was on ${String(t.url || '').split('?')[0].slice(0, 90)}.`; } catch (_) { /* tab gone */ }
+  try {
+    const t = await chrome.tabs.get(tabId);
+    const url = String(t.url || '').split('?')[0];
+    where = ` The tab was on ${url.slice(0, 90)}.`;
+    // Petpooja sends a signed-out browser to its home/login page instead of the report.
+    if (/^https:\/\/billing\.petpooja\.com\/?(login.*|users\/login.*)?$/i.test(url)) {
+      return { ok: false, error: 'Petpooja is signed out: open the pinned Petpooja tab, sign in, then click Read now.' };
+    }
+  } catch (_) { /* tab gone */ }
   return { ok: false, error: `no answer from the page (${why}).${where}` };
 }
 
