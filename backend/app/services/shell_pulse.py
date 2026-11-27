@@ -216,6 +216,16 @@ def _build(db: Session) -> dict:
           AND modal.days * 2 >= tot.days
           -- Add-on lines bill at a deliberate lower price under the same item name.
           AND m.name NOT IN ('Masala Kulcha (1 No)', 'Chilli Gobi')
+          -- Since 21 Nov item_sales also holds online orders at online prices.
+          -- A day line billed at the table price, or a multi-qty line priced
+          -- between it and the usual unit (counter + online mixed), shows the
+          -- table price is still being billed.
+          AND NOT EXISTS (
+              SELECT 1 FROM item_sales l
+              WHERE l.item_name = m.name AND l.sale_date > :asof - 14 AND l.sale_date <= :asof
+                AND (abs(l.revenue / nullif(l.qty, 0) - m.price) < 1
+                     OR (l.qty > 1 AND l.revenue / nullif(l.qty, 0) > m.price + 1
+                         AND l.revenue / nullif(l.qty, 0) < modal.unit - 1)))
     """), {"asof": asof, "minq": LEAK_MIN_QTY}).scalar() or 0
     leak_total = sum(r["leak"] for r in leak_rows)
 
