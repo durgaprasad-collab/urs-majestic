@@ -2497,3 +2497,10 @@ a.rs-dc:hover { border-color: var(--rs-gold); }
 .gv-det[open] summary{background:#e6dfd0}
 .gv-det ul{list-style:none;margin:6px 0 2px;padding:0;text-align:left;font-size:12.5px;min-width:170px}
 .gv-det li{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+/* Next 7 days: room so the fixed "Approve week's order" bar never covers the last rows; bigger tick boxes on phones */
+[data-by-panel="week"] { padding-bottom: 110px; }
+@media (max-width: 860px) { [data-by-panel="week"] { padding-bottom: 170px; } }
+@media (max-width: 640px) {
+  .by-table .by-cb { width: 24px; height: 24px; }
+  .by-table tr.sl-cat > td .by-selall { padding: 6px 4px; font-size: 13px; }
+}

@@ -178,7 +178,7 @@
 
     <div class="sl-card">
       <div class="sl-sechead by-wcap"><div><h3>Order for the week</h3><p>Enough to last 7 days at the current pace, minus what's in stock, rounded to how it's bought · edit any quantity</p></div>
-        <div class="sl-btns"><button type="button" class="sl-btn by-wa" data-bw-share>Share on WhatsApp</button><button type="button" class="sl-btn" data-bw-print>Supplier sheet</button></div></div>
+        <div class="sl-btns"><button type="button" class="sl-btn" data-bw-all>Select all</button><button type="button" class="sl-btn" data-bw-none>Clear</button><button type="button" class="sl-btn by-wa" data-bw-share>Share on WhatsApp</button><button type="button" class="sl-btn" data-bw-print>Supplier sheet</button></div></div>
       {% if week.lines %}
       <table class="sl-table by-table">
         <thead><tr><th class="by-cbcol"></th><th>Item</th><th class="r">In stock</th><th class="r">Uses / day</th><th>Runs out</th><th class="r">Order</th><th class="r">Cost</th></tr></thead>
@@ -279,5 +279,5 @@ document.querySelectorAll('[data-rq-toggle]').forEach(b => b.addEventListener('c
   f.querySelector('[data-by-proxy-close]').addEventListener('click', () => { f.hidden = true; });
 })();
 </script>
-<script src="/static/buy.js?v=7" defer></script>
+<script src="/static/buy.js?v=8" defer></script>
 {% endblock %}

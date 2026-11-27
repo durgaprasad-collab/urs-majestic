@@ -121,6 +121,8 @@
     cbs.forEach(c => (c.checked = !all));
     wrefresh();
   }));
+  $$('[data-bw-all]').forEach(b => b.addEventListener('click', () => { $$('[data-bw-cb]').forEach(c => (c.checked = true)); wrefresh(); }));
+  $$('[data-bw-none]').forEach(b => b.addEventListener('click', () => { $$('[data-bw-cb]').forEach(c => (c.checked = false)); wrefresh(); }));
   $$('[data-bw-approve]').forEach(b => b.addEventListener('click', () => {
     const sel = wsel();
     if (!sel.length) { alert('Tick at least one line.'); return; }
