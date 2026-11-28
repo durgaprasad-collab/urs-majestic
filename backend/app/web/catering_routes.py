@@ -178,16 +178,7 @@ def invoice_page(order_id: int, request: Request, db: Session = Depends(get_db))
     return _tmpl(request, "catering_invoice.html", _inv_ctx(request, db, order, user))
 
 
-@router.get("/i/c/{order_id}/{token}", response_class=HTMLResponse)
-def invoice_public(order_id: int, token: str, request: Request, db: Session = Depends(get_db)):
-    """The customer's copy: opens without signing in, only with the order's own token."""
-    import hmac
-    order = _load(db, order_id)
-    if not order or not hmac.compare_digest(token, _inv_token(order_id)):
-        return HTMLResponse("Invoice not found.", status_code=404)
-    return _tmpl(request, "catering_invoice.html", _inv_ctx(request, db, order))
-
-
+# The .pdf route must come first: "{token}" would otherwise swallow "<token>.pdf".
 @router.get("/i/c/{order_id}/{token}.pdf")
 def invoice_public_pdf(order_id: int, token: str, db: Session = Depends(get_db)):
     import hmac
@@ -197,6 +188,16 @@ def invoice_public_pdf(order_id: int, token: str, db: Session = Depends(get_db))
     from app.services import catering_invoice, pos
     return Response(catering_invoice.build(order, pos.settings(db)), media_type="application/pdf",
                     headers={"Content-Disposition": f'inline; filename="invoice-C{order.id}.pdf"'})
+
+
+@router.get("/i/c/{order_id}/{token}", response_class=HTMLResponse)
+def invoice_public(order_id: int, token: str, request: Request, db: Session = Depends(get_db)):
+    """The customer's copy: opens without signing in, only with the order's own token."""
+    import hmac
+    order = _load(db, order_id)
+    if not order or not hmac.compare_digest(token, _inv_token(order_id)):
+        return HTMLResponse("Invoice not found.", status_code=404)
+    return _tmpl(request, "catering_invoice.html", _inv_ctx(request, db, order))
 
 
 @router.get("/catering-orders/{order_id}/invoice.pdf")
