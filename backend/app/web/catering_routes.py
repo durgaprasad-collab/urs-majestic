@@ -6,7 +6,7 @@ import datetime
 from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.clock import business_today
@@ -148,6 +148,20 @@ async def set_status(order_id: int, request: Request, db: Session = Depends(get_
     stock = catering.sync_stock(db, order, order.status.value)
     db.commit()
     return JSONResponse({"ok": True, "stock": stock})
+
+
+@router.get("/catering-orders/{order_id}/invoice.pdf")
+def invoice_pdf(order_id: int, request: Request, db: Session = Depends(get_db)):
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    order = _load(db, order_id)
+    if not order:
+        return RedirectResponse("/catering-orders", status_code=303)
+    from app.services import catering_invoice, pos
+    pdf = catering_invoice.build(order, pos.settings(db))
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="invoice-C{order.id}-{order.customer_name.split()[0] if order.customer_name else "catering"}.pdf"'})
 
 
 @router.post("/catering-orders/{order_id}/payment")
