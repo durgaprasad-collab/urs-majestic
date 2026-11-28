@@ -161,7 +161,7 @@ def invoice_pdf(order_id: int, request: Request, db: Session = Depends(get_db)):
     from app.services import catering_invoice, pos
     pdf = catering_invoice.build(order, pos.settings(db))
     return Response(pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'inline; filename="invoice-C{order.id}-{order.customer_name.split()[0] if order.customer_name else "catering"}.pdf"'})
+                    headers={"Content-Disposition": f'attachment; filename="invoice-C{order.id}-{order.customer_name.split()[0] if order.customer_name else "catering"}.pdf"'})
 
 
 @router.post("/catering-orders/{order_id}/payment")
