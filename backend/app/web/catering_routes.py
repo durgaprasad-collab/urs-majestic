@@ -150,20 +150,53 @@ async def set_status(order_id: int, request: Request, db: Session = Depends(get_
     return JSONResponse({"ok": True, "stock": stock})
 
 
+def _inv_token(order_id: int) -> str:
+    import hashlib, hmac
+    from app.core.config import settings
+    return hmac.new(settings.SECRET_KEY.encode(), f"catering-invoice:{order_id}".encode(), hashlib.sha256).hexdigest()[:24]
+
+
+def _inv_ctx(request: Request, db: Session, order, user=None) -> dict:
+    from app.services import pos
+    lines_total = sum((i.amount for i in order.items), Decimal(0))
+    base = str(request.base_url).rstrip("/")
+    link = f"{base}/i/c/{order.id}/{_inv_token(order.id)}"
+    return {"user": user, "order": order, "biz": pos.settings(db), "lines_total": lines_total,
+            "discount": max(lines_total - order.total_amount, Decimal(0)), "link": link, "public": user is None}
+
+
 @router.get("/catering-orders/{order_id}/invoice", response_class=HTMLResponse)
 def invoice_page(order_id: int, request: Request, db: Session = Depends(get_db)):
-    """Printable invoice page. The Android app can't download files, but it can print this page
-    (Print / save as PDF), so this is the main way in; invoice.pdf is the direct download."""
+    """Invoice page for the owner: print it, or share the customer link (WhatsApp / copy). The
+    Android app can neither download nor print, so the shareable link is the way out of it."""
     user, redir = require_user(request, db)
     if redir:
         return redir
     order = _load(db, order_id)
     if not order:
         return RedirectResponse("/catering-orders", status_code=303)
-    from app.services import pos
-    lines_total = sum((i.amount for i in order.items), Decimal(0))
-    return _tmpl(request, "catering_invoice.html", {"user": user, "order": order, "biz": pos.settings(db),
-                                                    "lines_total": lines_total, "discount": max(lines_total - order.total_amount, Decimal(0))})
+    return _tmpl(request, "catering_invoice.html", _inv_ctx(request, db, order, user))
+
+
+@router.get("/i/c/{order_id}/{token}", response_class=HTMLResponse)
+def invoice_public(order_id: int, token: str, request: Request, db: Session = Depends(get_db)):
+    """The customer's copy: opens without signing in, only with the order's own token."""
+    import hmac
+    order = _load(db, order_id)
+    if not order or not hmac.compare_digest(token, _inv_token(order_id)):
+        return HTMLResponse("Invoice not found.", status_code=404)
+    return _tmpl(request, "catering_invoice.html", _inv_ctx(request, db, order))
+
+
+@router.get("/i/c/{order_id}/{token}.pdf")
+def invoice_public_pdf(order_id: int, token: str, db: Session = Depends(get_db)):
+    import hmac
+    order = _load(db, order_id)
+    if not order or not hmac.compare_digest(token, _inv_token(order_id)):
+        return HTMLResponse("Invoice not found.", status_code=404)
+    from app.services import catering_invoice, pos
+    return Response(catering_invoice.build(order, pos.settings(db)), media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="invoice-C{order.id}.pdf"'})
 
 
 @router.get("/catering-orders/{order_id}/invoice.pdf")
@@ -175,9 +208,8 @@ def invoice_pdf(order_id: int, request: Request, db: Session = Depends(get_db)):
     if not order:
         return RedirectResponse("/catering-orders", status_code=303)
     from app.services import catering_invoice, pos
-    pdf = catering_invoice.build(order, pos.settings(db))
-    return Response(pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="invoice-C{order.id}-{order.customer_name.split()[0] if order.customer_name else "catering"}.pdf"'})
+    return Response(catering_invoice.build(order, pos.settings(db)), media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="invoice-C{order.id}.pdf"'})
 
 
 @router.post("/catering-orders/{order_id}/payment")

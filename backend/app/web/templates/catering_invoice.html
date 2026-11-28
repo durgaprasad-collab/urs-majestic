@@ -11,6 +11,8 @@
   .acts a, .acts button { padding: 9px 14px; border: 1px solid #0b3a2e; border-radius: 8px; background: #fff; color: #0b3a2e; text-decoration: none; font: 600 13px Inter, sans-serif; cursor: pointer; }
   .acts button { background: #0b3a2e; color: #fff; }
   .acts button.alt { background: #fff; color: #0b3a2e; }
+  .head { display: flex; gap: 14px; align-items: center; }
+  .head img { border-radius: 50%; }
   h1 { margin: 0; font: 700 22px Inter, sans-serif; color: #0b3a2e; }
   .s { color: #66716b; font-size: 12px; }
   .meta { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 18px 0; }
@@ -27,13 +29,20 @@
 </style>
 </head>
 <body>
+{% if not public %}
 <div class="acts">
   <a href="/catering-orders?id={{ order.id }}">← Back to order</a>
-  <button type="button" data-print>Print / save as PDF</button>
-  <button type="button" class="alt" data-pdf>Share / download PDF</button>
+  <button type="button" data-wa>Share on WhatsApp</button>
+  <button type="button" class="alt" data-copy>Copy customer link</button>
+  <button type="button" class="alt" data-print>Print</button>
+  <a href="{{ link }}.pdf" target="_blank" rel="noopener">Open PDF</a>
 </div>
+{% else %}
+<div class="acts"><button type="button" data-print>Print / save as PDF</button><a href="{{ link }}.pdf">Download PDF</a></div>
+{% endif %}
+<div class="head"><img src="/static/img/logo-circle-360.jpg" alt="URS Majestic" width="64" height="64"><div>
 <h1>{{ biz.legal_name }}</h1>
-<div class="s">{{ biz.address }}{% if biz.phone %}<br>Phone {{ biz.phone }}{% endif %}{% if biz.gstin %} · GSTIN {{ biz.gstin }}{% endif %}</div>
+<div class="s">{{ biz.address }}{% if biz.phone %}<br>Phone {{ biz.phone }}{% endif %}{% if biz.gstin %} · GSTIN {{ biz.gstin }}{% endif %}</div></div></div>
 <div class="meta">
   <div><span class="s">Billed to</span><b>{{ order.customer_name }}</b>{{ order.customer_phone }}{% if order.delivery_address %}<br>{{ order.delivery_address }}{% endif %}</div>
   <div><b>Invoice no: C-{{ order.id }}</b>Event date: {{ order.delivery_date.strftime('%d %b %Y') }}{% if order.delivery_time %}, {{ order.delivery_time.strftime('%I:%M %p').lstrip('0') }}{% endif %}{% if order.plates %}<br>Plates: {{ order.plates }}{% endif %}</div>
@@ -52,21 +61,20 @@
 {% if order.notes %}<p class="s" style="margin-top:22px">Notes<br><span style="color:#17211d;font-size:14px">{{ order.notes }}</span></p>{% endif %}
 <p class="s" style="margin-top:22px">{{ biz.footer }}</p>
 <script>
-document.querySelector('[data-print]').addEventListener('click', () =>
-  (window.URSPrint && window.URSPrint.print) ? window.URSPrint.print(document.title) : window.print());
-const pdfBtn = document.querySelector('[data-pdf]');
-if (window.URSPrint) pdfBtn.remove();   // the Android app can't download files: use Print / save as PDF there
-else pdfBtn.addEventListener('click', async () => {
-  pdfBtn.disabled = true;
-  try {
-    const r = await fetch('/catering-orders/{{ order.id }}/invoice.pdf', { credentials: 'same-origin' });
-    if (!r.ok) throw new Error();
-    const file = new File([await r.blob()], 'invoice-C{{ order.id }}.pdf', { type: 'application/pdf' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
-    else { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); }
-  } catch (e) { if (e && e.name !== 'AbortError') alert('Could not get the PDF. Use Print / save as PDF instead.'); }
-  pdfBtn.disabled = false;
+const printNow = () => window.print();
+document.querySelectorAll('[data-print]').forEach(b => b.addEventListener('click', printNow));
+{% if not public %}
+const link = {{ link|tojson }};
+const msg = {{ ('Hello ' ~ order.customer_name ~ ', your invoice from ' ~ biz.legal_name ~ ' (C-' ~ order.id ~ ', total ₹' ~ '{:,.0f}'.format(order.total_amount|float) ~ ', balance due ₹' ~ '{:,.0f}'.format((order.balance_due or 0)|float) ~ '): ')|tojson }} + link;
+const digits = {{ (order.customer_phone or '')|tojson }}.replace(/\D/g, '');
+const num = digits.length === 10 ? '91' + digits : digits;
+document.querySelector('[data-wa]').addEventListener('click', () =>
+  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(msg), '_blank', 'noopener'));
+document.querySelector('[data-copy]').addEventListener('click', async e => {
+  try { await navigator.clipboard.writeText(link); e.target.textContent = 'Link copied ✓'; }
+  catch (x) { prompt('Copy this link', link); }
 });
+{% endif %}
 </script>
 </body>
 </html>

@@ -7,7 +7,9 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from pathlib import Path
+
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 GREEN, MUTED, LINE = HexColor("#0B3A2E"), HexColor("#66716B"), HexColor("#D8D5CB")
 H = ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=18, textColor=GREEN, leading=22)
@@ -27,10 +29,11 @@ def build(order, biz: dict) -> bytes:
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm, bottomMargin=16 * mm,
                             title=f"Invoice C-{order.id}")
     p = lambda t, st=N: Paragraph(escape(str(t)).replace("\n", "<br/>"), st)
-    story = [p(biz.get("legal_name") or "URS Majestic", H), p(biz.get("address", ""), S)]
+    logo = Path(__file__).resolve().parent.parent / "web" / "static" / "img" / "logo-circle-360.jpg"
     contact = " · ".join(x for x in (f"Phone {biz['phone']}" if biz.get("phone") else "", f"GSTIN {biz['gstin']}" if biz.get("gstin") else "") if x)
-    if contact:
-        story.append(p(contact, S))
+    head = [p(biz.get("legal_name") or "URS Majestic", H), p(biz.get("address", ""), S)] + ([p(contact, S)] if contact else [])
+    story = [Table([[Image(str(logo), 22 * mm, 22 * mm), head]], colWidths=[28 * mm, 146 * mm],
+                   style=[("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0)])] if logo.exists() else head
     story.append(Spacer(1, 8 * mm))
     when = f"{order.delivery_date:%d %b %Y}" + (f", {order.delivery_time:%I:%M %p}".replace(" 0", " ") if order.delivery_time else "")
     meta = Table([[p("INVOICE", B), p(f"Invoice no: C-{order.id}", N)],
