@@ -53,7 +53,7 @@
         {% endfor %}
         <span class="{{ 'done' if order.payment_status.value == 'paid' else '' }}">Paid</span>
         <span class="ct-acts">
-          {% if order.items %}<a class="sl-btn" href="/catering-orders/{{ order.id }}/invoice.pdf" download>Invoice PDF</a>{% endif %}
+          {% if order.items %}<a class="sl-btn" href="/catering-orders/{{ order.id }}/invoice">Invoice PDF</a>{% endif %}
           {% if st == 'quote' %}<button type="button" class="sl-btn sl-btn-p" data-ct-confirm>Confirm · record advance</button>{% endif %}
           {% if st == 'confirmed' %}<button type="button" class="sl-btn" data-ct-status="in_prep">Start prep</button>{% endif %}
           {% if st in ('confirmed', 'in_prep') %}<button type="button" class="sl-btn sl-btn-p" data-ct-status="delivered">Mark delivered</button>{% endif %}

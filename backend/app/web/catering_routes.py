@@ -150,6 +150,22 @@ async def set_status(order_id: int, request: Request, db: Session = Depends(get_
     return JSONResponse({"ok": True, "stock": stock})
 
 
+@router.get("/catering-orders/{order_id}/invoice", response_class=HTMLResponse)
+def invoice_page(order_id: int, request: Request, db: Session = Depends(get_db)):
+    """Printable invoice page. The Android app can't download files, but it can print this page
+    (Print / save as PDF), so this is the main way in; invoice.pdf is the direct download."""
+    user, redir = require_user(request, db)
+    if redir:
+        return redir
+    order = _load(db, order_id)
+    if not order:
+        return RedirectResponse("/catering-orders", status_code=303)
+    from app.services import pos
+    lines_total = sum((i.amount for i in order.items), Decimal(0))
+    return _tmpl(request, "catering_invoice.html", {"user": user, "order": order, "biz": pos.settings(db),
+                                                    "lines_total": lines_total, "discount": max(lines_total - order.total_amount, Decimal(0))})
+
+
 @router.get("/catering-orders/{order_id}/invoice.pdf")
 def invoice_pdf(order_id: int, request: Request, db: Session = Depends(get_db)):
     user, redir = require_user(request, db)
