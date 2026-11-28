@@ -10,6 +10,7 @@
   .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
   .acts a, .acts button { padding: 9px 14px; border: 1px solid #0b3a2e; border-radius: 8px; background: #fff; color: #0b3a2e; text-decoration: none; font: 600 13px Inter, sans-serif; cursor: pointer; }
   .acts button { background: #0b3a2e; color: #fff; }
+  .acts button.alt { background: #fff; color: #0b3a2e; }
   h1 { margin: 0; font: 700 22px Inter, sans-serif; color: #0b3a2e; }
   .s { color: #66716b; font-size: 12px; }
   .meta { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 18px 0; }
@@ -29,7 +30,7 @@
 <div class="acts">
   <a href="/catering-orders?id={{ order.id }}">← Back to order</a>
   <button type="button" data-print>Print / save as PDF</button>
-  <a href="/catering-orders/{{ order.id }}/invoice.pdf" download>Download PDF</a>
+  <button type="button" class="alt" data-pdf>Share / download PDF</button>
 </div>
 <h1>{{ biz.legal_name }}</h1>
 <div class="s">{{ biz.address }}{% if biz.phone %}<br>Phone {{ biz.phone }}{% endif %}{% if biz.gstin %} · GSTIN {{ biz.gstin }}{% endif %}</div>
@@ -53,6 +54,19 @@
 <script>
 document.querySelector('[data-print]').addEventListener('click', () =>
   (window.URSPrint && window.URSPrint.print) ? window.URSPrint.print(document.title) : window.print());
+const pdfBtn = document.querySelector('[data-pdf]');
+if (window.URSPrint) pdfBtn.remove();   // the Android app can't download files: use Print / save as PDF there
+else pdfBtn.addEventListener('click', async () => {
+  pdfBtn.disabled = true;
+  try {
+    const r = await fetch('/catering-orders/{{ order.id }}/invoice.pdf', { credentials: 'same-origin' });
+    if (!r.ok) throw new Error();
+    const file = new File([await r.blob()], 'invoice-C{{ order.id }}.pdf', { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
+    else { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); }
+  } catch (e) { if (e && e.name !== 'AbortError') alert('Could not get the PDF. Use Print / save as PDF instead.'); }
+  pdfBtn.disabled = false;
+});
 </script>
 </body>
 </html>
