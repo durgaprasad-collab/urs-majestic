@@ -47,6 +47,26 @@ class StretchTests(unittest.TestCase):
                          ["use", "in", "out", "sys", "count", "count"])
 
 
+class AbsorbedUsageTests(unittest.TestCase):
+    def test_pre_count_sales_count_as_recipe_use(self):
+        # Day total 4, only 1 sold after the 6 pm count: the other 3 sit inside the closing count.
+        h = lambda n: T0 + timedelta(hours=n)
+        seq = [(10, h(0), "count", None), (6, h(24), "count", "app_count"),
+               (5, h(30), "use", "petpooja_usage:2026-10-02:4:kg"),
+               (5, h(48), "count", "app_count"), (4, h(54), "use", "petpooja_usage:2026-10-03:1:kg")]
+        w = rc.stretches(seq)
+        self.assertAlmostEqual(w[0]["recipe"], 3)
+        self.assertAlmostEqual(w[0]["real"], 4)
+
+    def test_last_stretch_waits_for_its_days_usage(self):
+        seq = [(10, T0, "count", None), (8, T0 + timedelta(days=1), "use", "petpooja_usage:2026-10-01:2:kg"),
+               (7, T0 + timedelta(days=2), "count", "app_count")]
+        self.assertEqual(rc.stretches(seq), [])
+
+    def test_catering_and_corrections_are_not_counts(self):
+        self.assertEqual([rc.kind_of(n) for n in ("catering_usage:2026-11-20", "CORRECTION 2026-11-14: x")], ["sys", "sys"])
+
+
 class DecideTests(unittest.TestCase):
     def wins(self, n, recipe, real):
         return [{"recipe": recipe, "real": real} for _ in range(n)]

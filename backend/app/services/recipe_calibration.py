@@ -35,13 +35,17 @@ def kind_of(note: str | None) -> str:
         return "in"
     if n.startswith("transfer_out"):
         return "out"
-    if n.startswith(("SYSTEM", "gravy_batch", "unit_fix")):
+    # Catering draws and manual corrections are not counts and not dish sales.
+    if n.startswith(("SYSTEM", "gravy_batch", "unit_fix", "catering_usage", "CORRECTION")):
         return "sys"
     return "count"
 
 
 def stretches(seq: list[tuple], since=None) -> list[dict]:
-    """seq: [(balance, at, kind)] oldest first. One stretch per pair of consecutive
+    """seq: [(balance, at, kind[, note])] oldest first. A usage row only moves the balance by
+    the sales made after the latest count; the rest of that day's usage (in the note) is
+    already inside the count, so it is added to the stretch that count closed. Without it
+    recipes look too low and every ratio comes out too high. One stretch per pair of consecutive
     real counts; a stretch touched by a system or batch row is dropped, and so is one
     opened before `since` (the last time this item was calibrated)."""
     out = []
@@ -49,10 +53,30 @@ def stretches(seq: list[tuple], since=None) -> list[dict]:
     used = inn = outt = 0.0
     dirty = False
     prev = None
-    for q, at, k in seq:
+    totals: dict = {}       # (ledger, sales day) -> usage total last written in a note
+    closed = None           # the stretch that ends at the current anchor, if it was kept
+    awaiting = False        # no usage posted yet since the latest count
+    noted = False
+    for q, at, k, *rest in seq:
+        absorbed = 0.0
+        if k == "use" and rest:
+            noted = True
+            total = _noted_total(rest[0])
+            if total is not None:
+                key, qty = total
+                full = qty - totals.get(key, 0.0)
+                totals[key] = qty
+                if full > 0 and prev is not None:
+                    absorbed = max(full - (prev - q), 0.0)
+        if k == "use":
+            awaiting = False
+            if closed is not None:
+                closed["recipe"] += absorbed
         if k == "count":
+            closed, awaiting = None, True
             if anchor is not None and not dirty and (since is None or anchor[1] >= since):
-                out.append({"from": anchor[1], "to": at, "recipe": used, "real": anchor[0] + inn - outt - q})
+                closed = {"from": anchor[1], "to": at, "recipe": used, "real": anchor[0] + inn - outt - q}
+                out.append(closed)
             anchor, used, inn, outt, dirty = (q, at), 0.0, 0.0, 0.0, False
         elif anchor is not None:
             d = prev - q
@@ -65,7 +89,21 @@ def stretches(seq: list[tuple], since=None) -> list[dict]:
             else:
                 dirty = True
         prev = q
+    # The last count's own day has not been posted yet: its pre-count sales are unknown.
+    if noted and awaiting and closed is not None:
+        out.pop()
     return out
+
+
+def _noted_total(note: str | None) -> tuple | None:
+    """((ledger, day), total used) from `<ledger>:<day>:<qty>:<unit>`, else None."""
+    parts = (note or "").split(":")[:4]
+    if len(parts) != 4:
+        return None
+    try:
+        return (parts[0], parts[1]), float(parts[2])
+    except ValueError:
+        return None
 
 
 def decide(wins: list[dict]) -> dict | None:
@@ -97,13 +135,14 @@ def _ledger(db: Session) -> dict:
          ORDER BY s.ingredient_id, s.counted_at, s.id"""), {"d": LOOKBACK_DAYS}).all()
     seqs: dict = defaultdict(list)
     for r in rows:
-        seqs[(r.ingredient_id, r.name, r.unit)].append((r.q, r.counted_at, kind_of(r.note)))
+        seqs[(r.ingredient_id, r.name, r.unit)].append((r.q, r.counted_at, kind_of(r.note), r.note))
     return seqs
 
 
 def _last_calibrated(db: Session) -> dict:
     return {r[0]: r[1] for r in db.execute(text(
-        "SELECT target_id, max(repaired_at) FROM cost_base_repair_log WHERE batch = :b GROUP BY target_id"), {"b": BATCH})}
+        "SELECT target_id, max(repaired_at) FROM cost_base_repair_log "
+        "WHERE batch = :b AND target_table = 'ingredients' GROUP BY target_id"), {"b": BATCH})}
 
 
 def _dish_lines(db: Session, ingredient_id: int) -> list[dict]:
