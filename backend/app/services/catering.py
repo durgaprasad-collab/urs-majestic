@@ -127,6 +127,53 @@ def add_to_buy(db: Session, order: CateringOrder, user_id: int) -> tuple[int, in
     return added, skipped
 
 
+def _tag(order_id: int) -> str:
+    return f"catering:{order_id}:"
+
+
+def sync_stock(db: Session, order: CateringOrder, status: str) -> dict:
+    """Take the order's ingredients off stock once it reaches In prep (or Delivered), and put them
+    back if it is moved back to Quote/Confirmed or cancelled. One ledger row per ingredient:
+    transfer_out:catering:<id>:<qty>:<unit> (counts as stock leaving, never as a physical count, and
+    the recipe calibrator ignores it) and transfer_in:catering:<id>:... to reverse. Idempotent: it
+    looks at the latest catering row for that order and ingredient. Caller commits."""
+    want_out = status in ("in_prep", "delivered")
+    drawn = returned = skipped = 0
+    for line in ingredients(db, order):
+        iid, qty, unit = line["ingredient_id"], line["qty"], line["unit"]
+        last = db.execute(text("""
+            SELECT note FROM ingredient_stock
+             WHERE ingredient_id = :i AND (note LIKE :o OR note LIKE :n)
+             ORDER BY counted_at DESC, id DESC LIMIT 1
+        """), {"i": iid, "o": f"transfer_out:{_tag(order.id)}%", "n": f"transfer_in:{_tag(order.id)}%"}).scalar()
+        is_out = bool(last and last.startswith("transfer_out:"))
+        if want_out == is_out:
+            continue
+        base = db.execute(text("""
+            SELECT on_hand_qty, unit::text AS unit FROM ingredient_stock
+             WHERE ingredient_id = :i ORDER BY counted_at DESC, id DESC LIMIT 1 FOR UPDATE
+        """), {"i": iid}).mappings().first()
+        if base is None or base["unit"] != unit:
+            skipped += 1
+            continue
+        have = max(Decimal(str(base["on_hand_qty"])), Decimal(0))
+        if want_out:
+            moved = min(Decimal(qty), have)       # the ledger can't go below zero on a transfer row; Buy covers the rest
+        else:
+            moved = Decimal(last.split(":")[3])   # give back exactly what was taken
+        if moved <= 0:
+            continue
+        bal = have - moved if want_out else have + moved
+        db.execute(text("""
+            INSERT INTO ingredient_stock (ingredient_id, on_hand_qty, unit, counted_by, note)
+            VALUES (:i, :b, CAST(:u AS unit_type), NULL, :n)
+        """), {"i": iid, "b": bal, "u": unit,
+               "n": f"{'transfer_out' if want_out else 'transfer_in'}:{_tag(order.id)}{format(moved.normalize(), 'f')}:{unit}"})
+        drawn += want_out
+        returned += not want_out
+    return {"drawn": drawn, "returned": returned, "skipped": skipped}
+
+
 def payment_status(total: Decimal, advance: Decimal) -> CateringPaymentStatus:
     if total > 0 and advance >= total:
         return CateringPaymentStatus.paid

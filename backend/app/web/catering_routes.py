@@ -145,8 +145,9 @@ async def set_status(order_id: int, request: Request, db: Session = Depends(get_
     order.payment_status = catering.payment_status(order.total_amount, order.advance_paid)
     log_change(db, batch="catering_status", target_table="catering_orders", target_id=order.id, field="status",
                old_value=old, new_value=order.status.value, reason="Changed on the Catering page", actor_user_id=user.id)
+    stock = catering.sync_stock(db, order, order.status.value)
     db.commit()
-    return JSONResponse({"ok": True})
+    return JSONResponse({"ok": True, "stock": stock})
 
 
 @router.post("/catering-orders/{order_id}/payment")
