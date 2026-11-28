@@ -34,11 +34,12 @@
   <a href="/catering-orders?id={{ order.id }}">← Back to order</a>
   <button type="button" data-wa>Share on WhatsApp</button>
   <button type="button" class="alt" data-copy>Copy customer link</button>
-  <button type="button" class="alt" data-print>Print</button>
-  <a href="{{ link }}.pdf" target="_blank" rel="noopener">Open PDF</a>
+  <a href="{{ link }}">View customer copy</a>
+  <button type="button" class="alt" data-print data-browser-only>Print</button>
+  <a href="{{ link }}.pdf" target="_blank" rel="noopener" data-browser-only>Open PDF</a>
 </div>
 {% else %}
-<div class="acts"><button type="button" data-print>Print / save as PDF</button><a href="{{ link }}.pdf">Download PDF</a></div>
+<div class="acts" data-browser-only-box><button type="button" data-print data-browser-only>Print / save as PDF</button><a href="{{ link }}.pdf" data-browser-only>Download PDF</a></div>
 {% endif %}
 <div class="head"><img src="/static/img/logo-circle-360.jpg" alt="URS Majestic" width="64" height="64"><div>
 <h1>{{ biz.legal_name }}</h1>
@@ -61,6 +62,8 @@
 {% if order.notes %}<p class="s" style="margin-top:22px">Notes<br><span style="color:#17211d;font-size:14px">{{ order.notes }}</span></p>{% endif %}
 <p class="s" style="margin-top:22px">{{ biz.footer }}</p>
 <script>
+// The admin app (a WebView) can neither show PDFs nor print: hide those buttons there.
+if (window.Capacitor || /; wv\)/.test(navigator.userAgent)) document.querySelectorAll('[data-browser-only]').forEach(e => e.remove());
 const printNow = () => window.print();
 document.querySelectorAll('[data-print]').forEach(b => b.addEventListener('click', printNow));
 {% if not public %}
