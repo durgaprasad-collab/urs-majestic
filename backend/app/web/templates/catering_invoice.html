@@ -34,12 +34,12 @@
   <a href="/catering-orders?id={{ order.id }}">← Back to order</a>
   <button type="button" data-wa>Share on WhatsApp</button>
   <button type="button" class="alt" data-copy>Copy customer link</button>
-  <a href="{{ link }}">View customer copy</a>
+  <a href="{{ link }}?back={{ order.id }}">View customer copy</a>
   <button type="button" class="alt" data-print data-browser-only>Print</button>
   <a href="{{ link }}.pdf" target="_blank" rel="noopener" data-browser-only>Open PDF</a>
 </div>
 {% else %}
-<div class="acts" data-browser-only-box><button type="button" data-print data-browser-only>Print / save as PDF</button><a href="{{ link }}.pdf" data-browser-only>Download PDF</a></div>
+<div class="acts" data-browser-only-box>{% if request.query_params.get('back') == order.id|string %}<a href="/catering-orders/{{ order.id }}/invoice" style="order:-1">← Back to invoice</a>{% endif %}<button type="button" data-print data-browser-only>Print / save as PDF</button><a href="{{ link }}.pdf" data-browser-only>Download PDF</a></div>
 {% endif %}
 <div class="head"><img src="/static/img/logo-circle-360.jpg" alt="URS Majestic" width="64" height="64"><div>
 <h1>{{ biz.legal_name }}</h1>
